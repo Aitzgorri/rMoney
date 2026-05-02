@@ -1,0 +1,564 @@
+/* ── Screen shell ─────────────────────────────────────────────────────────── */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header (full-width above both columns) ──────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.backBtn:hover { background: #2d3448; color: #f1f5f9; }
+
+.headerTicker {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.headerName {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.headerCurrency {
+  font-size: 14px;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+.profileBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 3px 10px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.profileBtn:hover { border-color: #475569; color: #94a3b8; }
+
+/* ── Body — mobile: single column / desktop: two columns ─────────────────── */
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.rightCol {
+  border-top: 1px solid #2d3448;
+  min-height: 420px;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .body {
+    flex-direction: row;
+    align-items: flex-start; /* lets each column define its own height */
+  }
+
+  .leftCol {
+    flex: 1;
+    padding: 20px 24px;
+    min-width: 0;
+  }
+
+  .rightCol {
+    position: sticky;
+    top: 56px; /* sit flush below the top nav bar (56px tall) */
+    width: 760px;
+    flex-shrink: 0;
+    height: calc(100svh - 56px);
+    border-top: none;
+    border-left: 1px solid #2d3448;
+    overflow: hidden;
+  }
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.actionBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+/* ── Split form ──────────────────────────────────────────────────────────── */
+
+.splitForm {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.splitFormRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.splitLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  min-width: 110px;
+}
+
+.splitInput {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+
+.splitInputNarrow {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  width: 80px;
+}
+
+.splitSep {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.splitHint {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+  font-style: italic;
+}
+
+.splitErrorMsg {
+  font-size: 12px;
+  color: #f87171;
+  margin: 0;
+}
+
+.splitActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.splitCancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.splitCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.splitApplyBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.splitApplyBtn:hover { background: #2563eb; }
+
+/* ── Positions ───────────────────────────────────────────────────────────── */
+
+.positionTable { display: flex; flex-direction: column; gap: 4px; }
+
+.positionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #1e2535;
+  border-radius: 8px;
+}
+
+.posAccountName {
+  flex: 1;
+  font-size: 13px;
+  color: #94a3b8;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posShares { font-size: 13px; color: #f1f5f9; font-weight: 500; flex-shrink: 0; }
+.posAvg    { font-size: 12px; color: #64748b; flex-shrink: 0; }
+.posTotal  { font-size: 13px; color: #34d399; font-weight: 500; flex-shrink: 0; }
+
+/* ── Transactions ────────────────────────────────────────────────────────── */
+
+.filterBar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filterBtn:hover { background: #3d4558; color: #f1f5f9; }
+.filterBtnActive { background: #3b82f6; color: white; }
+.filterBtnActive:hover { background: #2563eb; }
+
+.txList { display: flex; flex-direction: column; gap: 2px; }
+
+.txRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #1e2535;
+  border-radius: 8px;
+}
+
+.txDate    { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
+
+.txBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badgeBuy      { background: rgba(52,211,153,0.12);  color: #34d399; }
+.badgeSell     { background: rgba(248,113,113,0.12); color: #f87171; }
+.badgeDividend { background: rgba(251,191,36,0.12);  color: #fbbf24; }
+.badgeSplit    { background: rgba(139,92,246,0.12);  color: #a78bfa; }
+.badgeTransfer { background: rgba(96,165,250,0.12);  color: #60a5fa; }
+
+.txDesc    { flex: 1; font-size: 13px; color: #f1f5f9; min-width: 0; }
+.txAmount  { font-size: 13px; font-weight: 500; flex-shrink: 0; }
+.txAmountPositive { color: #34d399; }
+.txAmountNegative { color: #f87171; }
+
+.txAccount {
+  font-size: 11px;
+  color: #475569;
+  flex-shrink: 0;
+  min-width: 70px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+/* ── Dividends ───────────────────────────────────────────────────────────── */
+
+.divList { display: flex; flex-direction: column; gap: 2px; }
+
+.divRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #1e2535;
+  border-radius: 8px;
+}
+
+.divDate  { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
+.divDesc  { flex: 1; font-size: 13px; color: #94a3b8; }
+.divNet   { font-size: 13px; font-weight: 500; color: #fbbf24; flex-shrink: 0; }
+
+.divAccount {
+  font-size: 11px;
+  color: #475569;
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── Portfolios ──────────────────────────────────────────────────────────── */
+
+.portfolioList { display: flex; flex-direction: column; gap: 4px; }
+
+.portfolioRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #1e2535;
+  border-radius: 8px;
+}
+
+.portfolioPath   { flex: 1; font-size: 13px; color: #94a3b8; }
+.portfolioTarget { font-size: 12px; color: #64748b; }
+
+/* ── Empty ───────────────────────────────────────────────────────────────── */
+
+.empty { color: #475569; font-size: 13px; padding: 8px 0; }
+
+/* ── Manual price ────────────────────────────────────────────────────────── */
+
+.manualPriceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 20px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.manualPriceLabel { color: #64748b; }
+.manualPriceValue { color: #e2e8f0; font-weight: 600; }
+.priceSource      { color: #475569; font-size: 11px; }
+.priceLoading     { color: #475569; font-style: italic; }
+.priceUnavailable { color: #475569; }
+
+.manualPriceBtn {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.manualPriceBtn:hover { border-color: #475569; color: #cbd5e1; }
+
+.manualPriceClearBtn {
+  background: none;
+  border: 1px solid #451a1a;
+  border-radius: 5px;
+  color: #f87171;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.manualPriceClearBtn:hover { background: rgba(248,113,113,0.08); }
+
+.manualPriceForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+.manualPriceInput {
+  background: #1e2535;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 5px 10px;
+  width: 120px;
+}
+
+.manualPriceCurrencyInput {
+  background: #1e2535;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 5px 10px;
+  width: 64px;
+  text-transform: uppercase;
+}
+
+.manualPriceSaveBtn {
+  background: #1d4ed8;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.manualPriceSaveBtn:disabled { opacity: 0.45; cursor: default; }
+.manualPriceSaveBtn:not(:disabled):hover { background: #2563eb; }
+
+.manualPriceCancelBtn {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.manualPriceCancelBtn:hover { border-color: #475569; }
+
+/* ── Price chart ─────────────────────────────────────────────────────────────── */
+
+.chartPeriodBar {
+  display: flex;
+  gap: 2px;
+}
+
+.chartPeriodBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chartPeriodBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.chartPeriodBtnActive {
+  background: #2d3448;
+  border-color: #3b82f6;
+  color: #f1f5f9;
+}
+
+.chartWrap {
+  width: 100%;
+  background: #0f172a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chartSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chartEmpty {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  font-size: 13px;
+  font-style: italic;
+  background: #0f172a;
+  border-radius: 8px;
+}
+
+/* ── News ────────────────────────────────────────────────────────────────────── */
+
+.newsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.newsItem {
+  padding: 10px 12px;
+  background: #1e2535;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.newsHeadline {
+  font-size: 13px;
+  color: #e2e8f0;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.newsHeadline:hover { color: #93c5fd; text-decoration: underline; }
+
+.newsMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.newsSource { font-size: 11px; color: #475569; }
+.newsDate   { font-size: 11px; color: #334155; }

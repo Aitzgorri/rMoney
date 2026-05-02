@@ -1,0 +1,374 @@
+.screen {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 8px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.newBtn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.newBtn:hover { background: #2563eb; }
+
+.empty {
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.accountList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accountCard {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accountCard:hover { border-color: #3b82f6; }
+
+.accountCardSelected {
+  border-color: #3b82f6;
+  background: #1a2540;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardNames {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardInstitution {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.cardTotal {
+  font-size: 15px;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.cardTotal.negative { color: #f87171; }
+
+.negative { color: #f87171; }
+
+.cardActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.accountCard:hover .cardActions { opacity: 1; }
+
+.actionBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+.actionBtnDelete {
+  composes: actionBtn;
+  font-size: 16px;
+}
+
+.actionBtnDelete:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+
+.cardSections {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cardSectionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardSectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  min-width: 58px;
+  flex-shrink: 0;
+}
+
+.cardPositionCount {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.cardBalances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.balancePill {
+  background: #2d3448;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.negativePill {
+  background: rgba(248,113,113,0.12);
+  color: #f87171;
+}
+
+.cardNote {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Account form ─────────────────────────────────────────────────────────── */
+
+.accountForm {
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formInput {
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+
+.formInput:focus { outline: none; border-color: #3b82f6; }
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #2d3448;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { background: #3d4558; }
+
+.saveBtn {
+  flex: 1;
+  background: #3b82f6;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover { background: #2563eb; }
+.saveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+.deleteBtn {
+  flex: 1;
+  background: #f87171;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Delete dialog ────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialog h3 { font-size: 16px; color: #f1f5f9; margin: 0; }
+.dialog p  { font-size: 14px; color: #94a3b8; margin: 0; }
+
+.dialogActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.footerBar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 0;
+  border-top: 1px solid #2d3448;
+  margin-top: 4px;
+}
+
+.footerBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 14px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.footerBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+.selectHint {
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+  padding: 64px 24px;
+}
+
+/* ── Desktop split-pane ───────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .screen {
+    flex-direction: row;
+    padding: 0;
+    gap: 0;
+    align-items: flex-start;
+    min-height: calc(100svh - 56px);
+  }
+
+  .splitScreen > .listPane {
+    border-right: 1px solid #2d3448;
+  }
+
+  .listPane {
+    width: 360px;
+    flex-shrink: 0;
+    padding: 16px;
+    position: sticky;
+    top: 0;
+    max-height: calc(100svh - 56px);
+    overflow-y: auto;
+  }
+
+  .detailPane {
+    flex: 1;
+    min-height: calc(100svh - 56px);
+    overflow-y: auto;
+  }
+}

@@ -1,0 +1,241 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 14px;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: bounce 1s ease-in-out infinite;
+}
+.dot:nth-child(2) { animation-delay: 0.15s; }
+.dot:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-5px); }
+}
+
+.loadingText {
+  font-size: 13px;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+.aiError {
+  font-size: 12px;
+  color: #f87171;
+  margin: 0;
+}
+
+/* ── Candidate list ──────────────────────────────────────────────────────── */
+
+/* Scrollable area — market data + AI candidates only. Manual row lives below. */
+.candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Separator before the always-visible manual row */
+.manualSection {
+  border-top: 1px solid #2d3448;
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+
+.candidateRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.1s;
+}
+
+.candidateRow:hover { border-color: #475569; }
+
+.candidateSelected {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.radio {
+  flex-shrink: 0;
+  margin-top: 2px;
+  accent-color: #3b82f6;
+}
+
+.source {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 68px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.candidateTicker {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.candidateName {
+  flex: 1;
+  font-size: 13px;
+  color: #e2e8f0;
+  min-width: 0;
+}
+
+.candidateMeta {
+  font-size: 12px;
+  color: #64748b;
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+}
+
+.candidatePrice {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Manual entry row ────────────────────────────────────────────────────── */
+
+.manualRow { align-items: flex-start; }
+
+.manualFields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.manualFieldRow {
+  display: flex;
+  gap: 8px;
+}
+
+.manualField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.manualLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.manualInput {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #f1f5f9;
+  font-size: 13px;
+  width: 100%;
+}
+
+.manualInput:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.manualInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.manualInputShort { width: 80px; }
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 16px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.confirmBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmBtn:hover:not(:disabled) { background: #2563eb; }
+.confirmBtn:disabled { opacity: 0.4; cursor: default; }

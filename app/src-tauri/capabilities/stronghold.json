@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "stronghold",
+  "description": "Stronghold encrypted vault access",
+  "windows": ["main"],
+  "permissions": [
+    "stronghold:allow-initialize",
+    "stronghold:allow-save",
+    "stronghold:allow-create-client",
+    "stronghold:allow-load-client",
+    "stronghold:allow-get-store-record",
+    "stronghold:allow-insert-record",
+    "stronghold:allow-remove-store-record"
+  ]
+}

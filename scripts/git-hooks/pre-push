@@ -1,0 +1,14 @@
+#!/bin/sh
+# Pre-push hook — runs the full audit before every push.
+#
+# To activate: git config core.hooksPath scripts/git-hooks
+# (same directory as pre-commit, so one config call covers both)
+
+SCRIPT="$(git rev-parse --show-toplevel)/scripts/pre-publish-audit.sh"
+
+if [ ! -f "$SCRIPT" ]; then
+  echo "WARNING: pre-publish-audit.sh not found — skipping audit."
+  exit 0
+fi
+
+bash "$SCRIPT"

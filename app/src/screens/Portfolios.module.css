@@ -1,0 +1,398 @@
+.screen {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 8px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.backBtn:hover { background: #2d3448; color: #f1f5f9; }
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.newBtn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.newBtn:hover { background: #2563eb; }
+
+.empty {
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* ── Tree ───────────────────────────────────────────────────────────────────── */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Root DnD drop zone */
+.rootDropZone {
+  height: 6px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  transition: background 0.15s, height 0.15s;
+}
+
+.rootDropZoneActive {
+  background: #3b82f6;
+  height: 10px;
+}
+
+/* ── Portfolio node row ─────────────────────────────────────────────────────── */
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+}
+
+.nodeRow:hover { background: #1e2535; }
+
+.nodeRowDragOver {
+  background: #1a2540;
+  border-color: #3b82f6;
+}
+
+.nodeDragging { opacity: 0.4; }
+
+.dragHandle {
+  color: #475569;
+  font-size: 14px;
+  cursor: grab;
+  padding: 2px 3px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.dragHandle:hover { color: #94a3b8; background: #2d3448; }
+.dragHandle:active { cursor: grabbing; }
+
+.nodeName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeTarget {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: right;
+}
+
+.nodeWarning {
+  font-size: 14px;
+  color: #fbbf24;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.nodeActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.nodeRow:hover .nodeActions { opacity: 1; }
+
+.actionBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.actionBtn:hover { background: #3d4558; color: #f1f5f9; }
+.actionBtnDelete:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+
+.moveBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 4px;
+  color: #64748b;
+  font-size: 13px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.moveBtn:hover { color: #94a3b8; background: #3d4558; }
+.moveBtn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+/* ── Assignment row ─────────────────────────────────────────────────────────── */
+
+.assignRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+}
+
+.assignRow:hover { background: #1e2535; }
+
+.assignBullet {
+  color: #475569;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.assignTicker {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  min-width: 56px;
+}
+
+.assignTarget {
+  font-size: 12px;
+  color: #64748b;
+  flex: 1;
+}
+
+.assignActions {
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.assignRow:hover .assignActions { opacity: 1; }
+
+/* ── Warning line ─────────────────────────────────────────────────────────── */
+
+.warningLine {
+  font-size: 11px;
+  color: #fbbf24;
+  padding: 2px 8px;
+}
+
+/* ── Inline forms ───────────────────────────────────────────────────────────── */
+
+.inlineForm {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  background: #1e2535;
+  border-radius: 8px;
+  border: 1px solid #3b82f6;
+  margin: 2px 0;
+}
+
+.inlineInput {
+  flex: 1;
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+.inlineInput:focus { outline: none; border-color: #3b82f6; }
+
+.inlinePct {
+  width: 64px;
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+  padding: 5px 6px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.inlinePct:focus { outline: none; border-color: #3b82f6; }
+
+.inlinePctLabel {
+  font-size: 12px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.inlineConfirm {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.inlineConfirm:hover { background: #2563eb; }
+.inlineConfirm:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+.inlineCancel {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 5px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.inlineCancel:hover { background: #3d4558; }
+
+.inlineError {
+  font-size: 11px;
+  color: #f87171;
+  flex-shrink: 0;
+}
+
+/* ── Delete dialog ──────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialog h3 { font-size: 16px; color: #f1f5f9; margin: 0; }
+.dialog p  { font-size: 14px; color: #94a3b8; margin: 0; }
+
+.dialogList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dialogList li {
+  font-size: 13px;
+  color: #94a3b8;
+  padding-left: 14px;
+  position: relative;
+}
+
+.dialogList li::before { content: '•'; position: absolute; left: 0; color: #475569; }
+
+.dialogNote {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #2d3448;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { background: #3d4558; }
+
+.deleteBtn {
+  flex: 1;
+  background: #f87171;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn:hover { background: #ef4444; }

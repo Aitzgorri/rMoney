@@ -1,0 +1,491 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.backBtn:hover { background: #2d3448; color: #f1f5f9; }
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.renameRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.renameInput {
+  flex: 1;
+  background: #141926;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.renameInput:focus { outline: none; }
+
+/* ── Delete confirm bar ─────────────────────────────────────────────────────── */
+
+.deleteConfirmBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.deleteMsg {
+  flex: 1;
+  font-size: 13px;
+  color: #fca5a5;
+}
+
+/* ── Alert banners ──────────────────────────────────────────────────────────── */
+
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.bannerLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.bannerText {
+  flex: 1;
+  font-size: 13px;
+  color: #f1f5f9;
+  min-width: 0;
+}
+
+/* ── Add stock row ──────────────────────────────────────────────────────────── */
+
+.addRow {
+  display: flex;
+  gap: 8px;
+}
+
+.addInput {
+  flex: 1;
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.addInput:focus { outline: none; border-color: #3b82f6; }
+
+.addBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.addBtn:hover:not(:disabled) { background: #2563eb; }
+.addBtn:disabled { opacity: 0.4; cursor: default; }
+
+.addError {
+  font-size: 12px;
+  color: #f87171;
+  margin: -6px 0 0;
+}
+
+/* ── Entry list ─────────────────────────────────────────────────────────────── */
+
+.entryList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty {
+  color: #475569;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.entryCard {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entryTriggered {
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.entryMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tickerBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  text-align: left;
+  min-width: 0;
+}
+
+.ticker {
+  font-size: 14px;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.tickerBtn:hover .ticker { color: #93c5fd; }
+
+.stockName {
+  font-size: 12px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.exchange {
+  font-size: 11px;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.price {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.alertSummary {
+  font-size: 11px;
+  color: #475569;
+  flex-shrink: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entryActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.alertAddBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 3px 9px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.alertAddBtn:hover { border-color: #3b82f6; color: #60a5fa; }
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.removeBtn:hover { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+
+/* ── Per-entry alert list ───────────────────────────────────────────────────── */
+
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 4px;
+  border-left: 2px solid #2d3448;
+}
+
+.alertRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alertRowTriggered { border-left-color: #fbbf24; }
+
+.alertPip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.alertPip[data-status='armed']     { background: #34d399; }
+.alertPip[data-status='triggered'] { background: #fbbf24; }
+
+.alertLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.alertStatus {
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.alertDeleteBtn {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.alertDeleteBtn:hover { color: #f87171; }
+
+/* ── Alert add form ─────────────────────────────────────────────────────────── */
+
+.alertForm {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alertFormTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.alertFormRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.alertFormLabel {
+  font-size: 13px;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thresholdInput {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  width: 90px;
+}
+
+.thresholdInput:focus { outline: none; border-color: #3b82f6; }
+
+.alertCurrency {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.alertFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Shared buttons ─────────────────────────────────────────────────────────── */
+
+.saveBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover:not(:disabled) { background: #2563eb; }
+.saveBtn:disabled { opacity: 0.4; cursor: default; }
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.deleteBtn {
+  background: #ef4444;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn:hover { background: #dc2626; }
+
+.actionBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.actionBtnDanger {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtnDanger:hover { border-color: #f87171; color: #f87171; }
+
+.rearmBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rearmBtn:hover { border-color: #34d399; color: #34d399; }
+
+.dismissBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dismissBtn:hover { border-color: #f87171; color: #f87171; }

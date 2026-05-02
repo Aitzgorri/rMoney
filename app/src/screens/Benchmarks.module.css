@@ -1,0 +1,436 @@
+.screen {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+  padding: 4px 0 8px;
+}
+
+.card {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+/* ── Comparison controls ─────────────────────────────────────────────────────── */
+
+.controlRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.controlLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  min-width: 60px;
+}
+
+.scopeGroup {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scopeLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.scopeLabel input[type="radio"] {
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.subSelect {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.subSelect:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.benchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.benchSelect {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  min-width: 180px;
+}
+
+.benchSelect:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.periodBar {
+  display: flex;
+  gap: 4px;
+}
+
+.periodBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.periodBtn:hover { color: #94a3b8; }
+
+.periodBtnActive {
+  background: rgba(59,130,246,0.15);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+/* ── Chart ───────────────────────────────────────────────────────────────────── */
+
+.chartWrap {
+  width: 100%;
+}
+
+.chartSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chartEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-size: 13px;
+  color: #475569;
+  background: #0f172a;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.legendDotBlue {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex-shrink: 0;
+}
+
+.legendDotGreen {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #34d399;
+  flex-shrink: 0;
+}
+
+.legendMissing {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ── Stats table ─────────────────────────────────────────────────────────────── */
+
+.statsTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.statsHeader {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  padding: 7px 12px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+.statsHeaderCell {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  text-align: right;
+}
+
+.statsHeaderCell:first-child { text-align: left; }
+
+.statsRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #0f172a;
+}
+
+.statsRow:last-child { border-bottom: none; }
+
+.statsLabelCell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: #e2e8f0;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.statsColorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statsValueCell {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.positive { color: #4ade80; }
+.negative { color: #f87171; }
+
+.currencyNote {
+  font-size: 12px;
+  color: #475569;
+  font-style: italic;
+  padding: 2px 0;
+}
+
+/* ── Benchmark list ──────────────────────────────────────────────────────────── */
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.benchmarkList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.benchmarkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+}
+
+.benchmarkInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.benchmarkName {
+  font-size: 13px;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.benchmarkTicker {
+  font-size: 11px;
+  color: #475569;
+}
+
+.curatedBadge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  background: #1e293b;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.benchmarkActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.renameInput {
+  flex: 1;
+  background: #0f1520;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #f1f5f9;
+  font-size: 13px;
+}
+
+.renameInput:focus { outline: none; }
+
+/* ── Add benchmark form ──────────────────────────────────────────────────────── */
+
+.addForm {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.addFormRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.addInput {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  flex: 1;
+}
+
+.addInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* ── Shared buttons ──────────────────────────────────────────────────────────── */
+
+.btnSm {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btnSm:hover { background: #3d4558; color: #f1f5f9; }
+
+.btnSmSec {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btnSmSec:hover { border-color: #475569; color: #94a3b8; }
+
+.btnSmDanger {
+  background: none;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btnSmDanger:hover { background: rgba(248,113,113,0.1); }
+
+.btnPrimary {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btnPrimary:hover { background: #2563eb; }
+.btnPrimary:disabled { opacity: 0.4; cursor: default; }

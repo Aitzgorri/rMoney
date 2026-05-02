@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit hook — blocks commits that appear to contain API keys or secrets.
+#
+# To activate: git config core.hooksPath scripts/git-hooks
+#
+# The pattern targets long alphanumeric values (32+ chars) assigned to
+# key-sounding names.  Short test values, placeholders, and variable
+# references are intentionally below the threshold.
+
+PATTERN='(api[_-]?key|apikey|secret|access_token|client_secret)\s*[=:]\s*["'"'"']?[A-Za-z0-9_\/+\-]{32,}'
+
+MATCHES=$(git diff --cached -U0 | grep -Pi "$PATTERN" || true)
+
+if [ -n "$MATCHES" ]; then
+  echo ""
+  echo "ERROR: Staged changes appear to contain an API key or secret."
+  echo ""
+  echo "$MATCHES" | head -5
+  echo ""
+  echo "Review the diff:  git diff --cached"
+  echo "If this is a false positive, run the audit script first:"
+  echo "  bash scripts/pre-publish-audit.sh"
+  echo "then commit with: git commit --no-verify"
+  exit 1
+fi

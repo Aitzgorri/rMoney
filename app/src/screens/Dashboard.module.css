@@ -1,0 +1,474 @@
+.screen {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0 8px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.periodLabel {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.card {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.seeAll {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.periodSmall {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.empty {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.totals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.totalLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.divider {
+  height: 1px;
+  background: #2d3448;
+  margin: 8px 0;
+}
+
+.accountRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.accountLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accountIcon { font-size: 16px; }
+
+.accountName { color: #e2e8f0; }
+
+.accountRowClickable {
+  cursor: pointer;
+  border-radius: 8px;
+  margin: 0 -6px;
+  padding: 6px;
+  transition: background 0.1s;
+}
+
+.accountRowClickable:hover { background: rgba(255, 255, 255, 0.06); }
+
+.positive { color: #34d399; font-weight: 600; }
+.negative { color: #f87171; font-weight: 600; }
+
+/* Period summary */
+.summaryBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summaryBlock + .summaryBlock {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #2d3448;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.summaryLabel {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Upcoming */
+.upcomingList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.upcomingRow {
+  display: grid;
+  grid-template-columns: 52px 60px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.upcomingRow:last-child {
+  border-bottom: none;
+}
+
+.upcomingDate {
+  color: #94a3b8;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.upcomingTypeIncome {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #34d399;
+  background: rgba(52,211,153,0.1);
+  border-radius: 4px;
+  padding: 2px 5px;
+  text-align: center;
+}
+
+.upcomingTypeExpense {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #f87171;
+  background: rgba(248,113,113,0.1);
+  border-radius: 4px;
+  padding: 2px 5px;
+  text-align: center;
+}
+
+.upcomingName {
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Widgets */
+.widgetSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widgetCard {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.widgetName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.widgetRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.widgetLabel {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.widgetValue {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.widgetDailyRow {
+  composes: widgetRow;
+  padding-top: 4px;
+  border-top: 1px solid #2d3448;
+  margin-top: 2px;
+}
+
+.widgetDaily {
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.widgetWarning {
+  color: #f87171;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.widgetWarningText {
+  font-size: 12px;
+  color: #f87171;
+}
+
+.widgetError {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Widget editing */
+.widgetEditBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2d3448;
+  margin-bottom: 2px;
+}
+
+.widgetMoveButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.moveBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moveBtn:hover:not(:disabled) { background: #3d4558; color: #f1f5f9; }
+.moveBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.removeBtn:hover { background: rgba(248,113,113,0.1); }
+
+/* Add widget */
+.addWidgetBtn {
+  background: none;
+  border: 1px dashed #2d3448;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 13px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.addWidgetBtn:hover { color: #94a3b8; border-color: #3d4558; }
+
+.addWidgetForm {
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widgetSelect {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+  width: 100%;
+}
+
+.addWidgetActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cancelSmall {
+  background: #2d3448;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmSmall {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmSmall:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Desktop layout */
+@media (min-width: 1024px) {
+  .screen {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 24px;
+  }
+
+  .headerRow   { grid-column: 1 / -1; }
+  .accountsCard { grid-column: 1; grid-row: 2; }
+  .periodCard  { grid-column: 1; grid-row: 3; }
+  .upcomingCard { grid-column: 2; grid-row: 2 / 4; }
+  .widgetSection { grid-column: 1 / -1; }
+}
+
+/* Widget grid on desktop */
+@media (min-width: 1024px) {
+  .widgetGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Currency / rates bar */
+.ratesBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  gap: 8px;
+}
+
+.ratesTimestamp {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ratesError {
+  color: #f87171;
+}
+
+.refreshBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refreshBtn:hover:not(:disabled) { background: rgba(59,130,246,0.08); }
+.refreshBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Native toggle button (inside totals) */
+.showNativeBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-align: right;
+  align-self: flex-end;
+}
+
+.showNativeBtn:hover { text-decoration: underline; }
+
+/* Account right side: native amount + approx hint stacked */
+.accountRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.approxHint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+}

@@ -1,0 +1,4 @@
+# Redirect Rust build output to D: so C: doesn't fill up.
+# The target/ directory for Tauri alone is ~1-2 GB.
+[build]
+target-dir = "D:/cargo-target/rmoney"

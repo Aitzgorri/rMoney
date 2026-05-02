@@ -1,0 +1,428 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: #0f1520;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 32px;
+}
+.backBtn:hover { color: #f1f5f9; }
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+/* ── Type tabs ─────────────────────────────────────────────────────────────── */
+
+.typeTabs {
+  display: flex;
+  background: #1a2030;
+  border-bottom: 1px solid #2d3448;
+}
+
+.typeTab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.typeTabActive {
+  color: #f1f5f9;
+  border-bottom-color: #3b82f6;
+}
+
+/* ── Toolbar (collapse all) ────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid #1a2030;
+}
+
+.collapseAllBtn {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.collapseAllBtn:hover { color: #f1f5f9; background: #2d3448; }
+
+.budgetTotalsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #1a2030;
+}
+
+.budgetTotalsLabel { color: #64748b; }
+.budgetTotalsValues { display: flex; align-items: center; gap: 2px; }
+.budgetTotalsActual { color: #e2e8f0; font-weight: 600; }
+.budgetTotalsSep { color: #3d4558; }
+.budgetTotalsTarget { color: #94a3b8; }
+
+/* ── Tree ──────────────────────────────────────────────────────────────────── */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.empty {
+  padding: 24px 16px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* ── Parent row ────────────────────────────────────────────────────────────── */
+
+.parentRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 10px 0;
+  margin-left: 16px;
+  border-bottom: 1px solid #1a2030;
+}
+
+.collapseBtn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 10px;
+  cursor: pointer;
+  width: 20px;
+  padding: 0;
+  flex-shrink: 0;
+  text-align: center;
+}
+.collapseBtn:hover { color: #94a3b8; }
+
+.parentName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.parentActual {
+  font-size: 13px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Leaf row ──────────────────────────────────────────────────────────────── */
+
+.leafRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px 10px 38px;   /* 38px = 16 margin + 20 indent space for icon column */
+  background: none;
+  border: none;
+  border-bottom: 1px solid #1a2030;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.leafRow:hover { background: #1a2030; }
+
+.leafName {
+  font-size: 14px;
+  color: #e2e8f0;
+  padding-top: 2px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* ── Leaf right-side (budget info or not set) ──────────────────────────────── */
+
+.leafRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.leafRightNotSet {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.leafAmounts {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.leafActual {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+
+.leafSep {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.leafTarget {
+  font-size: 12px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.leafPct {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.pctOk   { color: #4ade80; }
+.pctNear { color: #fbbf24; }
+.pctOver { color: #f87171; }
+
+/* ── Progress bar row ──────────────────────────────────────────────────────── */
+
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.periodLabel {
+  font-size: 10px;
+  color: #475569;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.barTrack {
+  width: 80px;
+  height: 6px;
+  background: #2d3448;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.25s ease;
+}
+
+.barOk   { background: #4ade80; }
+.barNear { background: #fbbf24; }
+.barOver { background: #f87171; }
+
+/* ── Not set ───────────────────────────────────────────────────────────────── */
+
+.notSetActual {
+  font-size: 13px;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.notSetBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 2px 7px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Form ──────────────────────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldGrow { flex: 1; }
+
+.amountRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.input {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+  width: 100%;
+}
+.input:focus { outline: none; border-color: #3b82f6; }
+
+.currencyInput {
+  width: 72px;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #2d3448;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #2d3448;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cancelBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+.saveBtn {
+  flex: 1;
+  background: #3b82f6;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.saveBtn:hover { background: #2563eb; }
+.saveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.deleteBtn {
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.deleteBtn:hover { background: rgba(248,113,113,0.2); }
+
+/* ── Delete dialog ─────────────────────────────────────────────────────────── */
+
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialogTitle   { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+.dialogText    { font-size: 14px; color: #94a3b8; line-height: 1.5; }
+.dialogWarning { font-size: 12px; color: #f87171; }
+
+.dialogActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+
+.deleteConfirmBtn {
+  background: #ef4444;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.deleteConfirmBtn:hover { background: #dc2626; }

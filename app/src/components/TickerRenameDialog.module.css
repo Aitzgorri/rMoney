@@ -1,0 +1,255 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 14px;
+  padding: 24px 20px 20px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+/* ── Input step ──────────────────────────────────────────────────────────── */
+
+.currentRow,
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.currentLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.currentValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.tickerInput {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+  width: 110px;
+  text-transform: uppercase;
+}
+
+.tickerInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.tickerInput:disabled {
+  opacity: 0.5;
+}
+
+.lookupBtn {
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lookupBtn:hover:not(:disabled) { background: #1d4ed8; }
+.lookupBtn:disabled { opacity: 0.4; cursor: default; }
+
+.errorMsg {
+  font-size: 13px;
+  color: #f87171;
+  margin: 0;
+}
+
+/* ── Confirm step ────────────────────────────────────────────────────────── */
+
+.summaryCard {
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.summaryValue {
+  font-size: 14px;
+  color: #e2e8f0;
+}
+
+/* ── Warning ─────────────────────────────────────────────────────────────── */
+
+.warning {
+  font-size: 12px;
+  color: #fbbf24;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Picker step ─────────────────────────────────────────────────────────── */
+
+.pickHint {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.candidateRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.candidateRow:hover { border-color: #475569; }
+
+.candidateSelected {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.radio {
+  flex-shrink: 0;
+  accent-color: #3b82f6;
+}
+
+.source {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+.candidateName {
+  flex: 1;
+  font-size: 13px;
+  color: #e2e8f0;
+  min-width: 0;
+}
+
+.candidateMeta {
+  font-size: 12px;
+  color: #64748b;
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: right;
+}
+
+.candidatePrice {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.backBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 14px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: auto;
+}
+
+.backBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 16px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.renameBtn {
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.renameBtn:hover { background: #1d4ed8; }

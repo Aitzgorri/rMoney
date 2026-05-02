@@ -1,0 +1,189 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.newBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.newBtn:hover { background: #2563eb; }
+
+/* ── Create row ─────────────────────────────────────────────────────────────── */
+
+.createRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.nameInput {
+  flex: 1;
+  background: #141926;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.nameInput:focus { outline: none; border-color: #3b82f6; }
+
+.saveBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.saveBtn:hover:not(:disabled) { background: #2563eb; }
+.saveBtn:disabled { opacity: 0.4; cursor: default; }
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+/* ── List grid ──────────────────────────────────────────────────────────────── */
+
+.listGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty {
+  color: #475569;
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.listCard {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+}
+
+.listName {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #f1f5f9;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.listName:hover { color: #60a5fa; }
+
+.listActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.actionBtnDanger {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtnDanger:hover { border-color: #f87171; color: #f87171; }
+
+.renameRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.deleteConfirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.deleteMsg {
+  font-size: 13px;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.deleteBtn {
+  background: #ef4444;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.deleteBtn:hover { background: #dc2626; }

@@ -1,0 +1,164 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.required {
+  color: #f87171;
+}
+
+.input {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #f1f5f9;
+  font-size: 15px;
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.typeOption {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.typeOption.selected {
+  border-color: #3b82f6;
+  background: #1e3a5f;
+  color: #f1f5f9;
+}
+
+.typeIcon {
+  font-size: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 14px;
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn {
+  flex: 2;
+  background: #3b82f6;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover { background: #2563eb; }
+
+.archiveBtn {
+  width: 100%;
+  background: none;
+  border: 1px solid #94a3b8;
+  border-radius: 12px;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.archiveBtn:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.deleteBtn {
+  width: 100%;
+  background: none;
+  border: 1px solid #f87171;
+  border-radius: 12px;
+  padding: 12px;
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.deleteBtn:hover {
+  background: rgba(248, 113, 113, 0.1);
+}

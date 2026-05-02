@@ -1,0 +1,774 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.headerEmbedded {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+  flex-shrink: 0;
+}
+
+.backBtn:hover { color: #60a5fa; }
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accountName {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.institution {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.accountNote {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  padding: 6px 16px 0;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.section {
+  padding: 14px 16px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.emptySection {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.newBalBtn {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.newBalBtn:hover { border-color: #3b82f6; color: #f1f5f9; }
+
+/* ── Cash balance rows ───────────────────────────────────────────────────── */
+
+.balanceList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.balanceRow {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.negativeRow {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.balanceMain {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.balanceCurrency {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  min-width: 36px;
+}
+
+.balanceAmount {
+  font-size: 16px;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.negative { color: #f87171; }
+.positive { color: #34d399; }
+.muted    { color: #64748b; }
+
+.warningBadge {
+  font-size: 13px;
+}
+
+.balanceActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.actionBtnSmall {
+  background: #2d3448;
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.actionBtnSmall:hover { background: #3d4558; color: #f1f5f9; }
+
+.actionBtnIcon {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionBtnIcon:hover { background: #3d4558; color: #f1f5f9; }
+
+.dangerIcon:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+
+.openingEdit {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #2d3448;
+  flex-basis: 100%;
+}
+
+.openingLabel {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.openingInput {
+  flex: 1;
+  background: #0f1623;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #f1f5f9;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.openingInput:focus { outline: none; }
+
+.saveBtnSmall {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.cancelBtnSmall {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+/* ── Movement list ───────────────────────────────────────────────────────── */
+
+.movementList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.movementGroup {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #1a2030;
+}
+
+.movementGroup:last-child { border-bottom: none; }
+
+.movementRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.movementRow:last-child { border-bottom: none; }
+
+.openingMovement { opacity: 0.5; }
+
+.movementDate {
+  color: #64748b;
+  white-space: nowrap;
+  min-width: 88px;
+}
+
+.movementTypeGroup {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@media (min-width: 900px) {
+  .movementTypeGroup {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+}
+
+.movementType {
+  color: #94a3b8;
+}
+
+.movementStockMeta {
+  font-size: 11px;
+  color: #475569;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.movementAmount {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.movementDeleteBtn {
+  background: none;
+  border: none;
+  color: #3d4558;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.movementRow:hover .movementDeleteBtn { opacity: 1; }
+.movementDeleteBtn:hover { color: #f87171; }
+
+.movementRowClickable {
+  cursor: pointer;
+}
+
+.movementRowClickable:hover {
+  background: #1e2535;
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.expandIcon {
+  font-size: 9px;
+  color: #3d4558;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.movementRow:hover .expandIcon { color: #64748b; }
+
+/* ── Movement detail panel ───────────────────────────────────────────────── */
+
+.movementDetail {
+  padding: 8px 12px 12px 96px; /* left-aligned under the type label */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 3px 8px;
+  font-size: 12px;
+}
+
+.detailLabel {
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  align-self: center;
+}
+
+.detailMono {
+  font-family: monospace;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.detailEditBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.detailEditBtn:hover { background: #1e2535; color: #60a5fa; }
+
+/* ── Transaction form overlay (highest z-index) ──────────────────────────── */
+
+.txOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.txFormWrap {
+  width: 100%;
+  max-width: 480px;
+}
+
+.filterSelect {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.filterSelect:focus { outline: none; border-color: #3b82f6; }
+
+/* ── Dialog / overlay ────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialog h3 { font-size: 16px; color: #f1f5f9; margin: 0; }
+.dialog p  { font-size: 14px; color: #94a3b8; margin: 0; }
+
+.formDialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90svh;
+  overflow-y: auto;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 4px;
+}
+
+.formSubtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formInput {
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formInput:focus { outline: none; border-color: #3b82f6; }
+
+.formSelect {
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #e2e8f0;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formSelect:focus { outline: none; border-color: #3b82f6; }
+
+.formPairRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.fieldError {
+  font-size: 12px;
+  color: #f87171;
+}
+
+.ratePreview {
+  font-size: 13px;
+  color: #34d399;
+  margin: 0;
+  padding: 2px 0;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #2d3448;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn:hover { background: #3d4558; }
+
+.saveBtn {
+  flex: 1;
+  background: #3b82f6;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover { background: #2563eb; }
+.saveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+/* ── Ticker lookup row ────────────────────────────────────────────────────── */
+
+.tickerInputRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tickerInputRow .formInput { flex: 1; }
+
+.lookupBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lookupBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+.resolvedHint {
+  font-size: 12px;
+  color: #34d399;
+  margin-top: 3px;
+  display: block;
+}
+
+/* ── Dividend form extras ─────────────────────────────────────────────────── */
+
+.formLabelHint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #475569;
+  font-size: 11px;
+}
+
+.taxBiRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.taxSep {
+  color: #64748b;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deleteBtn {
+  flex: 1;
+  background: #f87171;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.proceedBtn {
+  flex: 1;
+  background: #f59e0b;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Positions ───────────────────────────────────────────────────────────── */
+
+.positionList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.positionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.posTicker {
+  font-weight: 700;
+  color: #f1f5f9;
+  min-width: 56px;
+  font-size: 14px;
+}
+
+.posTickerLink {
+  cursor: pointer;
+  color: #60a5fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.posTickerLink:hover { color: #93c5fd; }
+
+.posShares {
+  color: #94a3b8;
+  flex: 1;
+}
+
+.posAvgCost {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.available {
+  font-weight: 400;
+  color: #64748b;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Lot picker ──────────────────────────────────────────────────────────── */
+
+.lotPickerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lotPickerToggle {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  padding: 2px 0;
+}
+
+.lotPickerToggle:hover { color: #94a3b8; }
+
+.lotList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: #0f1623;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+}
+
+.lotRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.lotMeta {
+  flex: 1;
+  color: #64748b;
+}
+
+.lotInput {
+  width: 80px;
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 4px 6px;
+  color: #f1f5f9;
+  font-size: 12px;
+  text-align: right;
+}
+
+.lotInput:focus { outline: none; }

@@ -1,0 +1,216 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.typeSelector {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.typeBtn {
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 10px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #1e2535;
+  color: #64748b;
+  transition: all 0.15s;
+}
+
+.typeActive.type_income   { border-color: #34d399; color: #34d399; background: rgba(52,211,153,0.1); }
+.typeActive.type_expense  { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); }
+.typeActive.type_transfer { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.input {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #f1f5f9;
+  font-size: 15px;
+  width: 100%;
+}
+
+.input:focus { outline: none; border-color: #3b82f6; }
+.input[readonly] { color: #64748b; }
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 50;
+  margin-top: 2px;
+}
+
+.suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  color: #e2e8f0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.suggestion:hover { background: #2d3448; }
+
+.rateInfo {
+  font-size: 12px;
+  color: #64748b;
+  padding: 4px 4px 0;
+}
+
+.recurringToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.recurringBox {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.radioLabel input[type="radio"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.radioHint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cancelBtn {
+  flex: 1;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 14px;
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn {
+  flex: 2;
+  background: #3b82f6;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover { background: #2563eb; }
+
+.deleteBtn {
+  width: 100%;
+  background: none;
+  border: 1px solid #f87171;
+  border-radius: 12px;
+  padding: 12px;
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn:hover { background: rgba(248,113,113,0.1); }
+
+.linkedNote {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  padding: 8px 4px 0;
+  margin: 0;
+  border-top: 1px solid #2d3448;
+}

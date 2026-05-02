@@ -1,0 +1,17 @@
+{
+  "name": "rmoney",
+  "version": "0.1.0",
+  "description": "Personal finance app with envelope budgeting",
+  "scripts": {
+    "spec:new":      "node scripts/new-spec.js",
+    "spec:list":     "node scripts/list-specs.js",
+    "spec:review":   "node scripts/review-spec.js",
+    "spec:validate": "node scripts/validate-spec.js",
+    "spec:ready":    "node scripts/set-status.js ready",
+    "spec:implement":"node scripts/set-status.js in-progress",
+    "spec:done":     "node scripts/set-status.js done",
+    "plan:validate":      "node scripts/validate-plan.js",
+    "audit:pre-publish":  "bash scripts/pre-publish-audit.sh",
+    "hooks:install":      "git config core.hooksPath scripts/git-hooks"
+  }
+}
