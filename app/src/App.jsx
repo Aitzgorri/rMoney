@@ -25,6 +25,7 @@ import StockPage from './screens/StockPage'
 import CsvImport from './screens/CsvImport'
 import Watchlists from './screens/Watchlists'
 import Benchmarks from './screens/Benchmarks'
+import InvestmentReports from './screens/InvestmentReports'
 import styles from './App.module.css'
 
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
@@ -124,6 +125,7 @@ export default function App() {
       case 'portfolios':         return <Portfolios onBack={() => navigate('investments')} />
       case 'watchlists':         return <Watchlists onNavigate={navigate} />
       case 'benchmarks':         return <Benchmarks />
+      case 'reports':            return <InvestmentReports />
       case 'stock':              return <StockPage ticker={navParams.ticker} onBack={goBack} onNavigate={navigate} />
       case 'csv-import':         return <CsvImport accountId={navParams.accountId} onBack={goBack} />
       default:                   return <Dashboard onNavigate={navigate} />

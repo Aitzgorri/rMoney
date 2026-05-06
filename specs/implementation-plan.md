@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 12 — Stock transactions** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phase 8 desktop layout, Phase 9 data portability, Phase 10 currency conversion, and Phase 11 Investments foundation complete)*
+**Current phase: Phase 18 — CSV import (complete); Phase 17 Investment Reports complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–24 complete)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -216,7 +216,7 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 127. [x] Dashboard: multi-column widget grid on desktop (cards in 2-col grid; widgets in auto-fill grid)
 128. [x] Envelope list: tree pane + detail pane split on desktop
 129. [x] Transaction list: filters sidebar + list split on desktop
-130. [ ] Investment reports (Phase 17): charts + table side-by-side on desktop — deferred to Phase 17
+130. [x] Investment reports (Phase 17): charts + table side-by-side on desktop — implemented
 131. [ ] Stock page (Phase 14): price chart + metadata in one row, transactions + dividends below — deferred to Phase 14
 132. [x] Other screens (Settings, single forms, Categories, Accounts, Scheduled Transfers, Bills & Income, Planning): widen container only
 132a. [x] Desktop top-nav sub-row: Investments and More no longer use dropdowns on desktop; a persistent 38 px second row appears below the main header bar when either group is active, showing sub-items as horizontal tab buttons. Investments group: Investments overview · Portfolios · Watchlists · Benchmarks. More group: Planning · Category Budgets · Scheduled Transfers · Bills & Income · Categories · Settings (nav tabs) + Save to file · Load from file (action buttons, right-aligned). Primary tabs with no sub-items hide the sub-row. Mobile BottomNav dropdown behaviour unchanged.
@@ -342,9 +342,9 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 178. [ ] Per-country tax %; country = HQ country of the stock by default, manually overridable per stock (Q9/a) — *deferred to after SPEC-027 market data integration*
 
 **Sub-phase 13c — Future payout projections (deferred to Phase 14)**
-181. [ ] Next 4 payout dates projected from historical payout cadence, computed at render time (Q11/A)
-182. [ ] Amount estimation rule per-stock, with a global default (Q11/per-stock + global default): last-paid amount / same period previous year / user-set estimated amount
-183. [ ] State markers in the projection display: `estimation` (no API data), `amount estimated` (API date only), `declared` (API date and amount)
+181. [x] Next 4 payout dates projected from historical cadence (≥ 2 payouts; snapped to monthly/quarterly/semi-annual/annual)
+182. [x] Amount estimation rule per-stock + global default: last-paid / year-ago / manual; per-stock dropdown on stock page
+183. [x] State badges: estimation (all local), amount estimated + declared reserved for future API integration
 
 ---
 
@@ -357,7 +357,7 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 184. [x] Header: latest price (built — live price row with provider attribution)
 185. [ ] Stock-exchange selector — deferred (profile exchange shown as text; changing it requires resolution dialog)
 186. [x] Price chart with period selector (built — SVG chart with 1M/3M/6M/1Y/5Y/All periods)
-187. [ ] Metrics row: dividend yields, total/p.a. return, components (deferred — needs price history + position data)
+187. [x] Metrics row: market value, total return + %, p.a. return, price-appreciation, dividend return, div yield TTM
 188a. [x] Transactions list: transfer, split, exchange filter types (built — all 7 filter types in FILTERS array)
 189a. [ ] Dividend section: next 4 projected payouts (Phase 13c — deferred)
 190. [x] Top 5 news items (built — news section with 15-min cache)
@@ -383,20 +383,9 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 
 ---
 
-## Phase 17 — Investment reports
+## Phase 17 — Investment reports ✓ COMPLETE
 
-> Overview, filters, saved filter presets, graph + table breakdowns, all totals in main currency.
-
-### SPEC-024 Investment Reports — all items
-
-204. [ ] Overview of all investments (table + summary totals, main currency)
-205. [ ] Type filter: stocks (live), options / bonds / crypto / precious metals storage / precious metals lease (placeholder slots — Phase 20)
-206. [ ] Save named filter presets; edit and delete presets (Q12/A — placeholders preserved so reports UI is complete from day one)
-207. [ ] Configurable display columns: ticker, name, price, total return (sum + %), dividend yield (12mo), dividend yield (FWD), p.a. %, price-appreciation return, dividend return, share on whole portfolio, share on portfolio-group, share on parent category, comparison vs target share, average price (weighted)
-208. [ ] Graph representations: sum/share by currency; country-level regional breakdown (US, Canada, Latin America, Europe, Africa, Russia, China, India, Australia+NZ, Global); continent-level regional breakdown (North America, South America, Europe, Africa, Asia, Australia+NZ, Global); Portfolio breakdown (sum and %)
-209. [ ] Table representations for the same four breakdowns
-210. [ ] All sums expressed in main currency (via Phase 10 conversion layer)
-211. [ ] Region data sourced from Q7/D: HQ country (via API) + per-stock manual override
+> **Phase 17 complete.** Investment Reports screen implemented: position table with 19 configurable columns, type filter (Stocks live + 5 placeholder types), saved named presets (create/update/rename/delete), four breakdown views (currency, country-detail region, continent region, portfolio) each with Chart (SVG pie) and Table modes, side-by-side desktop layout, grand total bar including positions + cash balances, per-stock HQ country inline edit for region attribution, main-currency conversion throughout, storage registered in Settings → Storage tab. See SPEC-024 (status: done).
 
 ---
 

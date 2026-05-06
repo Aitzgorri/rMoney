@@ -1,7 +1,7 @@
 ---
 id: SPEC-024
 name: Investment Reports
-status: draft
+status: done
 created: 2026-04-23
 ---
 
@@ -18,9 +18,9 @@ A single Reports section inside Investments that gives the user an overview of a
 - As a user looking at regional breakdowns, I know the region reflects the company's HQ country — not the stock exchange it trades on — with my manual overrides applied (from SPEC-019 per-stock).
 
 ## Acceptance Criteria
-- [ ] Investment Reports lives inside the Investments top-level section (SPEC-018). Entry point on the Investments home screen.
-- [ ] Overview table: one row per position (unique stock × investing-account pair, or aggregated per stock — user-selectable grouping). Columns are configurable from a column-picker.
-- [ ] Available columns to display (user chooses any subset):
+- [x] Investment Reports lives inside the Investments top-level section (SPEC-018). Entry point on the Investments home screen.
+- [x] Overview table: one row per position (unique stock × investing-account pair, or aggregated per stock — user-selectable grouping). Columns are configurable from a column-picker.
+- [x] Available columns to display (user chooses any subset):
   - ticker, name, price (latest), currency (native), investing account
   - total invested (main currency)
   - current market value (main currency)
@@ -33,16 +33,16 @@ A single Reports section inside Investments that gives the user an overview of a
   - share on parent Portfolio node (%) — same
   - comparison with target share (delta pp. vs. SPEC-022 target)
   - average price (weighted, across all buys and sells)
-- [ ] Type filter with these options: **Stocks** (live), **Options** (placeholder — empty with "not yet supported" note), **Bonds** (placeholder), **Crypto** (placeholder), **Precious metals — storage** (placeholder), **Precious metals — lease** (placeholder). Default: Stocks selected. Multi-select allowed; selecting a placeholder type returns no rows but keeps the filter control live so the UI is complete.
-- [ ] **Saved filter presets**: user can save the current filter + column selection + grouping + breakdown choice under a user-given name. Preset list shows in a dropdown at the top of the page. Presets can be renamed or deleted.
-- [ ] Four breakdowns — available as **Graph** and **Table** tabs for each:
+- [x] Type filter with these options: **Stocks** (live), **Options** (placeholder — empty with "not yet supported" note), **Bonds** (placeholder), **Crypto** (placeholder), **Precious metals — storage** (placeholder), **Precious metals — lease** (placeholder). Default: Stocks selected. Multi-select allowed; selecting a placeholder type returns no rows but keeps the filter control live so the UI is complete.
+- [x] **Saved filter presets**: user can save the current filter + column selection + grouping + breakdown choice under a user-given name. Preset list shows in a dropdown at the top of the page. Presets can be renamed or deleted.
+- [x] Four breakdowns — available as **Graph** and **Table** tabs for each:
   - **Currency**: sum & share of investments grouped by native currency (e.g. "USD 58%, EUR 25%, CZK 17%"). Totals computed in main currency.
   - **Regional — country-detail**: buckets = US, Canada, Latin America, Europe, Africa, Russia, China, India, Australia + NZ, Global.
   - **Regional — continent-level**: buckets = North America, South America, Europe, Africa, Asia, Australia + NZ, Global.
   - **Portfolio**: one row per leaf portfolio node (or selected level), with sum & share.
-- [ ] All totals in the report are expressed in main currency via SPEC-017, using current rates for "now" totals and snapshotted rates for historical attribution (returns since-buy use transaction-date rates from SPEC-019).
-- [ ] **Cash inclusion**: the top-of-page "total value" rollup includes both position market value **and** cash balances (SPEC-018) so the user can reconcile against the broker statement. Position-only tables and the position-focused breakdowns (currency / regional / portfolio) exclude cash and report only stock positions.
-- [ ] Region attribution per position comes from the stock's HQ country (SPEC-027 lookup + the per-stock manual override on the shared stock-profile record introduced by SPEC-020), mapped through a fixed country→region table. A stock whose HQ country doesn't map to a known region falls into "Global."
+- [x] All totals in the report are expressed in main currency via SPEC-017, using current rates for "now" totals and snapshotted rates for historical attribution (returns since-buy use transaction-date rates from SPEC-019).
+- [x] **Cash inclusion**: the top-of-page "total value" rollup includes both position market value **and** cash balances (SPEC-018) so the user can reconcile against the broker statement. Position-only tables and the position-focused breakdowns (currency / regional / portfolio) exclude cash and report only stock positions.
+- [x] Region attribution per position comes from the stock's HQ country (SPEC-027 lookup + the per-stock manual override on the shared stock-profile record introduced by SPEC-020), mapped through a fixed country→region table. A stock whose HQ country doesn't map to a known region falls into "Global."
 
 ## UI / Screens
 Top of Reports (desktop layout from SPEC-015):

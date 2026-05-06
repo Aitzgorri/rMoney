@@ -1,15 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getStockTransactionsByTicker, getPositions, applySplit } from '../data/stockTransactions'
-import { getDividendsByTicker, computeDividendDerived } from '../data/dividends'
+import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent } from '../data/dividends'
 import { getInvestingAccounts } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
-import { getStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
+import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import { getLatestPrice, getHistoricalSeries, getNews } from '../data/marketDataClient'
+import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
+import { computeProjections } from '../utils/dividendProjections'
+import { convertToMain, ensureRates } from '../utils/currency'
 import { fmtAmt } from '../utils/format'
 import AiChatPanel from '../components/AiChatPanel'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import TickerRenameDialog from '../components/TickerRenameDialog'
 import styles from './StockPage.module.css'
+
+function fmtPct(n) {
+  if (n == null || !isFinite(n)) return '—'
+  const sign = n >= 0 ? '+' : '-'
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/,/g, ' ')
+  return `${sign}${abs}%`
+}
 
 // ─── StockPage ────────────────────────────────────────────────────────────────
 
@@ -32,6 +42,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [chartStatus,     setChartStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [news,            setNews]            = useState([])
   const [newsStatus,      setNewsStatus]      = useState('idle') // 'idle' | 'loading' | 'unavailable'
+  const [ratesVersion,    setRatesVersion]    = useState(0)
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -74,6 +85,11 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     return () => { cancelled = true }
   }, [norm])
 
+  const mainCurrency = getMainCurrency()
+  useEffect(() => {
+    ensureRates(mainCurrency).then(() => setRatesVersion(v => v + 1)).catch(() => {})
+  }, [mainCurrency])
+
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
   const positions    = accounts.flatMap(acc => {
@@ -100,6 +116,59 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
   const FILTERS = ['all', 'buy', 'sell', 'transfer', 'split', 'dividend', 'currency-exchange']
   const FILTER_LABELS = { all: 'All', buy: 'Buy', sell: 'Sell', transfer: 'Transfer', split: 'Split', dividend: 'Dividend', 'currency-exchange': 'FX' }
+
+  // ── Return metrics ──────────────────────────────────────────────────────────
+  const effectivePrice = manualPrice
+    ? { price: manualPrice.amount, currency: manualPrice.currency }
+    : livePrice ?? null
+  const totalShares         = positions.reduce((s, { pos }) => s + pos.shares, 0)
+  const posCurrency         = positions[0]?.pos.currency ?? null
+  const totalInvestedNative = positions.reduce((s, { pos }) => s + pos.shares * pos.avgCost, 0)
+  const totalInvested       = posCurrency ? (convertToMain(totalInvestedNative, posCurrency, mainCurrency) ?? null) : null
+  const marketValueNative   = effectivePrice != null ? totalShares * effectivePrice.price : null
+  const priceCurrency       = effectivePrice?.currency ?? posCurrency
+  const marketValue         = (marketValueNative != null && priceCurrency) ? (convertToMain(marketValueNative, priceCurrency, mainCurrency) ?? null) : null
+  const totalReturn         = (marketValue != null && totalInvested != null) ? marketValue - totalInvested : null
+  const totalReturnPct      = (totalReturn != null && totalInvested != null && totalInvested > 0) ? (totalReturn / totalInvested) * 100 : null
+
+  const cutoff12m = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10) })()
+  let divReturnTotal = 0, div12m = 0
+  for (const d of dividends) {
+    const { netTotal } = computeDividendDerived(d)
+    const conv = convertToMain(netTotal, d.currency, mainCurrency) ?? 0
+    divReturnTotal += conv
+    if (d.payoutDate >= cutoff12m) div12m += conv
+  }
+  const priceAppReturn = totalReturn != null ? totalReturn - divReturnTotal : null
+  const divYieldTTM    = (div12m > 0 && marketValue != null && marketValue > 0) ? (div12m / marketValue) * 100 : null
+  const firstBuyDate   = stockTxns.filter(t => t.type === 'buy').map(t => t.date).sort()[0] ?? null
+  const paReturn       = (() => {
+    if (firstBuyDate == null || totalReturnPct == null) return null
+    const years = (Date.now() - new Date(firstBuyDate).getTime()) / (365.25 * 24 * 3600 * 1000)
+    if (years < 0.0833) return null
+    return (Math.pow(1 + totalReturnPct / 100, 1 / years) - 1) * 100
+  })()
+
+  // ── Dividend projections ────────────────────────────────────────────────────
+  const globalEstRule  = getDividendEstimationRule()
+  const effectiveRule  = profile?.amountEstimationRule ?? globalEstRule
+  const projTaxPct     = resolveDividendTaxPercent(norm)
+  const projections    = totalShares > 0
+    ? computeProjections(dividends, { rule: effectiveRule, manualAmount: profile?.manualEstimatedAmount ?? null })
+    : []
+
+  function handleRuleChange(rule) {
+    upsertStockProfile(norm, { amountEstimationRule: rule })
+    setProfileKey(k => k + 1)
+  }
+
+  function handleManualAmtSave(value) {
+    const n = Number(value)
+    if (!isNaN(n) && n >= 0) {
+      upsertStockProfile(norm, { manualEstimatedAmount: n || null })
+      setProfileKey(k => k + 1)
+    }
+  }
 
   function handleApplySplit() {
     setSplitError('')
@@ -327,6 +396,68 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             )}
           </div>
 
+          {/* Returns metrics */}
+          {positions.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Returns</div>
+              <div className={styles.metricsRow}>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>Market value</div>
+                  <div className={styles.metricValue}>
+                    {marketValue != null
+                      ? `${fmtAmt(marketValue)} ${mainCurrency}`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                </div>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>Total return</div>
+                  <div className={`${styles.metricValue} ${totalReturn != null ? (totalReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {totalReturn != null
+                      ? `${totalReturn >= 0 ? '+' : ''}${fmtAmt(Math.abs(totalReturn))} ${mainCurrency}`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                  {totalReturnPct != null && (
+                    <div className={`${styles.metricSub} ${totalReturnPct >= 0 ? styles.pos : styles.neg}`}>
+                      {fmtPct(totalReturnPct)}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>P.a. return</div>
+                  <div className={`${styles.metricValue} ${paReturn != null ? (paReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {paReturn != null
+                      ? fmtPct(paReturn)
+                      : <span className={styles.metricNa}>{firstBuyDate && totalReturnPct != null ? '< 1 mo' : '—'}</span>}
+                  </div>
+                </div>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>Price appreciation</div>
+                  <div className={`${styles.metricValue} ${priceAppReturn != null ? (priceAppReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {priceAppReturn != null
+                      ? `${priceAppReturn >= 0 ? '+' : ''}${fmtAmt(Math.abs(priceAppReturn))} ${mainCurrency}`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                </div>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>Dividend return</div>
+                  <div className={`${styles.metricValue} ${divReturnTotal > 0 ? styles.pos : ''}`}>
+                    {divReturnTotal > 0
+                      ? `+${fmtAmt(divReturnTotal)} ${mainCurrency}`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                </div>
+                <div className={styles.metricTile}>
+                  <div className={styles.metricLabel}>Div yield (TTM)</div>
+                  <div className={styles.metricValue}>
+                    {divYieldTTM != null
+                      ? `${divYieldTTM.toFixed(2)}%`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Transactions */}
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Transactions</div>
@@ -352,10 +483,13 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             )}
           </div>
 
-          {/* Dividend history */}
+          {/* Dividends — past payouts + projections */}
           {dividends.length > 0 && (
             <div className={styles.section}>
-              <div className={styles.sectionTitle}>Dividend history</div>
+              <div className={styles.sectionTitle}>Dividends</div>
+
+              {/* Past payouts */}
+              {projections.length > 0 && <div className={styles.projSubLabel}>Past payouts</div>}
               <div className={styles.divList}>
                 {dividends.map(d => {
                   const { netTotal } = computeDividendDerived(d)
@@ -373,6 +507,71 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                   )
                 })}
               </div>
+
+              {/* Projected payouts */}
+              {projections.length > 0 && (
+                <>
+                  <div className={styles.projRuleRow}>
+                    <span className={styles.projSubLabel}>
+                      Projected next {projections.length}
+                    </span>
+                    {projections[0]?.cadenceLabel && (
+                      <span className={styles.projCadence}>({projections[0].cadenceLabel})</span>
+                    )}
+                    <select
+                      className={styles.projRuleSelect}
+                      value={effectiveRule}
+                      onChange={e => handleRuleChange(e.target.value)}
+                    >
+                      <option value="last-paid">Last paid</option>
+                      <option value="year-ago">Year ago</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                    {effectiveRule === 'manual' && (
+                      <input
+                        key={norm + '-proj-manual'}
+                        className={styles.projManualInput}
+                        type="number"
+                        min="0"
+                        step="any"
+                        defaultValue={profile?.manualEstimatedAmount ?? ''}
+                        placeholder="per share"
+                        onBlur={e => handleManualAmtSave(e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <div className={styles.projList}>
+                    {projections.map((p, i) => {
+                      const derived = p.dividendPerShare != null
+                        ? computeDividendDerived({ dividendPerShare: p.dividendPerShare, shareCount: totalShares, taxPercent: projTaxPct })
+                        : null
+                      return (
+                        <div key={i} className={styles.projRow}>
+                          <span className={styles.projDate}>{p.date}</span>
+                          <span className={styles.projDesc}>
+                            {p.dividendPerShare != null
+                              ? `~${fmtAmt(p.dividendPerShare)}/sh × ${trimDec(totalShares)}${projTaxPct > 0 ? ` (${projTaxPct}% tax)` : ''}`
+                              : '—'}
+                          </span>
+                          <span className={styles.projNet}>
+                            {derived ? `~${fmtAmt(derived.netTotal)} ${p.currency}` : '—'}
+                          </span>
+                          <span className={`${styles.projBadge} ${
+                            p.state === 'declared'         ? styles.projBadgeDeclared   :
+                            p.state === 'amount estimated' ? styles.projBadgeAmountEst  :
+                                                             styles.projBadgeEstimation
+                          }`}>{p.state}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Need more history to project */}
+              {dividends.length === 1 && totalShares > 0 && (
+                <p className={styles.projNeedMore}>Record a second payout to enable date projections.</p>
+              )}
             </div>
           )}
 

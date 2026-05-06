@@ -772,3 +772,32 @@
 }
 
 .lotInput:focus { outline: none; }
+
+/* Date field tooltip wrapper */
+.dateTooltipWrap {
+  position: relative;
+}
+
+.dateTooltipWrap::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  background: #1e2535;
+  color: #f1f5f9;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #3b82f6;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 20;
+}
+
+.dateTooltipWrap:hover::after,
+.dateTooltipWrap:focus-within::after {
+  opacity: 1;
+}

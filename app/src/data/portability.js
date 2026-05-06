@@ -31,9 +31,10 @@ const KEYS = {
   csvTemplates:       'rmoney_csv_templates',
   aiSystemPrompts:    'rmoney_ai_system_prompts',
   aiChats:            'rmoney_ai_chats',
-  watchlists:         'rmoney_watchlists',
-  watchlistEntries:   'rmoney_watchlist_entries',
-  watchlistAlerts:    'rmoney_watchlist_alerts',
+  watchlists:            'rmoney_watchlists',
+  watchlistEntries:      'rmoney_watchlist_entries',
+  watchlistAlerts:       'rmoney_watchlist_alerts',
+  investmentReportPresets: 'rmoney_investment_report_presets',
 }
 
 function readList(key) {
@@ -75,9 +76,10 @@ export function exportAppData() {
     csvTemplates:       readList(KEYS.csvTemplates),
     aiSystemPrompts:    readList(KEYS.aiSystemPrompts),
     aiChats:            readObj(KEYS.aiChats),
-    watchlists:         readList(KEYS.watchlists),
-    watchlistEntries:   readList(KEYS.watchlistEntries),
-    watchlistAlerts:    readList(KEYS.watchlistAlerts),
+    watchlists:              readList(KEYS.watchlists),
+    watchlistEntries:        readList(KEYS.watchlistEntries),
+    watchlistAlerts:         readList(KEYS.watchlistAlerts),
+    investmentReportPresets: readList(KEYS.investmentReportPresets),
   }
 }
 
@@ -210,7 +212,8 @@ export function importAppData(data) {
   write(KEYS.csvTemplates,         data.csvTemplates         ?? [])
   write(KEYS.aiSystemPrompts,      data.aiSystemPrompts      ?? [])
   write(KEYS.aiChats,              data.aiChats              ?? {})
-  write(KEYS.watchlists,           data.watchlists           ?? [])
-  write(KEYS.watchlistEntries,     data.watchlistEntries     ?? [])
-  write(KEYS.watchlistAlerts,      data.watchlistAlerts      ?? [])
+  write(KEYS.watchlists,               data.watchlists               ?? [])
+  write(KEYS.watchlistEntries,         data.watchlistEntries         ?? [])
+  write(KEYS.watchlistAlerts,          data.watchlistAlerts          ?? [])
+  write(KEYS.investmentReportPresets,  data.investmentReportPresets  ?? [])
 }

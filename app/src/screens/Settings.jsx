@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders } from '../data/settings'
 import { getSecret, setSecret, deleteSecret } from '../utils/secrets'
 import { getBudgetWarningThreshold, setBudgetWarningThreshold } from '../data/budgets'
 import { getCsvTemplates, canDeleteCsvTemplate, deleteCsvTemplate, updateCsvTemplate, getTemplateUsers } from '../data/csvTemplates'
@@ -12,6 +12,7 @@ import {
 } from '../data/aiChats'
 import { getWatchlistStorageSummary, deleteAllWatchlists } from '../data/watchlists'
 import { getUserBenchmarks, deleteAllUserBenchmarks, getBenchmarksStorageBytes } from '../data/benchmarks'
+import { getReportPresets, getReportPresetsStorageBytes, deleteAllReportPresets } from '../data/investmentReports'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -43,7 +44,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [warningThreshold, setWarningThreshold] = useState(() => getBudgetWarningThreshold())
   const [mainCurrency, setMainCurrencyState] = useState(() => getMainCurrency())
   const [currencyDisplay, setCurrencyDisplayState] = useState(() => getCurrencyDisplay())
-  const [dividendTaxPct, setDividendTaxPctState] = useState(() => getDividendDefaultTaxPercent())
+  const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
+  const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
   const [defaultCsvDateFmt, setDefaultCsvDateFmtState] = useState(() => getDefaultCsvDateFormat())
   const [templates,         setTemplates]              = useState(() => getCsvTemplates())
   const [aiConn,          setAiConnForm]        = useState(() => { const c = getAiConnection() ?? {}; return { providerName: c.providerName ?? '', endpointUrl: c.endpointUrl ?? '', model: c.model ?? '', enabled: c.enabled ?? true } })
@@ -60,6 +62,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [benchmarkUserCount, setBenchmarkUserCount] = useState(() => getUserBenchmarks().length)
   const [benchmarkBytes,     setBenchmarkBytes]     = useState(() => getBenchmarksStorageBytes())
   const [benchmarkDeleteConfirm, setBenchmarkDeleteConfirm] = useState(false)
+  const [reportPresetCount, setReportPresetCount] = useState(() => getReportPresets().length)
+  const [reportPresetBytes, setReportPresetBytes] = useState(() => getReportPresetsStorageBytes())
+  const [reportPresetDeleteConfirm, setReportPresetDeleteConfirm] = useState(false)
   const [renamingId,      setRenamingId]      = useState(null)
   const [renameValue,     setRenameValue]     = useState('')
   const [deletingTpl,     setDeletingTpl]     = useState(null)
@@ -451,6 +456,28 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             </div>
             <div className={styles.preview}>
               New dividend payouts will default to <strong>{dividendTaxPct}%</strong> withholding tax
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Default amount estimation rule</label>
+              <select
+                className={styles.input}
+                value={dividendEstRule}
+                onChange={e => {
+                  setDividendEstRuleState(e.target.value)
+                  setDividendEstimationRule(e.target.value)
+                }}
+              >
+                <option value="last-paid">Last paid amount</option>
+                <option value="year-ago">Same period previous year</option>
+                <option value="manual">Manual amount (per stock)</option>
+              </select>
+            </div>
+            <div className={styles.preview}>
+              Projected payouts use <strong>
+                {dividendEstRule === 'last-paid' ? 'last paid amount' :
+                 dividendEstRule === 'year-ago'  ? 'same-period previous year' :
+                 'a manually set amount per stock'}
+              </strong> by default
             </div>
           </div>
 
@@ -1139,6 +1166,48 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     else if (type === 'all')          deleteAllAiChats()
                     setStorageSummary(getStorageSummaryAllTickers())
                     setStorageConfirm(null)
+                  }}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Investment report presets */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Investment report presets</div>
+            <p className={styles.description}>
+              Named filter + column presets saved in Investment Reports.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Presets</span>
+                  <span className={styles.storageCount}>
+                    {reportPresetCount} preset{reportPresetCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className={styles.storageBytes}>{fmtBytes(reportPresetBytes)}</span>
+                  <button
+                    className={styles.btnSmDanger}
+                    disabled={reportPresetCount === 0}
+                    onClick={() => setReportPresetDeleteConfirm(true)}
+                  >
+                    Delete all
+                  </button>
+                </div>
+              </div>
+            </div>
+            {reportPresetDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Delete all {reportPresetCount} report preset{reportPresetCount !== 1 ? 's' : ''}? This cannot be undone.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setReportPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllReportPresets()
+                    setReportPresetCount(getReportPresets().length)
+                    setReportPresetBytes(getReportPresetsStorageBytes())
+                    setReportPresetDeleteConfirm(false)
                   }}>Delete</button>
                 </div>
               </div>

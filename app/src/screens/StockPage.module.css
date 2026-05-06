@@ -363,6 +363,84 @@
   text-align: right;
 }
 
+/* ── Dividend projections ────────────────────────────────────────────────── */
+
+.projSubLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #334155;
+  margin-top: 2px;
+}
+
+.projRuleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.projCadence { font-size: 11px; color: #475569; }
+
+.projRuleSelect {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 2px 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.projManualInput {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 2px 8px;
+  color: #f1f5f9;
+  font-size: 12px;
+  width: 90px;
+}
+
+.projList { display: flex; flex-direction: column; gap: 2px; }
+
+.projRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(30, 37, 53, 0.5);
+  border: 1px dashed #2d3448;
+  border-radius: 8px;
+}
+
+.projDate { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
+.projDesc { flex: 1; font-size: 13px; color: #64748b; }
+.projNet  { font-size: 13px; font-weight: 500; color: #475569; flex-shrink: 0; }
+
+.projBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.projBadgeEstimation { background: rgba(71, 85, 105, 0.3); color: #64748b; }
+.projBadgeAmountEst  { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.projBadgeDeclared   { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+
+.projNeedMore {
+  font-size: 12px;
+  color: #475569;
+  font-style: italic;
+  margin: 0;
+}
+
 /* ── Portfolios ──────────────────────────────────────────────────────────── */
 
 .portfolioList { display: flex; flex-direction: column; gap: 4px; }
@@ -378,6 +456,50 @@
 
 .portfolioPath   { flex: 1; font-size: 13px; color: #94a3b8; }
 .portfolioTarget { font-size: 12px; color: #64748b; }
+
+/* ── Returns metrics ─────────────────────────────────────────────────────── */
+
+.metricsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metricTile {
+  flex: 1;
+  min-width: 110px;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.metricLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+
+.metricValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricSub {
+  font-size: 12px;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricNa { color: #475569; font-weight: 400; }
+
+.pos { color: #22c55e; }
+.neg { color: #ef4444; }
 
 /* ── Empty ───────────────────────────────────────────────────────────────── */
 

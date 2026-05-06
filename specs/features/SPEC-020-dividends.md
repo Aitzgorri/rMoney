@@ -1,7 +1,7 @@
 ---
 id: SPEC-020
 name: Dividends
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -35,8 +35,11 @@ Record every dividend payout the user has received on a stock, with correct mult
 - [x] Resolution order at creation: **payout input** (manually set) → **stock profile override** → **global default**. Country level skipped until SPEC-027. Stamped onto record; hierarchy changes do not rewrite history.
 
 ### Future payout projections (ephemeral)
-- [ ] Deferred to Phase 14 (Stock page, SPEC-021). Requires SPEC-027 market data API for declared dates and cadence detection.
-- [ ] Projected dates, amount estimation rules (`last-paid`, `year-ago-same-period`, `manual`), state badges (`estimation`, `amount estimated`, `declared`), and pre-fill prompt: all deferred.
+- [x] Next 4 projected payout dates derived from historical cadence (median gap between consecutive payouts, snapped to Monthly/Quarterly/Semi-annual/Annual). Requires ≥ 2 past payouts.
+- [x] Amount estimation rules: `last-paid` (most recent per-share), `year-ago` (closest payout 1 year ago), `manual` (per-stock stored amount). Global default in Settings → Investments → Dividends card; per-stock override via dropdown on the stock page.
+- [x] State badges: `estimation` (all local projections), `amount estimated` (future: API confirms date only), `declared` (future: API confirms date + amount). Badge renders as dashed row with muted styling.
+- [x] Share count for projected net = current open position size; tax % from the resolved tax hierarchy (`resolveDividendTaxPercent`).
+- [x] "Record a second payout to enable date projections" hint when only 1 historical payout exists.
 
 ### Dividend movements in account detail
 - [x] Dividend cash movements appear in the account's Cash Movements list (type `'dividend'`), grouped with other movements.

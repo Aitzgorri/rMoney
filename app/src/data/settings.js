@@ -72,6 +72,15 @@ export function setDividendDefaultTaxPercent(percent) {
   setSetting('dividends', { ...existing, defaultTaxPercent: Number(percent) })
 }
 
+export function getDividendEstimationRule() {
+  return getSetting('dividends', {}).defaultAmountEstimationRule ?? 'last-paid'
+}
+
+export function setDividendEstimationRule(rule) {
+  const existing = getSetting('dividends', {})
+  setSetting('dividends', { ...existing, defaultAmountEstimationRule: rule })
+}
+
 // ─── AI Evaluation ───────────────────────────────────────────────────────────
 
 export function getAiConnection() {

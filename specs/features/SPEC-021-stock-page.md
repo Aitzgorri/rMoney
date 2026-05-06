@@ -22,7 +22,7 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [ ] Page header shows: stock name, ticker, currency of the current stock-exchange selection, latest price (refreshed on page load via SPEC-027). *(Price and exchange selector deferred to SPEC-027)*
 - [ ] Stock-exchange selector. *(Deferred to SPEC-027)*
 - [ ] Price chart with a period selector: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y, All. *(Deferred to SPEC-027)*
-- [ ] Metrics row (dividend yield, total return, p.a. return, components). *(Deferred to SPEC-027)*
+- [x] Metrics row (market value, total return + %, p.a. return, price-appreciation, dividend return, dividend yield TTM). Exchange rates auto-loaded on mount; values show — when rates unavailable.
 - [x] Transactions list shows, for this stock across all the user's investing accounts, sorted by date: buys, sells, and dividends. A filter control lets the user show only selected types: All / Buy / Sell / Dividend. *(Transfer, Split, Exchange filters deferred to SPEC-019/027)*
 - [x] Dividend section: past payouts from SPEC-020 records shown in a separate section. *(Next-4 projections deferred to Phase 13c)*
 - [ ] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*

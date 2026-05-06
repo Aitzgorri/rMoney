@@ -24,6 +24,7 @@ import {
   createSell,
   createTransfer,
   getStockTransaction,
+  getStockTransactionsByTicker,
   createCurrencyExchange,
   updateCurrencyExchange,
   deleteStockTransaction,
@@ -879,7 +880,7 @@ function DepositForm({ balance, onSave, onCancel }) {
             className={styles.formInput}
             type="number"
             min="0.000001"
-            step="0.01"
+            step="any"
             value={rate}
             onChange={e => setRate(e.target.value)}
           />
@@ -973,7 +974,7 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
             className={styles.formInput}
             type="number"
             min="0.000001"
-            step="0.01"
+            step="any"
             value={rate}
             onChange={e => setRate(e.target.value)}
           />
@@ -1143,16 +1144,21 @@ function BuyForm({ balances, onSave, onCancel }) {
     const t = ticker.trim().toUpperCase()
     if (!t) return
     const profile = getStockProfile(t)
-    // Open dialog only for brand-new tickers (no existing profile record)
-    if (!profile) setResolving(true)
-    else if (profile.name) setResolvedName(profile.name)
+    if (!profile) {
+      setResolving(true)
+    } else {
+      if (profile.name) setResolvedName(profile.name)
+      // Pre-fill currency from the most recent buy for this ticker
+      const prevBuys = getStockTransactionsByTicker(t).filter(tx => tx.type === 'buy')
+      if (prevBuys.length > 0) setCurrency(prevBuys[prevBuys.length - 1].currency)
+    }
   }
 
   function handleResolved(candidate) {
     setResolving(false)
     setResolvedName(candidate.name)
     if (!stockExchange.trim() && candidate.stockExchange) setStockExchange(candidate.stockExchange)
-    if (!currency.trim() && candidate.currency) setCurrency(candidate.currency)
+    if (candidate.currency) setCurrency(candidate.currency)
   }
 
   function handleSubmit(e) {
@@ -1307,6 +1313,13 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
   const netTotal     = tbt - taxAmtNum
   const netPerShare  = Number(shareCount || 0) > 0 ? netTotal / Number(shareCount) : 0
 
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  function fmtDateTooltip(iso) {
+    if (!iso) return ''
+    const [y, m, d] = iso.split('-').map(Number)
+    return `${y} ${MONTHS[m - 1]} ${d}`
+  }
+
   const canSave = finalTicker && currency.trim() && Number(dividendPerShare) > 0 && Number(shareCount) > 0 && payoutDate
 
   function handleSubmit(e) {
@@ -1361,11 +1374,15 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
       <div className={styles.formPairRow}>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Ex-div date</label>
-          <input className={styles.formInput} type="date" value={exDividendDate} onChange={e => setExDividendDate(e.target.value)} />
+          <div className={styles.dateTooltipWrap} data-tooltip={fmtDateTooltip(exDividendDate)}>
+            <input className={styles.formInput} type="date" value={exDividendDate} onChange={e => setExDividendDate(e.target.value)} />
+          </div>
         </div>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Payout date</label>
-          <input className={styles.formInput} type="date" value={payoutDate} onChange={e => setPayoutDate(e.target.value)} />
+          <div className={styles.dateTooltipWrap} data-tooltip={fmtDateTooltip(payoutDate)}>
+            <input className={styles.formInput} type="date" value={payoutDate} onChange={e => setPayoutDate(e.target.value)} />
+          </div>
         </div>
       </div>
 
