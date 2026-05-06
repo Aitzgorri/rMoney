@@ -8,6 +8,8 @@
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
+**Project Phase 3 — Investments enhancements:** Phases 25–31 below capture the requirements written in `Investments_enhancements.md` (May 2026). They extend SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-024, SPEC-027, SPEC-029 and introduce two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory). Build order respects: historical-FX snapshotting (item 146) is a hard prerequisite for XIRR + cross-currency fee folding; the API dividend history collection in Phase 25 is a hard prerequisite for the new TTM/forward yields, the Dividend page metrics, and the calendar.
+
 ---
 
 ## Shared code to build early
@@ -28,6 +30,11 @@ These patterns recur across multiple features. Building them as reusable utiliti
 | **Inline form expansion (desktop new-record)** | Transactions, Envelope transfers, Scheduled transfers, Planning items, Budgets, Investing accounts, Stock transactions, Dividends | Desktop-only: empty row appears at top of list and expands into a form. Mobile keeps dedicated-route pattern. |
 | **AI connection client** | Stock page (SPEC-021) — now; per-stock prompt overrides later | Single per-user connection at More → Settings. |
 | **Cash balance / cash movement ledger** | Investing accounts (SPEC-018), Stock transactions (SPEC-019), Dividends (SPEC-020), Stock page (SPEC-021), Investment reports (SPEC-024), CSV import (SPEC-025) | Unified `cashMovements` collection behind every in/out touching a cash balance. Single source for current balance, transaction history per balance, negative-balance policy. |
+| **Persisted history vs hot cache** | API dividend history (SPEC-020 + SPEC-027), historical price series for charts (SPEC-021 + SPEC-027), historical FX snapshots stored on transactions (SPEC-019 item 146) | Two distinct data categories that have been conflated under "cache." **Hot cache** = short TTL, freely rebuildable on next load (latest price, current forex spot, news, latest profile). Cleared without consequence; **excluded** from backups. **Persisted history** = no TTL, expensive to refetch (rate-limited APIs), included in **Full backup** and surfaced in the Settings → Storage tab as its own card with per-stock breakdown. **Snapshot rates per transaction** are primary data on the transaction record itself (immutable), not in any cache. Refresh of persisted history is user-triggered, not automatic. |
+| **Hybrid filter dropdown (search + multi-select)** | Cash movements stock/portfolio/currency filter (SPEC-018), Dividend page metrics-table filter (SPEC-032), Reports pie-chart filters (SPEC-024), CSV import dedup filter | Compact dropdown that opens into a panel with an inline search box and a checkbox list. Reused wherever a filter has dozens-to-hundreds of options. |
+| **Currency view toggle (trading ↔ main)** | Stock page (SPEC-021), Dividend page (SPEC-032 — optional follow-up) | Per-screen toggle persisting last choice in localStorage. Default on Stock page = trading currency (single-stock context); default elsewhere = main currency. Affects metric formatting only — calculations remain consistent (XIRR + fee-inclusive avg always in main; forward/TTM yield computed in the displayed currency). |
+| **Configurable column table (positions)** | Investing account detail per-account positions (SPEC-018 / SPEC-024 extension), potential reuse for Reports table tab columns | Generic table component: column-picker, drag-reorder, sort by visible column, scrollable to N rows max-height, fullscreen expand. |
+| **Soft-delete / archive lifecycle** | Stock inventory (SPEC-033), potential future reuse for accounts/portfolios | Archive flag hides item from selection lists but preserves history. Archive view exposes click-through links to underlying records. Permanent-delete only when no history remains. |
 
 ### Shared code status
 
@@ -47,6 +54,11 @@ Track whether each shared utility has been extracted as a reusable module. Updat
 | Inline form expansion (desktop) | **shared** | `components/InlineFormRow.jsx` | Consumed by Transactions, ScheduledTransfers, Planning, Budgets. Investing phases add their own screens. |
 | AI connection client | **shared** | `data/settings.js` (`getAiConnection`/`setAiConnection`) | Single per-user connection at More → Settings. |
 | Cash balance / cash movement ledger | **shared** | `data/investingAccounts.js` | Unified `cashMovements` collection; current balance = sum of movements; CRUD for balances + all movement types. |
+| Persisted history vs hot cache | **not started** | — | Build at start of Phase 25 (`data/apiDividendHistory.js` + clarified separation in `data/marketData*.js` files; SPEC-016 export rules updated; Settings → Storage cards added). |
+| Hybrid filter dropdown | **not started** | — | Build at start of Phase 27 — first consumer is cash movements; subsequently reused on Dividend page (Phase 31) and Reports pie-chart filters (Phase 29). |
+| Currency view toggle | **not started** | — | Build at start of Phase 28; persisted per-screen in localStorage. |
+| Configurable column table | **not started** | — | Build at start of Phase 27 (per-account positions); evaluate reuse on Reports Table tab in Phase 29. |
+| Soft-delete / archive lifecycle | **not started** | — | Build at start of Phase 30 — first and only consumer for now is Stock inventory (SPEC-033). |
 
 > **Statuses:** `not started` → `inline` (works but lives in one feature) → `shared` (extracted as reusable module with path noted in Location)
 
@@ -181,9 +193,61 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
   └─ writes:  new `watchlists`, `watchlistEntries`, `watchlistAlerts` collections
   └─ modifies SPEC-018: Investments nav entry becomes a dropdown (Investments overview / Portfolios / Watchlists)
 
+--- Project Phase 3 (Investments enhancements) ---
+
+SPEC-032 Dividend page (calendar + metrics tabs, scoped to held stocks)
+  └─ reads:    SPEC-019 stock transactions (current open positions = held set),
+               SPEC-020 user dividend records (for "dividend return" amounts in metrics tab),
+               SPEC-027 `apiDividendHistory` (TTM, forward yield, CAGR, calendar, projections),
+               SPEC-022 Portfolios (multi-dataset chart per portfolio; grouping in metrics tables),
+               SPEC-029 stockProfiles (HQ country / region / continent for grouping; dividend frequency)
+  └─ writes:   `dividendChartPresets` collection (saved payout-chart configurations)
+
+SPEC-033 Stock inventory (page listing all included stocks; add-without-buy; edit; archive)
+  └─ reads:    SPEC-029 stockProfiles, SPEC-019 stock transactions (history-presence flag),
+               SPEC-020 dividends (history-presence flag), SPEC-022 portfolioAssignments,
+               SPEC-030 watchlistEntries
+  └─ writes:   `stockProfiles` (extends with `archived: bool`, `archivedAt`); no new collection
+
+SPEC-027 Market data (extension — Project Phase 3)
+  └─ adds:     `apiDividendHistory` persistent collection (per-stock dividend records, declared/estimated state),
+               `getIntradaySeries(ticker, exchange)` provider method,
+               dividend type + frequency fields on adapter responses where the provider supplies them
+
+SPEC-019 Stock transactions (extension — Project Phase 3)
+  └─ adds:     edit transactions (buy/sell/transfer/split/currency-exchange);
+               weighted-average price now folds in pro-rated buy fees;
+               fee-currency invariant = trading currency (validated on entry)
+
+SPEC-020 Dividends (extension — Project Phase 3)
+  └─ adds:     `type: 'regular' | 'special'` per payout (user-editable, API-filled if available);
+               manual "Refresh dividend data" button writes to `apiDividendHistory`
+
+SPEC-021 Stock page (extension — Project Phase 3)
+  └─ adds:     trading/main currency toggle, multi-account total row, TTM yield (from cache),
+               forward yield, dividend return (all + L12M), XIRR p.a., 1D chart,
+               scrollable past-payouts + transactions tables, % share column in portfolio memberships,
+               future dividend declarations + manual editing, enter buy/sell/dividend from page
+
+SPEC-024 Investment reports (extension — Project Phase 3)
+  └─ adds:     pie-chart tab (tile model, saved presets, "Other" group, fullscreen),
+               configurable per-account positions table (12 columns, scrollable, fullscreen, sortable, today's-close change),
+               cash-movements filters + virtualization + readability,
+               portfolio-tab cleanup (remove pie + share column when all portfolios shown),
+               table-tab filters + ordering + MV-trading-currency column
+
+SPEC-029 Stock profile resolution (extension — Project Phase 3)
+  └─ adds:     "Add stock without Buy" entry point, "Edit profile" form,
+               "Re-look up" button on Buy form when ticker matches existing profile
+
+SPEC-018 Investing accounts (extension — Project Phase 3)
+  └─ adds:     hybrid filter dropdown for cash movements; remove the bottom-of-overview Portfolios footer button
+
 **Key takeaway:** SPEC-002, SPEC-003, and SPEC-004 are pure data producers — everything downstream depends on them. SPEC-005 is both a producer and consumer. SPEC-009 is envelope-only (no account link) and writes to SPEC-004. SPEC-013 bridges planned items to real account transactions (SPEC-005).
 
 **Phase 2 key takeaway:** SPEC-017 Currency conversion and SPEC-027 Market data are the two foundational utilities that almost every Investments spec depends on — build them first. **SPEC-018 (investing accounts + cash balances + cash movements) is the single bridge between the Investments module and budgeting**: only deposits and withdrawals create linked SPEC-005 transactions; buy/sell/dividend no longer write to SPEC-005 directly. This means the user's flow is "deposit cash into the investing account → use that cash to buy/sell → withdraw cash back to budgeting when wanted," and every intermediate stock transaction is internal to Investments. SPEC-016 Data portability reads and writes *everything* (including `cashBalances` and `cashMovements`) — it should be implemented last in Phase 2 so it covers all the new data shapes.
+
+**Phase 3 key takeaway:** Two foundational pieces gate everything else. (1) **Historical-FX snapshotting on every transaction** (item 146, originally deferred from Phase 10) moves from "deferred" to a hard prerequisite — XIRR p.a. return and cross-currency fee-inclusive avg price both need it. (2) **`apiDividendHistory`, a persistent (non-evicting) collection of API-fetched per-share dividend records,** unlocks correct TTM yield, forward yield, the Dividend page calendar, and CAGR metrics. User dividend records (gross/net, share count, tax) stay where they are — they're consulted alongside the API cache through a union-at-read-time pattern. The two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory) plus extensions to seven existing specs are organised into Phases 25–31; each phase is scoped to one screen or feature surface so individual implementation sessions stay small.
 
 ---
 
@@ -236,9 +300,10 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 
 ## Phase 10 — App-wide currency conversion
 
-> **Phase 10 complete.** All budgeting screens (Dashboard, Transactions, Envelopes, Budgets, Planning) show main-currency totals. Historical-rate snapshotting is deferred to Phase 12 (investment transactions need it).
+> **Phase 10 complete.** All budgeting screens (Dashboard, Transactions, Envelopes, Budgets, Planning) show main-currency totals. Historical-rate snapshotting was deferred from Phase 10 and is now scheduled in Phase 25 sub-phase 25a (items 260–263).
 
-146. [ ] Historical-rate snapshotting on investment transactions (consumed by Phase 12)
+### SPEC-017 Currency Conversion — historical FX snapshotting (granular implementation in Phase 25a)
+146. [ ] Historical-rate snapshotting on investment transactions — see Phase 25 sub-phase 25a items 260–263 for the granular acceptance criteria. This umbrella item stays unchecked until 260–263 are all done.
 
 ---
 
@@ -419,6 +484,11 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 
 > Phase 2 ships mobile Investments as entry + summary only (Q5b/Option 2). This phase brings full parity.
 
+### SPEC-010 Deployment — mobile (Capacitor) prerequisites
+
+363. [ ] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build (SPEC-010 mobile acceptance criterion)
+364. [ ] App data persists locally on the device (SPEC-010 mobile acceptance criterion)
+
 ### SPEC-028 Mobile Investments Parity — all items
 
 225. [ ] Stock price chart on mobile
@@ -502,3 +572,230 @@ SPEC-030 Watchlists & alerts (curated lists, price-threshold alerts, on-open eva
 259. [x] Memory hygiene confirmed: market data keys fetched inside `buildProviderCfg()` per call; AI keys fetched inside `sendRequest()` / `callAi()` per request; no long-lived variable holds decrypted key material.
 
 > **Process rule:** the repository remains local-only until 247 is done. A future Claude session that proposes `git push` without confirming the audit must be redirected to this phase. Encryption at rest (24e) does not gate first push but is required before any wider distribution.
+
+---
+
+# Project Phase 3 — Investments enhancements (sourced from `Investments_enhancements.md`)
+
+> Build order is foundation-first. Phases 25 (data foundation) and 26 (stock lifecycle + transaction edits) unlock everything in 27–31. Phases 27–29 are screen-shaped extensions to existing specs (no new specs). Phases 30–31 introduce the two new specs (SPEC-033 Stock inventory, SPEC-032 Dividend page).
+>
+> **Granularity convention (Pattern C from design review):** foundation sub-phases are tight (3–5 acceptance criteria each, surgical changes); screen-shaped sub-phases are medium (6–10 criteria, one cohesive UI improvement); new-SPEC sub-phases are split by tab/section. Each sub-phase is intended to fit in one Claude session.
+
+## Phase 25 — Foundation for Investments enhancements
+
+> Pure plumbing. Nothing visible to the user changes after this phase, but every later phase depends on these data shapes existing.
+
+**Sub-phase 25a — Historical FX snapshotting on every transaction (promotes item 146)**
+260. [ ] Add `fxRateToMain` (and `mainCurrency` snapshot) to every record in `stockTransactions` (buy / sell / transfer / split / currency-exchange) and every `cashMovement`, captured at write time from SPEC-017 currency conversion at the transaction date
+261. [ ] Edit-transaction paths re-capture the rate when the date changes
+262. [ ] Backfill helper utility (run once from a Settings → Storage button): walk all existing records, fetch SPEC-027 historical FX, mark each record `fxBackfilled: true` for transparency
+263. [ ] SPEC-016 backup files include the snapshot fields; load preserves them verbatim (no recalc)
+
+**Sub-phase 25b — Persisted history vs hot cache categorization**
+264. [ ] Document the two categories in a header comment in `data/marketDataCaches.js` (or equivalent) and in SPEC-016 acceptance criteria
+265. [ ] SPEC-016 export rules: Full backup includes persisted-history collections (`apiDividendHistory` and any future `apiPriceHistory`); Sharable backup excludes them; hot caches (price / forex / news / latest-profile) excluded from both
+266. [ ] Settings → Storage tab: add a card per persisted-history collection with per-stock byte-size breakdown + bulk-clear action; existing hot-cache cards continue to label themselves as "rebuilds itself"
+
+**Sub-phase 25c — `apiDividendHistory` persistent collection**
+267. [ ] Schema: keyed by `(ticker, exDate)`. Fields: `payDate`, `perShare`, `currency`, `type: 'regular' | 'special' | null`, `state: 'paid' | 'declared' | null`, `source: 'api' | 'manual'`, `fetchedAt`. Lives in localStorage; no TTL
+268. [ ] `getDividends(ticker, exchange)` chain method writes results into `apiDividendHistory` (deduping on ex-date); the existing user `dividends` collection is never touched by API refresh
+269. [ ] Stale-data indicator (amber dot + tooltip): shown anywhere TTM/forward yield is displayed when `apiDividendHistory[ticker]` is empty or last refresh failed
+270. [ ] Auto-refresh skip rule: a future-dated row with `state: 'declared'` and all four fields populated is not re-fetched on subsequent loads
+271. [ ] Stock page header gets a "Refresh dividend data" button that triggers `getDividends` for the displayed ticker and writes results immediately
+
+**Sub-phase 25d — Dividend type per payout + frequency on stock profile**
+272. [ ] Add `type: 'regular' | 'special'` column to the user `dividends` collection (default 'regular' on import; user-editable on the dividend edit form)
+273. [ ] Extend `stockProfiles` with `dividendFrequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'unknown'` (default 'unknown'; API-filled when provider returns it; user-editable from the edit-profile form in Phase 26b)
+274. [ ] Cadence-detection fallback for forward yield: when `dividendFrequency === 'unknown'`, derive at read time from API + user history (≥ 2 regular payouts, snapped to standard cadences) — same algorithm SPEC-020 already uses for projections
+
+**Sub-phase 25e — Intraday market data endpoint**
+275. [ ] Add `getIntradaySeries(ticker, exchange)` to the provider chain interface; supported by Yahoo (`range=1d&interval=1m`) and Twelve Data (`time_series interval=1min`); Massive / Stooq / IBKR adapters return "not supported" so the chain falls through
+276. [ ] Hot-cache (TTL ≈ 5 min) the intraday series per ticker; not persisted long-term
+
+**Sub-phase 25f — Soft-delete data model for stockProfiles**
+277. [ ] Extend `stockProfiles` with `archived: bool` and `archivedAt`; default `archived: false`
+278. [ ] Add helpers `getActiveStockProfiles()` / `getArchivedStockProfiles()`; replace every existing `getStockProfiles()` consumer that should hide archived (Buy form, Stock page navigation, dropdowns) with the active variant
+
+---
+
+## Phase 26 — Stock lifecycle UX + transaction edits
+
+> Extends SPEC-019 (edit transactions, fee-inclusive avg) and SPEC-029 (add-without-buy, edit-profile, re-look-up).
+
+**Sub-phase 26a — Add stock without Buy + Re-look-up button on Buy form**
+279. [ ] SPEC-029 resolution dialog gains a standalone-resolve mode (no transaction context); accessible via "Add stock" button on Stock inventory page (Phase 30) and from the new-transaction screen
+280. [ ] Buy form: when the entered ticker matches an existing `stockProfile`, collapse the candidate-list UI; show a summary card `TICKER — Name (Exchange, Currency)` plus a "Re-look up" button that re-opens the resolution dialog pre-filled with the current profile
+281. [ ] Confirming a different candidate updates the existing profile in place (warning matches the Phase 22 rename-ticker dialog)
+
+**Sub-phase 26b — Edit profile form**
+282. [ ] New "Edit profile" form launched from the Stock page header and from the Stock inventory page (Phase 30); fields: name, exchange (MIC dropdown using the same `resolveExchange` table), currency (ISO list), HQ country, dividend frequency, per-stock dividend estimation rule
+283. [ ] Ticker rename remains its own flow (Phase 22) — Edit profile does not touch the ticker
+
+**Sub-phase 26c — Edit existing stock transactions**
+284. [ ] Edit form for buy: recreates `cashMovements` (`buy` + `buy-fee`); recaptures FX snapshot if date changed
+285. [ ] Edit form for sell: editing share count requires re-selecting lot allocations; recreates `cashMovements`; recaptures FX snapshot
+286. [ ] Edit form for transfer between investing accounts: change source / destination / lots / fee
+287. [ ] Edit form for split: change date or ratio; warn that derived per-share calculations will recompute across all dependent records
+288. [ ] Edit form for currency-exchange (standalone or triggered-by-buy): completes the deferred triggered-by-buy edit path mentioned in 172e
+
+**Sub-phase 26d — Weighted-average buy price including fees**
+289. [ ] Update `stockTransactions.js` `getOpenLots()` so each lot's effective per-share price is `(shares × price + fee) / shares`; sells pro-rate the fee with `remainingShares` so the lot's contribution to the avg is `(remainingShares × price + remainingShares/originalShares × fee)`. Sell fees are not part of the avg
+290. [ ] Display layer (Stock page Positions section, Investing Account positions table): show fee-inclusive avg by default; small `(i)` tooltip explains the formula
+291. [ ] Fee-currency invariant: buy / sell / transfer forms validate `feeCurrency === tradeCurrency` and block save with an inline error; a `legacyFeeMismatch: true` flag tags any pre-existing record where this didn't hold (UI shows a warning chip on those rows)
+
+---
+
+## Phase 27 — Investing account detail overhaul
+
+> Extends SPEC-018 (cash movements + footer cleanup) and SPEC-024 (configurable per-account positions table). Builds two shared components used by Phases 28, 29, 31.
+
+**Sub-phase 27a — Hybrid filter dropdown component (shared)**
+292. [ ] Build `components/HybridFilterDropdown.jsx`: closed pill shows selected count; opened panel has search box + scrollable checkbox list + clear / apply buttons
+293. [ ] Multi-select returns array of selected ids; supports option-with-secondary-label (e.g. `TICKER` primary + `Name` secondary)
+
+**Sub-phase 27b — Configurable column table (shared) — per-account positions**
+294. [ ] Build `components/ConfigurableTable.jsx`: column-picker, drag-reorder, sort by visible column, max-height for ~20 rows, fullscreen-expand button
+295. [ ] Replace the existing per-account positions list (`InvestingAccountDetail.jsx:413–434`) with `ConfigurableTable` populated by 12 columns: ticker, name, latest price, currency, exchange, shares, price/share (= avg with fees), avg price (= cost basis), MV trading-currency, MV main-currency, share-on-account %, today's session change ($ + %)
+296. [ ] Persist per-account column visibility + order + sort to localStorage (`rmoney_positions_columns_{accountId}`)
+297. [ ] Today's session change calc: `latest_price - previousClose` (from provider `getLatestPrice`); display `+/-x%` and `+/-$x` in trading currency
+
+**Sub-phase 27c — Cash movements: filters + virtualization**
+298. [ ] Replace flat list (`InvestingAccountDetail.jsx:437–494`) with a max-height container (≈30 rows visible); chunk-load 50 records on scroll
+299. [ ] Filters bar using `HybridFilterDropdown`: type multiselect (buy / sell / buy-fee / sell-fee / transfer-fee / dividend / deposit / withdrawal / currency-exchange), portfolio multiselect, stock multiselect, currency multiselect
+300. [ ] Filter bar collapses by default behind a "Filters" button; persists open/closed state in localStorage
+
+**Sub-phase 27d — Cash movements readability + footer cleanup**
+301. [ ] Increase row font size and contrast between row text and stripe background
+302. [ ] Add fullscreen-expand button on the cash-movements panel (full-viewport modal with the same table)
+303. [ ] Remove the `Portfolios` shortcut button at the bottom of the Investments overview screen (`Investments.jsx:133–135`) — the desktop top-nav sub-row already exposes Portfolios as a tab
+
+---
+
+## Phase 28 — Stock page enhancements (extends SPEC-021)
+
+> Single biggest screen rebuild in Phase 3. Each sub-phase is one cohesive improvement.
+
+**Sub-phase 28a — Currency view toggle (shared component)**
+304. [ ] Build `components/CurrencyToggle.jsx`: pill toggle "Trading | Main"; persists last choice per screen in localStorage
+305. [ ] Add to Stock page header (defaults to Trading); affects all metric formatting, price chart axis, dividend amount display, Positions section subtotal
+
+**Sub-phase 28b — Metrics row overhaul (TTM / forward / dividend return / p.a. XIRR)**
+306. [ ] **TTM yield** = (sum of `apiDividendHistory[ticker].perShare` for past 12 months) ÷ current price, both in selected currency. Falls back to user `dividends.dividendPerShare` only for dates where API has a gap and a user record exists; amber dot when API cache is empty
+307. [ ] **Forward yield** = `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; uses `dividendFrequency` from the stock profile; shows "—" when frequency = 'unknown' or no regular dividend in history
+308. [ ] **Dividend return** splits into two tiles: "All-time net (after tax)" and "Last 12 months net (after tax)"; both use user `dividends` records (depend on tax + actual share count)
+309. [ ] **p.a. return** rebuilds as **XIRR** using transaction-snapshot FX rates (item 146) — accumulates buy/sell/dividend/fee cash flows in main currency; shows "—" until snapshot data covers all relevant cash flows
+310. [ ] Verify price-appreciation calc on a stock with multiple lots (the user has reported NNN looks correct; confirm with a unit test)
+
+**Sub-phase 28c — Multi-account total row + portfolio % share**
+311. [ ] Stock page Positions section: when same stock is in ≥ 2 investing accounts, append a bold subtotal row showing total shares, weighted-avg fee-inclusive price, total MV
+312. [ ] Portfolio memberships table: add `% share` column = position MV ÷ portfolio total MV × 100, refreshed live with latest price; keep the existing target % column
+
+**Sub-phase 28d — Past payouts + transactions tables: scroll + lazy load**
+313. [ ] Past payouts table: max-height for 15 rows; lazy-load year chunks (oldest-to-newest as the user scrolls down); merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence
+314. [ ] Transactions table: max-height for 15 rows; standard scroll (transaction count is bounded — no chunking needed)
+
+**Sub-phase 28e — 1D chart period**
+315. [ ] Add "1D" button to the chart period selector; calls `getIntradaySeries` (Phase 25e); button is disabled with a tooltip when the active provider chain returns "not supported" for that ticker
+
+**Sub-phase 28f — Future dividend declarations + projections + manual editing**
+316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time)
+317. [ ] Visual distinction: declared = solid badge; estimated = dashed badge
+318. [ ] Manual edit dialog for any user dividend record (formalise existing form); new affordance: "Convert estimated → declared" enters all four fields manually and writes to `apiDividendHistory` with `source: 'manual'`
+
+**Sub-phase 28g — Enter buy / sell / dividend from stock page**
+319. [ ] Add `+ Buy`, `+ Sell`, `+ Dividend` buttons in Stock page header; clicking opens the same forms used in `InvestingAccountDetail` with ticker pre-filled and locked
+
+---
+
+## Phase 29 — Reports enhancements (extends SPEC-024)
+
+> Adds the pie-chart tab, configurable presets, and tightens the existing Portfolio + Table tabs.
+
+**Sub-phase 29a — Pie-chart tab (tile model)**
+320. [ ] Add new "Pie charts" tab to Investment Reports, positioned after "By Portfolio"
+321. [ ] Each tile is a saved pie chart: name, grouping dimension (currency / country / region / continent / portfolio / stock), filters, display currency, "Other" threshold (default 1 %), show-table-below toggle
+322. [ ] Layout: desktop user picks 1 / 2 / 3 / 4 tiles per row (persisted); mobile = 1 per row
+323. [ ] Each tile has a fullscreen button (full-viewport modal showing chart + table)
+324. [ ] "Other" group behaviour: items below threshold collapse into a single "Other" slice in the pie; data table below always shows full granularity (Pattern A3)
+
+**Sub-phase 29b — Saved pie chart presets**
+325. [ ] New collection `pieChartPresets`: `id`, `name`, `gridPosition`, `grouping`, `filters`, `displayCurrency`, `otherThresholdPct`, `showTableBelow`, `chartType`
+326. [ ] CRUD: "Add chart" button creates a tile in config mode; save persists; rename and delete inline; drag-reorder sets `gridPosition`
+327. [ ] Constraint: when `grouping === 'portfolio'`, the portfolio filter is restricted to single-selection (one stock can sit in multiple portfolios)
+328. [ ] Settings → Storage tab: card showing pie-chart preset count + size + clear button
+
+**Sub-phase 29c — Portfolio tab cleanup**
+329. [ ] When the Portfolio tab shows "all portfolios" (no specific portfolio selected): hide the "share on whole portfolio %" column and the pie-chart visualization (one stock can be in multiple portfolios — these aggregations are misleading)
+330. [ ] In all-portfolios mode, show only: portfolio name, total value, total return ($/%), actual dividend yield, yearly dividend amount, average monthly dividend amount
+
+**Sub-phase 29d — Table tab improvements**
+331. [ ] Add filters at top of Table tab using `HybridFilterDropdown`: portfolio, currency, country, region, continent
+332. [ ] Hide rows that fall outside the active filter scope (e.g. when a portfolio filter is set, only stocks in that portfolio appear)
+333. [ ] Add "MV (trading currency)" to the available columns in the column-picker
+334. [ ] Sort by any visible column (delegated to the shared `ConfigurableTable` from Phase 27b)
+
+---
+
+## Phase 30 — Stock inventory page (NEW SPEC-033)
+
+> Lists every included stock; first home for the soft-delete archive lifecycle.
+
+### SPEC-033 Stock inventory — implementation
+> All acceptance criteria below are tracked through the sub-phases of Phase 30.
+
+
+**Sub-phase 30a — Inventory list**
+335. [ ] New page accessible from the **More menu** (desktop top-nav second-row + mobile More dropdown), alongside `Categories / Settings`
+336. [ ] Lists all `stockProfiles` (active + archived togglable). Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag, history-presence indicator (transaction count, dividend count, in-portfolio count, in-watchlist count) — all clickable links to the filtered list of those records
+337. [ ] Per-row actions: Edit profile (Phase 26b), Archive / Unarchive, Permanent delete (button only enabled when all four counts are zero)
+338. [ ] "Add stock" button on the page launches the SPEC-029 resolution dialog in standalone mode (Phase 26a)
+338a. [ ] Sortable columns; sort choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
+338b. [ ] History-presence counts computed once on page mount as four `{ticker → count}` maps (single pass per source collection); rows read from maps in O(1). Maps refresh when the active/archived filter changes, not memoised across navigations
+
+**Sub-phase 30b — Archive lifecycle + click-through to records**
+339. [ ] Archive: sets `archived: true`, `archivedAt: now`. The stock vanishes from selection lists, dropdowns, the Stock inventory default view, and the Dividend page (held set still computed from open lots, which an archived stock can't have anyway). All historical data preserved
+340. [ ] Unarchive: clears the flags; stock reappears everywhere
+341. [ ] Click-through deep links from each row navigate to the relevant filtered list (Transactions filtered by ticker, Dividends filtered by ticker, Portfolio editor for the relevant portfolio, Watchlist editor)
+342. [ ] Permanent delete: confirmation dialog; removes the `stockProfile` row plus any orphan `apiDividendHistory` entries for that ticker. Disabled when any history exists
+
+---
+
+## Phase 31 — Dividend page (NEW SPEC-032)
+
+> Calendar + Metrics dashboards scoped to held stocks. Data flows entirely from the Phase 25 foundation.
+
+### SPEC-032 Dividend page — implementation
+> All acceptance criteria below are tracked through the sub-phases of Phase 31.
+
+
+**Sub-phase 31a — Page shell + scope**
+343. [ ] New page: `Dividends`, accessible from the **Investments nav second-row tab** (alongside `Investments overview / Portfolios / Watchlists / Benchmarks`); same entry from the Investments dropdown on mobile
+344. [ ] Tabs: `Calendar`, `Metrics`
+345. [ ] Scope: held stocks only (= stocks with at least one open lot across investing accounts). Sold-out positions vanish on next load
+346. [ ] Page-level "Refresh dividend data" button: loops `getDividends` for every held ticker; per-ticker stale indicator visible
+
+**Sub-phase 31b — Calendar tab (month view)**
+347. [ ] Month grid with one cell per day; renders ex-div and pay-date markers per held stock
+348. [ ] Marker color coding: pay-date = green; ex-div = blue; declared = solid; estimated = dashed
+349. [ ] Toggle: "Show: Ex-div + Pay | Pay only" (default "Pay only")
+350. [ ] Month navigation: prev / next / today; persists last viewed month in localStorage
+350a. [ ] Marker collision: each cell shows up to 3 colored dots; when > 3 events fall on a single day, the third dot is replaced by a "+ N more" link that opens a per-day popup listing every event with full details (ticker, name, amount per share, declared/estimated state)
+
+**Sub-phase 31c — Calendar tab (table view) + view memory**
+351. [ ] "Month | Table" view toggle at top of Calendar tab; remembers last view in localStorage (default "Table view" per enhancement 4.2)
+352. [ ] Table view: vertically scrollable; renders next 3 months of records by default; lazy-loads further months in chunks as user scrolls down
+353. [ ] Table columns: date, ticker, name, type (ex-div / pay), amount per share, status (declared / estimated)
+
+**Sub-phase 31d — Metrics tab: payout chart + saved presets**
+354. [ ] Configurable chart: X-axis bucket (week / month / quarter / year), Y-axis (gross / net), bar / line toggle
+355. [ ] Filters: company, portfolio, country, region, continent, year range (default last 2 years + current year)
+356. [ ] Multi-dataset: user can stack one dataset per portfolio (or per region etc.) — chart legend labels each
+357. [ ] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction
+358. [ ] Saved chart configurations stored in a new `dividendChartPresets` collection (name, X bucket, Y type, filters, datasets, chart type); CRUD in-page; Settings → Storage card
+
+**Sub-phase 31e — Metrics tab: tables grouped by company / portfolio / country / region / continent**
+359. [ ] Group selector at the top of the Metrics tab tables section
+360. [ ] Column-picker: TTM yield, Forward yield, Last 12-months amount, Next 12-months amount (declared + estimated), CAGR 3y, CAGR 5y, CAGR 10y
+361. [ ] CAGR computation: per-share, from `apiDividendHistory` only (Definition A — industry-standard "stock dividend growth rate"); shows "NA" when fewer than N+1 years of history are present
+362. [ ] Yield computations match Stock page (Phase 28b) — single source of truth; group rows aggregate the underlying stocks' positions weighted by MV
+362a. [ ] Sort: clicking any column header re-sorts the table; sort choice persisted in localStorage per (grouping, column) so each grouping remembers its own sort. Default when no choice has been made: descending by `Last 12-months amount`

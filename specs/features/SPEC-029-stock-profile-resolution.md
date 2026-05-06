@@ -1,7 +1,7 @@
 ---
 id: SPEC-029
 name: Stock Profile Resolution
-status: in-progress
+status: done
 created: 2026-04-29
 ---
 
@@ -32,13 +32,13 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - [x] Resolution does **not** fire from CSV imports — CSV-imported stocks without names are simply unresolved; user resolves later from the stock page.
 
 ### Direction A — ticker entered, name unknown
-- [ ] Step 1: app calls `searchSymbols(ticker)` on the market-data provider chain (SPEC-027). The chain queries every enabled provider's symbol-search endpoint and returns a merged candidate list of `{ ticker, name, exchange, currency, source }` rows. Candidates are unique by `(ticker, exchange, currency)` — listings that share an exchange but differ in trading currency (cross-listings, dual-currency ETFs, GDR/ADR pairs) appear as separate rows so the user can pick the currency they want to track. **Implemented as part of SPEC-027 sub-phase 11c.**
+- [x] Step 1: app calls `searchSymbols(ticker)` on the market-data provider chain (SPEC-027). The chain queries every enabled provider's symbol-search endpoint and returns a merged candidate list of `{ ticker, name, exchange, currency, source }` rows. Candidates are unique by `(ticker, exchange, currency)` — listings that share an exchange but differ in trading currency (cross-listings, dual-currency ETFs, GDR/ADR pairs) appear as separate rows so the user can pick the currency they want to track. **Implemented as part of SPEC-027 sub-phase 11c.**
 - [x] Step 2: if step 1 returns zero candidates (or SPEC-027 is not configured / no provider supports search), **and** an AI connection is configured & enabled (SPEC-026), the app sends a built-in lookup prompt asking for up to 3 candidates as strict JSON. Each parsed candidate is added to the list labeled "from AI". The AI prompt requires `currency` in the candidate JSON.
 - [x] Step 3: regardless of candidates from steps 1–2, the dialog always offers a final **"Enter manually"** row that collects `name`, `exchange`, and **`currency`**.
 - [x] If steps 1–2 both return zero (or neither is configured), the dialog opens directly on the manual entry row.
 
 ### Direction B — name entered, ticker unknown
-- [ ] Step 1: `searchSymbols(name)` on the provider chain (SPEC-027). Same merge-and-disambiguate behaviour as Direction A — currency is part of the candidate key.
+- [x] Step 1: `searchSymbols(name)` on the provider chain (SPEC-027). Same merge-and-disambiguate behaviour as Direction A — currency is part of the candidate key.
 - [x] Step 2: AI fallback with prompt variant asking for ticker too: `{ candidates: [{ ticker, name, exchange, currency }] }`.
 - [x] Step 3: manual entry — user types ticker + name + exchange + currency.
 - [x] In Direction B, the ticker column is shown for each candidate; manual row shows a ticker field.
@@ -46,20 +46,20 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 ### Confirmation UI
 - [x] Resolution opens a modal dialog titled "Identify {ticker}" (Direction A) or "Find ticker for '{query}'" (Direction B).
 - [x] Each candidate row shows: source label (`"from Yahoo"`, `"from Yahoo + Massive"`, `"from AI"`, `"manually"`), name, exchange, **currency**. Currency is always rendered — even when only one candidate exists — because two candidates that differ only in trading currency are otherwise indistinguishable. Unknown fields render as "—".
-- [ ] Each candidate row also shows the **current price** fetched via `getLatestPrice`. Price calls run in parallel per candidate (keyed by `ticker + exchange`), are non-blocking — the row renders immediately without price and updates when the call resolves — and show "—" if the call fails or the provider returns nothing. The manual entry row never shows a price.
+- [x] Each candidate row also shows the **current price** fetched via `getLatestPrice`. Price calls run in parallel per candidate (keyed by `ticker + exchange`), are non-blocking — the row renders immediately without price and updates when the call resolves — and show "—" if the call fails or the provider returns nothing. The manual entry row never shows a price.
 - [x] Exactly one candidate must be selected to confirm (radio-style). Default: first non-manual, falling back to manual if only option.
 - [x] On confirm, the selected candidate is upserted onto `stockProfile` as the canonical triple (`ticker` bare with no suffix, `stockExchange` as a canonical MIC, `currency` as a major-unit ISO code), plus `name`, `resolvedSource`, `resolvedAt`. Dialog closes and originating form continues with pre-filled values.
 - [x] Cancel behavior: buy form save is not blocked (no lock on unresolved tickers); watchlist entry is not added; stock-page re-resolve writes nothing.
 
 ### Ticker rename
-- [ ] The stock page header shows a **"Rename ticker"** button alongside "Refresh profile". It is always visible (not conditional on the profile being resolved).
-- [ ] Clicking "Rename ticker" opens a small input dialog: a single field for the new ticker and a "Look up" button (or Enter to submit). The old ticker is shown as context.
-- [ ] On submit, the app runs `searchSymbols(newTicker)` and `getLatestPrice(newTicker)` in parallel.
+- [x] The stock page header shows a **"Rename ticker"** button alongside "Refresh profile". It is always visible (not conditional on the profile being resolved).
+- [x] Clicking "Rename ticker" opens a small input dialog: a single field for the new ticker and a "Look up" button (or Enter to submit). The old ticker is shown as context.
+- [x] On submit, the app runs `searchSymbols(newTicker)` and `getLatestPrice(newTicker)` in parallel.
   - If the lookup returns **one candidate**: a confirmation card shows the candidate's name, stock exchange, currency, and current price, plus the warning "All historical transactions, dividends, and watchlist entries will be updated. This cannot be undone." Buttons: [Cancel] [Rename].
   - If the lookup returns **multiple candidates**: the full candidate-picker dialog opens (same UI as Direction A, with price column) so the user selects the right listing. Confirm button is labelled "Rename".
   - If the lookup returns **zero candidates**: a confirmation card shows only the new ticker (no name/exchange/currency/price) and the same irreversibility warning. User can still confirm.
-- [ ] On confirm, `renameTicker(oldTicker, newTicker, profile)` is called. It atomically updates all five collections — `stockProfiles`, `stockTransactions`, `dividends`, `watchlistEntries`, `portfolioAssignments` — replacing `oldTicker` with `newTicker` in every record's `ticker` field. It also upserts the resolved profile fields (name, stockExchange, currency, resolvedSource, resolvedAt) onto the new ticker's profile entry and clears the market-data price cache for the old ticker.
-- [ ] After rename, the stock page navigates to the new ticker (the old ticker route no longer exists).
+- [x] On confirm, `renameTicker(oldTicker, newTicker, profile)` is called. It atomically updates all five collections — `stockProfiles`, `stockTransactions`, `dividends`, `watchlistEntries`, `portfolioAssignments` — replacing `oldTicker` with `newTicker` in every record's `ticker` field. It also upserts the resolved profile fields (name, stockExchange, currency, resolvedSource, resolvedAt) onto the new ticker's profile entry and clears the market-data price cache for the old ticker.
+- [x] After rename, the stock page navigates to the new ticker (the old ticker route no longer exists).
 
 ### Pre-filling parent forms
 - [x] Buy form: resolved `stockExchange` and `currency` prefill empty fields; existing user values are not overwritten.

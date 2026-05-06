@@ -1,7 +1,7 @@
 ---
 id: SPEC-020
 name: Dividends
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
