@@ -44,7 +44,7 @@ Give the user a dedicated screen to see when their dividends are coming in, how 
 - [ ] Bar / line toggle
 - [ ] Filters: company, portfolio, country, region, continent, year range. Default range = last 2 years + current year
 - [ ] Multi-dataset: user can stack one dataset per portfolio (or per region etc.); chart legend labels each
-- [ ] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction
+- [ ] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction. Projection input excludes special dividends (per SPEC-020) — only `type === 'regular'` (or untyped legacy) records feed cadence detection and per-share estimation; declared specials still render as themselves but are not extrapolated forward
 - [ ] Saved chart configurations stored in a new `dividendChartPresets` collection (`name`, X bucket, Y type, filters, datasets, chart type); CRUD inline; Settings → Storage tab card
 
 ### Metrics tab — tables

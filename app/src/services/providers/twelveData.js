@@ -55,7 +55,7 @@ export const twelveData = {
     return data.values.map(v => ({ date: v.datetime.slice(0, 10), close: parseFloat(v.close) }))
   },
 
-  async getDividends(ticker, fromDate, toDate, config) {
+  async getDividends(ticker, _exchange, fromDate, toDate, config) {
     const data = await td('/dividends', { symbol: ticker, start_date: fromDate, end_date: toDate }, config)
     if (!data.dividends) throw new Error('no data')
     return data.dividends.map(d => {
@@ -110,6 +110,21 @@ export const twelveData = {
       rate: parseFloat(data.values[0].close),
       date: data.values[0].datetime.slice(0, 10),
     }
+  },
+
+  async getIntradaySeries(ticker, exchange, config) {
+    const symbol = tdSymbol(ticker, exchange)
+    const data = await td('/time_series', {
+      symbol,
+      interval:   '1min',
+      outputsize: 500,
+      order:      'ASC',
+    }, config)
+    if (!data.values) throw new Error('no data')
+    return data.values.map(v => ({
+      time:  v.datetime.replace(' ', 'T'),
+      close: parseFloat(v.close),
+    }))
   },
 
   async getIndexSeries(indexTicker, period, resolution, config) {

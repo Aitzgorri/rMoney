@@ -7,6 +7,7 @@ const notImplemented = method => async () => { throw new Error(`Finnhub: ${metho
 export const finnhub = {
   getLatestPrice:      notImplemented('getLatestPrice'),
   getHistoricalSeries: notImplemented('getHistoricalSeries'),
+  getIntradaySeries:   notImplemented('getIntradaySeries'),
   getDividends:        notImplemented('getDividends'),
   getCorporateActions: notImplemented('getCorporateActions'),
   getNews:             notImplemented('getNews'),

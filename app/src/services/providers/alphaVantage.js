@@ -56,7 +56,7 @@ export const alphaVantage = {
       .sort((a, b) => a.date.localeCompare(b.date))
   },
 
-  async getDividends(ticker, fromDate, toDate, config) {
+  async getDividends(ticker, _exchange, fromDate, toDate, config) {
     // TIME_SERIES_DAILY_ADJUSTED has a "7. dividend amount" field on ex-dividend days
     const data = await av({ function: 'TIME_SERIES_DAILY_ADJUSTED', symbol: ticker, outputsize: 'full' }, config)
     const series = data['Time Series (Daily)']
@@ -123,6 +123,10 @@ export const alphaVantage = {
 
   async getIndexSeries(indexTicker, period, resolution, config) {
     return alphaVantage.getHistoricalSeries(indexTicker, null, period, resolution, config)
+  },
+
+  async getIntradaySeries(_ticker, _exchange, _config) {
+    throw new Error('not supported')
   },
 
   async searchSymbols(_query, _config) {

@@ -28,10 +28,11 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [x] **Source cash balance:** automatically uses the investing account's cash balance matching the trade's currency. Auto-created with opening 0 if it does not yet exist.
 - [x] If the source cash balance does not exist (the currency has no balance yet), the app creates one automatically with opening 0 and proceeds.
 - [ ] If the selected source cash balance's currency differs from the trade's currency, saving the buy **also creates a currency-exchange transaction** — deferred to Phase 12e.
-- [ ] On save, exchange rates at the transaction date are snapshotted via SPEC-017 — deferred to Phase 10 historical-rate work.
+- [x] On save, exchange rates at the transaction date are snapshotted via `snapshotFxRates()` (SPEC-017). Stored as `exchangeRates: { mainCurrency, rateToMain, capturedAt }` on buy/sell records; `{ mainCurrency, sourceRateToMain, targetRateToMain, capturedAt }` on currency-exchange records; `null` on transfer and split. *(Phase 25a)*
 - [x] Saving a buy writes a **cashMovement** (`type: 'buy'`) debiting the matching-currency cash balance by `shares × price`, and a second **cashMovement** (`type: 'buy-fee'`) debiting the same balance by `fee` when `fee > 0`.
 - [x] If the buy would take the matching-currency cash balance negative, the negative-balance confirmation dialog (SPEC-018) is shown before save.
 - [x] Weighted-average cost per share is recomputed for the stock+investing-account pair (display only — computed from remaining open lots).
+- [x] Edit form for buy: edits date, exchange, shares, price, fee, transaction ID; recreates cashMovements and recaptures FX snapshot when date changes. Ticker and currency are non-editable to avoid cascading cost-basis changes. *(Phase 26c)*
 - [ ] Editing a buy record retroactively updates every sell's cost-basis calculation — deferred.
 
 ### Sell records
@@ -41,8 +42,9 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [ ] **Proceeds destination cash balance selector** — deferred; currently always uses the matching-currency balance.
 - [x] Auto-creates a matching-currency cash balance if it doesn't yet exist.
 - [x] Saving a sell writes a **cashMovement** (`type: 'sell'`) crediting the matching-currency cash balance by `shares × price`, plus a **cashMovement** (`type: 'sell-fee'`) debiting the same balance by `fee` when `fee > 0`.
-- [ ] Exchange rates at sell date snapshotted — deferred.
+- [x] Exchange rates at sell date snapshotted via `snapshotFxRates()`. *(Phase 25a)*
 - [ ] Realized P/L per lot — deferred to Phase 14 (Stock page).
+- [x] Edit form for sell: edits date, exchange, shares, price, fee, transaction ID; lot picker always available for re-allocation; recreates cashMovements and recaptures FX snapshot when date changes. *(Phase 26c)*
 
 ### Transfers between investing accounts
 - [x] Transfer form fields: date, source investing account (the account being viewed), destination investing account, ticker, shares, optional fee (default 0). — `TransferForm` in `screens/InvestingAccountDetail.jsx`; `Transfer` button lives in the Positions section header (between `+ Dividend` and `Import CSV`), only shown when at least one open position exists. Ticker is picked from the form's dropdown.
@@ -57,6 +59,7 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [ ] On **Dismiss**: notification is cleared; lots are not modified; the split can still be entered manually later. — *deferred (requires SPEC-027 notification flow)*
 - [x] Manual split entry form: date, ticker, ratio (e.g. 2:1, 1:10 reverse). — `+ Split` button in Stock page Positions section opens an inline form with effective date and "X for every Y old shares" ratio inputs; live hint indicates forward vs reverse split and effective multiplier.
 - [x] Splits cannot be "un-applied" — to correct, delete the split record (reverses the ratio). — Since splits are applied dynamically at read time, deleting the split record restores the pre-split view automatically (no mutation to reverse).
+- [x] Edit form for split: change date and/or ratio. Accessible via an edit (✎) button on each split row in the StockPage transaction list. Recalculation is automatic at read time via `getOpenLots`. *(Phase 26c / item 287)*
 - [x] Splits have no cash-balance effect (no cashMovement written). — `applySplit()` writes only stockTransactions records, never cashMovements.
 
 ### Currency exchange (as a stock transaction type)

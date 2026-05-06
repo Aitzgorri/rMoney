@@ -6,8 +6,9 @@
 // Invariant: stores only normalised response data (price, rate, text).
 // NEVER stores API URLs, API keys, or any credential material.
 const CACHE_KEY = 'rmoney_market_data_cache'
-const TTL_PRICES_MS = 60 * 60 * 1000       // 1 hour
-const TTL_NEWS_MS   = 15 * 60 * 1000       // 15 minutes
+const TTL_PRICES_MS   = 60 * 60 * 1000     // 1 hour
+const TTL_NEWS_MS     = 15 * 60 * 1000     // 15 minutes
+const TTL_INTRADAY_MS =  5 * 60 * 1000     // 5 minutes
 // Profiles cached indefinitely — only cleared by explicit refresh action
 
 function loadCache() {
@@ -54,9 +55,9 @@ export function clearProfileCache() {
   saveCache({ ...c, profiles: {} })
 }
 
-// Clears all three caches at once — call when credentials change.
+// Clears all hot caches at once — call when credentials change.
 export function clearAllMarketCaches() {
-  saveCache({ prices: {}, news: {}, profiles: {} })
+  saveCache({ prices: {}, news: {}, profiles: {}, intraday: {} })
 }
 
 // ─── News cache ───────────────────────────────────────────────────────────────
@@ -74,6 +75,21 @@ export function setCachedNews(ticker, items) {
     ...c,
     news: { ...(c.news ?? {}), [ticker.toUpperCase()]: { items, fetchedAt: new Date().toISOString() } },
   })
+}
+
+// ─── Intraday cache (5-min TTL) ───────────────────────────────────────────────
+
+export function getCachedIntraday(ticker, exchange) {
+  const entry = loadCache().intraday?.[cacheKey(ticker, exchange)]
+  if (!entry) return null
+  if (Date.now() - new Date(entry.fetchedAt).getTime() > TTL_INTRADAY_MS) return null
+  return entry.points
+}
+
+export function setCachedIntraday(ticker, exchange, points) {
+  const k = cacheKey(ticker, exchange)
+  const c = loadCache()
+  saveCache({ ...c, intraday: { ...(c.intraday ?? {}), [k]: { points, fetchedAt: new Date().toISOString() } } })
 }
 
 // ─── Profile cache (indefinite) ───────────────────────────────────────────────
@@ -102,6 +118,11 @@ export function clearCacheForTicker(ticker) {
       Object.entries(c.prices).filter(([k]) => k !== t && !k.startsWith(t + ':'))
     )
   }
+  if (c.intraday) {
+    c.intraday = Object.fromEntries(
+      Object.entries(c.intraday).filter(([k]) => k !== t && !k.startsWith(t + ':'))
+    )
+  }
   if (c.profiles) delete c.profiles[t]
   if (c.news)     delete c.news[t]
   saveCache(c)
@@ -116,9 +137,10 @@ export function getCacheStorageBytes() {
 export function getCacheStats() {
   const c = loadCache()
   return {
-    priceEntries:   Object.keys(c.prices   ?? {}).length,
-    newsEntries:    Object.keys(c.news     ?? {}).length,
-    profileEntries: Object.keys(c.profiles ?? {}).length,
+    priceEntries:    Object.keys(c.prices   ?? {}).length,
+    newsEntries:     Object.keys(c.news     ?? {}).length,
+    profileEntries:  Object.keys(c.profiles ?? {}).length,
+    intradayEntries: Object.keys(c.intraday ?? {}).length,
     bytes: getCacheStorageBytes(),
   }
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getStockTransactionsByTicker, getPositions, applySplit } from '../data/stockTransactions'
+import { getStockTransactionsByTicker, getPositions, applySplit, updateSplit } from '../data/stockTransactions'
 import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent } from '../data/dividends'
 import { getInvestingAccounts } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import { getLatestPrice, getHistoricalSeries, getNews } from '../data/marketDataClient'
+import { refreshApiDividendHistory, isStaleForTicker } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections } from '../utils/dividendProjections'
 import { convertToMain, ensureRates } from '../utils/currency'
@@ -33,6 +34,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [resolving,       setResolving]       = useState(false)
   const [profileKey,      setProfileKey]      = useState(0)  // bump to re-read profile after resolution
   const [renaming,        setRenaming]        = useState(false)
+  const [editingProfile,  setEditingProfile]  = useState(false)
+  const [editingSplitTx,  setEditingSplitTx]  = useState(null)  // split stockTransaction being edited
   const [manualPriceForm, setManualPriceForm] = useState(null)   // null | { amount: string, currency: string }
   const [manualPriceKey,  setManualPriceKey]  = useState(0)      // bump to re-read manual price after save/clear
   const [livePrice,       setLivePrice]       = useState(null)   // null | { price, currency, asOf, providerName }
@@ -43,6 +46,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [news,            setNews]            = useState([])
   const [newsStatus,      setNewsStatus]      = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [ratesVersion,    setRatesVersion]    = useState(0)
+  const [divRefreshStatus, setDivRefreshStatus] = useState('idle') // 'idle' | 'loading' | 'failed'
+  const [divHistoryKey,    setDivHistoryKey]    = useState(0)      // bump to re-read stale indicator
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -157,6 +162,21 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     ? computeProjections(dividends, { rule: effectiveRule, manualAmount: profile?.manualEstimatedAmount ?? null })
     : []
 
+  // Re-read on every render; divHistoryKey bump causes a re-render so isStale stays fresh
+  const isStale = isStaleForTicker(norm)
+
+  async function handleRefreshDividends() {
+    setDivRefreshStatus('loading')
+    try {
+      await refreshApiDividendHistory(norm, profile?.stockExchange ?? null)
+      setDivRefreshStatus('idle')
+    } catch {
+      setDivRefreshStatus('failed')
+    } finally {
+      setDivHistoryKey(k => k + 1)
+    }
+  }
+
   function handleRuleChange(rule) {
     upsertStockProfile(norm, { amountEstimationRule: rule })
     setProfileKey(k => k + 1)
@@ -200,11 +220,37 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         </button>
         <button
           className={styles.profileBtn}
+          onClick={() => setEditingProfile(true)}
+          title="Edit profile fields manually"
+        >
+          Edit profile
+        </button>
+        <button
+          className={styles.profileBtn}
           onClick={() => setRenaming(true)}
           title="Rename ticker"
         >
           Rename ticker
         </button>
+        <button
+          className={styles.profileBtn}
+          onClick={handleRefreshDividends}
+          disabled={divRefreshStatus === 'loading'}
+          title="Fetch dividend history from market data providers"
+        >
+          {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
+        </button>
+        {isStale && (
+          <span
+            className={styles.staleDot}
+            title="Dividend data is missing or outdated — click Refresh dividends"
+          >
+            ●
+          </span>
+        )}
+        {divRefreshStatus === 'failed' && (
+          <span className={styles.divRefreshError}>Refresh failed</span>
+        )}
       </div>
 
       {/* Price row */}
@@ -298,6 +344,30 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             onNavigate('stock', { ticker: newTicker })
           }}
           onCancel={() => setRenaming(false)}
+        />
+      )}
+
+      {editingProfile && (
+        <EditProfileDialog
+          ticker={norm}
+          profile={profile}
+          onSave={fields => {
+            upsertStockProfile(norm, fields)
+            setEditingProfile(false)
+            setProfileKey(k => k + 1)
+          }}
+          onCancel={() => setEditingProfile(false)}
+        />
+      )}
+
+      {editingSplitTx && (
+        <EditSplitDialog
+          txn={editingSplitTx}
+          onSave={({ date, numerator, denominator }) => {
+            updateSplit(editingSplitTx.id, { date, numerator, denominator })
+            setEditingSplitTx(null)
+          }}
+          onCancel={() => setEditingSplitTx(null)}
         />
       )}
 
@@ -477,7 +547,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             ) : (
               <div className={styles.txList}>
                 {filteredTxns.map(t => (
-                  <TxRow key={t.id} txn={t} accountsById={accountsById} />
+                  <TxRow
+                    key={t.id}
+                    txn={t}
+                    accountsById={accountsById}
+                    onEditSplit={t._kind === 'split' ? () => setEditingSplitTx(t) : null}
+                  />
                 ))}
               </div>
             )}
@@ -501,6 +576,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                         {fmtAmt(d.dividendPerShare)}/sh × {trimDec(d.shareCount)}
                         {d.taxPercent > 0 && ` (${d.taxPercent}% tax)`}
                       </span>
+                      {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
                       <span className={styles.divNet}>{fmtAmt(netTotal)} {d.currency}</span>
                       {account && <span className={styles.divAccount}>{account.name}</span>}
                     </div>
@@ -640,7 +716,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 
-function TxRow({ txn, accountsById }) {
+function TxRow({ txn, accountsById, onEditSplit }) {
   const account = accountsById[txn.investingAccountId]
   const kind = txn._kind
 
@@ -688,6 +764,9 @@ function TxRow({ txn, accountsById }) {
       <span className={styles.txDesc}>{desc}</span>
       <span className={`${styles.txAmount} ${amountCls}`}>{amountStr}</span>
       {account && <span className={styles.txAccount}>{account.name}</span>}
+      {onEditSplit && (
+        <button className={styles.txEditBtn} onClick={onEditSplit} title="Edit split">✎</button>
+      )}
     </div>
   )
 }
@@ -716,6 +795,151 @@ function formatNewsDate(iso) {
   if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// ─── Edit profile dialog (26b) ────────────────────────────────────────────────
+
+function EditProfileDialog({ ticker, profile, onSave, onCancel }) {
+  const [name,      setName]      = useState(profile?.name ?? '')
+  const [exchange,  setExchange]  = useState(profile?.stockExchange ?? '')
+  const [currency,  setCurrency]  = useState(profile?.currency ?? '')
+  const [hqCountry, setHqCountry] = useState(profile?.hqCountry ?? '')
+  const [frequency, setFrequency] = useState(profile?.dividendFrequency ?? 'unknown')
+  const [estRule,   setEstRule]   = useState(profile?.amountEstimationRule ?? 'last-paid')
+  const [manualAmt, setManualAmt] = useState(String(profile?.manualEstimatedAmount ?? ''))
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const fields = {
+      name:                name.trim() || null,
+      stockExchange:       exchange.trim().toUpperCase() || null,
+      currency:            currency.trim().toUpperCase() || null,
+      hqCountry:           hqCountry.trim() || null,
+      dividendFrequency:   frequency,
+      amountEstimationRule: estRule,
+      manualEstimatedAmount: estRule === 'manual' && manualAmt !== '' ? Number(manualAmt) : null,
+    }
+    onSave(fields)
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>Edit profile — {ticker}</h2>
+        <p className={styles.dialogNote}>To change the ticker symbol, use Rename ticker instead.</p>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Company name</label>
+            <input className={styles.dialogInput} value={name} onChange={e => setName(e.target.value)} placeholder="Apple Inc." autoFocus />
+          </div>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Exchange (MIC)</label>
+              <input className={styles.dialogInput} value={exchange} onChange={e => setExchange(e.target.value.toUpperCase())} placeholder="XNAS" maxLength={8} />
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Currency (ISO)</label>
+              <input className={styles.dialogInput} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="USD" maxLength={4} />
+            </div>
+          </div>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>HQ country</label>
+            <input className={styles.dialogInput} value={hqCountry} onChange={e => setHqCountry(e.target.value)} placeholder="United States" />
+          </div>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Dividend frequency</label>
+              <select className={styles.dialogSelect} value={frequency} onChange={e => setFrequency(e.target.value)}>
+                <option value="unknown">Unknown</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="semi-annual">Semi-annual</option>
+                <option value="annual">Annual</option>
+              </select>
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Dividend estimation</label>
+              <select className={styles.dialogSelect} value={estRule} onChange={e => setEstRule(e.target.value)}>
+                <option value="last-paid">Last paid</option>
+                <option value="year-ago">Year ago</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+          </div>
+          {estRule === 'manual' && (
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Manual estimate (per share)</label>
+              <input className={styles.dialogInput} type="number" min="0" step="any" value={manualAmt} onChange={e => setManualAmt(e.target.value)} placeholder="0.25" />
+            </div>
+          )}
+          <div className={styles.dialogActions}>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn}>Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Edit split dialog (26c / item 287) ──────────────────────────────────────
+
+function EditSplitDialog({ txn, onSave, onCancel }) {
+  const [date,  setDate]  = useState(txn.date)
+  const [num,   setNum]   = useState(String(txn.ratio?.numerator ?? 2))
+  const [den,   setDen]   = useState(String(txn.ratio?.denominator ?? 1))
+  const [error, setError] = useState('')
+
+  const canSave = Number(num) > 0 && Number(den) > 0 && date
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    setError('')
+    try {
+      onSave({ date, numerator: Number(num), denominator: Number(den) })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>Edit split — {txn.ticker}</h2>
+        <p className={styles.dialogNote}>Changing the date or ratio recalculates all affected lot sizes at read time.</p>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Effective date</label>
+            <input className={styles.dialogInput} type="date" value={date} onChange={e => setDate(e.target.value)} autoFocus />
+          </div>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Ratio (new shares for every old share)</label>
+            <div className={styles.splitRatioRow}>
+              <input className={styles.dialogInputNarrow} type="number" min="0" step="any" value={num} onChange={e => setNum(e.target.value)} />
+              <span className={styles.splitSep}>for every</span>
+              <input className={styles.dialogInputNarrow} type="number" min="0" step="any" value={den} onChange={e => setDen(e.target.value)} />
+              <span className={styles.splitSep}>old</span>
+            </div>
+            {num && den && Number(den) > 0 && (
+              <p className={styles.splitHint}>
+                {Number(num) > Number(den)
+                  ? `Forward split — shares scale by ${(Number(num) / Number(den)).toFixed(4).replace(/\.?0+$/, '')}×`
+                  : Number(num) < Number(den)
+                    ? `Reverse split — shares scale by ${(Number(num) / Number(den)).toFixed(4).replace(/\.?0+$/, '')}×`
+                    : 'No effect (1:1 ratio)'}
+              </p>
+            )}
+          </div>
+          {error && <p className={styles.splitErrorMsg}>{error}</p>}
+          <div className={styles.dialogActions}>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave}>Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 }
 
 // ─── Price chart ──────────────────────────────────────────────────────────────

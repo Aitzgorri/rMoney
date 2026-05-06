@@ -28,7 +28,7 @@ Accounts already carry a currency field today ([SPEC-002](SPEC-002-accounts.md))
 - [x] Exchange rates are fetched via `open.er-api.com` (free, no key) until SPEC-027 provider chain is built.
 - [x] Current rates are cached with a 1-hour TTL.
 - [x] A "Refresh rates" button on the Dashboard triggers an immediate re-fetch; the timestamp of the last successful refresh is displayed ("Rates as of 2026-04-23 08:14").
-- [ ] Historical-rate snapshot helper: when Investments records a buy / sell / dividend, it calls into this layer to capture the rates at that date and stores them on the transaction (rates for main, USD, EUR, GBP, CZK). The snapshot uses an end-of-day rate for the transaction date. *(deferred to Phase 12/13)*
+- [x] Historical-rate snapshot helper: `snapshotFxRates(tradingCurrency, date, mainCurrency)` in `utils/currency.js` fetches the historical rate via SPEC-027 `getHistoricalForex` and returns `{ mainCurrency, rateToMain, capturedAt }` or `null`. Called at buy/sell/exchange write time. Backfill for existing records via `backfillFxSnapshots()` in `data/stockTransactions.js` (runs from Settings → Storage). *(Phase 25a)*
 - [x] When a provider returns no rate for a pair (rate unavailable) and no cache entry exists, the UI shows "—" for the converted value and flags it; it does not fall back to last-known-good stale data silently.
 
 ## UI / Screens

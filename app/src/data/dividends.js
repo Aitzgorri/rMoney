@@ -47,7 +47,7 @@ export function getDividend(id) {
   return load().find(d => d.id === id) ?? null
 }
 
-export function createDividend({ investingAccountId, ticker, currency, exDividendDate, payoutDate, dividendPerShare, shareCount, taxPercent }) {
+export function createDividend({ investingAccountId, ticker, currency, exDividendDate, payoutDate, dividendPerShare, shareCount, taxPercent, type }) {
   const { netTotal } = computeDividendDerived({ dividendPerShare, shareCount, taxPercent })
 
   let balance = getCashBalanceByCurrency(investingAccountId, currency)
@@ -63,6 +63,7 @@ export function createDividend({ investingAccountId, ticker, currency, exDividen
     dividendPerShare: Number(dividendPerShare),
     shareCount: Number(shareCount),
     taxPercent: Number(taxPercent),
+    type: type === 'special' ? 'special' : 'regular',
     exchangeRates: null,
     cashMovementId: null,
     createdAt: new Date().toISOString(),
@@ -82,12 +83,17 @@ export function createDividend({ investingAccountId, ticker, currency, exDividen
   return withMovement
 }
 
-export function updateDividend(id, { dividendPerShare, taxPercent }) {
+export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
   const list = load()
   const dividend = list.find(d => d.id === id)
   if (!dividend) return null
 
-  const updated = { ...dividend, dividendPerShare: Number(dividendPerShare), taxPercent: Number(taxPercent) }
+  const updated = {
+    ...dividend,
+    dividendPerShare: Number(dividendPerShare),
+    taxPercent: Number(taxPercent),
+    ...(type !== undefined ? { type: type === 'special' ? 'special' : 'regular' } : {}),
+  }
   const { netTotal } = computeDividendDerived(updated)
   save(list.map(d => d.id === id ? updated : d))
 

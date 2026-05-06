@@ -7,6 +7,7 @@ const notImplemented = method => async () => { throw new Error(`Stooq: ${method}
 export const stooq = {
   getLatestPrice:      notImplemented('getLatestPrice'),
   getHistoricalSeries: notImplemented('getHistoricalSeries'),
+  getIntradaySeries:   notImplemented('getIntradaySeries'),
   getDividends:        notImplemented('getDividends'),
   getCorporateActions: notImplemented('getCorporateActions'),
   getNews:             notImplemented('getNews'),

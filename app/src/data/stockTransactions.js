@@ -1,4 +1,6 @@
 import { getCashBalanceByCurrency, createCashBalance, addCashMovement } from './investingAccounts'
+import { getHistoricalForex } from './marketDataClient'
+import { getMainCurrency } from './settings'
 
 const KEY = 'rmoney_stock_transactions'
 
@@ -92,10 +94,15 @@ export function getOpenLots(investingAccountId, ticker) {
       const m = splitMultiplierAfter(buy.date)
       const adjustedShares = buy.shares * m
       const adjustedPrice  = m === 0 ? 0 : buy.price / m
+      // Fee-inclusive price: (shares × price + fee) / shares, pro-rated by split multiplier.
+      // Transfer-in lots carry no fee (fee was paid in the source account).
+      const fee = buy.fee ?? 0
+      const feeInclusivePrice = adjustedShares > 0 ? adjustedPrice + fee / adjustedShares : adjustedPrice
       return {
         ...buy,
         shares: adjustedShares,
         price: adjustedPrice,
+        feeInclusivePrice,
         remainingShares: adjustedShares - (consumed[buy.id] ?? 0),
       }
     })
@@ -119,7 +126,7 @@ export function getPositions(investingAccountId) {
     if (lots.length === 0) continue
     const shares = lots.reduce((s, l) => s + l.remainingShares, 0)
     if (shares < 0.000001) continue
-    const totalCost = lots.reduce((s, l) => s + l.remainingShares * l.price, 0)
+    const totalCost = lots.reduce((s, l) => s + l.remainingShares * l.feeInclusivePrice, 0)
     positions.push({ ticker, shares, avgCost: totalCost / shares, currency: lots[0].currency })
   }
   return positions.sort((a, b) => a.ticker.localeCompare(b.ticker))
@@ -138,7 +145,7 @@ export function computeFifoAllocations(openLots, totalShares) {
   return { allocations, satisfied: remaining <= 0.000001 }
 }
 
-export function createBuy({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null }) {
+export function createBuy({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null, exchangeRates = null }) {
   let balance = getCashBalanceByCurrency(investingAccountId, currency)
   if (!balance) balance = createCashBalance({ investingAccountId, currency, openingBalance: 0 })
 
@@ -155,19 +162,22 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
     fee: Number(fee),
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations: null,
-    exchangeRates: null,
+    exchangeRates,
     createdAt: new Date().toISOString(),
   }
   save([...load(), txn])
 
-  addCashMovement({ type: 'buy', date, cashBalanceId: balance.id, amount: -(Number(shares) * Number(price)), linkedStockTransactionId: txn.id })
+  const mvtSnapshot = exchangeRates
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.rateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'buy', date, cashBalanceId: balance.id, amount: -(Number(shares) * Number(price)), linkedStockTransactionId: txn.id, exchangeRatesSnapshot: mvtSnapshot })
   if (Number(fee) > 0) {
-    addCashMovement({ type: 'buy-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: txn.id })
+    addCashMovement({ type: 'buy-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: txn.id, exchangeRatesSnapshot: mvtSnapshot })
   }
   return txn
 }
 
-export function createSell({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null, lotAllocations = null }) {
+export function createSell({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null, lotAllocations = null, exchangeRates = null }) {
   if (!lotAllocations) {
     const { allocations } = computeFifoAllocations(getOpenLots(investingAccountId, ticker), Number(shares))
     lotAllocations = allocations
@@ -189,14 +199,17 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
     fee: Number(fee),
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations,
-    exchangeRates: null,
+    exchangeRates,
     createdAt: new Date().toISOString(),
   }
   save([...load(), txn])
 
-  addCashMovement({ type: 'sell', date, cashBalanceId: balance.id, amount: Number(shares) * Number(price), linkedStockTransactionId: txn.id })
+  const mvtSnapshot = exchangeRates
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.rateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'sell', date, cashBalanceId: balance.id, amount: Number(shares) * Number(price), linkedStockTransactionId: txn.id, exchangeRatesSnapshot: mvtSnapshot })
   if (Number(fee) > 0) {
-    addCashMovement({ type: 'sell-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: txn.id })
+    addCashMovement({ type: 'sell-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: txn.id, exchangeRatesSnapshot: mvtSnapshot })
   }
   return txn
 }
@@ -261,6 +274,7 @@ export function createCurrencyExchange({
   exchangeRate,
   feeAmount = 0,
   feeCashBalanceId = null,
+  exchangeRates = null,
 }) {
   const txn = {
     id: crypto.randomUUID(),
@@ -275,11 +289,18 @@ export function createCurrencyExchange({
     feeCashBalanceId: (feeCashBalanceId && Number(feeAmount) > 0) ? feeCashBalanceId : null,
     feeAmount: Number(feeAmount) > 0 ? Number(feeAmount) : null,
     triggeredByStockTransactionId: null,
+    exchangeRates,
     createdAt: new Date().toISOString(),
   }
   save([...load(), txn])
-  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: sourceCashBalanceId, amount: -Number(sourceAmount), linkedExchangeId: txn.id, linkedStockTransactionId: txn.id })
-  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: targetCashBalanceId, amount: Number(sourceAmount) * Number(exchangeRate), linkedExchangeId: txn.id, linkedStockTransactionId: txn.id })
+  const srcSnapshot = (exchangeRates?.sourceRateToMain != null)
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.sourceRateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  const tgtSnapshot = (exchangeRates?.targetRateToMain != null)
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.targetRateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: sourceCashBalanceId, amount: -Number(sourceAmount), linkedExchangeId: txn.id, linkedStockTransactionId: txn.id, exchangeRatesSnapshot: srcSnapshot })
+  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: targetCashBalanceId, amount: Number(sourceAmount) * Number(exchangeRate), linkedExchangeId: txn.id, linkedStockTransactionId: txn.id, exchangeRatesSnapshot: tgtSnapshot })
   if (Number(feeAmount) > 0 && feeCashBalanceId) {
     addCashMovement({ type: 'exchange-fee', date, cashBalanceId: feeCashBalanceId, amount: -Number(feeAmount), linkedExchangeId: txn.id, linkedStockTransactionId: txn.id })
   }
@@ -292,6 +313,7 @@ export function updateCurrencyExchange(id, {
   exchangeRate,
   feeAmount = 0,
   feeCashBalanceId = null,
+  exchangeRates = null,
 }) {
   const txns = load()
   const txn = txns.find(t => t.id === id)
@@ -311,11 +333,18 @@ export function updateCurrencyExchange(id, {
     exchangeRate: Number(exchangeRate),
     feeCashBalanceId: (feeCashBalanceId && Number(feeAmount) > 0) ? feeCashBalanceId : null,
     feeAmount: Number(feeAmount) > 0 ? Number(feeAmount) : null,
+    exchangeRates,
   }
   save(txns.map(t => t.id === id ? updated : t))
 
-  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: txn.sourceCashBalanceId, amount: -Number(sourceAmount), linkedExchangeId: id, linkedStockTransactionId: id })
-  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: txn.targetCashBalanceId, amount: Number(sourceAmount) * Number(exchangeRate), linkedExchangeId: id, linkedStockTransactionId: id })
+  const srcSnapshot = (exchangeRates?.sourceRateToMain != null)
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.sourceRateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  const tgtSnapshot = (exchangeRates?.targetRateToMain != null)
+    ? { mainCurrency: exchangeRates.mainCurrency, rateToMain: exchangeRates.targetRateToMain, capturedAt: exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: txn.sourceCashBalanceId, amount: -Number(sourceAmount), linkedExchangeId: id, linkedStockTransactionId: id, exchangeRatesSnapshot: srcSnapshot })
+  addCashMovement({ type: 'currency-exchange', date, cashBalanceId: txn.targetCashBalanceId, amount: Number(sourceAmount) * Number(exchangeRate), linkedExchangeId: id, linkedStockTransactionId: id, exchangeRatesSnapshot: tgtSnapshot })
   if (Number(feeAmount) > 0 && feeCashBalanceId) {
     addCashMovement({ type: 'exchange-fee', date, cashBalanceId: feeCashBalanceId, amount: -Number(feeAmount), linkedExchangeId: id, linkedStockTransactionId: id })
   }
@@ -383,11 +412,217 @@ export function createTransfer({
   return txn
 }
 
-// Manually apply a stock split: writes one `split` stock-transaction record on every investing
+// Walks all stockTransactions and cashMovements that lack an FX snapshot (or have one for a
+// different main currency) and fills them using SPEC-027 historical forex.
+// Marks each backfilled record with fxBackfilled: true for transparency.
+// Returns { processed, failed } counts.
+export async function backfillFxSnapshots({ onProgress } = {}) {
+  const mainCurrency = getMainCurrency()
+  const KEY_MOVEMENTS = 'rmoney_cash_movements'
+  const KEY_BALANCES  = 'rmoney_cash_balances'
 
-// Manually apply a stock split: writes one `split` stock-transaction record on every investing
-// account that currently has open lots of the ticker. Splits have no cash-balance effect.
-// The split takes effect at calc time via getOpenLots, which scales lots whose date < split.date.
+  const balances = (() => { try { return JSON.parse(localStorage.getItem(KEY_BALANCES)) ?? [] } catch { return [] } })()
+  const balanceCurrency = Object.fromEntries(balances.map(b => [b.id, b.currency]))
+
+  // Per-run cache for (currency, date) → rate to avoid duplicate API calls
+  const rateCache = {}
+  async function fetchRate(currency, date) {
+    if (!currency || !date) return null
+    const up = currency.toUpperCase()
+    if (up === mainCurrency) return 1
+    const key = `${up}_${date}`
+    if (key in rateCache) return rateCache[key]
+    try {
+      const result = await getHistoricalForex(up, mainCurrency, date)
+      rateCache[key] = result?.rate ?? null
+    } catch {
+      rateCache[key] = null
+    }
+    return rateCache[key]
+  }
+
+  let processed = 0
+  let failed = 0
+
+  // ── Stock transactions ──────────────────────────────────────────────────────
+  const txns = load()
+  const updatedTxns = []
+  for (let i = 0; i < txns.length; i++) {
+    const txn = { ...txns[i] }
+    const alreadyDone = txn.exchangeRates && txn.exchangeRates.mainCurrency === mainCurrency
+    if (!alreadyDone) {
+      if (txn.type === 'buy' || txn.type === 'sell') {
+        const rate = await fetchRate(txn.currency, txn.date)
+        if (rate != null) {
+          txn.exchangeRates = { mainCurrency, rateToMain: rate, capturedAt: new Date().toISOString(), fxBackfilled: true }
+          processed++
+        } else { failed++ }
+      } else if (txn.type === 'currency-exchange') {
+        const srcCur = balanceCurrency[txn.sourceCashBalanceId]
+        const tgtCur = balanceCurrency[txn.targetCashBalanceId]
+        const [srcRate, tgtRate] = await Promise.all([fetchRate(srcCur, txn.date), fetchRate(tgtCur, txn.date)])
+        if (srcRate != null || tgtRate != null) {
+          txn.exchangeRates = {
+            mainCurrency,
+            sourceRateToMain: srcRate ?? null,
+            targetRateToMain: tgtRate ?? null,
+            capturedAt: new Date().toISOString(),
+            fxBackfilled: true,
+          }
+          processed++
+        } else { failed++ }
+      }
+      // transfer and split: leave exchangeRates null
+    }
+    updatedTxns.push(txn)
+    if (onProgress) onProgress({ done: i + 1, total: txns.length })
+  }
+
+  // ── Cash movements ──────────────────────────────────────────────────────────
+  const movements = (() => { try { return JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? [] } catch { return [] } })()
+  const updatedMovements = []
+  for (const mov of movements) {
+    const m = { ...mov }
+    const alreadyDone = m.exchangeRatesSnapshot && m.exchangeRatesSnapshot.mainCurrency === mainCurrency
+    if (!alreadyDone && m.type !== 'opening' && m.cashBalanceId) {
+      const currency = balanceCurrency[m.cashBalanceId]
+      const rate = await fetchRate(currency, m.date)
+      if (rate != null) {
+        m.exchangeRatesSnapshot = { mainCurrency, rateToMain: rate, capturedAt: new Date().toISOString(), fxBackfilled: true }
+        processed++
+      } else { failed++ }
+    }
+    updatedMovements.push(m)
+  }
+
+  localStorage.setItem('rmoney_stock_transactions', JSON.stringify(updatedTxns))
+  localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(updatedMovements))
+
+  return { processed, failed }
+}
+
+// ─── Update functions (Phase 26c) ─────────────────────────────────────────────
+
+// Ticker and currency are not editable to avoid cascading cost-basis changes.
+// Editable fields: date, stockExchange, shares, price, fee, transactionExternalId.
+// Recaptures FX snapshot when exchangeRates is supplied (caller fetches it when date changed).
+export function updateBuy(id, { date, stockExchange, shares, price, fee, transactionExternalId, exchangeRates }) {
+  const txns = load()
+  const txn = txns.find(t => t.id === id && t.type === 'buy')
+  if (!txn) throw new Error('Buy not found')
+
+  const KEY_MOVEMENTS = 'rmoney_cash_movements'
+  try {
+    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
+    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+  } catch {}
+
+  const updated = {
+    ...txn,
+    date,
+    stockExchange: stockExchange?.trim() || null,
+    shares: Number(shares),
+    price: Number(price),
+    fee: Number(fee || 0),
+    transactionExternalId: transactionExternalId?.trim() || null,
+    exchangeRates: exchangeRates ?? txn.exchangeRates,
+  }
+  save(txns.map(t => t.id === id ? updated : t))
+
+  let balance = getCashBalanceByCurrency(txn.investingAccountId, txn.currency)
+  if (!balance) balance = createCashBalance({ investingAccountId: txn.investingAccountId, currency: txn.currency, openingBalance: 0 })
+
+  const mvtSnapshot = updated.exchangeRates
+    ? { mainCurrency: updated.exchangeRates.mainCurrency, rateToMain: updated.exchangeRates.rateToMain, capturedAt: updated.exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'buy', date, cashBalanceId: balance.id, amount: -(Number(shares) * Number(price)), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
+  if (Number(fee) > 0) {
+    addCashMovement({ type: 'buy-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
+  }
+  return updated
+}
+
+// Ticker and currency are not editable. Lot allocations must be re-supplied if shares change.
+export function updateSell(id, { date, stockExchange, shares, price, fee, transactionExternalId, lotAllocations, exchangeRates }) {
+  const txns = load()
+  const txn = txns.find(t => t.id === id && t.type === 'sell')
+  if (!txn) throw new Error('Sell not found')
+
+  const KEY_MOVEMENTS = 'rmoney_cash_movements'
+  try {
+    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
+    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+  } catch {}
+
+  const finalAllocations = lotAllocations ?? txn.lotAllocations
+  const updated = {
+    ...txn,
+    date,
+    stockExchange: stockExchange?.trim() || null,
+    shares: Number(shares),
+    price: Number(price),
+    fee: Number(fee || 0),
+    transactionExternalId: transactionExternalId?.trim() || null,
+    lotAllocations: finalAllocations,
+    exchangeRates: exchangeRates ?? txn.exchangeRates,
+  }
+  save(txns.map(t => t.id === id ? updated : t))
+
+  let balance = getCashBalanceByCurrency(txn.investingAccountId, txn.currency)
+  if (!balance) balance = createCashBalance({ investingAccountId: txn.investingAccountId, currency: txn.currency, openingBalance: 0 })
+
+  const mvtSnapshot = updated.exchangeRates
+    ? { mainCurrency: updated.exchangeRates.mainCurrency, rateToMain: updated.exchangeRates.rateToMain, capturedAt: updated.exchangeRates.capturedAt }
+    : null
+  addCashMovement({ type: 'sell', date, cashBalanceId: balance.id, amount: Number(shares) * Number(price), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
+  if (Number(fee) > 0) {
+    addCashMovement({ type: 'sell-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
+  }
+  return updated
+}
+
+// Editable: date, ratio. Splits have no cash movements so no movement cleanup needed.
+export function updateSplit(id, { date, numerator, denominator }) {
+  const txns = load()
+  const txn = txns.find(t => t.id === id && t.type === 'split')
+  if (!txn) throw new Error('Split not found')
+  const updated = { ...txn, date, ratio: { numerator: Number(numerator), denominator: Number(denominator) } }
+  save(txns.map(t => t.id === id ? updated : t))
+  return updated
+}
+
+// Ticker and source investingAccountId are not editable.
+// Editable: date, destinationInvestingAccountId, shares, lotAllocations, fee, feeCashBalanceId.
+export function updateTransfer(id, { date, destinationInvestingAccountId, shares, lotAllocations, fee, feeCashBalanceId, transactionExternalId }) {
+  const txns = load()
+  const txn = txns.find(t => t.id === id && t.type === 'transfer')
+  if (!txn) throw new Error('Transfer not found')
+
+  const KEY_MOVEMENTS = 'rmoney_cash_movements'
+  try {
+    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
+    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+  } catch {}
+
+  const finalAllocations = lotAllocations ?? txn.lotAllocations
+  const updated = {
+    ...txn,
+    date,
+    destinationInvestingAccountId: destinationInvestingAccountId ?? txn.destinationInvestingAccountId,
+    shares: Number(shares),
+    fee: Number(fee || 0),
+    feeCashBalanceId: feeCashBalanceId || null,
+    transactionExternalId: transactionExternalId?.trim() || null,
+    lotAllocations: finalAllocations,
+  }
+  save(txns.map(t => t.id === id ? updated : t))
+
+  if (Number(fee) > 0 && feeCashBalanceId) {
+    addCashMovement({ type: 'transfer-fee', date, cashBalanceId: feeCashBalanceId, amount: -Number(fee), linkedStockTransactionId: id })
+  }
+  return updated
+}
+
 export function applySplit({ ticker, date, numerator, denominator }) {
   const norm = ticker.trim().toUpperCase()
   const num = Number(numerator)

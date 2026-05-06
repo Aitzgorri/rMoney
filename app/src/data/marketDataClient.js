@@ -5,6 +5,7 @@ import {
   getCachedPrice, setCachedPrice,
   getCachedNews, setCachedNews,
   getCachedMarketProfile, setCachedMarketProfile,
+  getCachedIntraday, setCachedIntraday,
 } from '../utils/marketDataCache'
 import { logCall, sanitiseReason } from '../utils/marketDataLogger'
 import { ibkr }         from '../services/providers/ibkr'
@@ -88,6 +89,22 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
   })
 }
 
+// Returns [{ time, close }] — intraday 1-min bars for today's session; hot-cached with 5-min TTL
+export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {}) {
+  const t = ticker.toUpperCase()
+
+  if (!forceRefresh) {
+    const cached = getCachedIntraday(t, exchange)
+    if (cached) return Promise.resolve(cached)
+  }
+
+  return dedup(`intraday:${t}:${exchange ?? ''}`, async () => {
+    const { result } = await callChain('getIntradaySeries', [t, exchange])
+    setCachedIntraday(t, exchange, result)
+    return result
+  })
+}
+
 // Returns [{ date, close }] — not cached in Phase 2
 export function getHistoricalSeries(ticker, exchange, period, resolution) {
   const t = ticker.toUpperCase()
@@ -98,8 +115,8 @@ export function getHistoricalSeries(ticker, exchange, period, resolution) {
 }
 
 // Returns [{ exDate, amount, currency, paymentDate? }]
-export async function getDividends(ticker, fromDate, toDate) {
-  const { result } = await callChain('getDividends', [ticker.toUpperCase(), fromDate, toDate])
+export async function getDividends(ticker, exchange, fromDate, toDate) {
+  const { result } = await callChain('getDividends', [ticker.toUpperCase(), exchange ?? null, fromDate, toDate])
   return result
 }
 

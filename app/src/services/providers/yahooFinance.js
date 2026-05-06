@@ -75,7 +75,7 @@ export const yahooFinance = {
       .filter(({ close }) => close != null)
   },
 
-  async getDividends(ticker, fromDate, toDate, _config) {
+  async getDividends(ticker, _exchange, fromDate, toDate, _config) {
     const sym = yfTicker(ticker, null)
     const data = await yf(`/v8/finance/chart/${sym}`, {
       interval: '1d',
@@ -140,6 +140,18 @@ export const yahooFinance = {
     if (!entries.length) throw new Error('no data for date ' + date)
     const closest = entries[entries.length - 1]
     return { rate: closest.rate, date: closest.date }
+  },
+
+  async getIntradaySeries(ticker, exchange, _config) {
+    const sym = yfTicker(ticker, exchange)
+    const data = await yf(`/v8/finance/chart/${sym}`, { interval: '1m', range: '1d' })
+    const result = data.chart.result?.[0]
+    if (!result) throw new Error('no data')
+    const timestamps = result.timestamp ?? []
+    const closes     = result.indicators?.quote?.[0]?.close ?? []
+    return timestamps
+      .map((ts, i) => ({ time: new Date(ts * 1000).toISOString().slice(0, 19), close: closes[i] }))
+      .filter(({ close }) => close != null)
   },
 
   async getIndexSeries(indexTicker, period, resolution, _config) {

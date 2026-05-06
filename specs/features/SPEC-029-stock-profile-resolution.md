@@ -65,6 +65,10 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - [x] Buy form: resolved `stockExchange` and `currency` prefill empty fields; existing user values are not overwritten.
 - [x] Watchlist add flow: resolved ticker is used for `addStockToWatchlist`; stock profile is now populated for downstream use.
 
+### Re-look-up card on Buy form *(Phase 26a)*
+- [x] When the entered ticker matches an existing `stockProfile` with a resolved `name`, the Buy form shows a compact summary card (`Name · Exchange · Currency`) with a "Re-look up" button instead of automatically opening the resolution dialog.
+- [x] Clicking "Re-look up" reopens the candidate dialog pre-loaded with the provider search results. Confirming a different candidate upserts the profile in place (same path as "Refresh profile" on the Stock page).
+
 ### AI prompt
 - [x] Built-in, non-user-editable prompts in source code (`PROMPT_A`, `PROMPT_B` in `StockProfileResolutionDialog.jsx`).
 - [x] Strict JSON validation; failed parse treated as zero candidates.

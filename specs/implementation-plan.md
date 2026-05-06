@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 18 — CSV import (complete); Phase 17 Investment Reports complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–24 complete)*
+**Current phase: Phase 26 mostly complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–26 mostly complete — 3 deferred items in Phase 26 remain)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -54,11 +54,11 @@ Track whether each shared utility has been extracted as a reusable module. Updat
 | Inline form expansion (desktop) | **shared** | `components/InlineFormRow.jsx` | Consumed by Transactions, ScheduledTransfers, Planning, Budgets. Investing phases add their own screens. |
 | AI connection client | **shared** | `data/settings.js` (`getAiConnection`/`setAiConnection`) | Single per-user connection at More → Settings. |
 | Cash balance / cash movement ledger | **shared** | `data/investingAccounts.js` | Unified `cashMovements` collection; current balance = sum of movements; CRUD for balances + all movement types. |
-| Persisted history vs hot cache | **shared** | `data/apiDividendHistory.js` (persisted), `utils/marketDataCache.js` (hot) | Categorization documented, export rules enforced, Storage cards added. Phase 25b complete. |
+| Persisted history vs hot cache | **shared** | `data/apiDividendHistory.js` (persisted), `utils/marketDataCache.js` (hot) | Categorization documented, export rules enforced, Storage cards added. Phase 25b complete. `apiDividendHistory.js` now also owns upsert, stale-check, and `refreshApiDividendHistory()`. Phase 25c complete. |
 | Hybrid filter dropdown | **not started** | — | Build at start of Phase 27 — first consumer is cash movements; subsequently reused on Dividend page (Phase 31) and Reports pie-chart filters (Phase 29). |
 | Currency view toggle | **not started** | — | Build at start of Phase 28; persisted per-screen in localStorage. |
 | Configurable column table | **not started** | — | Build at start of Phase 27 (per-account positions); evaluate reuse on Reports Table tab in Phase 29. |
-| Soft-delete / archive lifecycle | **not started** | — | Build at start of Phase 30 — first and only consumer for now is Stock inventory (SPEC-033). |
+| Soft-delete / archive lifecycle | **shared** | `data/stockProfiles.js` (`getActiveStockProfiles`, `getArchivedStockProfiles`) | Data fields + read helpers added in Phase 25f. Archive/unarchive write path built in Phase 30b. |
 
 > **Statuses:** `not started` → `inline` (works but lives in one feature) → `shared` (extracted as reusable module with path noted in Location)
 
@@ -596,52 +596,42 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 265. [x] SPEC-016 export rules: Full backup includes persisted-history collections (`apiDividendHistory` and any future `apiPriceHistory`); Sharable backup excludes them; hot caches (price / forex / news / latest-profile) excluded from both. `portability.js` updated with `mode` param; `App.jsx` passes `saveMode`.
 266. [x] Settings → Storage tab: "API dividend history" card added with per-ticker breakdown + bulk-clear; Market data cache card now labels itself as "Rebuilds itself — excluded from all backups."
 
-**Sub-phase 25c — `apiDividendHistory` persistent collection**
-267. [ ] Schema: keyed by `(ticker, exDate)`. Fields: `payDate`, `perShare`, `currency`, `type: 'regular' | 'special' | null`, `state: 'paid' | 'declared' | null`, `source: 'api' | 'manual'`, `fetchedAt`. Lives in localStorage; no TTL
-268. [ ] `getDividends(ticker, exchange)` chain method writes results into `apiDividendHistory` (deduping on ex-date); the existing user `dividends` collection is never touched by API refresh
-269. [ ] Stale-data indicator (amber dot + tooltip): shown anywhere TTM/forward yield is displayed when `apiDividendHistory[ticker]` is empty or last refresh failed
-270. [ ] Auto-refresh skip rule: a future-dated row with `state: 'declared'` and all four fields populated is not re-fetched on subsequent loads
-271. [ ] Stock page header gets a "Refresh dividend data" button that triggers `getDividends` for the displayed ticker and writes results immediately
+**Sub-phase 25c — `apiDividendHistory` persistent collection ✓ DONE**
+267. [x] Schema: keyed by `(ticker, exDate)`. Fields: `payDate`, `perShare`, `currency`, `type: 'regular' | 'special' | null`, `state: 'paid' | 'declared' | null`, `source: 'api' | 'manual'`, `fetchedAt`. Lives in localStorage; no TTL
+268. [x] `getDividends(ticker, exchange)` chain method writes results into `apiDividendHistory` (deduping on ex-date); the existing user `dividends` collection is never touched by API refresh. `marketDataClient.getDividends` updated to pass `exchange` to providers; provider adapters (Yahoo, Massive, Twelve Data, Alpha Vantage) updated to accept (and currently ignore) the new parameter
+269. [x] Stale-data indicator (amber dot + tooltip): shown in Stock page header when `apiDividendHistory[ticker]` has never been successfully refreshed or last refresh failed; infrastructure (`isStaleForTicker`) exported for future TTM/forward yield tiles (Phase 28b)
+270. [x] Auto-refresh skip rule: a future-dated row with `state: 'declared'` and all of `payDate` + `perShare` + `currency` present is preserved during upsert (not overwritten by a subsequent API fetch)
+271. [x] Stock page header gets a "Refresh dividend data" button that triggers `refreshApiDividendHistory` for the displayed ticker and writes results immediately; shows "Refreshing…" during fetch and "Refresh failed" on error
 
-**Sub-phase 25d — Dividend type per payout + frequency on stock profile**
-272. [ ] Add `type: 'regular' | 'special'` column to the user `dividends` collection (default 'regular' on import; user-editable on the dividend edit form)
-273. [ ] Extend `stockProfiles` with `dividendFrequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'unknown'` (default 'unknown'; API-filled when provider returns it; user-editable from the edit-profile form in Phase 26b)
-274. [ ] Cadence-detection fallback for forward yield: when `dividendFrequency === 'unknown'`, derive at read time from API + user history (≥ 2 regular payouts, snapped to standard cadences) — same algorithm SPEC-020 already uses for projections
+**Sub-phase 25d — Dividend type per payout + frequency on stock profile ✓ DONE**
+272. [x] Add `type: 'regular' | 'special'` column to the user `dividends` collection (default 'regular'; user-editable on the dividend create form). `createDividend` + `updateDividend` accept `type`; DividendForm has Regular / Special selector; StockPage past-payout rows show a "Special" badge when `type === 'special'`
+273. [x] Extend `stockProfiles` with `dividendFrequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'unknown'` (default 'unknown'). `getDividendFrequency(ticker)` helper exported from `stockProfiles.js`. Massive adapter maps `dividend_type` → type and `frequency` → frequency string; `refreshApiDividendHistory` writes the most-common frequency from the batch to the stock profile via `upsertStockProfile`. User-editable from Edit profile in Phase 26b
+274. [x] `detectEffectiveDividendFrequency(storedFrequency, { apiHistory, userDividends })` exported from `utils/dividendProjections.js`. Returns stored frequency when known; falls back to cadence detection on merged regular payouts from both sources. Used by Phase 28b forward-yield calculation (item 307)
 
-**Sub-phase 25e — Intraday market data endpoint**
-275. [ ] Add `getIntradaySeries(ticker, exchange)` to the provider chain interface; supported by Yahoo (`range=1d&interval=1m`) and Twelve Data (`time_series interval=1min`); Massive / Stooq / IBKR adapters return "not supported" so the chain falls through
-276. [ ] Hot-cache (TTL ≈ 5 min) the intraday series per ticker; not persisted long-term
+**Sub-phase 25e — Intraday market data endpoint ✓ DONE**
+275. [x] Add `getIntradaySeries(ticker, exchange)` to the provider chain interface; supported by Yahoo (`range=1d&interval=1m`) and Twelve Data (`time_series interval=1min`); Massive / Stooq / IBKR adapters return "not supported" so the chain falls through
+276. [x] Hot-cache (TTL ≈ 5 min) the intraday series per ticker; not persisted long-term
 
-**Sub-phase 25f — Soft-delete data model for stockProfiles**
-277. [ ] Extend `stockProfiles` with `archived: bool` and `archivedAt`; default `archived: false`
-278. [ ] Add helpers `getActiveStockProfiles()` / `getArchivedStockProfiles()`; replace every existing `getStockProfiles()` consumer that should hide archived (Buy form, Stock page navigation, dropdowns) with the active variant
+**Sub-phase 25f — Soft-delete data model for stockProfiles ✓ DONE**
+277. [x] Extend `stockProfiles` with `archived: bool` and `archivedAt`; default `archived: false`
+278. [x] Add helpers `getActiveStockProfiles()` / `getArchivedStockProfiles()`; replace every existing `getStockProfiles()` consumer that should hide archived (Buy form, Stock page navigation, dropdowns) with the active variant
 
 ---
 
-## Phase 26 — Stock lifecycle UX + transaction edits
+## Phase 26 — Stock lifecycle UX + transaction edits *(mostly complete — Phase 26a/26b/26c partial/26d done)*
 
 > Extends SPEC-019 (edit transactions, fee-inclusive avg) and SPEC-029 (add-without-buy, edit-profile, re-look-up).
+> Items 280–285, 287, 289, 290 are complete and removed. Remaining deferred items below.
 
-**Sub-phase 26a — Add stock without Buy + Re-look-up button on Buy form**
-279. [ ] SPEC-029 resolution dialog gains a standalone-resolve mode (no transaction context); accessible via "Add stock" button on Stock inventory page (Phase 30) and from the new-transaction screen
-280. [ ] Buy form: when the entered ticker matches an existing `stockProfile`, collapse the candidate-list UI; show a summary card `TICKER — Name (Exchange, Currency)` plus a "Re-look up" button that re-opens the resolution dialog pre-filled with the current profile
-281. [ ] Confirming a different candidate updates the existing profile in place (warning matches the Phase 22 rename-ticker dialog)
+**Sub-phase 26a — Add stock without Buy (remaining)**
+279. [ ] SPEC-029 resolution dialog in standalone-resolve mode (no transaction context); UI entry point via "Add stock" button on Stock inventory page (Phase 30) — dialog mode implemented, entry point deferred to Phase 30
 
-**Sub-phase 26b — Edit profile form**
-282. [ ] New "Edit profile" form launched from the Stock page header and from the Stock inventory page (Phase 30); fields: name, exchange (MIC dropdown using the same `resolveExchange` table), currency (ISO list), HQ country, dividend frequency, per-stock dividend estimation rule
-283. [ ] Ticker rename remains its own flow (Phase 22) — Edit profile does not touch the ticker
+**Sub-phase 26c — Edit existing stock transactions (remaining)**
+286. [ ] Edit form for transfer between investing accounts: change source / destination / lots / fee — `updateTransfer()` data function is implemented; UI edit form deferred
+288. [ ] Edit form for currency-exchange triggered-by-buy: completes the deferred triggered-by-buy edit path mentioned in 172e
 
-**Sub-phase 26c — Edit existing stock transactions**
-284. [ ] Edit form for buy: recreates `cashMovements` (`buy` + `buy-fee`); recaptures FX snapshot if date changed
-285. [ ] Edit form for sell: editing share count requires re-selecting lot allocations; recreates `cashMovements`; recaptures FX snapshot
-286. [ ] Edit form for transfer between investing accounts: change source / destination / lots / fee
-287. [ ] Edit form for split: change date or ratio; warn that derived per-share calculations will recompute across all dependent records
-288. [ ] Edit form for currency-exchange (standalone or triggered-by-buy): completes the deferred triggered-by-buy edit path mentioned in 172e
-
-**Sub-phase 26d — Weighted-average buy price including fees**
-289. [ ] Update `stockTransactions.js` `getOpenLots()` so each lot's effective per-share price is `(shares × price + fee) / shares`; sells pro-rate the fee with `remainingShares` so the lot's contribution to the avg is `(remainingShares × price + remainingShares/originalShares × fee)`. Sell fees are not part of the avg
-290. [ ] Display layer (Stock page Positions section, Investing Account positions table): show fee-inclusive avg by default; small `(i)` tooltip explains the formula
-291. [ ] Fee-currency invariant: **buy and sell forms** validate `feeCurrency === tradeCurrency` and block save with an inline error. Transfers are excluded from the invariant (they have no single trade currency — transfer fee currency is whichever cash balance the user picks for the debit, per item 168a). A `legacyFeeMismatch: true` flag tags any pre-existing buy/sell record where the invariant didn't hold (UI shows a warning chip on those rows)
+**Sub-phase 26d — Fee-currency invariant (remaining)**
+291. [ ] Fee-currency invariant: **buy and sell forms** validate `feeCurrency === tradeCurrency` and block save with an inline error. A `legacyFeeMismatch: true` flag tags any pre-existing buy/sell record where the invariant didn't hold (UI shows a warning chip on those rows). Buy/sell forms currently have no explicit fee-currency field (fee inherits trade currency), so the invariant is trivially satisfied — this item is the explicit validation + legacy-mismatch chip
 
 ---
 
@@ -698,7 +688,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 315. [ ] Add "1D" button to the chart period selector; calls `getIntradaySeries` (Phase 25e); button is disabled with a tooltip when the active provider chain returns "not supported" for that ticker
 
 **Sub-phase 28f — Future dividend declarations + projections + manual editing**
-316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time)
+316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time). The projection algorithm excludes special dividends from cadence detection and per-share amount estimation (per SPEC-020) — declared specials in `apiDividendHistory` still render as themselves but are not extrapolated forward
 317. [ ] Visual distinction: declared = solid badge; estimated = dashed badge
 318. [ ] Manual edit dialog for any user dividend record (formalise existing form); new affordance: "Convert estimated → declared" enters all four fields manually and writes to `apiDividendHistory` with `source: 'manual'`. Post-payout dedup: once the dividend pays and the user records a `dividends` entry for the same `(ticker, exDate)`, the manual declaration is hidden by the same merge-dedup rule as items 307/313 — the user record wins and the manual row is suppressed at read time (the row remains in `apiDividendHistory` for audit but doesn't render)
 

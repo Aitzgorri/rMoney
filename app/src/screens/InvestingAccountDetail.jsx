@@ -27,6 +27,8 @@ import {
   getStockTransactionsByTicker,
   createCurrencyExchange,
   updateCurrencyExchange,
+  updateBuy,
+  updateSell,
   deleteStockTransaction,
 } from '../data/stockTransactions'
 import {
@@ -40,6 +42,8 @@ import { getActiveAccounts } from '../data/accounts'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { getStockProfile } from '../data/stockProfiles'
 import { fmtAmt } from '../utils/format'
+import { snapshotFxRates } from '../utils/currency'
+import { getMainCurrency } from '../data/settings'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import styles from './InvestingAccountDetail.module.css'
@@ -73,6 +77,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [expandedMovementId, setExpandedMovementId] = useState(null)
   const [editingTx,        setEditingTx]        = useState(null)  // full transaction object or null
   const [editingExchange,  setEditingExchange]  = useState(null)  // stockTransaction record or null
+  const [editingStockTx,   setEditingStockTx]   = useState(null)  // buy or sell stockTransaction being edited
 
   function openLinkedTx(movement) {
     if (!movement.linkedBudgetingTransactionId) return
@@ -145,28 +150,78 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     })
   }
 
-  function handleExchange(params) {
+  async function handleExchange(params) {
+    const mainCurrency = getMainCurrency()
+    const sourceBal = balanceMap[params.sourceCashBalanceId]
+    const targetBal = balanceMap[params.targetCashBalanceId]
+    const [srcSnap, tgtSnap] = await Promise.all([
+      snapshotFxRates(sourceBal?.currency, params.date, mainCurrency),
+      snapshotFxRates(targetBal?.currency, params.date, mainCurrency),
+    ])
+    const exchangeRates = (srcSnap || tgtSnap) ? {
+      mainCurrency,
+      sourceRateToMain: srcSnap?.rateToMain ?? null,
+      targetRateToMain: tgtSnap?.rateToMain ?? null,
+      capturedAt: new Date().toISOString(),
+    } : null
     const feeSameAsSource = params.feeCashBalanceId === params.sourceCashBalanceId
     const netDelta = -Number(params.sourceAmount) - (feeSameAsSource ? Number(params.feeAmount || 0) : 0)
     withNegCheck(params.sourceCashBalanceId, netDelta, () => {
-      createCurrencyExchange({ ...params, investingAccountId: accountId })
+      createCurrencyExchange({ ...params, investingAccountId: accountId, exchangeRates })
       refresh()
       closeForm()
     })
   }
 
-  function handleUpdateExchange(params) {
-    updateCurrencyExchange(editingExchange.id, params)
+  async function handleUpdateExchange(params) {
+    const mainCurrency = getMainCurrency()
+    const sourceBal = balanceMap[editingExchange.sourceCashBalanceId]
+    const targetBal = balanceMap[editingExchange.targetCashBalanceId]
+    const [srcSnap, tgtSnap] = await Promise.all([
+      snapshotFxRates(sourceBal?.currency, params.date, mainCurrency),
+      snapshotFxRates(targetBal?.currency, params.date, mainCurrency),
+    ])
+    const exchangeRates = (srcSnap || tgtSnap) ? {
+      mainCurrency,
+      sourceRateToMain: srcSnap?.rateToMain ?? null,
+      targetRateToMain: tgtSnap?.rateToMain ?? null,
+      capturedAt: new Date().toISOString(),
+    } : null
+    updateCurrencyExchange(editingExchange.id, { ...params, exchangeRates })
     refresh()
     setEditingExchange(null)
   }
 
-  function handleBuy(params) {
+  async function handleUpdateBuy(params) {
+    const mainCurrency = getMainCurrency()
+    let exchangeRates = editingStockTx.exchangeRates
+    if (params.date !== editingStockTx.date || !exchangeRates) {
+      exchangeRates = await snapshotFxRates(editingStockTx.currency, params.date, mainCurrency)
+    }
+    updateBuy(editingStockTx.id, { ...params, exchangeRates })
+    refresh()
+    setEditingStockTx(null)
+  }
+
+  async function handleUpdateSell(params) {
+    const mainCurrency = getMainCurrency()
+    let exchangeRates = editingStockTx.exchangeRates
+    if (params.date !== editingStockTx.date || !exchangeRates) {
+      exchangeRates = await snapshotFxRates(editingStockTx.currency, params.date, mainCurrency)
+    }
+    updateSell(editingStockTx.id, { ...params, exchangeRates })
+    refresh()
+    setEditingStockTx(null)
+  }
+
+  async function handleBuy(params) {
+    const mainCurrency = getMainCurrency()
+    const exchangeRates = await snapshotFxRates(params.currency, params.date, mainCurrency)
     const cost = Number(params.shares) * Number(params.price) + Number(params.fee || 0)
     const existing = getCashBalanceByCurrency(accountId, params.currency)
     const currentBal = existing ? getCurrentBalance(existing.id) : 0
     const proceed = () => {
-      createBuy({ ...params, investingAccountId: accountId })
+      createBuy({ ...params, investingAccountId: accountId, exchangeRates })
       refresh()
       closeForm()
     }
@@ -180,8 +235,10 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     }
   }
 
-  function handleSell(params) {
-    createSell({ ...params, investingAccountId: accountId })
+  async function handleSell(params) {
+    const mainCurrency = getMainCurrency()
+    const exchangeRates = await snapshotFxRates(params.currency, params.date, mainCurrency)
+    createSell({ ...params, investingAccountId: accountId, exchangeRates })
     refresh()
     closeForm()
     setDefaultSellTicker(null)
@@ -485,7 +542,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 onEdit={
                   (m.type === 'currency-exchange' && m.linkedStockTransactionId)
                     ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingExchange(txn); setExpandedMovementId(null) } }
-                    : null
+                    : ((m.type === 'buy' || m.type === 'sell') && m.linkedStockTransactionId)
+                      ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingStockTx(txn); setExpandedMovementId(null) } }
+                      : null
                 }
               />
             ))}
@@ -513,6 +572,31 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               initial={editingExchange}
               onSave={handleUpdateExchange}
               onCancel={() => setEditingExchange(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editingStockTx?.type === 'buy' && (
+        <div className={styles.overlay}>
+          <div className={styles.formDialog}>
+            <BuyEditForm
+              txn={editingStockTx}
+              onSave={handleUpdateBuy}
+              onCancel={() => setEditingStockTx(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editingStockTx?.type === 'sell' && (
+        <div className={styles.overlay}>
+          <div className={styles.formDialog}>
+            <SellEditForm
+              txn={editingStockTx}
+              accountId={accountId}
+              onSave={handleUpdateSell}
+              onCancel={() => setEditingStockTx(null)}
             />
           </div>
         </div>
@@ -627,6 +711,11 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
             <span className={styles.detailMono}>{stockTxn.transactionExternalId}</span>
           </>}
         </div>
+        {onEdit && (
+          <button className={styles.detailEditBtn} onClick={onEdit}>
+            Edit {isBuy ? 'buy' : 'sell'} →
+          </button>
+        )}
       </div>
     )
   }
@@ -1126,16 +1215,17 @@ function ExchangeForm({ balances, defaultSourceId, onSave, onCancel, initial }) 
 // ─── Buy form ─────────────────────────────────────────────────────────────────
 
 function BuyForm({ balances, onSave, onCancel }) {
-  const [date,          setDate]          = useState(today)
-  const [ticker,        setTicker]        = useState('')
-  const [stockExchange, setStockExchange] = useState('')
-  const [shares,        setShares]        = useState('')
-  const [price,         setPrice]         = useState('')
-  const [currency,      setCurrency]      = useState(balances[0]?.currency ?? 'USD')
-  const [fee,           setFee]           = useState('0')
-  const [extId,         setExtId]         = useState('')
-  const [resolving,     setResolving]     = useState(false)  // dialog open?
-  const [resolvedName,  setResolvedName]  = useState(null)   // name shown as hint after resolution
+  const [date,            setDate]            = useState(today)
+  const [ticker,          setTicker]          = useState('')
+  const [stockExchange,   setStockExchange]   = useState('')
+  const [shares,          setShares]          = useState('')
+  const [price,           setPrice]           = useState('')
+  const [currency,        setCurrency]        = useState(balances[0]?.currency ?? 'USD')
+  const [fee,             setFee]             = useState('0')
+  const [extId,           setExtId]           = useState('')
+  const [resolving,       setResolving]       = useState(false)
+  // null = unresolved; { name, stockExchange, currency } = profile known (show summary card)
+  const [resolvedProfile, setResolvedProfile] = useState(null)
 
   const total = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
   const canSave = ticker.trim() && Number(shares) > 0 && Number(price) > 0 && currency.trim()
@@ -1144,19 +1234,19 @@ function BuyForm({ balances, onSave, onCancel }) {
     const t = ticker.trim().toUpperCase()
     if (!t) return
     const profile = getStockProfile(t)
-    if (!profile) {
+    if (!profile?.name) {
       setResolving(true)
     } else {
-      if (profile.name) setResolvedName(profile.name)
-      // Pre-fill currency from the most recent buy for this ticker
+      setResolvedProfile({ name: profile.name, stockExchange: profile.stockExchange, currency: profile.currency })
       const prevBuys = getStockTransactionsByTicker(t).filter(tx => tx.type === 'buy')
       if (prevBuys.length > 0) setCurrency(prevBuys[prevBuys.length - 1].currency)
+      else if (profile.currency) setCurrency(profile.currency)
     }
   }
 
   function handleResolved(candidate) {
     setResolving(false)
-    setResolvedName(candidate.name)
+    setResolvedProfile({ name: candidate.name, stockExchange: candidate.stockExchange, currency: candidate.currency })
     if (!stockExchange.trim() && candidate.stockExchange) setStockExchange(candidate.stockExchange)
     if (candidate.currency) setCurrency(candidate.currency)
   }
@@ -1181,18 +1271,29 @@ function BuyForm({ balances, onSave, onCancel }) {
             <input
               className={styles.formInput}
               value={ticker}
-              onChange={e => { setTicker(e.target.value.toUpperCase()); setResolvedName(null) }}
+              onChange={e => { setTicker(e.target.value.toUpperCase()); setResolvedProfile(null) }}
               onBlur={handleTickerBlur}
               placeholder="AAPL"
               autoFocus
             />
-            {ticker.trim() && (
+            {ticker.trim() && !resolvedProfile && (
               <button type="button" className={styles.lookupBtn} onClick={() => setResolving(true)} title="Look up company name">
                 Look up
               </button>
             )}
           </div>
-          {resolvedName && <span className={styles.resolvedHint}>{resolvedName}</span>}
+          {resolvedProfile && (
+            <div className={styles.profileCard}>
+              <span className={styles.profileCardText}>
+                {resolvedProfile.name}
+                {resolvedProfile.stockExchange ? ` · ${resolvedProfile.stockExchange}` : ''}
+                {resolvedProfile.currency ? ` · ${resolvedProfile.currency}` : ''}
+              </span>
+              <button type="button" className={styles.relookupBtn} onClick={() => setResolving(true)}>
+                Re-look up
+              </button>
+            </div>
+          )}
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Exchange (optional)</label>
@@ -1249,6 +1350,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
   const [ticker,           setTicker]           = useState(initTicker)
   const [customTicker,     setCustomTicker]     = useState('')
   const [currency,         setCurrency]         = useState(initPos?.currency ?? 'USD')
+  const [dividendType,     setDividendType]     = useState('regular')
   const [dividendPerShare, setDividendPerShare] = useState('')
   const [shareCount,       setShareCount]       = useState(initPos ? trimDecimals(initPos.shares) : '')
   const [taxPctStr,        setTaxPctStr]        = useState(String(initTaxPct))
@@ -1337,6 +1439,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
       dividendPerShare: Number(dividendPerShare),
       shareCount: Number(shareCount),
       taxPercent,
+      type: dividendType,
     })
   }
 
@@ -1369,6 +1472,14 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
           <input className={styles.formInput} value={customTicker} onChange={e => setCustomTicker(e.target.value.toUpperCase())} placeholder="AAPL" autoFocus />
         </div>
       )}
+
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Type</label>
+        <select className={styles.formSelect} value={dividendType} onChange={e => setDividendType(e.target.value)}>
+          <option value="regular">Regular</option>
+          <option value="special">Special</option>
+        </select>
+      </div>
 
       {/* Dates on one row */}
       <div className={styles.formPairRow}>
@@ -1563,6 +1674,182 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel }) {
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Buy edit form (26c) ─────────────────────────────────────────────────────
+
+// Ticker and currency are non-editable. Only the numeric / metadata fields can change.
+function BuyEditForm({ txn, onSave, onCancel }) {
+  const [date,          setDate]          = useState(txn.date)
+  const [stockExchange, setStockExchange] = useState(txn.stockExchange ?? '')
+  const [shares,        setShares]        = useState(String(txn.shares))
+  const [price,         setPrice]         = useState(String(txn.price))
+  const [fee,           setFee]           = useState(String(txn.fee ?? 0))
+  const [extId,         setExtId]         = useState(txn.transactionExternalId ?? '')
+
+  const total  = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
+  const canSave = Number(shares) > 0 && Number(price) > 0
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Edit buy — {txn.ticker}</h3>
+      <p className={styles.formSubtitle}>{txn.currency} · ticker and currency cannot be changed here</p>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Exchange (optional)</label>
+        <input className={styles.formInput} value={stockExchange} onChange={e => setStockExchange(e.target.value)} placeholder="NASDAQ" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Shares</label>
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} autoFocus />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Price per share ({txn.currency})</label>
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Fee ({txn.currency})</label>
+        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Transaction ID (optional)</label>
+        <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
+      </div>
+      {total > 0 && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {txn.currency}</p>}
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Sell edit form (26c) ─────────────────────────────────────────────────────
+
+function SellEditForm({ txn, accountId, onSave, onCancel }) {
+  const [date,          setDate]          = useState(txn.date)
+  const [stockExchange, setStockExchange] = useState(txn.stockExchange ?? '')
+  const [shares,        setShares]        = useState(String(txn.shares))
+  const [price,         setPrice]         = useState(String(txn.price))
+  const [fee,           setFee]           = useState(String(txn.fee ?? 0))
+  const [extId,         setExtId]         = useState(txn.transactionExternalId ?? '')
+  const [showLots,      setShowLots]      = useState(false)
+  const [lotInputs,     setLotInputs]     = useState(() => {
+    const inputs = {}
+    for (const alloc of txn.lotAllocations ?? []) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
+    return inputs
+  })
+
+  // Open lots EXCLUDING the shares being sold (they're currently "consumed" by this sell record).
+  // updateSell deletes and recreates the movements, so for UI purposes we show the lots as if this sell didn't exist.
+  const openLots = getOpenLots(accountId, txn.ticker)
+  // Add back the shares from the existing allocation so the user can redistribute them
+  const lotsWithCredit = openLots.map(lot => {
+    const existingAlloc = txn.lotAllocations?.find(a => a.sourceBuyId === lot.id)
+    return existingAlloc
+      ? { ...lot, remainingShares: lot.remainingShares + existingAlloc.sharesFromLot }
+      : lot
+  })
+
+  function toggleLots() {
+    if (!showLots) {
+      const sharesToSell = Number(shares || 0)
+      const inputs = {}
+      if (sharesToSell > 0 && lotsWithCredit.length > 0) {
+        const { allocations } = computeFifoAllocations(lotsWithCredit, sharesToSell)
+        for (const alloc of allocations) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
+      }
+      for (const lot of lotsWithCredit) if (!(lot.id in inputs)) inputs[lot.id] = '0'
+      setLotInputs(inputs)
+    }
+    setShowLots(v => !v)
+  }
+
+  const lotTotal = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
+  const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
+  const proceeds = Number(shares || 0) * Number(price || 0)
+  const canSave  = Number(shares) > 0 && Number(price) > 0 && lotValid
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    const lotAllocations = showLots
+      ? Object.entries(lotInputs).filter(([, v]) => Number(v) > 0).map(([sourceBuyId, v]) => ({ sourceBuyId, sharesFromLot: Number(v) }))
+      : null
+    onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null, lotAllocations })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Edit sell — {txn.ticker}</h3>
+      <p className={styles.formSubtitle}>{txn.currency} · ticker and currency cannot be changed here</p>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Exchange (optional)</label>
+        <input className={styles.formInput} value={stockExchange} onChange={e => setStockExchange(e.target.value)} placeholder="NASDAQ" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Shares</label>
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} autoFocus />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Price per share ({txn.currency})</label>
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Fee ({txn.currency})</label>
+        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Transaction ID (optional)</label>
+        <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
+      </div>
+      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - Number(fee || 0))} {txn.currency}</p>}
+      {lotsWithCredit.length > 0 && (
+        <div className={styles.lotPickerSection}>
+          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
+            {showLots ? '▲' : '▼'} Advanced: choose lots
+          </button>
+          {showLots && (
+            <div className={styles.lotList}>
+              {lotsWithCredit.map(lot => (
+                <div key={lot.id} className={styles.lotRow}>
+                  <span className={styles.lotMeta}>{lot.date} · {trimDecimals(lot.remainingShares)} sh @ {fmtAmt(lot.price)}</span>
+                  <input
+                    className={styles.lotInput}
+                    type="number" min="0" max={lot.remainingShares} step="any"
+                    value={lotInputs[lot.id] ?? '0'}
+                    onChange={e => setLotInputs(prev => ({ ...prev, [lot.id]: e.target.value }))}
+                  />
+                </div>
+              ))}
+              {!lotValid && (
+                <p className={styles.fieldError}>
+                  Lot totals ({trimDecimals(lotTotal)}) must equal shares to sell ({shares}).
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
       </div>
     </form>
   )

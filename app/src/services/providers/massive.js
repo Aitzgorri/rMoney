@@ -68,7 +68,7 @@ export const massive = {
     }))
   },
 
-  async getDividends(ticker, fromDate, toDate, config) {
+  async getDividends(ticker, _exchange, fromDate, toDate, config) {
     const data = await pg('/v3/reference/dividends', {
       ticker,
       ex_dividend_date_gte: fromDate,
@@ -77,11 +77,14 @@ export const massive = {
       order: 'asc',
     }, config)
     if (!data.results) throw new Error('no data')
+    const FREQ_MAP = { 1: 'annual', 2: 'semi-annual', 4: 'quarterly', 12: 'monthly' }
     return data.results.map(d => ({
       exDate:      d.ex_dividend_date,
       amount:      d.cash_amount,
       currency:    d.currency ?? null,
       paymentDate: d.pay_date ?? null,
+      type:        d.dividend_type === 'CD' ? 'regular' : d.dividend_type === 'SC' ? 'special' : null,
+      frequency:   FREQ_MAP[d.frequency] ?? null,
     }))
   },
 
@@ -154,6 +157,10 @@ export const massive = {
         const { currency } = normaliseMinorUnit(0, r.currency_name?.toUpperCase() ?? null)
         return [{ ticker: bare, name: r.name ?? null, exchange: mic, currency, source: 'Massive' }]
       })
+  },
+
+  async getIntradaySeries(_ticker, _exchange, _config) {
+    throw new Error('not supported')
   },
 
   async getStockProfile(ticker, config) {

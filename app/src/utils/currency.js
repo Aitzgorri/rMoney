@@ -1,3 +1,5 @@
+import { getHistoricalForex } from '../data/marketDataClient'
+
 const CACHE_KEY = 'rmoney_exchange_rates'
 const TTL_MS = 60 * 60 * 1000
 
@@ -80,6 +82,23 @@ export function convertToMain(amount, fromCurrency, mainCurrency) {
   if (rate == null || rate === 0) return null
   // cache.rates[X] = how many X per 1 mainCurrency, so amount/rate = amount in mainCurrency
   return amount / rate
+}
+
+// Fetches the historical FX rate from `tradingCurrency` to `mainCurrency` at `date`.
+// Returns { mainCurrency, rateToMain, capturedAt } or null if unavailable or an error occurs.
+// Callers get mainCurrency from getMainCurrency() to avoid a circular dep (settings→currency).
+export async function snapshotFxRates(tradingCurrency, date, mainCurrency) {
+  if (!tradingCurrency || !date || !mainCurrency) return null
+  const from = tradingCurrency.toUpperCase()
+  const to = mainCurrency.toUpperCase()
+  if (from === to) return { mainCurrency: to, rateToMain: 1, capturedAt: new Date().toISOString() }
+  try {
+    const result = await getHistoricalForex(from, to, date)
+    if (!result?.rate) return null
+    return { mainCurrency: to, rateToMain: result.rate, capturedAt: new Date().toISOString() }
+  } catch {
+    return null
+  }
 }
 
 export function formatRatesTimestamp(fetchedAt) {

@@ -14,6 +14,19 @@ export function getStockProfiles() {
   return load()
 }
 
+// Returns only profiles that have not been archived (archived: true).
+// Treats missing archived field as false — existing records without the field
+// are active by default. Use this in any selection list or dropdown.
+export function getActiveStockProfiles() {
+  return load().filter(p => p.archived !== true)
+}
+
+// Returns only profiles with archived: true.
+// Used by the Stock inventory archived view (Phase 30).
+export function getArchivedStockProfiles() {
+  return load().filter(p => p.archived === true)
+}
+
 export function upsertStockProfile(ticker, fields) {
   const t = ticker?.trim().toUpperCase()
   const list = load()
@@ -28,6 +41,14 @@ export function upsertStockProfile(ticker, fields) {
 // Returns true if the profile has a resolved name
 export function isProfileResolved(ticker) {
   return !!getStockProfile(ticker)?.name
+}
+
+// ─── Dividend frequency ───────────────────────────────────────────────────────
+
+// Returns the stored dividendFrequency for the ticker, or 'unknown' if not set.
+// Possible stored values: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'unknown'
+export function getDividendFrequency(ticker) {
+  return getStockProfile(ticker)?.dividendFrequency ?? 'unknown'
 }
 
 // ─── Manual price override ───────────────────────────────────────────────────

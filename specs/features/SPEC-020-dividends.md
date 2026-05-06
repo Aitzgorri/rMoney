@@ -21,7 +21,7 @@ Record every dividend payout the user has received on a stock, with correct mult
 ## Acceptance Criteria
 
 ### Dividend records
-- [x] Stored fields on each dividend payout record: `exDividendDate`, `payoutDate`, `dividendPerShare` (before tax, in stock's currency), `shareCount` (eligible shares for this payout), `taxPercent` (snapshotted from the hierarchy at creation time), `exchangeRates` at payout date (null — deferred to Phase 10 historical-rate work).
+- [x] Stored fields on each dividend payout record: `exDividendDate`, `payoutDate`, `dividendPerShare` (before tax, in stock's currency), `shareCount` (eligible shares for this payout), `taxPercent` (snapshotted from the hierarchy at creation time), `type: 'regular' | 'special'` (default `'regular'`; user-editable on the create form), `exchangeRates` at payout date (null — deferred to Phase 10 historical-rate work).
 - [x] Derived at display / report time (never stored): `totalBeforeTax = dividendPerShare × shareCount`, `taxAmount = totalBeforeTax × taxPercent`, `netTotal = totalBeforeTax − taxAmount`, `netPerShare = netTotal / shareCount`.
 - [x] Editable fields on the dividend form: `dividendPerShare`, `taxPercent`, `taxAmount`. Tax % ↔ tax amount are bidirectionally linked in the create form (editing tax % recalculates tax amount; editing tax amount recalculates tax %; per-share/share-count changes recompute amounts while keeping tax % or tax amount as the canonical field depending on which was last edited). *(Edit form for existing records deferred — current MVP allows create and delete.)*
 - [x] **Cash landing:** on save, the net payout (`netTotal`) is credited to the investing account's cash balance matching the dividend's currency (auto-created with opening 0 if absent). A `cashMovement` of `type: 'dividend'` is written with `linkedDividendId` pointing back to this record. **No direct link to a budgeting account + envelope exists**.
@@ -36,10 +36,11 @@ Record every dividend payout the user has received on a stock, with correct mult
 
 ### Future payout projections (ephemeral)
 - [x] Next 4 projected payout dates derived from historical cadence (median gap between consecutive payouts, snapped to Monthly/Quarterly/Semi-annual/Annual). Requires ≥ 2 past payouts.
-- [x] Amount estimation rules: `last-paid` (most recent per-share), `year-ago` (closest payout 1 year ago), `manual` (per-stock stored amount). Global default in Settings → Investments → Dividends card; per-stock override via dropdown on the stock page.
+- [x] **Special dividends excluded from projections.** Cadence detection, amount estimation (`last-paid` and `year-ago`), and effective-frequency derivation all filter out records where `type === 'special'` (records with null/undefined `type` are treated as `'regular'`). Reason: special dividends are one-off distributions; including them would skew both the median cadence gap and the per-share amount used for the next projection. Applies symmetrically to user `dividends` records and `apiDividendHistory` entries used by `detectEffectiveDividendFrequency`.
+- [x] Amount estimation rules: `last-paid` (most recent **regular** per-share), `year-ago` (closest **regular** payout 1 year ago), `manual` (per-stock stored amount). Global default in Settings → Investments → Dividends card; per-stock override via dropdown on the stock page.
 - [x] State badges: `estimation` (all local projections), `amount estimated` (future: API confirms date only), `declared` (future: API confirms date + amount). Badge renders as dashed row with muted styling.
 - [x] Share count for projected net = current open position size; tax % from the resolved tax hierarchy (`resolveDividendTaxPercent`).
-- [x] "Record a second payout to enable date projections" hint when only 1 historical payout exists.
+- [x] "Record a second payout to enable date projections" hint when only 1 historical (regular) payout exists.
 
 ### Dividend movements in account detail
 - [x] Dividend cash movements appear in the account's Cash Movements list (type `'dividend'`), grouped with other movements.
@@ -110,6 +111,7 @@ Per-stock overrides shown on each stock's page.
   shareCount: number,
   currency: string,                  // stock's dividend currency
   taxPercent: number,                // snapshotted at creation
+  type: 'regular' | 'special',      // default 'regular'; user-editable; affects forward-yield input
   exchangeRates: {                   // at payout date
     main: number, usd: number, eur: number, gbp: number, czk: number
   },
@@ -127,6 +129,9 @@ Per-stock settings (lives on the stock "profile" — separate from individual tr
   ticker: string,
   hqCountryOverride: string | null,    // defaults to SPEC-027 lookup
   taxPercentOverride: number | null,   // per-stock rate
+  dividendFrequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'unknown',
+                                       // default 'unknown'; API-filled on Refresh dividends;
+                                       // user-editable from Edit profile (Phase 26b)
   amountEstimationRule: 'last-paid' | 'year-ago' | 'manual',  // defaults to global
   manualEstimatedAmount: number | null // only used when rule === 'manual'
 }
@@ -148,7 +153,6 @@ settings.dividends = {
 - Dividend reinvestment (DRIP) automation — the user enters a Dividend + a Buy manually.
 - Qualified vs. non-qualified dividend distinction (US tax concept).
 - Home-country tax credit for foreign withholding. The tax hierarchy models source-country withholding only (per Q9/a). A future spec can layer home-country tax on top.
-- Special / one-off distributions that aren't part of a regular cadence — entered as normal dividends but may skew the projection algorithm. For Phase 2, users can mark specific payouts to exclude from cadence detection (nice-to-have, not required in this spec).
 
 ## Open Questions
 None.

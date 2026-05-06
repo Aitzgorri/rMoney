@@ -24,14 +24,15 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [ ] Price chart with a period selector: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y, All. *(Deferred to SPEC-027)*
 - [x] Metrics row (market value, total return + %, p.a. return, price-appreciation, dividend return, dividend yield TTM). Exchange rates auto-loaded on mount; values show — when rates unavailable.
 - [x] Transactions list shows, for this stock across all the user's investing accounts, sorted by date: buys, sells, and dividends. A filter control lets the user show only selected types: All / Buy / Sell / Dividend. *(Transfer, Split, Exchange filters deferred to SPEC-019/027)*
-- [x] Dividend section: past payouts from SPEC-020 records shown in a separate section. *(Next-4 projections deferred to Phase 13c)*
+- [x] Dividend section: past payouts from SPEC-020 records shown in a separate section; payouts with `type === 'special'` display a "Special" badge. *(Next-4 projections deferred to Phase 13c)*
 - [ ] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*
 - [ ] **Right-column AI panel** is rendered always on desktop, occupying the right half of the page from below the header to the bottom of the viewport. Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Deferred to Phase 19b)*
 - [ ] On mobile, the AI panel stacks below the rest of the page content (single column), preserving the existing mobile flow. *(Deferred to Phase 19b — mobile parity also covered by SPEC-028)*
 - [ ] Stale price indicator / manual price override. *(Deferred to SPEC-027)*
-- [x] Positions summary across all investing accounts shown at the top of the page.
+- [x] Positions summary across all investing accounts shown at the top of the page. Average cost shown is fee-inclusive (buy price + pro-rated buy fee per share). *(Phase 26d)*
 - [x] Portfolio memberships section shows which portfolios the stock is assigned to (from SPEC-022), with per-portfolio target %.
 - [x] Ticker names in the Positions section of InvestingAccountDetail are clickable links that navigate to this stock page.
+- [x] **"Refresh dividends" button** in the page header triggers `refreshApiDividendHistory(ticker, exchange)` for the displayed stock, fetching from the provider chain (SPEC-027) and writing results to the `apiDividendHistory` persisted collection. Shows "Refreshing…" while in flight; shows "Refresh failed" on error. An amber dot stale indicator appears next to the button when the ticker has never been successfully refreshed or the last refresh failed. *(Phase 25c)*
 
 ## UI / Screens
 Desktop layout — two-column split. Left column hosts all stock data; right column hosts the AI panel (owned by SPEC-026):

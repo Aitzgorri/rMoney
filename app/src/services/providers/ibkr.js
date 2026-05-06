@@ -25,14 +25,15 @@ export function buildIbkrAuthUrl(_clientId) {
 const notImplemented = method => async () => { throw new Error(`IBKR: ${method} deferred`) }
 
 export const ibkr = {
-  getLatestPrice:    notImplemented('getLatestPrice'),
+  getLatestPrice:      notImplemented('getLatestPrice'),
   getHistoricalSeries: notImplemented('getHistoricalSeries'),
-  getDividends:      notImplemented('getDividends'),
+  getIntradaySeries:   notImplemented('getIntradaySeries'),
+  getDividends:        notImplemented('getDividends'),
   getCorporateActions: notImplemented('getCorporateActions'),
-  getNews:           notImplemented('getNews'),
-  getForex:          notImplemented('getForex'),
-  getHistoricalForex: notImplemented('getHistoricalForex'),
-  getIndexSeries:    notImplemented('getIndexSeries'),
-  getStockProfile:   notImplemented('getStockProfile'),
-  searchSymbols:     notImplemented('searchSymbols'),
+  getNews:             notImplemented('getNews'),
+  getForex:            notImplemented('getForex'),
+  getHistoricalForex:  notImplemented('getHistoricalForex'),
+  getIndexSeries:      notImplemented('getIndexSeries'),
+  getStockProfile:     notImplemented('getStockProfile'),
+  searchSymbols:       notImplemented('searchSymbols'),
 }
