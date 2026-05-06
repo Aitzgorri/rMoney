@@ -641,7 +641,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 **Sub-phase 26d — Weighted-average buy price including fees**
 289. [ ] Update `stockTransactions.js` `getOpenLots()` so each lot's effective per-share price is `(shares × price + fee) / shares`; sells pro-rate the fee with `remainingShares` so the lot's contribution to the avg is `(remainingShares × price + remainingShares/originalShares × fee)`. Sell fees are not part of the avg
 290. [ ] Display layer (Stock page Positions section, Investing Account positions table): show fee-inclusive avg by default; small `(i)` tooltip explains the formula
-291. [ ] Fee-currency invariant: buy / sell / transfer forms validate `feeCurrency === tradeCurrency` and block save with an inline error; a `legacyFeeMismatch: true` flag tags any pre-existing record where this didn't hold (UI shows a warning chip on those rows)
+291. [ ] Fee-currency invariant: **buy and sell forms** validate `feeCurrency === tradeCurrency` and block save with an inline error. Transfers are excluded from the invariant (they have no single trade currency — transfer fee currency is whichever cash balance the user picks for the debit, per item 168a). A `legacyFeeMismatch: true` flag tags any pre-existing buy/sell record where the invariant didn't hold (UI shows a warning chip on those rows)
 
 ---
 
@@ -681,7 +681,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 **Sub-phase 28b — Metrics row overhaul (TTM / forward / dividend return / p.a. XIRR)**
 306. [ ] **TTM yield** = (sum of `apiDividendHistory[ticker].perShare` for past 12 months) ÷ current price, both in selected currency. Falls back to user `dividends.dividendPerShare` only for dates where API has a gap and a user record exists; amber dot when API cache is empty
-307. [ ] **Forward yield** = `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; uses `dividendFrequency` from the stock profile; shows "—" when frequency = 'unknown' or no regular dividend in history
+307. [ ] **Forward yield** = `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; uses `dividendFrequency` from the stock profile; shows "—" when frequency = 'unknown' or no regular dividend in history. **Source precedence:** `lastRegularPerShare` is read from the merged user-records-and-API-cache view, with the user record winning on `(ticker, exDate)` collision — so a user-edited type='special' on an API-fetched payout correctly excludes it from forward-yield input. Same precedence rule as item 313
 308. [ ] **Dividend return** splits into two tiles: "All-time net (after tax)" and "Last 12 months net (after tax)"; both use user `dividends` records (depend on tax + actual share count)
 309. [ ] **p.a. return** rebuilds as **XIRR** using transaction-snapshot FX rates (item 146) — accumulates buy/sell/dividend/fee cash flows in main currency; shows "—" until snapshot data covers all relevant cash flows
 310. [ ] Verify price-appreciation calc on a stock with multiple lots (the user has reported NNN looks correct; confirm with a unit test)
@@ -691,7 +691,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 312. [ ] Portfolio memberships table: add `% share` column = position MV ÷ portfolio total MV × 100, refreshed live with latest price; keep the existing target % column
 
 **Sub-phase 28d — Past payouts + transactions tables: scroll + lazy load**
-313. [ ] Past payouts table: max-height for 15 rows; lazy-load year chunks (oldest-to-newest as the user scrolls down); merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence
+313. [ ] Past payouts table: max-height for 15 rows. Initial render shows the most recent payouts at the top; scrolling down loads chronologically older year chunks (one year per chunk). Merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence (user `type` and `perShare` win; the API row is hidden when both exist for the same date). This same precedence rule feeds the forward-yield input (item 307)
 314. [ ] Transactions table: max-height for 15 rows; standard scroll (transaction count is bounded — no chunking needed)
 
 **Sub-phase 28e — 1D chart period**
@@ -700,7 +700,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 **Sub-phase 28f — Future dividend declarations + projections + manual editing**
 316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time)
 317. [ ] Visual distinction: declared = solid badge; estimated = dashed badge
-318. [ ] Manual edit dialog for any user dividend record (formalise existing form); new affordance: "Convert estimated → declared" enters all four fields manually and writes to `apiDividendHistory` with `source: 'manual'`
+318. [ ] Manual edit dialog for any user dividend record (formalise existing form); new affordance: "Convert estimated → declared" enters all four fields manually and writes to `apiDividendHistory` with `source: 'manual'`. Post-payout dedup: once the dividend pays and the user records a `dividends` entry for the same `(ticker, exDate)`, the manual declaration is hidden by the same merge-dedup rule as items 307/313 — the user record wins and the manual row is suppressed at read time (the row remains in `apiDividendHistory` for audit but doesn't render)
 
 **Sub-phase 28g — Enter buy / sell / dividend from stock page**
 319. [ ] Add `+ Buy`, `+ Sell`, `+ Dividend` buttons in Stock page header; clicking opens the same forms used in `InvestingAccountDetail` with ticker pre-filled and locked
@@ -721,7 +721,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 **Sub-phase 29b — Saved pie chart presets**
 325. [ ] New collection `pieChartPresets`: `id`, `name`, `gridPosition`, `grouping`, `filters`, `displayCurrency`, `otherThresholdPct`, `showTableBelow`, `chartType`
 326. [ ] CRUD: "Add chart" button creates a tile in config mode; save persists; rename and delete inline; drag-reorder sets `gridPosition`
-327. [ ] Constraint: when `grouping === 'portfolio'`, the portfolio filter is restricted to single-selection (one stock can sit in multiple portfolios)
+327. [ ] Constraint: the portfolio filter is **always single-select** on pie charts, regardless of grouping. Reason: a stock that sits in multiple selected portfolios would be summed twice, distorting the pie. Applies whenever the portfolio filter is active
 328. [ ] Settings → Storage tab: card showing pie-chart preset count + size + clear button
 
 **Sub-phase 29c — Portfolio tab cleanup**
@@ -753,7 +753,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 338b. [ ] History-presence counts computed once on page mount as four `{ticker → count}` maps (single pass per source collection); rows read from maps in O(1). Maps refresh when the active/archived filter changes, not memoised across navigations
 
 **Sub-phase 30b — Archive lifecycle + click-through to records**
-339. [ ] Archive: sets `archived: true`, `archivedAt: now`. The stock vanishes from selection lists, dropdowns, the Stock inventory default view, and the Dividend page (held set still computed from open lots, which an archived stock can't have anyway). All historical data preserved
+339. [ ] Archive precondition: zero open lots. The Archive button is disabled with a tooltip "Sell all positions in this stock before archiving" when any open lot exists. Reason: archived stocks are hidden from selection lists, but a held position must keep appearing on Stock page / Dividend page / Reports — archiving a held stock would create a contradiction. When precondition holds, Archive sets `archived: true` and `archivedAt: now`. The stock vanishes from selection lists, dropdowns, the Stock inventory default view, and the Dividend page. All historical data preserved.
 340. [ ] Unarchive: clears the flags; stock reappears everywhere
 341. [ ] Click-through deep links from each row navigate to the relevant filtered list (Transactions filtered by ticker, Dividends filtered by ticker, Portfolio editor for the relevant portfolio, Watchlist editor)
 342. [ ] Permanent delete: confirmation dialog; removes the `stockProfile` row plus any orphan `apiDividendHistory` entries for that ticker. Disabled when any history exists

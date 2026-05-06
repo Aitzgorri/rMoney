@@ -23,14 +23,15 @@ Give the user a single page that lists every stock the app currently knows about
 - [ ] Lists all `stockProfiles` with a default filter showing **active** profiles; toggle reveals **archived** profiles
 - [ ] Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag (timestamp on hover), and four history-presence indicators (transaction count, dividend count, in-portfolio count, in-watchlist count)
 - [ ] Each history-presence indicator is a clickable deep link that navigates to the relevant filtered list (Transactions / Dividends / Portfolio editor / Watchlist editor)
-- [ ] Per-row actions: Edit profile, Archive (or Unarchive when already archived), Permanent delete
+- [ ] Per-row actions: Edit profile, Archive (disabled if open lots > 0; Unarchive when already archived), Permanent delete
 - [ ] "Add stock" button at top of the page launches the SPEC-029 resolution dialog in standalone mode (no transaction context); on confirm, a new `stockProfile` row is created and appears in the inventory immediately
 - [ ] Sort: clicking any column header re-sorts the inventory; choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
 - [ ] Counts performance: history-presence counts are computed once on page mount as four maps (`{ticker → count}`) by single-passing each source collection; every row reads from the maps in O(1). Maps are recomputed when the page is re-mounted or when the active/archived filter changes, not memoised across navigations
 
 ### Archive lifecycle
-- [ ] Archive sets `archived: true` and `archivedAt: <ISO timestamp>` on the `stockProfile`
-- [ ] Archived stocks are hidden from: Buy form ticker dropdown, Sell form open-position list, Stock page nav, Dividend page (no held lots possible since lots can't be added to archived profiles), Reports default views, Watchlist add-stock list
+- [ ] Archive **precondition: zero open lots** — the Archive button is disabled when the stock has any open position across investing accounts; tooltip explains "Sell all positions in this stock before archiving." Reason: archived stocks are hidden from selection lists, but a held position must remain visible on Stock page / Dividend page / Reports / Watchlist views, so archiving a held stock would create a contradiction
+- [ ] When precondition holds, Archive sets `archived: true` and `archivedAt: <ISO timestamp>` on the `stockProfile`
+- [ ] Archived stocks are hidden from: Buy form ticker dropdown, Sell form open-position list (always empty for archived stocks anyway), Stock page nav, Dividend page (held set is empty by precondition), Reports default views, Watchlist add-stock list
 - [ ] Archived stocks are still visible in: historical transaction lists, historical dividend lists, the Stock inventory archived view, Reports when explicitly filtered to "include archived"
 - [ ] Unarchive clears both flags; stock immediately reappears everywhere
 
