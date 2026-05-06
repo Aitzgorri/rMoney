@@ -54,7 +54,7 @@ Track whether each shared utility has been extracted as a reusable module. Updat
 | Inline form expansion (desktop) | **shared** | `components/InlineFormRow.jsx` | Consumed by Transactions, ScheduledTransfers, Planning, Budgets. Investing phases add their own screens. |
 | AI connection client | **shared** | `data/settings.js` (`getAiConnection`/`setAiConnection`) | Single per-user connection at More → Settings. |
 | Cash balance / cash movement ledger | **shared** | `data/investingAccounts.js` | Unified `cashMovements` collection; current balance = sum of movements; CRUD for balances + all movement types. |
-| Persisted history vs hot cache | **not started** | — | Build at start of Phase 25 (`data/apiDividendHistory.js` + clarified separation in `data/marketData*.js` files; SPEC-016 export rules updated; Settings → Storage cards added). |
+| Persisted history vs hot cache | **shared** | `data/apiDividendHistory.js` (persisted), `utils/marketDataCache.js` (hot) | Categorization documented, export rules enforced, Storage cards added. Phase 25b complete. |
 | Hybrid filter dropdown | **not started** | — | Build at start of Phase 27 — first consumer is cash movements; subsequently reused on Dividend page (Phase 31) and Reports pie-chart filters (Phase 29). |
 | Currency view toggle | **not started** | — | Build at start of Phase 28; persisted per-screen in localStorage. |
 | Configurable column table | **not started** | — | Build at start of Phase 27 (per-account positions); evaluate reuse on Reports Table tab in Phase 29. |
@@ -302,8 +302,8 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 > **Phase 10 complete.** All budgeting screens (Dashboard, Transactions, Envelopes, Budgets, Planning) show main-currency totals. Historical-rate snapshotting was deferred from Phase 10 and is now scheduled in Phase 25 sub-phase 25a (items 260–263).
 
-### SPEC-017 Currency Conversion — historical FX snapshotting (granular implementation in Phase 25a)
-146. [ ] Historical-rate snapshotting on investment transactions — see Phase 25 sub-phase 25a items 260–263 for the granular acceptance criteria. This umbrella item stays unchecked until 260–263 are all done.
+### SPEC-017 Currency Conversion — historical FX snapshotting
+146. [x] Historical-rate snapshotting on investment transactions — implemented in Phase 25a (items 260–263). `snapshotFxRates()` captures rate at write time; `backfillFxSnapshots()` populates existing records.
 
 ---
 
@@ -365,7 +365,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 159. [x] **Source cash balance:** automatically matches the trade currency; auto-created with opening 0 if absent
 159a. [x] Auto-create a cash balance with opening 0 when the trade currency has no balance yet in the investing account
 159b. [ ] Cross-currency source triggers a companion `currency-exchange` record — deferred to Phase 12e
-160. [ ] Snapshot exchange rates at transaction date — deferred to Phase 10 historical-rate work
+160. [x] Snapshot exchange rates at transaction date — implemented in Phase 25a
 160a. [x] Saving a buy writes `cashMovement` rows: one `buy` debit for `shares × price` and one `buy-fee` debit for `fee` (when fee > 0)
 160b. [x] Negative-balance confirmation (SPEC-018) applies when the resulting balance would go below 0
 161. [x] Weighted-average price calculation across remaining open lots (display only in Positions section)
@@ -585,16 +585,16 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 > Pure plumbing. Nothing visible to the user changes after this phase, but every later phase depends on these data shapes existing.
 
-**Sub-phase 25a — Historical FX snapshotting on every transaction (promotes item 146)**
-260. [ ] Add `fxRateToMain` (and `mainCurrency` snapshot) to every record in `stockTransactions` (buy / sell / transfer / split / currency-exchange) and every `cashMovement`, captured at write time from SPEC-017 currency conversion at the transaction date
-261. [ ] Edit-transaction paths re-capture the rate when the date changes
-262. [ ] Backfill helper utility (run once from a Settings → Storage button): walk all existing records, fetch SPEC-027 historical FX, mark each record `fxBackfilled: true` for transparency
-263. [ ] SPEC-016 backup files include the snapshot fields; load preserves them verbatim (no recalc)
+**Sub-phase 25a — Historical FX snapshotting on every transaction (promotes item 146) ✓ DONE**
+260. [x] `exchangeRates` field populated on `stockTransactions` (buy/sell/currency-exchange at write time via `snapshotFxRates()`); transfer and split remain null. `exchangeRatesSnapshot` populated on `cashMovements` at write time.
+261. [x] `updateCurrencyExchange` accepts and re-stores `exchangeRates`; `handleUpdateExchange` in InvestingAccountDetail re-fetches rates when saving edits.
+262. [x] `backfillFxSnapshots()` in `data/stockTransactions.js` walks all existing stock transactions and cash movements, fetches historical rates via SPEC-027, marks records `fxBackfilled: true`. Triggered from Settings → Storage → "Historical FX snapshots" card.
+263. [x] Portability unchanged — `exportAppData()` / `importAppData()` already read/write the full record shapes verbatim; snapshot fields are included automatically.
 
-**Sub-phase 25b — Persisted history vs hot cache categorization**
-264. [ ] Document the two categories in a header comment in `data/marketDataCaches.js` (or equivalent) and in SPEC-016 acceptance criteria
-265. [ ] SPEC-016 export rules: Full backup includes persisted-history collections (`apiDividendHistory` and any future `apiPriceHistory`); Sharable backup excludes them; hot caches (price / forex / news / latest-profile) excluded from both
-266. [ ] Settings → Storage tab: add a card per persisted-history collection with per-stock byte-size breakdown + bulk-clear action; existing hot-cache cards continue to label themselves as "rebuilds itself"
+**Sub-phase 25b — Persisted history vs hot cache categorization ✓ DONE**
+264. [x] Document the two categories in a header comment in `utils/marketDataCache.js` and in SPEC-016 acceptance criteria. `data/apiDividendHistory.js` created as the home for persisted history.
+265. [x] SPEC-016 export rules: Full backup includes persisted-history collections (`apiDividendHistory` and any future `apiPriceHistory`); Sharable backup excludes them; hot caches (price / forex / news / latest-profile) excluded from both. `portability.js` updated with `mode` param; `App.jsx` passes `saveMode`.
+266. [x] Settings → Storage tab: "API dividend history" card added with per-ticker breakdown + bulk-clear; Market data cache card now labels itself as "Rebuilds itself — excluded from all backups."
 
 **Sub-phase 25c — `apiDividendHistory` persistent collection**
 267. [ ] Schema: keyed by `(ticker, exDate)`. Fields: `payDate`, `perShare`, `currency`, `type: 'regular' | 'special' | null`, `state: 'paid' | 'declared' | null`, `source: 'api' | 'manual'`, `fetchedAt`. Lives in localStorage; no TTL

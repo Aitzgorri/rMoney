@@ -35,6 +35,9 @@ const KEYS = {
   watchlistEntries:      'rmoney_watchlist_entries',
   watchlistAlerts:       'rmoney_watchlist_alerts',
   investmentReportPresets: 'rmoney_investment_report_presets',
+  // PERSISTED HISTORY — included in Full backup only; excluded from Sharable backup.
+  apiDividendHistory: 'rmoney_api_dividend_history',
+  // HOT CACHES (rmoney_market_data_cache, rmoney_market_data_log) — excluded from both backup modes.
 }
 
 function readList(key) {
@@ -45,8 +48,11 @@ function readObj(key) {
   try { return JSON.parse(localStorage.getItem(key)) ?? {} } catch { return {} }
 }
 
-export function exportAppData() {
-  return {
+// mode: 'sharable' (default) — excludes persisted-history collections (apiDividendHistory).
+//        'full'              — includes persisted-history collections; use for full restore.
+// Neither mode includes hot caches (rmoney_market_data_cache, rmoney_market_data_log).
+export function exportAppData({ mode = 'sharable' } = {}) {
+  const base = {
     version: VERSION,
     exportedAt: new Date().toISOString(),
     accounts:           readList(KEYS.accounts),
@@ -81,6 +87,10 @@ export function exportAppData() {
     watchlistAlerts:         readList(KEYS.watchlistAlerts),
     investmentReportPresets: readList(KEYS.investmentReportPresets),
   }
+  if (mode === 'full') {
+    base.apiDividendHistory = readList(KEYS.apiDividendHistory)
+  }
+  return base
 }
 
 const REDACTED = '[REDACTED]'
@@ -216,4 +226,8 @@ export function importAppData(data) {
   write(KEYS.watchlistEntries,         data.watchlistEntries         ?? [])
   write(KEYS.watchlistAlerts,          data.watchlistAlerts          ?? [])
   write(KEYS.investmentReportPresets,  data.investmentReportPresets  ?? [])
+  // Persisted history — present only in Full backups; absent key means keep existing data
+  if ('apiDividendHistory' in data) {
+    write(KEYS.apiDividendHistory, data.apiDividendHistory ?? [])
+  }
 }

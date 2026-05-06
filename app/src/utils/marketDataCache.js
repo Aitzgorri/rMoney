@@ -1,6 +1,10 @@
-// Invariant: this cache stores only normalised response data (price, rate, text).
-// It NEVER stores API URLs, API keys, or any credential material.
-// Adapters strip credentials before returning; callChain passes only the result object here.
+// HOT CACHE — short TTL; freely rebuildable on next load.
+// Cleared without consequence; excluded from both Sharable and Full backups.
+// Contrast with PERSISTED HISTORY (data/apiDividendHistory.js) which has no TTL, is rate-limited to
+// refetch, and is included in Full backups.
+//
+// Invariant: stores only normalised response data (price, rate, text).
+// NEVER stores API URLs, API keys, or any credential material.
 const CACHE_KEY = 'rmoney_market_data_cache'
 const TTL_PRICES_MS = 60 * 60 * 1000       // 1 hour
 const TTL_NEWS_MS   = 15 * 60 * 1000       // 15 minutes

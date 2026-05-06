@@ -93,7 +93,7 @@ export default function App() {
 
   async function handleSave() {
     setSaveDialog(false)
-    const raw = exportAppData()
+    const raw = exportAppData({ mode: saveMode })
     const data = saveMode === 'sharable' ? redactExportData(raw) : raw
     const filename = await saveDataFile(data)
     if (filename) setSaveBanner({ filename, redacted: saveMode === 'sharable' })

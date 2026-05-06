@@ -13,6 +13,8 @@ import {
 import { getWatchlistStorageSummary, deleteAllWatchlists } from '../data/watchlists'
 import { getUserBenchmarks, deleteAllUserBenchmarks, getBenchmarksStorageBytes } from '../data/benchmarks'
 import { getReportPresets, getReportPresetsStorageBytes, deleteAllReportPresets } from '../data/investmentReports'
+import { backfillFxSnapshots } from '../data/stockTransactions'
+import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -65,6 +67,10 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [reportPresetCount, setReportPresetCount] = useState(() => getReportPresets().length)
   const [reportPresetBytes, setReportPresetBytes] = useState(() => getReportPresetsStorageBytes())
   const [reportPresetDeleteConfirm, setReportPresetDeleteConfirm] = useState(false)
+  const [fxBackfilling,   setFxBackfilling]   = useState(false)
+  const [fxBackfillResult, setFxBackfillResult] = useState(null)  // null | { processed, failed }
+  const [apiDivHistStats,  setApiDivHistStats]  = useState(() => getApiDividendHistoryStats())
+  const [apiDivHistDeleteConfirm, setApiDivHistDeleteConfirm] = useState(false)
   const [renamingId,      setRenamingId]      = useState(null)
   const [renameValue,     setRenameValue]     = useState('')
   const [deletingTpl,     setDeletingTpl]     = useState(null)
@@ -81,6 +87,16 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [mdTestStatus,  setMdTestStatus]  = useState({})            // { [id]: 'testing' | 'ok' | string }
   const [mdCacheStats, setMdCacheStats] = useState(() => getCacheStats())
   const [debugLog,     setDebugLog]     = useState(() => import.meta.env.DEV ? getCallLog() : [])
+
+  async function handleFxBackfill() {
+    setFxBackfilling(true)
+    try {
+      const result = await backfillFxSnapshots()
+      setFxBackfillResult(result)
+    } finally {
+      setFxBackfilling(false)
+    }
+  }
 
   const promptRefs = useRef({})
 
@@ -1046,12 +1062,101 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             )}
           </div>
 
-          {/* Market data cache */}
+          {/* FX snapshot backfill */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Historical FX snapshots</div>
+            <p className={styles.description}>
+              Captures the exchange rate from each stock transaction's trading currency to your main
+              currency at the transaction date. These snapshots are used for accurate historical
+              performance metrics (XIRR, multi-currency return). New transactions capture the rate
+              automatically; use Backfill to populate older records.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Stock transactions &amp; cash movements</span>
+                  <span className={styles.storageCount}>
+                    {fxBackfillResult
+                      ? `${fxBackfillResult.processed} updated, ${fxBackfillResult.failed} unavailable`
+                      : 'Run to populate missing snapshots'}
+                  </span>
+                  <span className={styles.storageBytes} />
+                  <button
+                    className={styles.btnSm}
+                    onClick={handleFxBackfill}
+                    disabled={fxBackfilling}
+                  >
+                    {fxBackfilling ? 'Running…' : 'Backfill'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* API dividend history (persisted history — included in Full backup) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>API dividend history</div>
+            <p className={styles.description}>
+              Per-share dividend records fetched from market data providers — stored permanently, never auto-cleared.
+              Used for TTM yield, forward yield, CAGR, and the Dividend page calendar.
+              Included in Full backup; excluded from Sharable export.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                {apiDivHistStats.tickerCount === 0 ? (
+                  <div className={styles.storageEmptyRow}>No dividend history stored yet.</div>
+                ) : (
+                  apiDivHistStats.perTicker.map(row => (
+                    <div key={row.ticker} className={styles.storageRow}>
+                      <span className={styles.storageTicker}>{row.ticker}</span>
+                      <span className={styles.storageCount}>{row.count} record{row.count !== 1 ? 's' : ''}</span>
+                      <span className={styles.storageBytes}>{fmtBytes(row.bytes)}</span>
+                    </div>
+                  ))
+                )}
+                {apiDivHistStats.tickerCount > 0 && (
+                  <div className={`${styles.storageRow} ${styles.storageSubtotal}`}>
+                    <span className={styles.storageTicker}>Total</span>
+                    <span className={styles.storageCount}>
+                      {apiDivHistStats.tickerCount} ticker{apiDivHistStats.tickerCount !== 1 ? 's' : ''},
+                      {' '}{apiDivHistStats.recordCount} record{apiDivHistStats.recordCount !== 1 ? 's' : ''}
+                    </span>
+                    <span className={styles.storageBytes}>{fmtBytes(apiDivHistStats.bytes)}</span>
+                    <button
+                      className={styles.btnSmDanger}
+                      onClick={() => setApiDivHistDeleteConfirm(true)}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {apiDivHistDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Clear all API dividend history ({apiDivHistStats.recordCount} records across {apiDivHistStats.tickerCount} tickers)?
+                  It will be re-fetched from market data providers next time you refresh.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setApiDivHistDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    clearApiDividendHistory()
+                    setApiDivHistStats(getApiDividendHistoryStats())
+                    setApiDivHistDeleteConfirm(false)
+                  }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Market data cache (hot cache — excluded from all backups, rebuilds itself) */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>Market data cache</div>
             <p className={styles.description}>
-              In-memory price, news, and profile data cached to localStorage.
-              Prices expire after 1 hour; news after 15 minutes; profiles are kept until refreshed manually.
+              Short-lived price, news, and profile data. Rebuilds itself automatically — excluded from
+              both Sharable and Full backups. Prices expire after 1 hour; news after 15 minutes;
+              profiles are kept until refreshed manually.
             </p>
             <div className={styles.storageTable}>
               <div className={styles.storageSection}>

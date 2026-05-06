@@ -25,6 +25,8 @@ Let the user save their full app state to a single file and load it back later, 
 - [x] On a successful load, the app clears current state and hydrates from the file; the UI refreshes to reflect the loaded data.
 - [x] **Two export modes** are offered in a dialog before the native Save As: **Sharable export (default)** redacts all API keys, OAuth tokens, and refresh tokens to `"[REDACTED]"` and sets `_redacted: true` on the payload; **Full backup** includes credentials as-is. The save banner message reflects which mode was used.
 - [x] When a redacted backup is loaded, credentials are stripped from settings before writing (preventing `[REDACTED]` strings from landing in localStorage). A persistent notice is shown after reload: "Keys were not restored — re-enter them in Settings."
+- [x] **Persisted-history collections** (`apiDividendHistory`, and any future `apiPriceHistory`) are included in **Full backup only**; excluded from Sharable export. These collections are expensive to refetch (rate-limited APIs) and have no TTL, so they travel with the full state only.
+- [x] **Hot caches** (`rmoney_market_data_cache` — prices, forex, news, profile lookups) are excluded from **both** backup modes. They have short TTLs, rebuild automatically on next load, and contain no user-authored data.
 
 ## UI / Screens
 More menu gains two items:
@@ -103,8 +105,14 @@ File structure:
     "aiConnection": { ... },
     "marketDataProviders": { ... },
     "dividends": { "defaultTaxPercent": 15, "perCountryTaxPercent": { ... }, "defaultAmountEstimationRule": "last-paid" }
-  }
+  },
+
+  // Full backup only — persisted history collections:
+  "apiDividendHistory": [...]
 }
+
+// Sharable export omits apiDividendHistory (and any future apiPriceHistory).
+// Both modes omit rmoney_market_data_cache (hot cache — rebuilds automatically).
 ```
 
 ## Out of Scope
