@@ -104,17 +104,6 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
   useEffect(() => { setPayoutChunksVisible(1) }, [norm])
 
-  // Auto-load more year chunks when current content doesn't fill the scrollable container,
-  // so the scroll-trigger lazy-load is always reachable.
-  useEffect(() => {
-    if (!hasMorePayouts) return
-    const el = payoutListRef.current
-    if (!el) return
-    if (el.scrollHeight - el.clientHeight < 40) {
-      setPayoutChunksVisible(n => n + 1)
-    }
-  }, [payoutChunksVisible, hasMorePayouts, mergedPayouts.length])
-
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
   const positions    = accounts.flatMap(acc => {
@@ -205,6 +194,17 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     return idx < payoutChunksVisible
   })
   const hasMorePayouts    = payoutChunksVisible < payoutYears.length
+
+  // Auto-load more year chunks when current content doesn't fill the scrollable container,
+  // so the scroll-trigger lazy-load is always reachable.
+  useEffect(() => {
+    if (!hasMorePayouts) return
+    const el = payoutListRef.current
+    if (!el) return
+    if (el.scrollHeight - el.clientHeight < 40) {
+      setPayoutChunksVisible(n => n + 1)
+    }
+  }, [payoutChunksVisible, hasMorePayouts, mergedPayouts.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Yield denominators ────────────────────────────────────────────────────
   // Price-based yields use the current market price.
