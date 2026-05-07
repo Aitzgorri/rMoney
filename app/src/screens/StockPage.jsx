@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getStockTransactionsByTicker, getPositions, applySplit, updateSplit } from '../data/stockTransactions'
 import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent } from '../data/dividends'
 import { getInvestingAccounts } from '../data/investingAccounts'
@@ -54,6 +54,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
   const [portfolioMvPcts,  setPortfolioMvPcts]  = useState({})   // portfolioId → % share | null
   const [payoutChunksVisible, setPayoutChunksVisible] = useState(1) // year-chunks loaded in past-payouts table
+  const payoutListRef = useRef(null)
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -102,6 +103,17 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   }, [mainCurrency])
 
   useEffect(() => { setPayoutChunksVisible(1) }, [norm])
+
+  // Auto-load more year chunks when current content doesn't fill the scrollable container,
+  // so the scroll-trigger lazy-load is always reachable.
+  useEffect(() => {
+    if (!hasMorePayouts) return
+    const el = payoutListRef.current
+    if (!el) return
+    if (el.scrollHeight - el.clientHeight < 40) {
+      setPayoutChunksVisible(n => n + 1)
+    }
+  }, [payoutChunksVisible, hasMorePayouts, mergedPayouts.length])
 
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
@@ -871,6 +883,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
               {/* Past payouts */}
               {projections.length > 0 && <div className={styles.projSubLabel}>Past payouts</div>}
               <div
+                ref={payoutListRef}
                 className={styles.divList}
                 style={{ maxHeight: '570px', overflowY: 'auto' }}
                 onScroll={e => {
@@ -908,10 +921,9 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                     return (
                       <div key={`api-${r.exDate}`} className={`${styles.divRow} ${styles.divRowApi}`}>
                         <span className={styles.divDate}>{r.payDate || r.exDate}</span>
-                        <span className={styles.divDesc}>{fmtAmt(r.perShare)}/sh</span>
+                        <span className={styles.divDesc}>{fmtAmt(r.perShare)} {r.currency}/sh</span>
                         {r.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
                         <span className={styles.divApiLabel}>API</span>
-                        <span className={styles.divNet}>{r.currency}</span>
                       </div>
                     )
                   }
