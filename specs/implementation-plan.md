@@ -688,10 +688,17 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 **Sub-phase 28e — 1D chart period ✓ DONE**
 
-**Sub-phase 28f — Future dividend declarations + projections + manual editing**
-316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time). The projection algorithm excludes special dividends from cadence detection and per-share amount estimation (per SPEC-020) — declared specials in `apiDividendHistory` still render as themselves but are not extrapolated forward
-317. [ ] Visual distinction: declared = solid badge; estimated = dashed badge
-318. [ ] Manual edit dialog for any user dividend record (formalise existing form); new affordance: "Convert estimated → declared" enters all four fields manually and writes to `apiDividendHistory` with `source: 'manual'`. Post-payout dedup: once the dividend pays and the user records a `dividends` entry for the same `(ticker, exDate)`, the manual declaration is hidden by the same merge-dedup rule as items 307/313 — the user record wins and the manual row is suppressed at read time (the row remains in `apiDividendHistory` for audit but doesn't render)
+**Sub-phase 28f-i — Future dividend declarations + projections + manual editing (initial scope) ✓ DONE**
+316. [x] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time). The projection algorithm excludes special dividends from cadence detection and per-share amount estimation (per SPEC-020) — declared specials in `apiDividendHistory` still render as themselves but are not extrapolated forward
+317. [x] Visual distinction: declared = solid green-tinted border + "Declared"/"Manual" badge; estimated = dashed border + "Est." badge
+318. [x] Edit button on past user dividend rows opens `EditDividendDialog` (per share, tax %, type); "→ Declare" button on estimated rows opens `ConvertToDeclaredDialog` which writes to `apiDividendHistory` with `source: 'manual'`. Post-payout dedup is automatic via the existing merge-dedup rule
+
+**Sub-phase 28f-ii — Section layout, columns, and standalone declare (extension) ✓ DONE**
+319. [x] **Estimated projections merge `apiDividendHistory` as a fallback data source.** `computeProjections` reads from the merged user-`dividends` + `apiDividendHistory` set (user wins on `(ticker, exDate)` collisions, specials excluded).
+320. [x] **Section visibility extended.** Dividends section renders whenever `totalShares > 0`.
+321. [x] **Standalone `+ Declare` button** on the Dividends section header.
+322. [x] **Unified dividend list with visual divider.** Future rows first (ascending) → `Today — YYYY-MM-DD` divider → past rows (descending). Single scrollable table.
+323. [x] **Tabular column structure.** Column headers: `Ex-div date | Payout date | Per share | Net | Source | (actions)`. Subline for tax %, shares, account name.
 
 **Sub-phase 28g — Enter buy / sell / dividend from stock page**
 319. [ ] Add `+ Buy`, `+ Sell`, `+ Dividend` buttons in Stock page header; clicking opens the same forms used in `InvestingAccountDetail` with ticker pre-filled and locked

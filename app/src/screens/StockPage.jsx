@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getStockTransactionsByTicker, getPositions, applySplit, updateSplit } from '../data/stockTransactions'
-import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent } from '../data/dividends'
+import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend } from '../data/dividends'
 import { getInvestingAccounts } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews } from '../data/marketDataClient'
-import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker } from '../data/apiDividendHistory'
+import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker, upsertApiDividends } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
 import { convertToMain, ensureRates } from '../utils/currency'
@@ -55,6 +55,9 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
   const [portfolioMvPcts,  setPortfolioMvPcts]  = useState({})   // portfolioId → % share | null
   const [payoutChunksVisible, setPayoutChunksVisible] = useState(1) // year-chunks loaded in past-payouts table
+  const [editingDividend,     setEditingDividend]     = useState(null) // user dividend record being edited
+  const [convertingEstimated, setConvertingEstimated] = useState(null) // estimated future payout being converted
+  const [declaringNew,        setDeclaringNew]        = useState(false) // standalone + Declare dialog
   const payoutListRef = useRef(null)
 
   const norm = ticker?.trim().toUpperCase() ?? ''
@@ -340,13 +343,74 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     return rate != null ? rate * 100 : null
   })()
 
-  // ── Dividend projections ────────────────────────────────────────────────────
-  const globalEstRule  = getDividendEstimationRule()
-  const effectiveRule  = profile?.amountEstimationRule ?? globalEstRule
-  const projTaxPct     = resolveDividendTaxPercent(norm)
-  const projections    = totalShares > 0
-    ? computeProjections(dividends, { rule: effectiveRule, manualAmount: profile?.manualEstimatedAmount ?? null })
+  // ── Dividend projections + future payouts (item 316 / Phase 28f) ────────────
+  const globalEstRule = getDividendEstimationRule()
+  const effectiveRule = profile?.amountEstimationRule ?? globalEstRule
+  const projTaxPct    = resolveDividendTaxPercent(norm)
+
+  // Merge API past-history into the user dividends dataset for cadence/amount
+  // estimation (item 319). User records win on exDate collision; specials are
+  // excluded by computeProjections internally, so we only add regular API records.
+  const mergedDividendsForProjections = (() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const userExDates = new Set(dividends.map(d => d.exDividendDate).filter(Boolean))
+    const apiPast = apiHistory
+      .filter(r => (r.type == null || r.type === 'regular') && r.exDate <= today && !userExDates.has(r.exDate))
+      .map(r => ({
+        payoutDate: r.payDate ?? r.exDate,
+        exDividendDate: r.exDate,
+        dividendPerShare: r.perShare,
+        currency: r.currency,
+        type: 'regular',
+      }))
+    return [...dividends, ...apiPast].sort((a, b) => (b.payoutDate ?? '').localeCompare(a.payoutDate ?? ''))
+  })()
+
+  const estimatedProjections = totalShares > 0
+    ? computeProjections(mergedDividendsForProjections, { rule: effectiveRule, manualAmount: profile?.manualEstimatedAmount ?? null })
     : []
+
+  // Most-recent regular per-share for standalone + Declare dialog defaults.
+  const lastRegularPerShare = (() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const userRegular = dividends.filter(d => d.type == null || d.type === 'regular')
+    if (userRegular.length > 0) return userRegular[0].dividendPerShare
+    const apiRegular = apiHistory
+      .filter(r => (r.type == null || r.type === 'regular') && r.exDate <= today)
+      .sort((a, b) => b.exDate.localeCompare(a.exDate))
+    return apiRegular[0]?.perShare ?? null
+  })()
+  const declareDefaultCurrency = currency || dividends[0]?.currency || apiHistory.find(r => r.currency)?.currency || ''
+
+  // Merge declared-future records from apiDividendHistory with estimated projections.
+  // Declared records (including specials) render as-is; estimated slots fill the rest.
+  // An estimated date is suppressed when any declared record falls within 14 days.
+  const futurePayouts = (() => {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const declared = apiHistory
+      .filter(r => r.state === 'declared' && r.exDate > todayStr)
+      .sort((a, b) => a.exDate.localeCompare(b.exDate))
+
+    const items = declared.map(r => ({
+      exDate: r.exDate, payDate: r.payDate, perShare: r.perShare,
+      currency: r.currency, type: r.type, state: 'declared', source: r.source,
+    }))
+
+    for (const e of estimatedProjections) {
+      const near = declared.some(d => {
+        const diffMs = Math.abs(new Date(d.exDate) - new Date(e.date))
+        return diffMs < 14 * 24 * 3600 * 1000
+      })
+      if (!near) {
+        items.push({
+          exDate: e.date, payDate: null, perShare: e.dividendPerShare,
+          currency: e.currency, type: 'regular', state: 'estimated', cadenceLabel: e.cadenceLabel,
+        })
+      }
+    }
+
+    return items.sort((a, b) => a.exDate.localeCompare(b.exDate)).slice(0, 4)
+  })()
 
   // ── Portfolio % share (item 312) ────────────────────────────────────────────
   // For each portfolio this stock belongs to: % share = this position MV / portfolio total MV.
@@ -630,6 +694,68 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         />
       )}
 
+      {editingDividend && (
+        <EditDividendDialog
+          dividend={editingDividend}
+          onSave={fields => {
+            updateDividend(editingDividend.id, fields)
+            setEditingDividend(null)
+          }}
+          onCancel={() => setEditingDividend(null)}
+        />
+      )}
+
+      {convertingEstimated && (
+        <ConvertToDeclaredDialog
+          defaultExDate={convertingEstimated.exDate}
+          defaultPerShare={convertingEstimated.perShare}
+          defaultCurrency={convertingEstimated.currency}
+          ticker={norm}
+          onSave={({ exDate, payDate, perShare, currency }) => {
+            upsertApiDividends(norm, [{
+              ticker: norm,
+              exDate,
+              payDate: payDate || null,
+              perShare: Number(perShare),
+              currency,
+              type: 'regular',
+              state: 'declared',
+              source: 'manual',
+              fetchedAt: new Date().toISOString(),
+            }])
+            setConvertingEstimated(null)
+            setDivHistoryKey(k => k + 1)
+          }}
+          onCancel={() => setConvertingEstimated(null)}
+        />
+      )}
+
+      {declaringNew && (
+        <ConvertToDeclaredDialog
+          defaultExDate=""
+          defaultPerShare={lastRegularPerShare ?? ''}
+          defaultCurrency={declareDefaultCurrency}
+          isNew
+          ticker={norm}
+          onSave={({ exDate, payDate, perShare, currency }) => {
+            upsertApiDividends(norm, [{
+              ticker: norm,
+              exDate,
+              payDate: payDate || null,
+              perShare: Number(perShare),
+              currency,
+              type: 'regular',
+              state: 'declared',
+              source: 'manual',
+              fetchedAt: new Date().toISOString(),
+            }])
+            setDeclaringNew(false)
+            setDivHistoryKey(k => k + 1)
+          }}
+          onCancel={() => setDeclaringNew(false)}
+        />
+      )}
+
       {/* Body — two columns on desktop */}
       <div className={styles.body}>
 
@@ -900,127 +1026,166 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             )}
           </div>
 
-          {/* Dividends — past payouts + projections */}
-          {mergedPayouts.length > 0 && (
+          {/* Dividends — unified list (items 320-323 / Phase 28f-ii) */}
+          {(mergedPayouts.length > 0 || futurePayouts.length > 0 || totalShares > 0) && (
             <div className={styles.section}>
-              <div className={styles.sectionTitle}>Dividends</div>
 
-              {/* Past payouts */}
-              {projections.length > 0 && <div className={styles.projSubLabel}>Past payouts</div>}
-              <div
-                ref={payoutListRef}
-                className={styles.divList}
-                style={{ maxHeight: '570px', overflowY: 'auto' }}
-                onScroll={e => {
-                  const el = e.currentTarget
-                  if (hasMorePayouts && el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
-                    setPayoutChunksVisible(n => n + 1)
-                  }
-                }}
-              >
-                {payoutsToShow.map(item => {
-                  if (item.source === 'user') {
-                    const d = item.record
-                    const { netTotal } = computeDividendDerived(d)
-                    const account = accountsById[d.investingAccountId]
-                    const netDisplay = currencyMode === 'main'
-                      ? (() => {
-                          const c = convertToMain(netTotal, d.currency, mainCurrency)
-                          return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
-                        })()
-                      : `${fmtAmt(netTotal)} ${d.currency}`
-                    return (
-                      <div key={d.id} className={styles.divRow}>
-                        <span className={styles.divDate}>{d.payoutDate}</span>
-                        <span className={styles.divDesc}>
-                          {fmtAmt(d.dividendPerShare)}/sh × {trimDec(d.shareCount)}
-                          {d.taxPercent > 0 && ` (${d.taxPercent}% tax)`}
-                        </span>
-                        {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                        <span className={styles.divNet}>{netDisplay}</span>
-                        {account && <span className={styles.divAccount}>{account.name}</span>}
-                      </div>
-                    )
-                  } else {
-                    const r = item.record
-                    return (
-                      <div key={`api-${r.exDate}`} className={`${styles.divRow} ${styles.divRowApi}`}>
-                        <span className={styles.divDate}>{r.payDate || r.exDate}</span>
-                        <span className={styles.divDesc}>{fmtAmt(r.perShare)} {r.currency}/sh</span>
-                        {r.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                        <span className={styles.divApiLabel}>API</span>
-                      </div>
-                    )
-                  }
-                })}
-                {hasMorePayouts && (
-                  <div className={styles.divLoadMore}>↓ scroll for older</div>
-                )}
+              {/* Header row: title + estimation controls + + Declare button */}
+              <div className={styles.divSectionHeader}>
+                <span className={styles.sectionTitle}>Dividends</span>
+                <div className={styles.divSectionControls}>
+                  {estimatedProjections[0]?.cadenceLabel && (
+                    <span className={styles.projCadence}>({estimatedProjections[0].cadenceLabel})</span>
+                  )}
+                  <select
+                    className={styles.projRuleSelect}
+                    value={effectiveRule}
+                    onChange={e => handleRuleChange(e.target.value)}
+                  >
+                    <option value="last-paid">Last paid</option>
+                    <option value="year-ago">Year ago</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  {effectiveRule === 'manual' && (
+                    <input
+                      key={norm + '-proj-manual'}
+                      className={styles.projManualInput}
+                      type="number"
+                      min="0"
+                      step="any"
+                      defaultValue={profile?.manualEstimatedAmount ?? ''}
+                      placeholder="per share"
+                      onBlur={e => handleManualAmtSave(e.target.value)}
+                    />
+                  )}
+                  <button
+                    className={styles.declareNewBtn}
+                    onClick={() => setDeclaringNew(true)}
+                    title="Enter a future expected dividend manually"
+                  >+ Declare</button>
+                </div>
               </div>
 
-              {/* Projected payouts */}
-              {projections.length > 0 && (
-                <>
-                  <div className={styles.projRuleRow}>
-                    <span className={styles.projSubLabel}>
-                      Projected next {projections.length}
-                    </span>
-                    {projections[0]?.cadenceLabel && (
-                      <span className={styles.projCadence}>({projections[0].cadenceLabel})</span>
-                    )}
-                    <select
-                      className={styles.projRuleSelect}
-                      value={effectiveRule}
-                      onChange={e => handleRuleChange(e.target.value)}
-                    >
-                      <option value="last-paid">Last paid</option>
-                      <option value="year-ago">Year ago</option>
-                      <option value="manual">Manual</option>
-                    </select>
-                    {effectiveRule === 'manual' && (
-                      <input
-                        key={norm + '-proj-manual'}
-                        className={styles.projManualInput}
-                        type="number"
-                        min="0"
-                        step="any"
-                        defaultValue={profile?.manualEstimatedAmount ?? ''}
-                        placeholder="per share"
-                        onBlur={e => handleManualAmtSave(e.target.value)}
-                      />
-                    )}
+              {/* Unified dividend table */}
+              {(mergedPayouts.length > 0 || futurePayouts.length > 0) && (
+                <div
+                  ref={payoutListRef}
+                  className={styles.divTableWrap}
+                  style={{ maxHeight: '570px', overflowY: 'auto' }}
+                  onScroll={e => {
+                    const el = e.currentTarget
+                    if (hasMorePayouts && el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+                      setPayoutChunksVisible(n => n + 1)
+                    }
+                  }}
+                >
+                  {/* Column headers */}
+                  <div className={styles.divTableHeader}>
+                    <span className={styles.divColExDate}>Ex-div date</span>
+                    <span className={styles.divColPayDate}>Pay date</span>
+                    <span className={styles.divColPerShare}>Per share</span>
+                    <span className={styles.divColNet}>Net</span>
+                    <span className={styles.divColSource}>Source</span>
+                    <span className={styles.divColActions}></span>
                   </div>
-                  <div className={styles.projList}>
-                    {projections.map((p, i) => {
-                      const derived = p.dividendPerShare != null
-                        ? computeDividendDerived({ dividendPerShare: p.dividendPerShare, shareCount: totalShares, taxPercent: projTaxPct })
-                        : null
+
+                  {/* Future rows — ascending (nearest upcoming first) */}
+                  {futurePayouts.map((fp, i) => {
+                    const isDeclared = fp.state === 'declared'
+                    const derived = fp.perShare != null && totalShares > 0
+                      ? computeDividendDerived({ dividendPerShare: fp.perShare, shareCount: totalShares, taxPercent: projTaxPct })
+                      : null
+                    const sourceLabel = isDeclared ? (fp.source === 'manual' ? 'Manual' : 'Declared') : 'Est.'
+                    const sourceCls = isDeclared ? styles.sourceChipDeclared : styles.sourceChipEstimated
+                    return (
+                      <div
+                        key={`future-${i}`}
+                        className={`${styles.divTableRow} ${styles.divFutureRow} ${isDeclared ? styles.projRowDeclared : styles.projRowEstimated}`}
+                      >
+                        <span className={styles.divColExDate}>{fp.exDate}</span>
+                        <span className={styles.divColPayDate}>{fp.payDate || '—'}</span>
+                        <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
+                          <span>{fp.perShare != null ? `${isDeclared ? '' : '~'}${fmtAmt(fp.perShare)} ${fp.currency ?? ''}` : '—'}</span>
+                          {fp.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
+                          <div className={styles.divSubline}>{trimDec(totalShares)} sh{projTaxPct > 0 ? ` · ${projTaxPct}% tax` : ''}</div>
+                        </div>
+                        <span className={styles.divColNet}>
+                          {derived != null ? `${isDeclared ? '' : '~'}${fmtAmt(derived.netTotal)} ${fp.currency ?? ''}` : '—'}
+                        </span>
+                        <span className={`${styles.divColSource} ${sourceCls}`}>{sourceLabel}</span>
+                        <span className={styles.divColActions}>
+                          {!isDeclared && (
+                            <button className={styles.projDeclareBtn} onClick={() => setConvertingEstimated(fp)} title="Convert to declared">→ Declare</button>
+                          )}
+                        </span>
+                      </div>
+                    )
+                  })}
+
+                  {/* Today divider */}
+                  {mergedPayouts.length > 0 && (
+                    <div className={styles.divTodayDivider}>
+                      Today — {new Date().toISOString().slice(0, 10)}
+                    </div>
+                  )}
+
+                  {/* Past rows — descending (most recent first) */}
+                  {payoutsToShow.map(item => {
+                    if (item.source === 'user') {
+                      const d = item.record
+                      const { netTotal } = computeDividendDerived(d)
+                      const account = accountsById[d.investingAccountId]
+                      const netDisplay = currencyMode === 'main'
+                        ? (() => {
+                            const c = convertToMain(netTotal, d.currency, mainCurrency)
+                            return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
+                          })()
+                        : `${fmtAmt(netTotal)} ${d.currency}`
                       return (
-                        <div key={i} className={styles.projRow}>
-                          <span className={styles.projDate}>{p.date}</span>
-                          <span className={styles.projDesc}>
-                            {p.dividendPerShare != null
-                              ? `~${fmtAmt(p.dividendPerShare)}/sh × ${trimDec(totalShares)}${projTaxPct > 0 ? ` (${projTaxPct}% tax)` : ''}`
-                              : '—'}
+                        <div key={d.id} className={styles.divTableRow}>
+                          <span className={styles.divColExDate}>{d.exDividendDate || '—'}</span>
+                          <span className={styles.divColPayDate}>{d.payoutDate}</span>
+                          <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
+                            <span>{fmtAmt(d.dividendPerShare)} {d.currency}</span>
+                            {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
+                            <div className={styles.divSubline}>
+                              {trimDec(d.shareCount)} sh{d.taxPercent > 0 ? ` · ${d.taxPercent}% tax` : ''}{account ? ` · ${account.name}` : ''}
+                            </div>
+                          </div>
+                          <span className={styles.divColNet}>{netDisplay}</span>
+                          <span className={`${styles.divColSource} ${styles.sourceChipUser}`}>User</span>
+                          <span className={styles.divColActions}>
+                            <button className={styles.divEditBtn} onClick={() => setEditingDividend(d)} title="Edit dividend">✎</button>
                           </span>
-                          <span className={styles.projNet}>
-                            {derived ? `~${fmtAmt(derived.netTotal)} ${p.currency}` : '—'}
-                          </span>
-                          <span className={`${styles.projBadge} ${
-                            p.state === 'declared'         ? styles.projBadgeDeclared   :
-                            p.state === 'amount estimated' ? styles.projBadgeAmountEst  :
-                                                             styles.projBadgeEstimation
-                          }`}>{p.state}</span>
                         </div>
                       )
-                    })}
-                  </div>
-                </>
+                    } else {
+                      const r = item.record
+                      return (
+                        <div key={`api-${r.exDate}`} className={`${styles.divTableRow} ${styles.divRowApiUnified}`}>
+                          <span className={styles.divColExDate}>{r.exDate}</span>
+                          <span className={styles.divColPayDate}>{r.payDate || '—'}</span>
+                          <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
+                            <span>{r.perShare != null ? `${fmtAmt(r.perShare)} ${r.currency ?? ''}` : '—'}</span>
+                            {r.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
+                          </div>
+                          <span className={styles.divColNet}>—</span>
+                          <span className={`${styles.divColSource} ${styles.sourceChipApi}`}>API</span>
+                          <span className={styles.divColActions}></span>
+                        </div>
+                      )
+                    }
+                  })}
+
+                  {hasMorePayouts && <div className={styles.divLoadMore}>↓ scroll for older</div>}
+                </div>
               )}
 
-              {/* Need more history to project */}
-              {dividends.length === 1 && totalShares > 0 && (
-                <p className={styles.projNeedMore}>Record a second payout to enable date projections.</p>
+              {/* Empty state — position held but no dividend history */}
+              {mergedPayouts.length === 0 && futurePayouts.length === 0 && totalShares > 0 && (
+                <p className={styles.projNeedMore}>
+                  No dividend history yet. Use + Declare to add an expected upcoming payout, or Refresh dividends to fetch from the API.
+                </p>
               )}
             </div>
           )}
@@ -1449,6 +1614,142 @@ function EditSplitDialog({ txn, onSave, onCancel }) {
           <div className={styles.dialogActions}>
             <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
             <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave}>Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Edit dividend dialog (28f / item 318) ────────────────────────────────────
+// Editable fields match what updateDividend() supports.
+
+function EditDividendDialog({ dividend, onSave, onCancel }) {
+  const [perShare, setPerShare] = useState(String(dividend.dividendPerShare ?? ''))
+  const [taxPct,   setTaxPct]   = useState(String(dividend.taxPercent ?? 0))
+  const [type,     setType]     = useState(dividend.type ?? 'regular')
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    onSave({ dividendPerShare: Number(perShare), taxPercent: Number(taxPct), type })
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>Edit dividend — {dividend.ticker}</h2>
+        <p className={styles.dialogNote}>{dividend.payoutDate} · {dividend.shareCount} shares</p>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Per share</label>
+            <input
+              className={styles.dialogInput}
+              type="number" min="0" step="any"
+              value={perShare}
+              onChange={e => setPerShare(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Tax %</label>
+              <input
+                className={styles.dialogInput}
+                type="number" min="0" max="100" step="any"
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+              />
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Type</label>
+              <select className={styles.dialogSelect} value={type} onChange={e => setType(e.target.value)}>
+                <option value="regular">Regular</option>
+                <option value="special">Special</option>
+              </select>
+            </div>
+          </div>
+          <div className={styles.dialogActions}>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare}>Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Convert estimated → declared dialog (28f / item 318 + 28f-ii item 321) ──
+// Writes to apiDividendHistory with source:'manual', state:'declared'.
+// Used both by per-row → Declare (estimated row) and the standalone + Declare button.
+
+function ConvertToDeclaredDialog({ defaultExDate = '', defaultPerShare = '', defaultCurrency = '', isNew = false, ticker, onSave, onCancel }) {
+  const [exDate,   setExDate]   = useState(defaultExDate)
+  const [payDate,  setPayDate]  = useState('')
+  const [perShare, setPerShare] = useState(String(defaultPerShare ?? ''))
+  const [currency, setCurrency] = useState(defaultCurrency)
+
+  const canSave = exDate && perShare && currency
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    onSave({ exDate, payDate: payDate || null, perShare: Number(perShare), currency })
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>{isNew ? 'Declare upcoming dividend' : 'Convert to declared'} — {ticker}</h2>
+        <p className={styles.dialogNote}>
+          Saves a manually declared dividend in the API history.
+          Once the dividend pays and you record a payout, this row is hidden automatically.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Ex-dividend date *</label>
+              <input
+                className={styles.dialogInput}
+                type="date"
+                value={exDate}
+                onChange={e => setExDate(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Pay date (optional)</label>
+              <input
+                className={styles.dialogInput}
+                type="date"
+                value={payDate}
+                onChange={e => setPayDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Per share *</label>
+              <input
+                className={styles.dialogInput}
+                type="number" min="0" step="any"
+                value={perShare}
+                onChange={e => setPerShare(e.target.value)}
+              />
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Currency *</label>
+              <input
+                className={styles.dialogInput}
+                value={currency}
+                maxLength={4}
+                placeholder="USD"
+                onChange={e => setCurrency(e.target.value.toUpperCase())}
+              />
+            </div>
+          </div>
+          <div className={styles.dialogActions}>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave}>Save as Declared</button>
           </div>
         </form>
       </div>
