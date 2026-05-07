@@ -228,6 +228,43 @@ Notes on the movements model:
 - A `currency-exchange` writes two rows of `type: 'currency-exchange'`: a source-side debit (negative `amount`) and a target-side credit (positive `amount`). Both point to the same parent `stockTransactions` record, which holds the rate, gross amounts, and fee. If the exchange carries a fee, a third row of `type: 'exchange-fee'` is written on the fee-currency cash balance.
 - Buy / sell / dividend / fee movements are created by SPEC-019 and SPEC-020 and point back to the parent investment record. Editing or deleting a parent cascades to its associated movements.
 
+### Positions table — Phase 27b
+- [x] The positions list in the investing account detail is replaced with a configurable table (`ConfigurableTable` shared component). Available columns: ticker, name, latest price, currency, exchange, shares, price/share (fee-inclusive avg cost), avg price (cost basis, fee-exclusive), MV in trading currency, MV in main currency, share-on-account %, change (%), change (trading currency), change (main currency) — 14 columns total.
+- [x] Users can show/hide columns via a column-picker panel that closes when clicking anywhere outside it. Column visibility and order are persisted to localStorage under the key `rmoney_positions_columns_{accountId}` so each account remembers its own layout.
+- [x] Columns can be drag-reordered in the column picker. The table is sortable by any visible column (click header to toggle asc/desc).
+- [x] The table has a maximum height showing approximately 20 rows with internal scroll; a fullscreen-expand button opens the table in a full-viewport modal. The toolbar (including the exit button) is always rendered inside the overlay so it remains accessible.
+- [x] Today's session change is shown in three separate columns: **Change (%)** (percentage of previous close), **Change (trading)** (total position value change in trading currency = `(price − prevClose) × shares`), **Change (main)** (same converted to main currency). All three show "—" when previousClose is unavailable. All three are visible by default.
+- [x] Async data (latest price + previousClose from Yahoo, name, exchange from stock profile) is fetched on mount; cells show "—" while loading.
+
+### Cash movements UX — Phase 27c
+- [x] The cash-movements list has a max-height scrollable container. Records beyond the visible area are chunk-loaded (50 records per "Load more" click).
+- [x] A collapsible filter bar sits above the movements list. It is collapsed by default; the open/closed state persists per account in localStorage. The bar contains four `HybridFilterDropdown` multi-selects: movement type, portfolio, stock (ticker), and cash balance / currency.
+- [x] The type filter covers all movement types shown to the user: buy, sell, transfer-fee, dividend, deposit, withdrawal, currency-exchange. Fee sub-types are merged into parent rows and not selectable separately.
+- [x] The portfolio and stock filters operate via the `linkedStockTransactionId` / ticker of each movement. OR logic within each filter; AND logic across filters.
+
+### Cash movements readability + overview cleanup — Phase 27d
+- [x] Cash-movement rows use a larger font size (14px) and alternating stripe background for better readability.
+- [x] A fullscreen-expand button on the cash-movements panel header opens the movements list in a CSS-driven full-viewport overlay.
+- [x] The "Portfolios" shortcut button at the bottom of the Investments overview screen is removed.
+
+### Stock page enhancements — Phase 28
+
+#### Sub-phase 28a — Currency view toggle ✓ DONE
+- [x] `CurrencyToggle` shared component (pill "Trading | Main") built; persists last choice per screen in localStorage. Added to Stock page header; hidden when trading === main currency.
+- [x] Currency toggle affects all metric tiles and dividend past-payout amounts.
+
+#### Sub-phase 28b — Metrics row overhaul ✓ DONE
+- [x] **TTM yield**: API dividend history for past 12 months ÷ current price, with user-record gap-fill. Includes all dividend types (regular + special). **Cost-based variant** (`TTM on cost`) uses weighted-average fee-inclusive cost per share as denominator.
+- [x] **Forward yield**: `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; frequency from `detectEffectiveDividendFrequency`; shows "—" when frequency unknown or no regular history. **Cost-based variant** (`Fwd on cost`) uses weighted-average cost per share.
+- [x] **Dividend return** split into two tiles: "Div return (all-time)" and "Div return (L12M)"; both show gross primary and net-after-tax in subtitle.
+- [x] **P.a. return** rebuilt as XIRR (`utils/xirr.js` Newton-Raphson) over buy/sell/dividend/terminal-MV cash flows in main currency.
+- [x] Total return formula: `totalReturn = (MV − totalInvested) + netDividends`.
+- [x] **Yield-tile info popups (`YieldDetailDialog`)**: ⓘ button on every yield tile opens a modal with full per-dividend breakdown, denominator formula, and 4-decimal result.
+
+#### Sub-phase 28c — Multi-account total row + portfolio % share ✓ DONE
+- [x] Positions section: when the same stock is held in ≥ 2 investing accounts, a bold **Total** subtotal row is appended showing total shares, weighted-average fee-inclusive cost per share, and total market value (in display currency per the toggle; "—" when no price).
+- [x] Portfolio memberships table: `% share` column added — position MV ÷ portfolio total MV × 100, computed live after prices are fetched for all tickers in the portfolio; shows "—" while loading or when a price is unavailable. Existing target % column retained.
+
 ## Out of Scope
 - Interest accrual on cash balances. If the broker pays money-market interest, the user records it as a deposit with a chosen envelope on the budgeting side (or leaves it out — the interest appears as income when they withdraw to their bank).
 - Scheduled / recurring deposits. Phase 2 has manual deposits only.

@@ -52,6 +52,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [divHistoryKey,    setDivHistoryKey]    = useState(0)      // bump to re-read stale indicator
   const [currencyMode,     setCurrencyMode]     = useState(() => localStorage.getItem('rmoney_currency_toggle_stock') ?? 'trading')
   const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
+  const [portfolioMvPcts,  setPortfolioMvPcts]  = useState({})   // portfolioId → % share | null
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -290,6 +291,54 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const projections    = totalShares > 0
     ? computeProjections(dividends, { rule: effectiveRule, manualAmount: profile?.manualEstimatedAmount ?? null })
     : []
+
+  // ── Portfolio % share (item 312) ────────────────────────────────────────────
+  // For each portfolio this stock belongs to: % share = this position MV / portfolio total MV.
+  // Fetches prices for all other tickers in the portfolio from cache (no force-refresh).
+  useEffect(() => {
+    if (!myAssignments.length || !effectivePrice || totalShares <= 0) {
+      setPortfolioMvPcts({})
+      return
+    }
+    let cancelled = false
+    async function compute() {
+      const portfolioIds = [...new Set(myAssignments.map(a => a.portfolioId))]
+      const results = {}
+      for (const pid of portfolioIds) {
+        const portAssignments = allAssignments.filter(a => a.portfolioId === pid)
+        const uniqueTickers   = [...new Set(portAssignments.map(a => a.ticker))]
+        const priceMap = {}
+        await Promise.all(uniqueTickers.map(async t => {
+          try {
+            const prof = getStockProfile(t)
+            priceMap[t] = await getLatestPrice(t, prof?.stockExchange ?? null)
+          } catch { priceMap[t] = null }
+        }))
+        let portfolioTotalMvMain = 0
+        let thisTickerMvMain    = 0
+        for (const t of uniqueTickers) {
+          const tickerPrice  = t === norm ? effectivePrice : priceMap[t]
+          if (!tickerPrice) continue
+          const tickerShares = t === norm
+            ? totalShares
+            : accounts.reduce((s, acc) => {
+                const pos = getPositions(acc.id).find(p => p.ticker === t)
+                return s + (pos ? pos.shares : 0)
+              }, 0)
+          const mvNative = tickerShares * tickerPrice.price
+          const mvMain   = convertToMain(mvNative, tickerPrice.currency, mainCurrency) ?? 0
+          portfolioTotalMvMain += mvMain
+          if (t === norm) thisTickerMvMain = mvMain
+        }
+        results[pid] = portfolioTotalMvMain > 0
+          ? (thisTickerMvMain / portfolioTotalMvMain) * 100
+          : null
+      }
+      if (!cancelled) setPortfolioMvPcts(results)
+    }
+    compute()
+    return () => { cancelled = true }
+  }, [norm, effectivePrice?.price, totalShares, ratesVersion, allAssignments.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-read on every render; divHistoryKey bump causes a re-render so isStale stays fresh
   const isStale = isStaleForTicker(norm)
@@ -616,6 +665,18 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                     <span className={styles.posTotal}>{fmtAmt(pos.shares * pos.avgCost)} {pos.currency}</span>
                   </div>
                 ))}
+                {positions.length >= 2 && (
+                  <div className={`${styles.positionRow} ${styles.positionSubtotal}`}>
+                    <span className={styles.posSubtotalLabel}>Total</span>
+                    <span className={styles.posShares}>{trimDec(totalShares)} sh</span>
+                    <span className={styles.posAvg}>{avgCostPerShare != null ? `${fmtAmt(avgCostPerShare)} avg` : '—'}</span>
+                    <span className={styles.posTotal}>
+                      {marketValueDisplay != null
+                        ? `${fmtAmt(marketValueDisplay)} ${displayCurrency}`
+                        : '—'}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -883,10 +944,16 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             ) : (
               <div className={styles.portfolioList}>
                 {myAssignments.map(a => {
-                  const path = getPortfolioPath(a.portfolioId, allPortfolios)
+                  const path  = getPortfolioPath(a.portfolioId, allPortfolios)
+                  const mvPct = portfolioMvPcts[a.portfolioId]
                   return (
                     <div key={a.id} className={styles.portfolioRow}>
                       <span className={styles.portfolioPath}>{path}</span>
+                      <span className={styles.portfolioShare}>
+                        {mvPct != null
+                          ? `${mvPct.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+                          : '—'}
+                      </span>
                       {a.targetPercent !== null && (
                         <span className={styles.portfolioTarget}>{a.targetPercent}% target</span>
                       )}

@@ -678,9 +678,9 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 310. [x] Total return formula corrected: `totalReturn = (MV − totalInvested) + netDividends`; price-appreciation (= `MV − totalInvested`) verified correct across multiple lots.
 311. [x] **Yield-tile info popups (`YieldDetailDialog`):** ⓘ button on every yield tile opens a modal showing the full breakdown — for TTM, every dividend in the 12-month window with type, source, per-share amount and total; for Forward, the single most-recent regular payout used. Denominator (price or cost) shown explicitly with the formula and 4-decimal result.
 
-**Sub-phase 28c — Multi-account total row + portfolio % share**
-311. [ ] Stock page Positions section: when same stock is in ≥ 2 investing accounts, append a bold subtotal row showing total shares, weighted-avg fee-inclusive price, total MV
-312. [ ] Portfolio memberships table: add `% share` column = position MV ÷ portfolio total MV × 100, refreshed live with latest price; keep the existing target % column
+**Sub-phase 28c — Multi-account total row + portfolio % share ✓ DONE**
+311. [x] Stock page Positions section: when same stock is in ≥ 2 investing accounts, append a bold subtotal row showing total shares, weighted-avg fee-inclusive price, total MV
+312. [x] Portfolio memberships table: add `% share` column = position MV ÷ portfolio total MV × 100, refreshed live with latest price; keep the existing target % column
 
 **Sub-phase 28d — Past payouts + transactions tables: scroll + lazy load**
 313. [ ] Past payouts table: max-height for 15 rows. Initial render shows the most recent payouts at the top; scrolling down loads chronologically older year chunks (one year per chunk). Merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence (user `type` and `perShare` win; the API row is hidden when both exist for the same date). This same precedence rule feeds the forward-yield input (item 307)
