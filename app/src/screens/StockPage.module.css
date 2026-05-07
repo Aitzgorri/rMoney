@@ -336,6 +336,12 @@
 .txAmountPositive { color: #34d399; }
 .txAmountNegative { color: #f87171; }
 
+.txMainCcy {
+  font-size: 11px;
+  color: #475569;
+  flex-shrink: 0;
+}
+
 .txAccount {
   font-size: 11px;
   color: #475569;
@@ -495,6 +501,13 @@
   border: 1px solid #2d3448;
   border-radius: 8px;
   padding: 10px 14px;
+  text-align: center;
+}
+
+.metricTileNarrow {
+  flex: 0.55;
+  min-width: 92px;
+  padding: 10px 8px;
 }
 
 .metricLabel {
@@ -504,7 +517,25 @@
   letter-spacing: 0.07em;
   color: #64748b;
   margin-bottom: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
 }
+
+.infoBtn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.infoBtn:hover { color: #93c5fd; }
 
 .metricValue {
   font-size: 15px;
@@ -852,6 +883,77 @@
 
 .dialogSaveBtn:hover { background: #2563eb; }
 .dialogSaveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+/* ── Yield detail dialog (28b) ──────────────────────────────────────────── */
+
+.dialogBoxWide { width: 540px; }
+
+.dialogFormula {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: #0f172a;
+  border-left: 3px solid #3b82f6;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+}
+
+.yieldTableWrap {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.yieldTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #e2e8f0;
+}
+
+.yieldTable th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  padding: 6px 10px;
+  background: #131c2e;
+  border-bottom: 1px solid #2d3448;
+  position: sticky;
+  top: 0;
+}
+
+.yieldTable td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.yieldTable tr:last-child td { border-bottom: none; }
+
+.yieldTableTotal td {
+  font-weight: 700;
+  color: #f1f5f9;
+  background: #1e2535;
+}
+
+.yieldSpecialBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
 
 .splitRatioRow {
   display: flex;

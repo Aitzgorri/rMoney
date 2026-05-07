@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 26 mostly complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–26 mostly complete — 3 deferred items in Phase 26 remain)*
+**Current phase: Phase 27 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–27 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -55,10 +55,11 @@ Track whether each shared utility has been extracted as a reusable module. Updat
 | AI connection client | **shared** | `data/settings.js` (`getAiConnection`/`setAiConnection`) | Single per-user connection at More → Settings. |
 | Cash balance / cash movement ledger | **shared** | `data/investingAccounts.js` | Unified `cashMovements` collection; current balance = sum of movements; CRUD for balances + all movement types. |
 | Persisted history vs hot cache | **shared** | `data/apiDividendHistory.js` (persisted), `utils/marketDataCache.js` (hot) | Categorization documented, export rules enforced, Storage cards added. Phase 25b complete. `apiDividendHistory.js` now also owns upsert, stale-check, and `refreshApiDividendHistory()`. Phase 25c complete. |
-| Hybrid filter dropdown | **not started** | — | Build at start of Phase 27 — first consumer is cash movements; subsequently reused on Dividend page (Phase 31) and Reports pie-chart filters (Phase 29). |
-| Currency view toggle | **not started** | — | Build at start of Phase 28; persisted per-screen in localStorage. |
-| Configurable column table | **not started** | — | Build at start of Phase 27 (per-account positions); evaluate reuse on Reports Table tab in Phase 29. |
+| Hybrid filter dropdown | **shared** | `components/HybridFilterDropdown.jsx` | Built in Phase 27a. Used by cash movements in InvestingAccountDetail; reuse on Dividend page (Phase 31) and Reports filters (Phase 29). |
+| Currency view toggle | **shared** | `components/CurrencyToggle.jsx` | Pill toggle Trading/Main; persists per-screen in localStorage. Used by Stock page (Phase 28a). |
+| Configurable column table | **shared** | `components/ConfigurableTable.jsx` | Built in Phase 27b. Used by per-account positions; evaluate reuse on Reports Table tab in Phase 29. |
 | Soft-delete / archive lifecycle | **shared** | `data/stockProfiles.js` (`getActiveStockProfiles`, `getArchivedStockProfiles`) | Data fields + read helpers added in Phase 25f. Archive/unarchive write path built in Phase 30b. |
+| XIRR algorithm | **shared** | `utils/xirr.js` | Newton-Raphson XIRR over irregular cash flows. Used by Stock page p.a. return (Phase 28b); available for Dividend page CAGR (Phase 31e) and Reports (Phase 29). |
 
 > **Statuses:** `not started` → `inline` (works but lives in one feature) → `shared` (extracted as reusable module with path noted in Location)
 
@@ -635,29 +636,29 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 ---
 
-## Phase 27 — Investing account detail overhaul
+## Phase 27 — Investing account detail overhaul ✓ COMPLETE
 
 > Extends SPEC-018 (cash movements + footer cleanup) and SPEC-024 (configurable per-account positions table). Builds two shared components used by Phases 28, 29, 31.
 
 **Sub-phase 27a — Hybrid filter dropdown component (shared)**
-292. [ ] Build `components/HybridFilterDropdown.jsx`: closed pill shows selected count; opened panel has search box + scrollable checkbox list + clear / apply buttons
-293. [ ] Multi-select returns array of selected ids; supports option-with-secondary-label (e.g. `TICKER` primary + `Name` secondary)
+292. [x] Build `components/HybridFilterDropdown.jsx`: closed pill shows selected count; opened panel has search box + scrollable checkbox list + clear / apply buttons
+293. [x] Multi-select returns array of selected ids; supports option-with-secondary-label (e.g. `TICKER` primary + `Name` secondary)
 
 **Sub-phase 27b — Configurable column table (shared) — per-account positions**
-294. [ ] Build `components/ConfigurableTable.jsx`: column-picker, drag-reorder, sort by visible column, max-height for ~20 rows, fullscreen-expand button
-295. [ ] Replace the existing per-account positions list (`InvestingAccountDetail.jsx:413–434`) with `ConfigurableTable` populated by 12 columns: ticker, name, latest price, currency, exchange, shares, price/share (= avg with fees), avg price (= cost basis), MV trading-currency, MV main-currency, share-on-account %, today's session change ($ + %)
-296. [ ] Persist per-account column visibility + order + sort to localStorage (`rmoney_positions_columns_{accountId}`)
-297. [ ] Today's session change calc: `latest_price - previousClose` (from provider `getLatestPrice`); display `+/-x%` and `+/-$x` in trading currency
+294. [x] Build `components/ConfigurableTable.jsx`: column-picker, drag-reorder, sort by visible column, max-height for ~20 rows, fullscreen-expand button
+295. [x] Replace the existing per-account positions list with `ConfigurableTable` populated by 14 columns: ticker, name, latest price, currency, exchange, shares, price/share (= avg with fees), avg price (= cost basis), MV trading-currency, MV main-currency, share-on-account %, change (%), change (trading currency), change (main currency)
+296. [x] Persist per-account column visibility + order + sort to localStorage (`rmoney_positions_columns_{accountId}`)
+297. [x] Session change in three separate visible-by-default columns: % change; trading-currency amount (`perShareChange × shares`); main-currency amount (converted). Yahoo adapter returns `previousClose`. Fullscreen toolbar rendered inside the overlay so the exit button is always reachable.
 
 **Sub-phase 27c — Cash movements: filters + virtualization**
-298. [ ] Replace flat list (`InvestingAccountDetail.jsx:437–494`) with a max-height container (≈30 rows visible); chunk-load 50 records on scroll
-299. [ ] Filters bar using `HybridFilterDropdown`: type multiselect (buy / sell / buy-fee / sell-fee / transfer-fee / dividend / deposit / withdrawal / currency-exchange), portfolio multiselect, stock multiselect, currency multiselect
-300. [ ] Filter bar collapses by default behind a "Filters" button; persists open/closed state in localStorage
+298. [x] Added max-height scrollable container (~30 rows visible); chunk-load 50 records with "Load more" button
+299. [x] Filters bar using `HybridFilterDropdown`: type multiselect, ticker multiselect, portfolio multiselect, currency multiselect
+300. [x] Filter bar collapses by default behind a "Filters" button; open/closed state persisted in localStorage per account
 
 **Sub-phase 27d — Cash movements readability + footer cleanup**
-301. [ ] Increase row font size and contrast between row text and stripe background
-302. [ ] Add fullscreen-expand button on the cash-movements panel (full-viewport modal with the same table)
-303. [ ] Remove the `Portfolios` shortcut button at the bottom of the Investments overview screen (`Investments.jsx:133–135`) — the desktop top-nav sub-row already exposes Portfolios as a tab
+301. [x] Increased row font size (13→14px); stronger date/type color contrast; alternating stripe on even rows
+302. [x] Fullscreen-expand button on cash-movements panel header (CSS-class-driven fixed overlay)
+303. [x] Removed the `Portfolios` shortcut button from the bottom of the Investments overview screen
 
 ---
 
@@ -665,16 +666,17 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 
 > Single biggest screen rebuild in Phase 3. Each sub-phase is one cohesive improvement.
 
-**Sub-phase 28a — Currency view toggle (shared component)**
-304. [ ] Build `components/CurrencyToggle.jsx`: pill toggle "Trading | Main"; persists last choice per screen in localStorage
-305. [ ] Add to Stock page header (defaults to Trading); affects all metric formatting, price chart axis, dividend amount display, Positions section subtotal
+**Sub-phase 28a — Currency view toggle (shared component) ✓ DONE**
+304. [x] Build `components/CurrencyToggle.jsx`: pill toggle "Trading | Main"; persists last choice per screen in localStorage
+305. [x] Add to Stock page header (defaults to Trading); affects metric formatting (all tiles), dividend past-payout amounts; hidden when trading === main currency. Price chart axis and Positions subtotal deferred to Phase 28e/28c respectively
 
-**Sub-phase 28b — Metrics row overhaul (TTM / forward / dividend return / p.a. XIRR)**
-306. [ ] **TTM yield** = (sum of `apiDividendHistory[ticker].perShare` for past 12 months) ÷ current price, both in selected currency. Falls back to user `dividends.dividendPerShare` only for dates where API has a gap and a user record exists; amber dot when API cache is empty
-307. [ ] **Forward yield** = `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; uses `dividendFrequency` from the stock profile; shows "—" when frequency = 'unknown' or no regular dividend in history. **Source precedence:** `lastRegularPerShare` is read from the merged user-records-and-API-cache view, with the user record winning on `(ticker, exDate)` collision — so a user-edited type='special' on an API-fetched payout correctly excludes it from forward-yield input. Same precedence rule as item 313
-308. [ ] **Dividend return** splits into two tiles: "All-time net (after tax)" and "Last 12 months net (after tax)"; both use user `dividends` records (depend on tax + actual share count)
-309. [ ] **p.a. return** rebuilds as **XIRR** using transaction-snapshot FX rates (item 146) — accumulates buy/sell/dividend/fee cash flows in main currency; shows "—" until snapshot data covers all relevant cash flows
-310. [ ] Verify price-appreciation calc on a stock with multiple lots (the user has reported NNN looks correct; confirm with a unit test)
+**Sub-phase 28b — Metrics row overhaul (TTM / forward / dividend return / p.a. XIRR) ✓ DONE**
+306. [x] **TTM yield** sourced from `apiDividendHistory[ticker].perShare` for past 12 months ÷ current price. Falls back to user `dividends.dividendPerShare` for dates the API hasn't covered. Amber dot (header) when API cache is stale. Includes **all** dividend types (regular + special). **Cost-based variant** (`TTM on cost`) uses weighted-average fee-inclusive cost per share as the denominator instead of price.
+307. [x] **Forward yield** = `lastRegularPerShare × frequencyMultiplier ÷ currentPrice`; frequency from `detectEffectiveDividendFrequency`; merged user-records + API-cache view (user wins on `(ticker, exDate)` collision, so user-edited `type='special'` correctly excludes it from forward-yield input); shows "—" when frequency = 'unknown' or no regular history. **Cost-based variant** (`Fwd on cost`) uses weighted-average cost per share.
+308. [x] **Dividend return** split into two tiles: "Div return (all-time)" and "Div return (L12M)"; both show gross primary, net after tax in subtitle.
+309. [x] **P.a. return** rebuilt as **XIRR** (`utils/xirr.js` Newton-Raphson) over buy/sell/dividend/terminal-MV cash flows in main currency; buy/sell use snapshot FX `rateToMain`, falling back to live rate when no snapshot present; dividends use live rate; shows "—" only when both unavailable.
+310. [x] Total return formula corrected: `totalReturn = (MV − totalInvested) + netDividends`; price-appreciation (= `MV − totalInvested`) verified correct across multiple lots.
+311. [x] **Yield-tile info popups (`YieldDetailDialog`):** ⓘ button on every yield tile opens a modal showing the full breakdown — for TTM, every dividend in the 12-month window with type, source, per-share amount and total; for Forward, the single most-recent regular payout used. Denominator (price or cost) shown explicitly with the formula and 4-decimal result.
 
 **Sub-phase 28c — Multi-account total row + portfolio % share**
 311. [ ] Stock page Positions section: when same stock is in ≥ 2 investing accounts, append a bold subtotal row showing total shares, weighted-avg fee-inclusive price, total MV

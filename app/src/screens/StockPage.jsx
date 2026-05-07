@@ -5,12 +5,14 @@ import { getInvestingAccounts } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import { getLatestPrice, getHistoricalSeries, getNews } from '../data/marketDataClient'
-import { refreshApiDividendHistory, isStaleForTicker } from '../data/apiDividendHistory'
+import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
-import { computeProjections } from '../utils/dividendProjections'
+import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
 import { convertToMain, ensureRates } from '../utils/currency'
 import { fmtAmt } from '../utils/format'
+import { computeXirr } from '../utils/xirr'
 import AiChatPanel from '../components/AiChatPanel'
+import CurrencyToggle from '../components/CurrencyToggle'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import TickerRenameDialog from '../components/TickerRenameDialog'
 import styles from './StockPage.module.css'
@@ -48,6 +50,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [ratesVersion,    setRatesVersion]    = useState(0)
   const [divRefreshStatus, setDivRefreshStatus] = useState('idle') // 'idle' | 'loading' | 'failed'
   const [divHistoryKey,    setDivHistoryKey]    = useState(0)      // bump to re-read stale indicator
+  const [currencyMode,     setCurrencyMode]     = useState(() => localStorage.getItem('rmoney_currency_toggle_stock') ?? 'trading')
+  const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -129,29 +133,154 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const totalShares         = positions.reduce((s, { pos }) => s + pos.shares, 0)
   const posCurrency         = positions[0]?.pos.currency ?? null
   const totalInvestedNative = positions.reduce((s, { pos }) => s + pos.shares * pos.avgCost, 0)
-  const totalInvested       = posCurrency ? (convertToMain(totalInvestedNative, posCurrency, mainCurrency) ?? null) : null
   const marketValueNative   = effectivePrice != null ? totalShares * effectivePrice.price : null
   const priceCurrency       = effectivePrice?.currency ?? posCurrency
-  const marketValue         = (marketValueNative != null && priceCurrency) ? (convertToMain(marketValueNative, priceCurrency, mainCurrency) ?? null) : null
-  const totalReturn         = (marketValue != null && totalInvested != null) ? marketValue - totalInvested : null
-  const totalReturnPct      = (totalReturn != null && totalInvested != null && totalInvested > 0) ? (totalReturn / totalInvested) * 100 : null
+  const tradingCurrency     = priceCurrency ?? posCurrency ?? currency ?? ''
+  const displayCurrency     = currencyMode === 'trading' ? tradingCurrency : mainCurrency
 
+  const marketValueDisplay = currencyMode === 'trading'
+    ? marketValueNative
+    : (marketValueNative != null && priceCurrency) ? (convertToMain(marketValueNative, priceCurrency, mainCurrency) ?? null) : null
+
+  const totalInvestedDisplay = currencyMode === 'trading'
+    ? totalInvestedNative
+    : posCurrency ? (convertToMain(totalInvestedNative, posCurrency, mainCurrency) ?? null) : null
+
+  // Dividend returns must be computed first — totalReturn depends on divNetDisplay.
   const cutoff12m = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10) })()
-  let divReturnTotal = 0, div12m = 0
+  let divGrossDisplay = 0, divNetDisplay = 0, div12mGrossDisplay = 0, div12mNetDisplay = 0
   for (const d of dividends) {
-    const { netTotal } = computeDividendDerived(d)
-    const conv = convertToMain(netTotal, d.currency, mainCurrency) ?? 0
-    divReturnTotal += conv
-    if (d.payoutDate >= cutoff12m) div12m += conv
+    const { totalBeforeTax, netTotal } = computeDividendDerived(d)
+    const toDisp = v => currencyMode === 'trading' ? v : (convertToMain(v, d.currency, mainCurrency) ?? 0)
+    divGrossDisplay   += toDisp(totalBeforeTax)
+    divNetDisplay     += toDisp(netTotal)
+    if (d.payoutDate >= cutoff12m) {
+      div12mGrossDisplay += toDisp(totalBeforeTax)
+      div12mNetDisplay   += toDisp(netTotal)
+    }
   }
-  const priceAppReturn = totalReturn != null ? totalReturn - divReturnTotal : null
-  const divYieldTTM    = (div12m > 0 && marketValue != null && marketValue > 0) ? (div12m / marketValue) * 100 : null
-  const firstBuyDate   = stockTxns.filter(t => t.type === 'buy').map(t => t.date).sort()[0] ?? null
-  const paReturn       = (() => {
-    if (firstBuyDate == null || totalReturnPct == null) return null
-    const years = (Date.now() - new Date(firstBuyDate).getTime()) / (365.25 * 24 * 3600 * 1000)
-    if (years < 0.0833) return null
-    return (Math.pow(1 + totalReturnPct / 100, 1 / years) - 1) * 100
+  // Total return = price appreciation + net dividends received
+  const totalReturnDisplay    = (marketValueDisplay != null && totalInvestedDisplay != null) ? marketValueDisplay - totalInvestedDisplay + divNetDisplay : null
+  const totalReturnPctDisplay = (totalReturnDisplay != null && totalInvestedDisplay != null && totalInvestedDisplay > 0) ? (totalReturnDisplay / totalInvestedDisplay) * 100 : null
+  const priceAppDisplay       = totalReturnDisplay != null ? totalReturnDisplay - divNetDisplay : null
+
+  // divHistoryKey bump (from Refresh dividends) triggers a re-render so this stays fresh.
+  const apiHistory = getApiDividendHistoryForTicker(norm) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Yield denominators ────────────────────────────────────────────────────
+  // Price-based yields use the current market price.
+  // Cost-based yields ("yield on cost") use the weighted-average fee-inclusive cost per share.
+  const avgCostPerShare = totalShares > 0 ? totalInvestedNative / totalShares : null
+
+  // ── TTM yield — API-sourced with user-record gap-fill (item 306) ─────────
+  // ttmYieldData carries the breakdown so the info popup can show every record used.
+  const ttmYieldData = (() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const apiIn12m = apiHistory.filter(r => r.exDate >= cutoff12m && r.exDate <= today)
+    const apiExDates = new Set(apiIn12m.map(r => r.exDate))
+    const userGap = dividends.filter(d =>
+      d.exDividendDate && d.exDividendDate >= cutoff12m && d.exDividendDate <= today && !apiExDates.has(d.exDividendDate)
+    )
+    const breakdown = [
+      ...apiIn12m.map(r => ({ date: r.exDate, perShare: r.perShare ?? 0, type: r.type ?? 'regular', source: 'API', currency: r.currency })),
+      ...userGap.map(d => ({ date: d.exDividendDate, perShare: d.dividendPerShare ?? 0, type: d.type ?? 'regular', source: 'user (gap-fill)', currency: d.currency })),
+    ].sort((a, b) => b.date.localeCompare(a.date))
+    const sumPerShare = breakdown.reduce((s, r) => s + r.perShare, 0)
+    return { breakdown, sumPerShare, cutoff: cutoff12m, today }
+  })()
+
+  const ttmYieldPctOnPrice = (effectivePrice?.price > 0 && ttmYieldData.sumPerShare > 0)
+    ? (ttmYieldData.sumPerShare / effectivePrice.price) * 100 : null
+  const ttmYieldPctOnCost = (avgCostPerShare > 0 && ttmYieldData.sumPerShare > 0)
+    ? (ttmYieldData.sumPerShare / avgCostPerShare) * 100 : null
+
+  // ── Forward yield (item 307) ─────────────────────────────────────────────
+  const FREQ_MULTIPLIER = { monthly: 12, quarterly: 4, 'semi-annual': 2, annual: 1 }
+  const effectiveFrequency = detectEffectiveDividendFrequency(
+    profile?.dividendFrequency ?? 'unknown',
+    { apiHistory, userDividends: dividends }
+  )
+  const forwardYieldData = (() => {
+    if (!effectiveFrequency || effectiveFrequency === 'unknown') return null
+    const multiplier = FREQ_MULTIPLIER[effectiveFrequency]
+    if (!multiplier) return null
+    const today = new Date().toISOString().slice(0, 10)
+    // Merged map of past regular payouts: exDate → { perShare, source, currency }
+    // User records win on collision (matches forward-yield spec).
+    const merged = new Map()
+    for (const r of apiHistory) {
+      if (r.exDate <= today && (r.type == null || r.type === 'regular')) {
+        merged.set(r.exDate, { perShare: r.perShare, source: 'API', currency: r.currency })
+      }
+    }
+    for (const d of dividends) {
+      if (d.exDividendDate && d.exDividendDate <= today && (d.type == null || d.type === 'regular')) {
+        merged.set(d.exDividendDate, { perShare: d.dividendPerShare, source: 'user', currency: d.currency })
+      }
+    }
+    const sortedKeys = [...merged.keys()].filter(k => k <= today).sort().reverse()
+    if (sortedKeys.length === 0) return null
+    const lastDate = sortedKeys[0]
+    const last = merged.get(lastDate)
+    if (!last.perShare || last.perShare <= 0) return null
+    return { lastDate, perShare: last.perShare, source: last.source, frequency: effectiveFrequency, multiplier, currency: last.currency }
+  })()
+
+  const forwardYieldPctOnPrice = (forwardYieldData && effectivePrice?.price > 0)
+    ? (forwardYieldData.perShare * forwardYieldData.multiplier / effectivePrice.price) * 100 : null
+  const forwardYieldPctOnCost = (forwardYieldData && avgCostPerShare > 0)
+    ? (forwardYieldData.perShare * forwardYieldData.multiplier / avgCostPerShare) * 100 : null
+
+  // ── XIRR p.a. return (item 309) ──────────────────────────────────────────
+  // Cash flows: buys/sells (snapshot FX) + dividends (live FX) + terminal MV.
+  // Shows "—" when any buy/sell lacks a snapshot and trading ≠ main currency.
+  const xirrPct = (() => {
+    if (marketValueNative == null) return null
+    const crossCurrency = tradingCurrency && tradingCurrency !== mainCurrency
+    const cashFlows = []
+
+    for (const txn of stockTxns) {
+      if (txn.type !== 'buy' && txn.type !== 'sell') continue
+      const tradingAmt = txn.type === 'buy'
+        ? -(txn.shares * txn.price + (txn.fee ?? 0))
+        : txn.shares * txn.price - (txn.fee ?? 0)
+      let mainAmt
+      if (!crossCurrency) {
+        mainAmt = tradingAmt
+      } else {
+        const snap = txn.exchangeRates?.rateToMain
+        if (snap) {
+          mainAmt = tradingAmt * snap
+        } else {
+          // No historical snapshot — fall back to live rate (less accurate for old transactions)
+          const converted = convertToMain(tradingAmt, tradingCurrency, mainCurrency)
+          if (converted == null) return null
+          mainAmt = converted
+        }
+      }
+      cashFlows.push({ date: txn.date, amount: mainAmt })
+    }
+
+    // Dividends: use live rate (no per-dividend snapshot available)
+    for (const d of dividends) {
+      const { netTotal } = computeDividendDerived(d)
+      const mainAmt = d.currency === mainCurrency
+        ? netTotal
+        : convertToMain(netTotal, d.currency, mainCurrency)
+      if (mainAmt != null) cashFlows.push({ date: d.payoutDate, amount: mainAmt })
+    }
+
+    if (cashFlows.length === 0) return null
+
+    // Terminal value: current market value in main currency at today
+    const terminalMv = !crossCurrency
+      ? marketValueNative
+      : convertToMain(marketValueNative, tradingCurrency, mainCurrency)
+    if (terminalMv == null) return null
+    cashFlows.push({ date: new Date().toISOString().slice(0, 10), amount: terminalMv })
+
+    const rate = computeXirr(cashFlows)
+    return rate != null ? rate * 100 : null
   })()
 
   // ── Dividend projections ────────────────────────────────────────────────────
@@ -164,6 +293,11 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
   // Re-read on every render; divHistoryKey bump causes a re-render so isStale stays fresh
   const isStale = isStaleForTicker(norm)
+
+  function handleCurrencyModeChange(mode) {
+    setCurrencyMode(mode)
+    localStorage.setItem('rmoney_currency_toggle_stock', mode)
+  }
 
   async function handleRefreshDividends() {
     setDivRefreshStatus('loading')
@@ -250,6 +384,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         )}
         {divRefreshStatus === 'failed' && (
           <span className={styles.divRefreshError}>Refresh failed</span>
+        )}
+        {tradingCurrency && tradingCurrency !== mainCurrency && (
+          <CurrencyToggle
+            value={currencyMode}
+            onChange={handleCurrencyModeChange}
+            tradingCurrency={tradingCurrency}
+            mainCurrency={mainCurrency}
+          />
         )}
       </div>
 
@@ -371,6 +513,18 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         />
       )}
 
+      {yieldDetailKind && (
+        <YieldDetailDialog
+          kind={yieldDetailKind}
+          ttmData={ttmYieldData}
+          forwardData={forwardYieldData}
+          price={effectivePrice?.price ?? null}
+          avgCost={avgCostPerShare}
+          tradingCurrency={tradingCurrency}
+          onClose={() => setYieldDetailKind(null)}
+        />
+      )}
+
       {/* Body — two columns on desktop */}
       <div className={styles.body}>
 
@@ -474,55 +628,118 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>Market value</div>
                   <div className={styles.metricValue}>
-                    {marketValue != null
-                      ? `${fmtAmt(marketValue)} ${mainCurrency}`
+                    {marketValueDisplay != null
+                      ? `${fmtAmt(marketValueDisplay)} ${displayCurrency}`
                       : <span className={styles.metricNa}>—</span>}
                   </div>
                 </div>
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>Total return</div>
-                  <div className={`${styles.metricValue} ${totalReturn != null ? (totalReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
-                    {totalReturn != null
-                      ? `${totalReturn >= 0 ? '+' : ''}${fmtAmt(Math.abs(totalReturn))} ${mainCurrency}`
+                  <div className={`${styles.metricValue} ${totalReturnDisplay != null ? (totalReturnDisplay >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {totalReturnDisplay != null
+                      ? `${totalReturnDisplay >= 0 ? '+' : ''}${fmtAmt(Math.abs(totalReturnDisplay))} ${displayCurrency}`
                       : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {totalReturnPct != null && (
-                    <div className={`${styles.metricSub} ${totalReturnPct >= 0 ? styles.pos : styles.neg}`}>
-                      {fmtPct(totalReturnPct)}
+                  {totalReturnPctDisplay != null && (
+                    <div className={`${styles.metricSub} ${totalReturnPctDisplay >= 0 ? styles.pos : styles.neg}`}>
+                      {fmtPct(totalReturnPctDisplay)}
                     </div>
                   )}
                 </div>
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>P.a. return</div>
-                  <div className={`${styles.metricValue} ${paReturn != null ? (paReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
-                    {paReturn != null
-                      ? fmtPct(paReturn)
-                      : <span className={styles.metricNa}>{firstBuyDate && totalReturnPct != null ? '< 1 mo' : '—'}</span>}
+                  <div className={`${styles.metricValue} ${xirrPct != null ? (xirrPct >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {xirrPct != null
+                      ? fmtPct(xirrPct)
+                      : <span className={styles.metricNa}>—</span>}
                   </div>
+                  {xirrPct != null && <div className={styles.metricSub} style={{ color: '#475569' }}>XIRR</div>}
                 </div>
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>Price appreciation</div>
-                  <div className={`${styles.metricValue} ${priceAppReturn != null ? (priceAppReturn >= 0 ? styles.pos : styles.neg) : ''}`}>
-                    {priceAppReturn != null
-                      ? `${priceAppReturn >= 0 ? '+' : ''}${fmtAmt(Math.abs(priceAppReturn))} ${mainCurrency}`
+                  <div className={`${styles.metricValue} ${priceAppDisplay != null ? (priceAppDisplay >= 0 ? styles.pos : styles.neg) : ''}`}>
+                    {priceAppDisplay != null
+                      ? `${priceAppDisplay >= 0 ? '+' : ''}${fmtAmt(Math.abs(priceAppDisplay))} ${displayCurrency}`
                       : <span className={styles.metricNa}>—</span>}
                   </div>
                 </div>
                 <div className={styles.metricTile}>
-                  <div className={styles.metricLabel}>Dividend return</div>
-                  <div className={`${styles.metricValue} ${divReturnTotal > 0 ? styles.pos : ''}`}>
-                    {divReturnTotal > 0
-                      ? `+${fmtAmt(divReturnTotal)} ${mainCurrency}`
+                  <div className={styles.metricLabel}>Div return (all-time)</div>
+                  <div className={`${styles.metricValue} ${divGrossDisplay > 0 ? styles.pos : ''}`}>
+                    {divGrossDisplay > 0
+                      ? `+${fmtAmt(divGrossDisplay)} ${displayCurrency}`
                       : <span className={styles.metricNa}>—</span>}
                   </div>
+                  {divGrossDisplay > 0 && (
+                    <div className={styles.metricSub} style={{ color: '#475569' }}>
+                      net +{fmtAmt(divNetDisplay)} {displayCurrency}
+                    </div>
+                  )}
                 </div>
                 <div className={styles.metricTile}>
-                  <div className={styles.metricLabel}>Div yield (TTM)</div>
+                  <div className={styles.metricLabel}>Div return (L12M)</div>
+                  <div className={`${styles.metricValue} ${div12mGrossDisplay > 0 ? styles.pos : ''}`}>
+                    {div12mGrossDisplay > 0
+                      ? `+${fmtAmt(div12mGrossDisplay)} ${displayCurrency}`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                  {div12mGrossDisplay > 0 && (
+                    <div className={styles.metricSub} style={{ color: '#475569' }}>
+                      net +{fmtAmt(div12mNetDisplay)} {displayCurrency}
+                    </div>
+                  )}
+                </div>
+                <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
+                  <div className={styles.metricLabel}>
+                    <span>TTM yield</span>
+                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-price')} title="Show calculation">ⓘ</button>
+                  </div>
                   <div className={styles.metricValue}>
-                    {divYieldTTM != null
-                      ? `${divYieldTTM.toFixed(2)}%`
+                    {ttmYieldPctOnPrice != null
+                      ? `${ttmYieldPctOnPrice.toFixed(2)}%`
                       : <span className={styles.metricNa}>—</span>}
                   </div>
+                  {ttmYieldPctOnPrice != null && <div className={styles.metricSub} style={{ color: '#475569' }}>on price</div>}
+                </div>
+                <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
+                  <div className={styles.metricLabel}>
+                    <span>TTM on cost</span>
+                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-cost')} title="Show calculation">ⓘ</button>
+                  </div>
+                  <div className={styles.metricValue}>
+                    {ttmYieldPctOnCost != null
+                      ? `${ttmYieldPctOnCost.toFixed(2)}%`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                  {ttmYieldPctOnCost != null && <div className={styles.metricSub} style={{ color: '#475569' }}>yield on cost</div>}
+                </div>
+                <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
+                  <div className={styles.metricLabel}>
+                    <span>Fwd yield</span>
+                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-price')} title="Show calculation">ⓘ</button>
+                  </div>
+                  <div className={styles.metricValue}>
+                    {forwardYieldPctOnPrice != null
+                      ? `${forwardYieldPctOnPrice.toFixed(2)}%`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                  {forwardYieldPctOnPrice != null && effectiveFrequency !== 'unknown' && (
+                    <div className={styles.metricSub} style={{ color: '#475569' }}>on price · {effectiveFrequency}</div>
+                  )}
+                </div>
+                <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
+                  <div className={styles.metricLabel}>
+                    <span>Fwd on cost</span>
+                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-cost')} title="Show calculation">ⓘ</button>
+                  </div>
+                  <div className={styles.metricValue}>
+                    {forwardYieldPctOnCost != null
+                      ? `${forwardYieldPctOnCost.toFixed(2)}%`
+                      : <span className={styles.metricNa}>—</span>}
+                  </div>
+                  {forwardYieldPctOnCost != null && effectiveFrequency !== 'unknown' && (
+                    <div className={styles.metricSub} style={{ color: '#475569' }}>on cost · {effectiveFrequency}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -552,6 +769,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                     txn={t}
                     accountsById={accountsById}
                     onEditSplit={t._kind === 'split' ? () => setEditingSplitTx(t) : null}
+                    mainCurrency={mainCurrency}
                   />
                 ))}
               </div>
@@ -569,6 +787,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 {dividends.map(d => {
                   const { netTotal } = computeDividendDerived(d)
                   const account = accountsById[d.investingAccountId]
+                  const netDisplay = currencyMode === 'main'
+                    ? (() => {
+                        const c = convertToMain(netTotal, d.currency, mainCurrency)
+                        return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
+                      })()
+                    : `${fmtAmt(netTotal)} ${d.currency}`
                   return (
                     <div key={d.id} className={styles.divRow}>
                       <span className={styles.divDate}>{d.payoutDate}</span>
@@ -577,7 +801,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                         {d.taxPercent > 0 && ` (${d.taxPercent}% tax)`}
                       </span>
                       {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                      <span className={styles.divNet}>{fmtAmt(netTotal)} {d.currency}</span>
+                      <span className={styles.divNet}>{netDisplay}</span>
                       {account && <span className={styles.divAccount}>{account.name}</span>}
                     </div>
                   )
@@ -716,7 +940,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 
-function TxRow({ txn, accountsById, onEditSplit }) {
+function TxRow({ txn, accountsById, onEditSplit, mainCurrency }) {
   const account = accountsById[txn.investingAccountId]
   const kind = txn._kind
 
@@ -757,12 +981,30 @@ function TxRow({ txn, accountsById, onEditSplit }) {
     amountCls = styles.txAmountPositive
   }
 
+  // For buy/sell rows, show the main-currency equivalent when trading ≠ main.
+  const mainEquivalent = (() => {
+    if (!mainCurrency || txn.currency === mainCurrency) return null
+    if (kind !== 'buy' && kind !== 'sell') return null
+    const tradingTotal = kind === 'buy'
+      ? -(txn.shares * txn.price + (txn.fee ?? 0))
+      : txn.shares * txn.price - (txn.fee ?? 0)
+    const snap = txn.exchangeRates?.rateToMain
+    if (snap) return tradingTotal * snap
+    return convertToMain(tradingTotal, txn.currency, mainCurrency) ?? null
+  })()
+
   return (
     <div className={styles.txRow}>
       <span className={styles.txDate}>{txn.date}</span>
       <span className={`${styles.txBadge} ${badgeCls}`}>{badge}</span>
       <span className={styles.txDesc}>{desc}</span>
       <span className={`${styles.txAmount} ${amountCls}`}>{amountStr}</span>
+      {mainEquivalent != null && (
+        <span className={styles.txMainCcy}>
+          ({mainEquivalent >= 0 ? '+' : '−'}{fmtAmt(Math.abs(mainEquivalent))} {mainCurrency}
+          {txn.exchangeRates?.rateToMain ? '' : ' ~'})
+        </span>
+      )}
       {account && <span className={styles.txAccount}>{account.name}</span>}
       {onEditSplit && (
         <button className={styles.txEditBtn} onClick={onEditSplit} title="Edit split">✎</button>
@@ -795,6 +1037,122 @@ function formatNewsDate(iso) {
   if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// ─── Yield detail dialog (28b) ────────────────────────────────────────────────
+// Shows the exact records and arithmetic behind each of the four yield tiles.
+// kind: 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
+
+function YieldDetailDialog({ kind, ttmData, forwardData, price, avgCost, tradingCurrency, onClose }) {
+  const isCost     = kind.endsWith('-cost')
+  const isForward  = kind.startsWith('forward')
+  const denom      = isCost ? avgCost : price
+  const denomLabel = isCost ? 'Avg cost per share (fee-incl.)' : 'Current price'
+  const ccy        = tradingCurrency || ''
+
+  const fmt4 = n => n == null || !isFinite(n)
+    ? '—'
+    : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).replace(/,/g, ' ')
+
+  let title, body
+  if (isForward) {
+    title = isCost ? 'Forward yield on cost' : 'Forward yield (on price)'
+    if (!forwardData) {
+      body = <p className={styles.dialogNote}>No regular dividend in history — set the dividend frequency on the profile or add at least one regular payout.</p>
+    } else {
+      const annualised = forwardData.perShare * forwardData.multiplier
+      const result     = denom > 0 ? (annualised / denom) * 100 : null
+      body = (
+        <>
+          <p className={styles.dialogFormula}>
+            (last regular per-share × frequency multiplier) ÷ {denomLabel} × 100
+          </p>
+          <table className={styles.yieldTable}>
+            <tbody>
+              <tr><td>Last regular ex-date</td><td>{forwardData.lastDate}</td></tr>
+              <tr><td>Per-share amount</td><td>{fmt4(forwardData.perShare)} {forwardData.currency || ccy}</td></tr>
+              <tr><td>Source</td><td>{forwardData.source}</td></tr>
+              <tr><td>Frequency</td><td>{forwardData.frequency} (×{forwardData.multiplier} per year)</td></tr>
+              <tr><td>Annualised per share</td><td><b>{fmt4(annualised)} {forwardData.currency || ccy}</b></td></tr>
+              <tr><td>{denomLabel}</td><td>{fmt4(denom)} {ccy}</td></tr>
+              <tr className={styles.yieldTableTotal}>
+                <td>Forward yield</td>
+                <td>{result != null ? `${result.toFixed(4)} %` : '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className={styles.dialogNote}>
+            Special dividends and any payout marked <code>type: 'special'</code> are excluded.
+            User records win over API records when both exist for the same ex-date.
+          </p>
+        </>
+      )
+    }
+  } else {
+    title = isCost ? 'TTM yield on cost' : 'TTM yield (on price)'
+    if (!ttmData || ttmData.sumPerShare <= 0) {
+      body = <p className={styles.dialogNote}>No dividend records in the past 12 months.</p>
+    } else {
+      const result = denom > 0 ? (ttmData.sumPerShare / denom) * 100 : null
+      body = (
+        <>
+          <p className={styles.dialogFormula}>
+            Σ per-share dividends ({ttmData.cutoff} → {ttmData.today}) ÷ {denomLabel} × 100
+          </p>
+          <div className={styles.yieldTableWrap}>
+            <table className={styles.yieldTable}>
+              <thead>
+                <tr>
+                  <th>Ex-date</th>
+                  <th>Type</th>
+                  <th>Source</th>
+                  <th style={{ textAlign: 'right' }}>Per share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ttmData.breakdown.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.date}</td>
+                    <td>{r.type}{r.type === 'special' && <span className={styles.yieldSpecialBadge}>special</span>}</td>
+                    <td>{r.source}</td>
+                    <td style={{ textAlign: 'right' }}>{fmt4(r.perShare)} {r.currency || ccy}</td>
+                  </tr>
+                ))}
+                <tr className={styles.yieldTableTotal}>
+                  <td colSpan={3}>Total ({ttmData.breakdown.length} record{ttmData.breakdown.length === 1 ? '' : 's'})</td>
+                  <td style={{ textAlign: 'right' }}>{fmt4(ttmData.sumPerShare)} {ccy}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <table className={styles.yieldTable} style={{ marginTop: '10px' }}>
+            <tbody>
+              <tr><td>{denomLabel}</td><td>{fmt4(denom)} {ccy}</td></tr>
+              <tr className={styles.yieldTableTotal}>
+                <td>TTM yield</td>
+                <td>{result != null ? `${result.toFixed(4)} %` : '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className={styles.dialogNote}>
+            All dividend types (regular and special) are summed. Forward yield uses regular only.
+          </p>
+        </>
+      )
+    }
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className={`${styles.dialogBox} ${styles.dialogBoxWide}`}>
+        <h2 className={styles.dialogTitle}>{title}</h2>
+        {body}
+        <div className={styles.dialogActions}>
+          <button type="button" className={styles.dialogCancelBtn} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Edit profile dialog (26b) ────────────────────────────────────────────────
