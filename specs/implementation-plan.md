@@ -686,8 +686,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 313. [x] Past payouts table: max-height for 15 rows. Initial render shows the most recent payouts at the top; scrolling down loads chronologically older year chunks (one year per chunk). Merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence (user `type` and `perShare` win; the API row is hidden when both exist for the same date). This same precedence rule feeds the forward-yield input (item 307)
 314. [x] Transactions table: max-height for 15 rows; standard scroll (transaction count is bounded — no chunking needed)
 
-**Sub-phase 28e — 1D chart period**
-315. [ ] Add "1D" button to the chart period selector; calls `getIntradaySeries` (Phase 25e); button is disabled with a tooltip when the active provider chain returns "not supported" for that ticker
+**Sub-phase 28e — 1D chart period ✓ DONE**
 
 **Sub-phase 28f — Future dividend declarations + projections + manual editing**
 316. [ ] Stock page Dividends section: render next 4 expected payouts from `apiDividendHistory` (`state: 'declared'`) plus the projection algorithm (`state: 'estimated'`, computed at read time). The projection algorithm excludes special dividends from cadence detection and per-share amount estimation (per SPEC-020) — declared specials in `apiDividendHistory` still render as themselves but are not extrapolated forward

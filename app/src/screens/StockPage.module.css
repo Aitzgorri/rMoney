@@ -707,6 +707,8 @@
 }
 
 .chartPeriodBtn:hover { border-color: #475569; color: #94a3b8; }
+.chartPeriodBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.chartPeriodBtn:disabled:hover { border-color: #2d3448; color: #64748b; }
 
 .chartPeriodBtnActive {
   background: #2d3448;

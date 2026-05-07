@@ -4,7 +4,7 @@ import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent
 import { getInvestingAccounts } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
-import { getLatestPrice, getHistoricalSeries, getNews } from '../data/marketDataClient'
+import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews } from '../data/marketDataClient'
 import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
@@ -45,6 +45,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [chartPeriod,     setChartPeriod]     = useState('6M')
   const [chartData,       setChartData]       = useState([])
   const [chartStatus,     setChartStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
+  const [intradayUnsupported, setIntradayUnsupported] = useState(null) // null=unknown | true | false
   const [news,            setNews]            = useState([])
   const [newsStatus,      setNewsStatus]      = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [ratesVersion,    setRatesVersion]    = useState(0)
@@ -82,9 +83,26 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     let cancelled = false
     setChartStatus('loading')
     setChartData([])
-    getHistoricalSeries(norm, profile?.stockExchange ?? null, chartPeriod, PERIOD_RESOLUTION[chartPeriod])
-      .then(data => { if (!cancelled) { setChartData(data ?? []); setChartStatus('idle') } })
-      .catch(() => { if (!cancelled) setChartStatus('unavailable') })
+    if (chartPeriod === '1D') {
+      getIntradaySeries(norm, profile?.stockExchange ?? null)
+        .then(data => {
+          if (!cancelled) {
+            setIntradayUnsupported(false)
+            setChartData((data ?? []).map(d => ({ date: d.time, close: d.close })))
+            setChartStatus('idle')
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setIntradayUnsupported(true)
+            setChartStatus('unavailable')
+          }
+        })
+    } else {
+      getHistoricalSeries(norm, profile?.stockExchange ?? null, chartPeriod, PERIOD_RESOLUTION[chartPeriod])
+        .then(data => { if (!cancelled) { setChartData(data ?? []); setChartStatus('idle') } })
+        .catch(() => { if (!cancelled) setChartStatus('unavailable') })
+    }
     return () => { cancelled = true }
   }, [norm, profile?.stockExchange, chartPeriod])
 
@@ -102,7 +120,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     ensureRates(mainCurrency).then(() => setRatesVersion(v => v + 1)).catch(() => {})
   }, [mainCurrency])
 
-  useEffect(() => { setPayoutChunksVisible(1) }, [norm])
+  useEffect(() => { setPayoutChunksVisible(1); setIntradayUnsupported(null) }, [norm])
 
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
@@ -623,16 +641,23 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>Price chart</span>
               <div className={styles.chartPeriodBar}>
-                {['1M', '3M', '6M', '1Y', '5Y', 'All'].map(p => (
-                  <button
-                    key={p}
-                    className={`${styles.chartPeriodBtn} ${chartPeriod === p ? styles.chartPeriodBtnActive : ''}`}
-                    onClick={() => setChartPeriod(p)}
-                  >{p}</button>
-                ))}
+                {['1D', '1M', '3M', '6M', '1Y', '5Y', 'All'].map(p => {
+                  const disabled = p === '1D' && intradayUnsupported === true
+                  const btn = (
+                    <button
+                      key={p}
+                      className={`${styles.chartPeriodBtn} ${chartPeriod === p ? styles.chartPeriodBtnActive : ''}`}
+                      onClick={() => setChartPeriod(p)}
+                      disabled={disabled}
+                    >{p}</button>
+                  )
+                  return disabled
+                    ? <span key={p} title="Intraday data not available for this stock">{btn}</span>
+                    : btn
+                })}
               </div>
             </div>
-            <PriceChart data={chartData} status={chartStatus} />
+            <PriceChart data={chartData} status={chartStatus} isIntraday={chartPeriod === '1D'} />
           </div>
 
           {/* Positions */}
@@ -1433,7 +1458,7 @@ function EditSplitDialog({ txn, onSave, onCancel }) {
 
 // ─── Price chart ──────────────────────────────────────────────────────────────
 
-function PriceChart({ data, status }) {
+function PriceChart({ data, status, isIntraday = false }) {
   const [hover, setHover] = useState(null)  // null | { idx, x, y }
 
   if (status === 'loading') {
@@ -1486,6 +1511,15 @@ function PriceChart({ data, status }) {
     return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
+  function fmtTimeShort(iso) {
+    // "2024-05-07T14:30:00" → "14:30"
+    return iso.slice(11, 16)
+  }
+
+  function fmtTimeFull(iso) {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  }
+
   function handleMouseMove(e) {
     const rect = e.currentTarget.getBoundingClientRect()
     const svgX = ((e.clientX - rect.left) / rect.width) * VW
@@ -1531,7 +1565,7 @@ function PriceChart({ data, status }) {
         <text
           x={(tx + TW / 2).toFixed(1)} y={(ty + 28).toFixed(1)}
           textAnchor="middle" fontSize="10" fill="#94a3b8"
-        >{fmtDateFull(hd.date)}</text>
+        >{isIntraday ? fmtTimeFull(hd.date) : fmtDateFull(hd.date)}</text>
       </g>
     )
   }
@@ -1559,14 +1593,14 @@ function PriceChart({ data, status }) {
           </g>
         ))}
 
-        {/* X-axis date labels */}
+        {/* X-axis date/time labels */}
         {xTicks.map(({ x, date, i }) => (
           <text
             key={i}
             x={x.toFixed(1)} y={(VH - 5).toFixed(1)}
             textAnchor={i === 0 ? 'start' : i === numX - 1 ? 'end' : 'middle'}
             fontSize="11" fill="#475569"
-          >{fmtDateShort(date)}</text>
+          >{isIntraday ? fmtTimeShort(date) : fmtDateShort(date)}</text>
         ))}
 
         {/* Price line */}
