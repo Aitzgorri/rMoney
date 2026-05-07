@@ -682,9 +682,9 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 311. [x] Stock page Positions section: when same stock is in ≥ 2 investing accounts, append a bold subtotal row showing total shares, weighted-avg fee-inclusive price, total MV
 312. [x] Portfolio memberships table: add `% share` column = position MV ÷ portfolio total MV × 100, refreshed live with latest price; keep the existing target % column
 
-**Sub-phase 28d — Past payouts + transactions tables: scroll + lazy load**
-313. [ ] Past payouts table: max-height for 15 rows. Initial render shows the most recent payouts at the top; scrolling down loads chronologically older year chunks (one year per chunk). Merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence (user `type` and `perShare` win; the API row is hidden when both exist for the same date). This same precedence rule feeds the forward-yield input (item 307)
-314. [ ] Transactions table: max-height for 15 rows; standard scroll (transaction count is bounded — no chunking needed)
+**Sub-phase 28d — Past payouts + transactions tables: scroll + lazy load ✓ DONE**
+313. [x] Past payouts table: max-height for 15 rows. Initial render shows the most recent payouts at the top; scrolling down loads chronologically older year chunks (one year per chunk). Merges user `dividends` and `apiDividendHistory` rows, deduped by `(ticker, exDate)` with the user record taking precedence (user `type` and `perShare` win; the API row is hidden when both exist for the same date). This same precedence rule feeds the forward-yield input (item 307)
+314. [x] Transactions table: max-height for 15 rows; standard scroll (transaction count is bounded — no chunking needed)
 
 **Sub-phase 28e — 1D chart period**
 315. [ ] Add "1D" button to the chart period selector; calls `getIntradaySeries` (Phase 25e); button is disabled with a tooltip when the active provider chain returns "not supported" for that ticker

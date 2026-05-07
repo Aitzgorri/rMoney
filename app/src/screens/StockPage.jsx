@@ -53,6 +53,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [currencyMode,     setCurrencyMode]     = useState(() => localStorage.getItem('rmoney_currency_toggle_stock') ?? 'trading')
   const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
   const [portfolioMvPcts,  setPortfolioMvPcts]  = useState({})   // portfolioId → % share | null
+  const [payoutChunksVisible, setPayoutChunksVisible] = useState(1) // year-chunks loaded in past-payouts table
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -99,6 +100,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   useEffect(() => {
     ensureRates(mainCurrency).then(() => setRatesVersion(v => v + 1)).catch(() => {})
   }, [mainCurrency])
+
+  useEffect(() => { setPayoutChunksVisible(1) }, [norm])
 
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
@@ -167,6 +170,29 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
   // divHistoryKey bump (from Refresh dividends) triggers a re-render so this stays fresh.
   const apiHistory = getApiDividendHistoryForTicker(norm) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Merged past payouts (item 313) ───────────────────────────────────────
+  // User records + API-only records, deduped by exDate (user wins).
+  const mergedPayouts = (() => {
+    const userExDates = new Set(dividends.map(d => d.exDividendDate).filter(Boolean))
+    const rows = []
+    for (const d of dividends) {
+      rows.push({ sortDate: d.exDividendDate || d.payoutDate, source: 'user', record: d })
+    }
+    for (const r of apiHistory) {
+      if (!userExDates.has(r.exDate)) {
+        rows.push({ sortDate: r.exDate, source: 'api', record: r })
+      }
+    }
+    return rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate))
+  })()
+
+  const payoutYears       = [...new Set(mergedPayouts.map(r => r.sortDate.slice(0, 4)))].sort().reverse()
+  const payoutsToShow     = mergedPayouts.filter(r => {
+    const idx = payoutYears.indexOf(r.sortDate.slice(0, 4))
+    return idx < payoutChunksVisible
+  })
+  const hasMorePayouts    = payoutChunksVisible < payoutYears.length
 
   // ── Yield denominators ────────────────────────────────────────────────────
   // Price-based yields use the current market price.
@@ -823,7 +849,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             {filteredTxns.length === 0 ? (
               <p className={styles.empty}>No transactions.</p>
             ) : (
-              <div className={styles.txList}>
+              <div className={styles.txList} style={{ maxHeight: '570px', overflowY: 'auto' }}>
                 {filteredTxns.map(t => (
                   <TxRow
                     key={t.id}
@@ -838,35 +864,61 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           </div>
 
           {/* Dividends — past payouts + projections */}
-          {dividends.length > 0 && (
+          {mergedPayouts.length > 0 && (
             <div className={styles.section}>
               <div className={styles.sectionTitle}>Dividends</div>
 
               {/* Past payouts */}
               {projections.length > 0 && <div className={styles.projSubLabel}>Past payouts</div>}
-              <div className={styles.divList}>
-                {dividends.map(d => {
-                  const { netTotal } = computeDividendDerived(d)
-                  const account = accountsById[d.investingAccountId]
-                  const netDisplay = currencyMode === 'main'
-                    ? (() => {
-                        const c = convertToMain(netTotal, d.currency, mainCurrency)
-                        return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
-                      })()
-                    : `${fmtAmt(netTotal)} ${d.currency}`
-                  return (
-                    <div key={d.id} className={styles.divRow}>
-                      <span className={styles.divDate}>{d.payoutDate}</span>
-                      <span className={styles.divDesc}>
-                        {fmtAmt(d.dividendPerShare)}/sh × {trimDec(d.shareCount)}
-                        {d.taxPercent > 0 && ` (${d.taxPercent}% tax)`}
-                      </span>
-                      {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                      <span className={styles.divNet}>{netDisplay}</span>
-                      {account && <span className={styles.divAccount}>{account.name}</span>}
-                    </div>
-                  )
+              <div
+                className={styles.divList}
+                style={{ maxHeight: '570px', overflowY: 'auto' }}
+                onScroll={e => {
+                  const el = e.currentTarget
+                  if (hasMorePayouts && el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+                    setPayoutChunksVisible(n => n + 1)
+                  }
+                }}
+              >
+                {payoutsToShow.map(item => {
+                  if (item.source === 'user') {
+                    const d = item.record
+                    const { netTotal } = computeDividendDerived(d)
+                    const account = accountsById[d.investingAccountId]
+                    const netDisplay = currencyMode === 'main'
+                      ? (() => {
+                          const c = convertToMain(netTotal, d.currency, mainCurrency)
+                          return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
+                        })()
+                      : `${fmtAmt(netTotal)} ${d.currency}`
+                    return (
+                      <div key={d.id} className={styles.divRow}>
+                        <span className={styles.divDate}>{d.payoutDate}</span>
+                        <span className={styles.divDesc}>
+                          {fmtAmt(d.dividendPerShare)}/sh × {trimDec(d.shareCount)}
+                          {d.taxPercent > 0 && ` (${d.taxPercent}% tax)`}
+                        </span>
+                        {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
+                        <span className={styles.divNet}>{netDisplay}</span>
+                        {account && <span className={styles.divAccount}>{account.name}</span>}
+                      </div>
+                    )
+                  } else {
+                    const r = item.record
+                    return (
+                      <div key={`api-${r.exDate}`} className={`${styles.divRow} ${styles.divRowApi}`}>
+                        <span className={styles.divDate}>{r.payDate || r.exDate}</span>
+                        <span className={styles.divDesc}>{fmtAmt(r.perShare)}/sh</span>
+                        {r.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
+                        <span className={styles.divApiLabel}>API</span>
+                        <span className={styles.divNet}>{r.currency}</span>
+                      </div>
+                    )
+                  }
                 })}
+                {hasMorePayouts && (
+                  <div className={styles.divLoadMore}>↓ scroll for older</div>
+                )}
               </div>
 
               {/* Projected payouts */}
