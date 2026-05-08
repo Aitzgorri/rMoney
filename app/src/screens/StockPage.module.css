@@ -63,6 +63,164 @@
 
 .profileBtn:hover { border-color: #475569; color: #94a3b8; }
 
+/* ── Action buttons (+ Buy / + Sell / + Dividend) ──────────────────────────── */
+
+.buyBtn, .sellBtn, .dividendBtn {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.buyBtn      { background: #14532d; color: #86efac; }
+.buyBtn:hover { background: #166534; color: #bbf7d0; }
+
+.sellBtn      { background: #7f1d1d; color: #fca5a5; }
+.sellBtn:hover { background: #991b1b; color: #fecaca; }
+
+.dividendBtn      { background: #1e3a5f; color: #93c5fd; }
+.dividendBtn:hover { background: #1d4ed8; color: #bfdbfe; }
+
+/* ── Form / account-picker overlay ────────────────────────────────────────── */
+
+.formOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.formOverlayInner {
+  background: #131d2e;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.accountPickerDialog {
+  background: #131d2e;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 280px;
+  max-width: 400px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.accountPickerTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.accountPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accountPickerBtn {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.accountPickerBtn:hover { background: #2d3448; border-color: #475569; }
+
+.accountPickerName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.accountPickerInst {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.accountPickerCancel {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.accountPickerCancel:hover { border-color: #475569; color: #94a3b8; }
+
+/* ── Negative-balance confirm dialog ──────────────────────────────────────── */
+
+.negConfirmDialog {
+  background: #131d2e;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 380px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.negConfirmTitle { font-size: 15px; font-weight: 700; color: #f1f5f9; margin: 0; }
+.negConfirmMsg   { font-size: 13px; color: #94a3b8; margin: 0; }
+
+.negConfirmActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.negCancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.negCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.negProceedBtn {
+  background: #7f1d1d;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.negProceedBtn:hover { background: #991b1b; }
+
 .staleDot {
   color: #f59e0b;
   font-size: 10px;

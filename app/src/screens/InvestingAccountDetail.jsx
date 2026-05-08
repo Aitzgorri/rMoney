@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getTransactions, updateTransaction } from '../data/transactions'
 import TransactionForm from '../components/TransactionForm'
 import {
@@ -41,9 +41,13 @@ import {
 import { getActiveAccounts } from '../data/accounts'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { getStockProfile } from '../data/stockProfiles'
+import { getPortfolios, getAllPortfolioAssignments } from '../data/portfolios'
 import { fmtAmt } from '../utils/format'
-import { snapshotFxRates } from '../utils/currency'
+import HybridFilterDropdown from '../components/HybridFilterDropdown'
+import { snapshotFxRates, convertToMain } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
+import { getLatestPrice } from '../data/marketDataClient'
+import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import styles from './InvestingAccountDetail.module.css'
@@ -74,7 +78,17 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [confirmDeleteBal, setConfirmDeleteBal] = useState(null)  // { balance, blocked, reason? }
   const [negConfirm,       setNegConfirm]       = useState(null)  // { message, onConfirm }
   const [movementFilter,   setMovementFilter]   = useState('all')
+  const [filterTypes,       setFilterTypes]     = useState([])
+  const [filterPortfolios,  setFilterPortfolios] = useState([])
+  const [filterTickers,     setFilterTickers]   = useState([])
+  const [filterCurrencies,  setFilterCurrencies] = useState([])
+  const [filterBarOpen,     setFilterBarOpen]   = useState(
+    () => localStorage.getItem(`rmoney_mov_filterbar_${accountId}`) === 'open'
+  )
+  const [visibleCount, setVisibleCount] = useState(50)
   const [expandedMovementId, setExpandedMovementId] = useState(null)
+  const [movementsFullscreen, setMovementsFullscreen] = useState(false)
+  const [enrichedPositions, setEnrichedPositions] = useState([])
   const [editingTx,        setEditingTx]        = useState(null)  // full transaction object or null
   const [editingExchange,  setEditingExchange]  = useState(null)  // stockTransaction record or null
   const [editingStockTx,   setEditingStockTx]   = useState(null)  // buy or sell stockTransaction being edited
@@ -93,6 +107,58 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   }
 
   const balanceMap = Object.fromEntries(balances.map(b => [b.id, b]))
+
+  // ── Enrich positions with async market data ──────────────────────────────────
+
+  useEffect(() => {
+    if (positions.length === 0) { setEnrichedPositions([]); return }
+    const mainCurrency = getMainCurrency()
+    let cancelled = false
+
+    Promise.all(positions.map(async pos => {
+      const profile = getStockProfile(pos.ticker)
+      const exchange = profile?.stockExchange ?? null
+
+      // Fee-exclusive avg price from open lots
+      const lots = getOpenLots(accountId, pos.ticker)
+      const totalFeeExclusive = lots.reduce((s, l) => s + l.remainingShares * l.price, 0)
+      const totalShares = lots.reduce((s, l) => s + l.remainingShares, 0)
+      const avgCostNoFee = totalShares > 0 ? totalFeeExclusive / totalShares : 0
+
+      let latestPrice = null, previousClose = null
+      try {
+        const result = await getLatestPrice(pos.ticker, exchange)
+        latestPrice = result.price ?? null
+        previousClose = result.previousClose ?? null
+      } catch { /* market data unavailable — show "—" */ }
+
+      const mvTrading = latestPrice != null ? pos.shares * latestPrice : null
+      const mvMain = mvTrading != null ? convertToMain(mvTrading, pos.currency, mainCurrency) : null
+
+      return { ...pos, name: profile?.name ?? null, exchange, avgCostNoFee, latestPrice, previousClose, mvTrading, mvMain }
+    })).then(enriched => {
+      if (cancelled) return
+      const totalMvMain = enriched.reduce((s, p) => s + (p.mvMain ?? 0), 0)
+      setEnrichedPositions(enriched.map(p => {
+        const perShareChange = (p.latestPrice != null && p.previousClose != null)
+          ? p.latestPrice - p.previousClose : null
+        const chgAmtTrading = perShareChange != null ? perShareChange * p.shares : null
+        const chgAmtMain    = chgAmtTrading != null
+          ? convertToMain(chgAmtTrading, p.currency, mainCurrency) : null
+        const chgPct = (perShareChange != null && p.previousClose !== 0)
+          ? (perShareChange / p.previousClose) * 100 : null
+        return {
+          ...p,
+          shareOnAccount: totalMvMain > 0 && p.mvMain != null ? (p.mvMain / totalMvMain) * 100 : null,
+          chgPct,
+          chgAmtTrading,
+          chgAmtMain,
+        }
+      }))
+    })
+
+    return () => { cancelled = true }
+  }, [accountId, positions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -258,10 +324,82 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     setDefaultDividendTicker(null)
   }
 
-  const displayMovements = (movementFilter === 'all'
+  // ── Movement filter helpers ──────────────────────────────────────────────────
+
+  // Build ticker lookup: movementId → ticker (for buy/sell/dividend/transfer-fee)
+  const movTicker = {}
+  for (const m of movements) {
+    if (m.linkedStockTransactionId) {
+      const tx = getStockTransaction(m.linkedStockTransactionId)
+      if (tx?.ticker) movTicker[m.id] = tx.ticker
+    } else if (m.linkedDividendId) {
+      const dv = getDividend(m.linkedDividendId)
+      if (dv?.ticker) movTicker[m.id] = dv.ticker
+    }
+  }
+
+  // Portfolio lookup: ticker → [portfolioId]
+  const allAssignments = getAllPortfolioAssignments()
+  const tickerPortfolios = {}
+  for (const a of allAssignments) {
+    if (!tickerPortfolios[a.ticker]) tickerPortfolios[a.ticker] = []
+    tickerPortfolios[a.ticker].push(a.portfolioId)
+  }
+
+  // Compute base list (balance filter + fee-type merge)
+  const baseMovements = (movementFilter === 'all'
     ? movements
     : movements.filter(m => m.cashBalanceId === movementFilter)
   ).filter(m => !FEE_TYPES.has(m.type))
+
+  // Apply hybrid filters
+  const displayMovements = baseMovements.filter(m => {
+    if (filterTypes.length > 0 && !filterTypes.includes(m.type)) return false
+    const ticker = movTicker[m.id]
+    if (filterTickers.length > 0 && (!ticker || !filterTickers.includes(ticker))) return false
+    if (filterPortfolios.length > 0) {
+      const portfolioIds = ticker ? (tickerPortfolios[ticker] ?? []) : []
+      if (!filterPortfolios.some(pid => portfolioIds.includes(pid))) return false
+    }
+    if (filterCurrencies.length > 0) {
+      const cur = balanceMap[m.cashBalanceId]?.currency
+      if (!cur || !filterCurrencies.includes(cur)) return false
+    }
+    return true
+  })
+
+  // Visible slice for virtualization
+  const shownMovements = displayMovements.slice(0, visibleCount)
+  const hasMore = displayMovements.length > visibleCount
+
+  // Filter options derived from baseMovements
+  const typeOptions = [
+    { id: 'buy', label: 'Buy' },
+    { id: 'sell', label: 'Sell' },
+    { id: 'dividend', label: 'Dividend' },
+    { id: 'deposit', label: 'Deposit' },
+    { id: 'withdrawal', label: 'Withdrawal' },
+    { id: 'currency-exchange', label: 'Currency exchange' },
+    { id: 'transfer-fee', label: 'Transfer fee' },
+  ]
+
+  const tickerOptions = [...new Set(
+    baseMovements.map(m => movTicker[m.id]).filter(Boolean)
+  )].sort().map(t => ({ id: t, label: t }))
+
+  const portfolioOptions = getPortfolios().map(p => ({ id: p.id, label: p.name }))
+
+  const currencyOptions = [...new Set(
+    baseMovements.map(m => balanceMap[m.cashBalanceId]?.currency).filter(Boolean)
+  )].sort().map(c => ({ id: c, label: c }))
+
+  const activeFilterCount = filterTypes.length + filterPortfolios.length + filterTickers.length + filterCurrencies.length
+
+  function toggleFilterBar() {
+    const next = !filterBarOpen
+    setFilterBarOpen(next)
+    localStorage.setItem(`rmoney_mov_filterbar_${accountId}`, next ? 'open' : 'closed')
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -467,89 +605,276 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
         {positions.length === 0 ? (
           <p className={styles.emptySection}>No stock positions yet.</p>
         ) : (
-          <div className={styles.positionList}>
-            {positions.map(pos => (
-              <div key={pos.ticker} className={styles.positionRow}>
-                <span
-                  className={`${styles.posTicker} ${onNavigate ? styles.posTickerLink : ''}`}
-                  onClick={onNavigate ? () => onNavigate('stock', { ticker: pos.ticker }) : undefined}
-                  title={onNavigate ? `Open ${pos.ticker} stock page` : undefined}
-                >{pos.ticker}</span>
-                <span className={styles.posShares}>{trimDecimals(pos.shares)} sh</span>
-                <span className={styles.posAvgCost}>{fmtAmt(pos.avgCost)} {pos.currency} avg</span>
-                <button
-                  className={styles.actionBtnSmall}
-                  onClick={() => { setDefaultSellTicker(pos.ticker); setFormMode('sell') }}
-                >Sell</button>
-                <button
-                  className={styles.actionBtnSmall}
-                  onClick={() => { setDefaultDividendTicker(pos.ticker); setFormMode('dividend') }}
-                >Dividend</button>
-              </div>
-            ))}
-          </div>
+          <ConfigurableTable
+            storageKey={`rmoney_positions_columns_${accountId}`}
+            rowKey={p => p.ticker}
+            rows={enrichedPositions.length > 0 ? enrichedPositions : positions}
+            maxHeight="460px"
+            emptyMessage="No positions."
+            columns={[
+              {
+                id: 'ticker', label: 'Ticker',
+                sortValue: p => p.ticker,
+                render: p => (
+                  <span
+                    className={`${styles.posTicker} ${onNavigate ? styles.posTickerLink : ''}`}
+                    onClick={onNavigate ? () => onNavigate('stock', { ticker: p.ticker }) : undefined}
+                  >{p.ticker}</span>
+                ),
+              },
+              {
+                id: 'name', label: 'Name',
+                sortValue: p => p.name ?? '',
+                render: p => p.name ?? '—',
+              },
+              {
+                id: 'exchange', label: 'Exchange',
+                sortValue: p => p.exchange ?? '',
+                render: p => p.exchange ?? '—',
+                defaultHidden: true,
+              },
+              {
+                id: 'currency', label: 'Currency',
+                sortValue: p => p.currency,
+                render: p => p.currency,
+                defaultHidden: true,
+              },
+              {
+                id: 'latestPrice', label: 'Latest price', align: 'right',
+                sortValue: p => p.latestPrice ?? -Infinity,
+                render: p => p.latestPrice != null ? `${fmtAmt(p.latestPrice)} ${p.currency}` : '—',
+              },
+              {
+                id: 'shares', label: 'Shares', align: 'right',
+                sortValue: p => p.shares,
+                render: p => trimDecimals(p.shares),
+              },
+              {
+                id: 'avgCostFee', label: 'Price/sh (w/ fee)', align: 'right',
+                sortValue: p => p.avgCost,
+                render: p => `${fmtAmt(p.avgCost)} ${p.currency}`,
+              },
+              {
+                id: 'avgCostNoFee', label: 'Avg price', align: 'right',
+                sortValue: p => p.avgCostNoFee ?? p.avgCost,
+                render: p => {
+                  const v = p.avgCostNoFee ?? p.avgCost
+                  return `${fmtAmt(v)} ${p.currency}`
+                },
+                defaultHidden: true,
+              },
+              {
+                id: 'mvTrading', label: 'MV (trading)', align: 'right',
+                sortValue: p => p.mvTrading ?? -Infinity,
+                render: p => p.mvTrading != null ? `${fmtAmt(p.mvTrading)} ${p.currency}` : '—',
+              },
+              {
+                id: 'mvMain', label: 'MV (main)', align: 'right',
+                sortValue: p => p.mvMain ?? -Infinity,
+                render: p => {
+                  const mc = getMainCurrency()
+                  return p.mvMain != null ? `${fmtAmt(p.mvMain)} ${mc}` : '—'
+                },
+              },
+              {
+                id: 'shareOnAccount', label: 'Share %', align: 'right',
+                sortValue: p => p.shareOnAccount ?? -Infinity,
+                render: p => p.shareOnAccount != null ? `${p.shareOnAccount.toFixed(1)}%` : '—',
+                defaultHidden: true,
+              },
+              {
+                id: 'chgPct', label: "Change (%)", align: 'right',
+                sortValue: p => p.chgPct ?? -Infinity,
+                render: p => {
+                  if (p.chgPct == null) return '—'
+                  const sign = p.chgPct >= 0 ? '+' : ''
+                  return (
+                    <span style={{ color: p.chgPct >= 0 ? '#4ade80' : '#f87171' }}>
+                      {sign}{p.chgPct.toFixed(2)}%
+                    </span>
+                  )
+                },
+              },
+              {
+                id: 'chgAmtTrading', label: "Change (trading)", align: 'right',
+                sortValue: p => p.chgAmtTrading ?? -Infinity,
+                render: p => {
+                  if (p.chgAmtTrading == null) return '—'
+                  const sign = p.chgAmtTrading >= 0 ? '+' : '−'
+                  return (
+                    <span style={{ color: p.chgAmtTrading >= 0 ? '#4ade80' : '#f87171' }}>
+                      {sign}{fmtAmt(Math.abs(p.chgAmtTrading))} {p.currency}
+                    </span>
+                  )
+                },
+              },
+              {
+                id: 'chgAmtMain', label: "Change (main)", align: 'right',
+                sortValue: p => p.chgAmtMain ?? -Infinity,
+                render: p => {
+                  const mc = getMainCurrency()
+                  if (p.chgAmtMain == null) return '—'
+                  const sign = p.chgAmtMain >= 0 ? '+' : '−'
+                  return (
+                    <span style={{ color: p.chgAmtMain >= 0 ? '#4ade80' : '#f87171' }}>
+                      {sign}{fmtAmt(Math.abs(p.chgAmtMain))} {mc}
+                    </span>
+                  )
+                },
+              },
+              {
+                id: 'actions', label: '',
+                render: p => (
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      className={styles.actionBtnSmall}
+                      onClick={() => { setDefaultSellTicker(p.ticker); setFormMode('sell') }}
+                    >Sell</button>
+                    <button
+                      className={styles.actionBtnSmall}
+                      onClick={() => { setDefaultDividendTicker(p.ticker); setFormMode('dividend') }}
+                    >Div</button>
+                  </span>
+                ),
+              },
+            ]}
+          />
         )}
       </div>
 
       {/* ── Cash movements ─────────────────────────────────────────────────── */}
 
-      <div className={styles.section}>
+      <div className={`${styles.section} ${movementsFullscreen ? styles.movementsFullscreenSection : ''}`}>
         <div className={styles.sectionHeader}>
-          <span className={styles.sectionLabel}>Cash movements</span>
-          {balances.length > 1 && (
-            <select
-              className={styles.filterSelect}
-              value={movementFilter}
-              onChange={e => setMovementFilter(e.target.value)}
+          <span className={styles.sectionLabel}>
+            Cash movements
+            {activeFilterCount > 0 && (
+              <span className={styles.filterBadge}>{displayMovements.length}</span>
+            )}
+          </span>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button
+              className={`${styles.filterToggleBtn} ${filterBarOpen ? styles.filterToggleOpen : ''} ${activeFilterCount > 0 ? styles.filterToggleActive : ''}`}
+              onClick={toggleFilterBar}
+              type="button"
             >
-              <option value="all">All</option>
-              {balances.map(b => (
-                <option key={b.id} value={b.id}>{b.currency}</option>
-              ))}
-            </select>
-          )}
+              {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
+            </button>
+            {balances.length > 1 && (
+              <select
+                className={styles.filterSelect}
+                value={movementFilter}
+                onChange={e => setMovementFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                {balances.map(b => (
+                  <option key={b.id} value={b.id}>{b.currency}</option>
+                ))}
+              </select>
+            )}
+            <button
+              className={styles.expandBtn}
+              onClick={() => setMovementsFullscreen(v => !v)}
+              title={movementsFullscreen ? 'Exit fullscreen' : 'Expand to fullscreen'}
+            >{movementsFullscreen ? '✕' : '⛶'}</button>
+          </div>
         </div>
-        {displayMovements.length === 0 ? (
-          <p className={styles.emptySection}>No movements yet.</p>
-        ) : (
-          <div className={styles.movementList}>
-            {displayMovements.map(m => (
-              <MovementRow
-                key={m.id}
-                movement={m}
-                currency={balanceMap[m.cashBalanceId]?.currency ?? '?'}
-                allMovements={movements}
-                balanceMap={balanceMap}
-                isExpanded={expandedMovementId === m.id}
-                onToggle={() => setExpandedMovementId(prev => prev === m.id ? null : m.id)}
-                onOpenLinkedTx={['deposit', 'withdrawal'].includes(m.type) && m.linkedBudgetingTransactionId
-                  ? () => openLinkedTx(m)
-                  : null}
-                onDelete={
-                  m.type === 'dividend'
-                    ? () => {
-                        if (m.linkedDividendId) deleteDividend(m.linkedDividendId)
-                        else deleteCashMovement(m.id)
-                        refresh()
-                        setExpandedMovementId(null)
-                      }
-                    : ['deposit', 'withdrawal'].includes(m.type)
-                      ? () => { deleteCashMovement(m.id); refresh(); setExpandedMovementId(null) }
-                      : (m.type === 'currency-exchange' && m.linkedStockTransactionId)
-                        ? () => { deleteStockTransaction(m.linkedStockTransactionId); refresh(); setExpandedMovementId(null) }
-                        : null
-                }
-                onEdit={
-                  (m.type === 'currency-exchange' && m.linkedStockTransactionId)
-                    ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingExchange(txn); setExpandedMovementId(null) } }
-                    : ((m.type === 'buy' || m.type === 'sell') && m.linkedStockTransactionId)
-                      ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingStockTx(txn); setExpandedMovementId(null) } }
-                      : null
-                }
-              />
-            ))}
+
+        {filterBarOpen && (
+          <div className={styles.filterBar}>
+            <HybridFilterDropdown
+              label="Type"
+              options={typeOptions}
+              selected={filterTypes}
+              onChange={setFilterTypes}
+            />
+            <HybridFilterDropdown
+              label="Ticker"
+              options={tickerOptions}
+              selected={filterTickers}
+              onChange={setFilterTickers}
+              disabled={tickerOptions.length === 0}
+            />
+            <HybridFilterDropdown
+              label="Portfolio"
+              options={portfolioOptions}
+              selected={filterPortfolios}
+              onChange={setFilterPortfolios}
+              disabled={portfolioOptions.length === 0}
+            />
+            <HybridFilterDropdown
+              label="Currency"
+              options={currencyOptions}
+              selected={filterCurrencies}
+              onChange={setFilterCurrencies}
+              disabled={currencyOptions.length === 0}
+            />
+            {activeFilterCount > 0 && (
+              <button
+                className={styles.clearFiltersBtn}
+                onClick={() => { setFilterTypes([]); setFilterPortfolios([]); setFilterTickers([]); setFilterCurrencies([]) }}
+                type="button"
+              >Clear all</button>
+            )}
           </div>
         )}
+
+        <div className={styles.movementScrollWrap}>
+          {displayMovements.length === 0 ? (
+            <p className={styles.emptySection}>
+              {activeFilterCount > 0 ? 'No movements match the current filters.' : 'No movements yet.'}
+            </p>
+          ) : (
+            <>
+              <div className={styles.movementList}>
+                {shownMovements.map(m => (
+                  <MovementRow
+                    key={m.id}
+                    movement={m}
+                    currency={balanceMap[m.cashBalanceId]?.currency ?? '?'}
+                    allMovements={movements}
+                    balanceMap={balanceMap}
+                    isExpanded={expandedMovementId === m.id}
+                    onToggle={() => setExpandedMovementId(prev => prev === m.id ? null : m.id)}
+                    onOpenLinkedTx={['deposit', 'withdrawal'].includes(m.type) && m.linkedBudgetingTransactionId
+                      ? () => openLinkedTx(m)
+                      : null}
+                    onDelete={
+                      m.type === 'dividend'
+                        ? () => {
+                            if (m.linkedDividendId) deleteDividend(m.linkedDividendId)
+                            else deleteCashMovement(m.id)
+                            refresh()
+                            setExpandedMovementId(null)
+                          }
+                        : ['deposit', 'withdrawal'].includes(m.type)
+                          ? () => { deleteCashMovement(m.id); refresh(); setExpandedMovementId(null) }
+                          : (m.type === 'currency-exchange' && m.linkedStockTransactionId)
+                            ? () => { deleteStockTransaction(m.linkedStockTransactionId); refresh(); setExpandedMovementId(null) }
+                            : null
+                    }
+                    onEdit={
+                      (m.type === 'currency-exchange' && m.linkedStockTransactionId)
+                        ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingExchange(txn); setExpandedMovementId(null) } }
+                        : ((m.type === 'buy' || m.type === 'sell') && m.linkedStockTransactionId)
+                          ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { setEditingStockTx(txn); setExpandedMovementId(null) } }
+                          : null
+                    }
+                  />
+                ))}
+              </div>
+              {hasMore && (
+                <button
+                  className={styles.loadMoreBtn}
+                  onClick={() => setVisibleCount(v => v + 50)}
+                  type="button"
+                >
+                  Load more ({displayMovements.length - visibleCount} remaining)
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {editingTx && (
@@ -1214,18 +1539,35 @@ function ExchangeForm({ balances, defaultSourceId, onSave, onCancel, initial }) 
 
 // ─── Buy form ─────────────────────────────────────────────────────────────────
 
-function BuyForm({ balances, onSave, onCancel }) {
+function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked = false }) {
   const [date,            setDate]            = useState(today)
-  const [ticker,          setTicker]          = useState('')
-  const [stockExchange,   setStockExchange]   = useState('')
+  const [ticker,          setTicker]          = useState(initialTicker.toUpperCase())
+  const [stockExchange,   setStockExchange]   = useState(() => {
+    if (initialTicker) { const p = getStockProfile(initialTicker.toUpperCase()); return p?.stockExchange ?? '' }
+    return ''
+  })
   const [shares,          setShares]          = useState('')
   const [price,           setPrice]           = useState('')
-  const [currency,        setCurrency]        = useState(balances[0]?.currency ?? 'USD')
+  const [currency,        setCurrency]        = useState(() => {
+    if (initialTicker) {
+      const t = initialTicker.toUpperCase()
+      const prevBuys = getStockTransactionsByTicker(t).filter(tx => tx.type === 'buy')
+      if (prevBuys.length > 0) return prevBuys[prevBuys.length - 1].currency
+      const p = getStockProfile(t)
+      if (p?.currency) return p.currency
+    }
+    return balances[0]?.currency ?? 'USD'
+  })
   const [fee,             setFee]             = useState('0')
   const [extId,           setExtId]           = useState('')
   const [resolving,       setResolving]       = useState(false)
   // null = unresolved; { name, stockExchange, currency } = profile known (show summary card)
-  const [resolvedProfile, setResolvedProfile] = useState(null)
+  const [resolvedProfile, setResolvedProfile] = useState(() => {
+    if (!initialTicker) return null
+    const t = initialTicker.toUpperCase()
+    const p = getStockProfile(t)
+    return p?.name ? { name: p.name, stockExchange: p.stockExchange, currency: p.currency } : null
+  })
 
   const total = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
   const canSave = ticker.trim() && Number(shares) > 0 && Number(price) > 0 && currency.trim()
@@ -1267,6 +1609,9 @@ function BuyForm({ balances, onSave, onCancel }) {
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Ticker</label>
+          {tickerLocked ? (
+            <span className={styles.lockedFieldValue}>{ticker}</span>
+          ) : (
           <div className={styles.tickerInputRow}>
             <input
               className={styles.formInput}
@@ -1282,6 +1627,7 @@ function BuyForm({ balances, onSave, onCancel }) {
               </button>
             )}
           </div>
+          )}
           {resolvedProfile && (
             <div className={styles.profileCard}>
               <span className={styles.profileCardText}>
@@ -1340,7 +1686,7 @@ function BuyForm({ balances, onSave, onCancel }) {
 
 // ─── Dividend form ────────────────────────────────────────────────────────────
 
-function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel }) {
+function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, tickerLocked = false }) {
   const initTicker = defaultTicker ?? (positions[0]?.ticker ?? '')
   const initPos    = positions.find(p => p.ticker === initTicker)
   const initTaxPct = resolveDividendTaxPercent(initTicker)
@@ -1451,7 +1797,9 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
       <div className={styles.formPairRow}>
         <div className={styles.formRow} style={{ flex: 2, minWidth: 0 }}>
           <label className={styles.formLabel}>Ticker</label>
-          {positions.length > 0 ? (
+          {tickerLocked ? (
+            <span className={styles.lockedFieldValue}>{initTicker}</span>
+          ) : positions.length > 0 ? (
             <select className={styles.formSelect} value={ticker} onChange={e => handleTickerSelect(e.target.value)}>
               {positions.map(p => <option key={p.ticker} value={p.ticker}>{p.ticker}</option>)}
               <option value="__other__">Other…</option>
@@ -1553,7 +1901,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel })
 
 // ─── Sell form ────────────────────────────────────────────────────────────────
 
-function SellForm({ accountId, positions, defaultTicker, onSave, onCancel }) {
+function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, tickerLocked = false }) {
   const [date,          setDate]          = useState(today)
   const [ticker,        setTicker]        = useState(defaultTicker ?? (positions[0]?.ticker ?? ''))
   const [stockExchange, setStockExchange] = useState('')
@@ -1613,7 +1961,9 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Ticker</label>
-        {positions.length > 0 ? (
+        {tickerLocked ? (
+          <span className={styles.lockedFieldValue}>{ticker}</span>
+        ) : positions.length > 0 ? (
           <select className={styles.formSelect} value={ticker} onChange={e => handleTickerChange(e.target.value)}>
             {positions.map(p => <option key={p.ticker} value={p.ticker}>{p.ticker} ({trimDecimals(p.shares)} sh)</option>)}
           </select>
@@ -1629,7 +1979,7 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel }) {
         <label className={styles.formLabel}>
           Shares {maxShares > 0 && <span className={styles.available}>({trimDecimals(maxShares)} available)</span>}
         </label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} placeholder="10" autoFocus={positions.length === 0} />
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} placeholder="10" autoFocus={!tickerLocked && positions.length === 0} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share {currency && `(${currency})`}</label>
@@ -2007,3 +2357,5 @@ function TransferForm({ accountId, positions, balances, defaultTicker, onSave, o
     </form>
   )
 }
+
+export { BuyForm, SellForm, DividendForm }

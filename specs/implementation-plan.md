@@ -700,8 +700,7 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 322. [x] **Unified dividend list with visual divider.** Future rows first (ascending) → `Today — YYYY-MM-DD` divider → past rows (descending). Single scrollable table.
 323. [x] **Tabular column structure.** Column headers: `Ex-div date | Payout date | Per share | Net | Source | (actions)`. Subline for tax %, shares, account name.
 
-**Sub-phase 28g — Enter buy / sell / dividend from stock page**
-319. [ ] Add `+ Buy`, `+ Sell`, `+ Dividend` buttons in Stock page header; clicking opens the same forms used in `InvestingAccountDetail` with ticker pre-filled and locked
+**Sub-phase 28g — Enter buy / sell / dividend from stock page ✓ DONE**
 
 ---
 

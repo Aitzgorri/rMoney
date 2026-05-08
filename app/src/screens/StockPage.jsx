@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStockTransactionsByTicker, getPositions, applySplit, updateSplit } from '../data/stockTransactions'
-import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend } from '../data/dividends'
-import { getInvestingAccounts } from '../data/investingAccounts'
+import { getStockTransactionsByTicker, getPositions, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
+import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, createDividend } from '../data/dividends'
+import { getInvestingAccounts, getCashBalances, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews } from '../data/marketDataClient'
 import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker, upsertApiDividends } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
-import { convertToMain, ensureRates } from '../utils/currency'
+import { convertToMain, ensureRates, snapshotFxRates } from '../utils/currency'
 import { fmtAmt } from '../utils/format'
 import { computeXirr } from '../utils/xirr'
+import { BuyForm, SellForm, DividendForm } from './InvestingAccountDetail'
 import AiChatPanel from '../components/AiChatPanel'
 import CurrencyToggle from '../components/CurrencyToggle'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -59,6 +60,11 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [convertingEstimated, setConvertingEstimated] = useState(null) // estimated future payout being converted
   const [declaringNew,        setDeclaringNew]        = useState(false) // standalone + Declare dialog
   const payoutListRef = useRef(null)
+
+  const [actionForm,       setActionForm]       = useState(null)  // null | 'buy' | 'sell' | 'dividend'
+  const [actionAccountId,  setActionAccountId]  = useState(null)
+  const [pickingAccount,   setPickingAccount]   = useState(null)  // null | 'buy' | 'sell' | 'dividend'
+  const [actionNegConfirm, setActionNegConfirm] = useState(null)  // null | { message, onConfirm }
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -131,6 +137,62 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     const pos = getPositions(acc.id).find(p => p.ticker === norm)
     return pos ? [{ account: acc, pos }] : []
   })
+
+  const actionBalances  = actionAccountId ? getCashBalances(actionAccountId) : []
+  const actionPositions = actionAccountId ? getPositions(actionAccountId) : []
+
+  const holdingAccountIds = new Set(positions.map(({ account }) => account.id))
+
+  function openAction(kind) {
+    const eligible = kind === 'sell'
+      ? accounts.filter(a => holdingAccountIds.has(a.id))
+      : accounts
+    const pool = eligible.length > 0 ? eligible : accounts
+    if (pool.length === 0) return
+    if (pool.length === 1) {
+      setActionAccountId(pool[0].id)
+      setActionForm(kind)
+    } else {
+      setPickingAccount(kind)
+    }
+  }
+
+  function closeAction() {
+    setActionForm(null)
+    setActionAccountId(null)
+  }
+
+  async function handleActionBuy(params) {
+    const accId = actionAccountId
+    const exchangeRates = await snapshotFxRates(params.currency, params.date, getMainCurrency())
+    const cost = Number(params.shares) * Number(params.price) + Number(params.fee || 0)
+    const existing = getCashBalanceByCurrency(accId, params.currency)
+    const currentBal = existing ? getCurrentBalance(existing.id) : 0
+    const proceed = () => {
+      createBuy({ ...params, investingAccountId: accId, exchangeRates })
+      closeAction()
+    }
+    if (currentBal - cost < 0) {
+      setActionNegConfirm({
+        message: `This will take your ${params.currency} balance from ${fmtAmt(currentBal)} to ${fmtAmt(currentBal - cost)}.`,
+        onConfirm: () => { proceed(); setActionNegConfirm(null) },
+      })
+    } else {
+      proceed()
+    }
+  }
+
+  async function handleActionSell(params) {
+    const accId = actionAccountId
+    const exchangeRates = await snapshotFxRates(params.currency, params.date, getMainCurrency())
+    createSell({ ...params, investingAccountId: accId, exchangeRates })
+    closeAction()
+  }
+
+  function handleActionDividend(params) {
+    createDividend(params)
+    closeAction()
+  }
 
   const stockTxns = getStockTransactionsByTicker(norm)
   const dividends = getDividendsByTicker(norm)
@@ -514,6 +576,11 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         {profile?.name && <span className={styles.headerName}>{profile.name}</span>}
         {profile?.stockExchange && <span className={styles.headerCurrency}>{profile.stockExchange}</span>}
         {currency && !profile?.stockExchange && <span className={styles.headerCurrency}>{currency}</span>}
+        {accounts.length > 0 && <>
+          <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
+          <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
+          <button className={styles.dividendBtn} onClick={() => openAction('dividend')}>+ Dividend</button>
+        </>}
         <button
           className={styles.profileBtn}
           onClick={() => setResolving(true)}
@@ -754,6 +821,91 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           }}
           onCancel={() => setDeclaringNew(false)}
         />
+      )}
+
+      {/* Account picker — shown when multiple accounts are eligible */}
+      {pickingAccount && (
+        <div className={styles.formOverlay}>
+          <div className={styles.accountPickerDialog}>
+            <h3 className={styles.accountPickerTitle}>
+              Select account for {pickingAccount === 'buy' ? 'Buy' : pickingAccount === 'sell' ? 'Sell' : 'Dividend'}
+            </h3>
+            <div className={styles.accountPickerList}>
+              {(pickingAccount === 'sell'
+                ? accounts.filter(a => holdingAccountIds.has(a.id)).length > 0
+                  ? accounts.filter(a => holdingAccountIds.has(a.id))
+                  : accounts
+                : accounts
+              ).map(acc => (
+                <button
+                  key={acc.id}
+                  className={styles.accountPickerBtn}
+                  onClick={() => {
+                    setActionAccountId(acc.id)
+                    setActionForm(pickingAccount)
+                    setPickingAccount(null)
+                  }}
+                >
+                  <span className={styles.accountPickerName}>{acc.name}</span>
+                  {acc.institution && <span className={styles.accountPickerInst}>{acc.institution}</span>}
+                </button>
+              ))}
+            </div>
+            <button className={styles.accountPickerCancel} onClick={() => setPickingAccount(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Buy / Sell / Dividend form overlay */}
+      {actionForm && actionAccountId && (
+        <div className={styles.formOverlay}>
+          <div className={styles.formOverlayInner}>
+            {actionForm === 'buy' && (
+              <BuyForm
+                balances={actionBalances}
+                initialTicker={norm}
+                tickerLocked={true}
+                onSave={handleActionBuy}
+                onCancel={closeAction}
+              />
+            )}
+            {actionForm === 'sell' && (
+              <SellForm
+                accountId={actionAccountId}
+                positions={actionPositions}
+                defaultTicker={norm}
+                tickerLocked={true}
+                onSave={handleActionSell}
+                onCancel={closeAction}
+              />
+            )}
+            {actionForm === 'dividend' && (
+              <DividendForm
+                accountId={actionAccountId}
+                positions={actionPositions}
+                defaultTicker={norm}
+                tickerLocked={true}
+                onSave={handleActionDividend}
+                onCancel={closeAction}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Negative-balance confirmation */}
+      {actionNegConfirm && (
+        <div className={styles.formOverlay}>
+          <div className={styles.negConfirmDialog}>
+            <h3 className={styles.negConfirmTitle}>⚠ Negative balance</h3>
+            <p className={styles.negConfirmMsg}>{actionNegConfirm.message}</p>
+            <p className={styles.negConfirmMsg}>Do you want to proceed?</p>
+            <div className={styles.negConfirmActions}>
+              <button className={styles.negCancelBtn} onClick={() => setActionNegConfirm(null)}>Cancel</button>
+              <button className={styles.negProceedBtn} onClick={actionNegConfirm.onConfirm}>Proceed</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Body — two columns on desktop */}
