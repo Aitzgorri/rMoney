@@ -313,27 +313,6 @@
   margin-top: 8px;
 }
 
-.footerBar {
-  display: flex;
-  gap: 8px;
-  padding: 8px 0 0;
-  border-top: 1px solid #2d3448;
-  margin-top: 4px;
-}
-
-.footerBtn {
-  background: #2d3448;
-  border: none;
-  border-radius: 10px;
-  padding: 7px 14px;
-  color: #94a3b8;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.footerBtn:hover { background: #3d4558; color: #f1f5f9; }
-
 .selectHint {
   color: #64748b;
   font-size: 14px;

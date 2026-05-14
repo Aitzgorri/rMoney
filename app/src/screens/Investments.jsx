@@ -130,9 +130,6 @@ export default function Investments({ onNavigate }) {
           </div>
         )}
 
-        <div className={styles.footerBar}>
-          <button className={styles.footerBtn} onClick={() => onNavigate?.('portfolios')}>Portfolios</button>
-        </div>
       </div>
 
       {/* Right pane: detail (desktop only) */}
