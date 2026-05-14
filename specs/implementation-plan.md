@@ -4,11 +4,13 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 27 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–27 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done)*
+**Current phase: Phase 28 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–28 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phases 29–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
 **Project Phase 3 — Investments enhancements:** Phases 25–31 below capture the requirements written in `Investments_enhancements.md` (May 2026). They extend SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-024, SPEC-027, SPEC-029 and introduce two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory). Build order respects: historical-FX snapshotting (item 146) is a hard prerequisite for XIRR + cross-currency fee folding; the API dividend history collection in Phase 25 is a hard prerequisite for the new TTM/forward yields, the Dividend page metrics, and the calendar.
+
+**Project Phase 4 — Buy-Sell Planning + UX gap closure:** Phase 32 captures the requirements written in `notes 10May2025.md` (May 2026). It introduces SPEC-034 (Buy-Sell Planning, a new sandbox screen) and extends SPEC-019, SPEC-020, SPEC-021, SPEC-018, SPEC-029 to fix gaps surfaced by user testing (auto-fill share count from lot history, single-line dividend rows, lot-quantity bounds + two-way binding, fullscreen z-index for action modals, manual stocks with user-entered prices). Phase 32 sits after Phase 31 in the build queue per the user's preference.
 
 ---
 
@@ -244,11 +246,44 @@ SPEC-029 Stock profile resolution (extension — Project Phase 3)
 SPEC-018 Investing accounts (extension — Project Phase 3)
   └─ adds:     hybrid filter dropdown for cash movements; remove the bottom-of-overview Portfolios footer button
 
+--- Project Phase 4 (Buy-Sell Planning + UX gap closure) ---
+
+SPEC-034 Buy-Sell Planning (NEW — sandbox screen for planning trades before executing)
+  └─ reads:   SPEC-018 cash balances + investing accounts, SPEC-019 stockTransactions (open lots),
+              SPEC-020 user dividends, SPEC-027 latest prices + forex, SPEC-029 stockProfiles,
+              SPEC-027 apiDividendHistory (yield calcs), Settings → Investments → Trading fees
+  └─ writes:  new `tradingScenarios` collection; on row Execute → existing SPEC-019 buy/sell paths;
+              extends `rmoney_settings` with `tradingFees: { exchanges, stocks }`
+
+SPEC-019 Stock transactions (extension — Project Phase 4)
+  └─ adds:    per-lot upper-bound clamp on Sell form lot picker;
+              two-way binding between total shares and per-lot quantities
+
+SPEC-020 Dividends (extension — Project Phase 4)
+  └─ adds:    auto-fill `shareCount` from `getOpenLots(ticker, accountId, exDate − 1)`;
+              cash-landing regression test (createDividend must write a `cashMovement`)
+
+SPEC-021 Stock page (extension — Project Phase 4)
+  └─ adds:    single-line dividend list rows (no sublines; short headers + tooltips;
+              Special as a column value, not an inline chip)
+
+SPEC-018 Investing accounts (extension — Project Phase 4)
+  └─ adds:    action-modal z-index above ConfigurableTable fullscreen overlay
+              (so Sell/Dividend modals are visible when Positions table is fullscreen)
+
+SPEC-029 Stock profile resolution (extension — Project Phase 4)
+  └─ adds:    `isManual: bool` + `manualPriceSource` on `stockProfiles`;
+              "Add manual stock" entry point on SPEC-033 Stock inventory page;
+              new `manualPrices` collection (user-entered prices, keyed by ticker+date);
+              provider-chain short-circuit when `isManual === true`
+
 **Key takeaway:** SPEC-002, SPEC-003, and SPEC-004 are pure data producers — everything downstream depends on them. SPEC-005 is both a producer and consumer. SPEC-009 is envelope-only (no account link) and writes to SPEC-004. SPEC-013 bridges planned items to real account transactions (SPEC-005).
 
 **Phase 2 key takeaway:** SPEC-017 Currency conversion and SPEC-027 Market data are the two foundational utilities that almost every Investments spec depends on — build them first. **SPEC-018 (investing accounts + cash balances + cash movements) is the single bridge between the Investments module and budgeting**: only deposits and withdrawals create linked SPEC-005 transactions; buy/sell/dividend no longer write to SPEC-005 directly. This means the user's flow is "deposit cash into the investing account → use that cash to buy/sell → withdraw cash back to budgeting when wanted," and every intermediate stock transaction is internal to Investments. SPEC-016 Data portability reads and writes *everything* (including `cashBalances` and `cashMovements`) — it should be implemented last in Phase 2 so it covers all the new data shapes.
 
 **Phase 3 key takeaway:** Two foundational pieces gate everything else. (1) **Historical-FX snapshotting on every transaction** (item 146, originally deferred from Phase 10) moves from "deferred" to a hard prerequisite — XIRR p.a. return and cross-currency fee-inclusive avg price both need it. (2) **`apiDividendHistory`, a persistent (non-evicting) collection of API-fetched per-share dividend records,** unlocks correct TTM yield, forward yield, the Dividend page calendar, and CAGR metrics. User dividend records (gross/net, share count, tax) stay where they are — they're consulted alongside the API cache through a union-at-read-time pattern. The two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory) plus extensions to seven existing specs are organised into Phases 25–31; each phase is scoped to one screen or feature surface so individual implementation sessions stay small.
+
+**Phase 4 key takeaway:** Phase 32 is the first time the planning-screen pattern lands in this app — every other Investments screen is a *record-keeping* screen showing realized state, while Buy-Sell Planning is a *what-if* screen with **no impact on real data until the user explicitly executes a row**. To support that, the screen reuses every existing data primitive (cash balances, FX rates, lot history, dividend cadence, stock profiles, fee defaults) and adds only one new persistent collection (`tradingScenarios`) plus one new settings shape (`tradingFees`). The other Phase 32 items are surgical fixes to existing specs — the lot-quantity bounds, dividend auto-fill, single-line list, fullscreen z-index — that were uncovered during user testing on 2026-05-10 and would otherwise block Phase 32 adoption.
 
 ---
 
@@ -796,3 +831,70 @@ SPEC-018 Investing accounts (extension — Project Phase 3)
 361. [ ] CAGR computation: per-share, from `apiDividendHistory` only (Definition A — industry-standard "stock dividend growth rate"); shows "NA" when fewer than N+1 years of history are present
 362. [ ] Yield computations match Stock page (Phase 28b) — single source of truth; group rows aggregate the underlying stocks' positions weighted by MV
 362a. [ ] Sort: clicking any column header re-sorts the table; sort choice persisted in localStorage per (grouping, column) so each grouping remembers its own sort. Default when no choice has been made: descending by `Last 12-months amount`
+
+---
+
+# Project Phase 4 — Buy-Sell Planning + UX gap closure (sourced from `notes 10May2025.md`)
+
+> Build order: tackle the small UX gaps first (32a–32c) so the new planning screen (32d–32h) inherits a solid foundation. Manual stocks (32i) sits last — it touches every market-data read site, so doing it before the planning screen would force the planning screen to thread the manual-stock check through every yield calc that hasn't been written yet.
+>
+> The user reported these requirements after testing the app on 2026-05-10. Most are tightenings of existing behaviour (validation, layout, regression on dividend cash); the new screen (SPEC-034) is the one large addition.
+
+## Phase 32 — Buy-Sell Planning + UX gap closure
+
+**Sub-phase 32a — Dividend cash-landing regression fix + auto-fill share count (extends SPEC-020)**
+365. [ ] Auto-fill `shareCount` on the dividend form from `getOpenLots(ticker, accountId, exDividendDate − 1)` whenever the user enters or changes the ex-dividend date. Field stays user-overridable; "auto-filled from lots on YYYY-MM-DD" hint disappears once the user types a different value. Empty position on the lookup date renders a "No shares held on YYYY-MM-DD" warning chip
+365a. [ ] Verify and restore SPEC-020 §"Cash landing": `createDividend` must write a `cashMovement` of `type: 'dividend'`; `getMovementsForAccount` must surface it; `getCurrentBalance` must reflect the credit. Add an integration test covering all three. Investigate the regression first (review `data/dividends.js createDividend`, `data/investingAccounts.js getMovementsForAccount` filters) — the underlying writes may be present but a filter or a render path has hidden them
+
+**Sub-phase 32b — Dividend list single-line layout (extends SPEC-021)**
+366. [ ] Reformat the unified dividend list rows on the Stock page so all data renders **on one line** — no wraps, no sublines. Columns: `Ex-div | Pay | Per share | Shares | Tax % | Net | Type | Source | Account | (actions)`. Headers use compact short labels with a tooltip on each describing the full meaning. The `Special` indicator becomes a column value (chip rendered inside the `Type` column) instead of an inline element next to `Per share`. When the currency-toggle is set to Main, an extra "Net (main)" column becomes visible. Non-essential columns are hide-able via the standard `ConfigurableTable` column-picker; `Ex-div`, `Pay`, `Per share`, `Net`, and `(actions)` are always visible
+
+**Sub-phase 32c — Sell form lot-picker validation + two-way binding (extends SPEC-019)**
+367. [ ] Per-lot share-input field is constrained to the lot's remaining shares. Higher input is clamped at input time; field's `max` attribute is set; small "max N" hint renders next to the field
+368. [ ] Two-way binding between the top-level "Shares" field and the per-lot quantities. When the user edits any per-lot quantity, the top-level "Shares" auto-updates to the sum of all lot quantities. The reverse (top-level → FIFO re-allocation across lots) remains the default starting behaviour; "auto-fill from lots" wins once the user has touched any lot quantity
+
+**Sub-phase 32d — Action-modal z-index above ConfigurableTable fullscreen overlay (extends SPEC-018)**
+369. [ ] When the Positions table is in fullscreen mode and the user clicks a row action (Sell / Dividend / row detail), the action's modal renders **above** the fullscreen overlay so the user can interact with it. Apply via document-body portal for action modals (or strict z-index above `fullscreenOverlay`). Same fix lives in any future use of `ConfigurableTable` (Reports table tab in Phase 29d)
+
+**Sub-phase 32e — Manual stocks: custom assets with user-entered prices (extends SPEC-029)**
+370. [ ] Extend `stockProfiles` with `isManual: bool` (default `false`) and `manualPriceSource: 'user' | null`. New `manualPrices` collection keyed by `(ticker, date)`
+370a. [ ] "Add manual stock" entry point on Stock inventory (SPEC-033 Phase 30); creates `{ ticker, name, stockExchange (free-text, default `MANUAL`), currency, hqCountryOverride, isManual: true, manualPriceSource: 'user', resolvedSource: 'manual' }`
+370b. [ ] Stock page header: `[Set price]` button replaces the live-price line when `isManual === true`; opens a small form to enter `(price, date)`; latest manual price is shown wherever live prices are normally read. Manual-price history accessible from the same place
+370c. [ ] Provider-chain short-circuit: introduce `getQuoteForProfile(profile)` helper that gates every `getLatestPrice` / `getHistoricalSeries` / `getDividends` call. When `profile.isManual === true`, returns user-entered prices and user `dividends` only — no provider call. All consumers (Stock page, Investments overview, Reports, Buy-Sell Planning) route through this helper. "Manual stock" badge rendered on Stock page + Buy/Sell/Dividend forms
+370d. [ ] Storage tab: `manualPrices` registered as a per-stock-breakdown card
+
+**Sub-phase 32f — Trading fees configuration (foundation for SPEC-034)**
+371. [ ] Settings → Investments tab: new "Trading fees" card. Per stock-exchange defaults: `{ mic, currency, feePercent, minimumFee }`. Per-stock overrides: `{ ticker, feePercent, minimumFee, currency }`. Adding an exchange offers the canonical-MIC list from `marketDataExchanges.js`
+372. [ ] Resolution helper `resolveTradingFee(ticker, exchange, gross)` exported from `data/settings.js`: returns `{ feeAmount, source: 'stock' | 'exchange' | 'none' }`. Computed as `max(minimumFee, gross × feePercent)`. Used by SPEC-034 row-creation defaults and (optionally, future enhancement) by the existing Buy/Sell forms as the fee-field default
+
+### SPEC-034 Buy-Sell Planning — implementation
+> All acceptance criteria below are tracked through Sub-phases 32g and 32h of Phase 32.
+
+**Sub-phase 32g — Buy-Sell Planning screen scaffold**
+373. [ ] Add **Buy-Sell Planning** to the Investments nav second-row tab list (alongside `Investments overview / Portfolios / Watchlists / Benchmarks / Dividends`); create page route + screen file; empty-state "No scenarios yet — Create one to start planning"
+374. [ ] `tradingScenarios` collection in localStorage; CRUD: create, rename, duplicate, delete; auto-save on every edit; scenario picker dropdown in page header showing the active scenario name
+375. [ ] Scenario stores: `{ name, sellRows, buyRows, cashTopUps, fxOverrides, displayedCurrencies, removeExecutedRows }` per the SPEC-034 Data block; row-add / row-remove operations work but compute calculations come in 32h
+375a. [ ] Add-row controls: row-add for buys opens a stock-picker modal (existing or SPEC-029-resolved tickers); row-add for sells opens a position-picker scoped to currently-held positions across all investing accounts
+375b. [ ] Sell row defaults: investing-account picker shows only accounts that hold the stock; defaults to the largest position when multiple accounts qualify
+375c. [ ] Buy row defaults: investing-account picker offers all investing accounts; defaults to the most-recently-used account
+375d. [ ] Sell row Number-of-shares input is constrained to ≤ available shares on the picked account (matches the SPEC-019 per-lot bound from item 367 applied here at row level)
+
+**Sub-phase 32h — Buy-Sell Planning calculations + execution + storage card**
+376. [ ] Sell rows + Buy rows render via the shared `ConfigurableTable` with the column sets defined in SPEC-034. Always-visible columns are non-removable; toggleable columns persist visibility per-table in localStorage
+376a. [ ] Sell-table column set: ticker, account, shares-to-sell, available-shares (with `(N LT)` subline), name, exchange, currency, FX-rate-vs-main, last price, adjusted price, fee amount, fee %, last actual dividend % / per-month gross / per-month net, last year dividend % / per-month gross / per-month net, trade value gross / net-of-fee / main-currency, lot-picker action — visibility per the SPEC-034 always-visible / toggleable split
+376b. [ ] Buy-table column set: ticker, account, shares-to-buy, name, exchange, currency, FX-rate-vs-main, last price, adjusted price, fee amount, fee %, last actual dividend % / per-month gross / per-month net, last year dividend % / per-month gross / per-month net, buy price including fee per share, trade value without fee / with fee / main-currency-with-fee — visibility per the SPEC-034 always-visible / toggleable split
+377. [ ] Adjusted-price control per row: `Last price` / `Round down to N decimals` / `Round up to N decimals` / `Manual`; drives every downstream row calculation. Decimal-count input shown when round rule selected
+378. [ ] Fee handling per row: pre-fills from `resolveTradingFee()` (Sub-phase 32f); inline override per row sets `manualFeeOverride` on the row; small dot indicator marks overridden rows; tooltip on Fee column header points to Settings → Investments → Trading fees
+378a. [ ] Dividend % columns use the per-row `(adjustedPrice + fee/share)` as the **denominator** so the fee impact appears in the planned-trade yield (numerator reuses Phase 28b TTM and forward computations); per-month gross = numerator × shares ÷ 12; per-month net = gross × (1 − resolved tax %)
+379. [ ] Overview block: cash balances panel (per-currency totals across all investing accounts), per-currency planning-only top-up inputs, FX-rates panel (live default + user override), cash-impact table (Start | Sells | Buys | End per displayed currency), weighted-average dividend metrics row (sells / buys / delta in gross + net)
+379a. [ ] Currency-display picker in overview: user ticks which currencies the summary totals are expressed in; defaults to all trade currencies of included rows + main currency
+379b. [ ] FX rates panel auto-populates the pairs the calculation actually uses (e.g. trade-currency → main-currency for every distinct trade currency); pre-fills with live SPEC-027 rates; user can override; overrides apply only to this scenario's calc
+380. [ ] Currency-exchange priority for cash-impact: matching trade currency → main currency → other balances by descending available value. Implemented in a pure helper `simulateCashImpact(scenario, balances, fxRates)` so it is testable in isolation
+381. [ ] Sell row "Available shares" displays `(N held > 365 days)` long-term-hold count from `getOpenLots(..., asOfDate=today)` filtered by buy-date age. Header tooltip explains the count is informational
+382. [ ] Sell row lot-picker action button reuses the existing real Sell form's lot-picker UI (FIFO default; respects the LT hint by showing lot ages)
+383. [ ] **Execute** action button per row opens the matching real `BuyForm` / `SellForm` pre-filled (account, ticker, shares, adjusted price, fee, lot allocations). On successful save: row gets `executedAt`, `executedTransactionId`; row visually muted; Include checkbox forcibly off. Cancel leaves the row untouched
+384. [ ] Per-scenario "Remove executed rows on save" toggle in scenario actions menu (default off — keep history)
+385. [ ] Settings → Storage tab: add "Buy-Sell Planning" card listing scenario count, total bytes, per-scenario breakdown, bulk-clear action
+
+**Sub-phase 32i — Generic edit/delete control discoverability audit (cross-spec)**
+386. [ ] User reported on 2026-05-14 that they could not find edit/delete controls on several record types (investment-side transactions, dividends, investing accounts, budgeting accounts/transactions). The controls exist (per Phase 26c, SPEC-002, SPEC-005, SPEC-006, EditDividendDialog) — this item is a UX audit pass, not new functionality. Walk every list view, ensure: edit (`✎`) and delete (`🗑`) buttons are visible without hovering on touch devices, accessible-label is set, and the button is in the row's main visual block (not an off-screen kebab menu). Document any control that is keyboard- or screen-reader-only and add a visible icon counterpart. No spec changes — this is an implementation-time pass

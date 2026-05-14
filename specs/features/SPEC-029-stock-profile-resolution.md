@@ -1,7 +1,7 @@
 ---
 id: SPEC-029
 name: Stock Profile Resolution
-status: done
+status: in-progress
 created: 2026-04-29
 ---
 
@@ -68,6 +68,14 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 ### Re-look-up card on Buy form *(Phase 26a)*
 - [x] When the entered ticker matches an existing `stockProfile` with a resolved `name`, the Buy form shows a compact summary card (`Name · Exchange · Currency`) with a "Re-look up" button instead of automatically opening the resolution dialog.
 - [x] Clicking "Re-look up" reopens the candidate dialog pre-loaded with the provider search results. Confirming a different candidate upserts the profile in place (same path as "Refresh profile" on the Stock page).
+
+### Manual stocks — custom assets with no ticker the API knows about *(Phase 32 / item 370)*
+- [ ] **Manual mode flag on `stockProfiles`:** add `isManual: bool` (default `false`) and `manualPriceSource: 'user' | null`. When `isManual === true`, the resolution flow does not run for this profile (no provider search, no AI fallback, no price/dividend refresh attempts), and the SPEC-027 provider chain is bypassed for every read keyed by the profile's ticker.
+- [ ] **"Add manual stock" entry point** on Stock inventory (SPEC-033 Phase 30) — opens a form collecting: ticker (free-text, must not collide with an existing profile), name, exchange (free-text — `MANUAL` is offered as a default), currency, optional HQ country. The created profile is `{ ticker, name, stockExchange, currency, hqCountryOverride, isManual: true, manualPriceSource: 'user', resolvedSource: 'manual', resolvedAt: now }`. Use cases: pre-IPO RSUs, private equity holdings, custom-tracked baskets, stocks delisted from the user's API providers but still held.
+- [ ] **Manual price entry** for manual stocks: the existing Stock page header shows a `[Set price]` button (instead of the API-driven live price line) when `isManual === true`. Clicking it opens a small form to enter a new price + date; entries write to a new `manualPrices` collection keyed by `(ticker, date)`. The latest manual price is shown wherever live prices are normally read.
+- [ ] **Provider-chain short-circuit:** every read site that calls `marketDataClient.getLatestPrice` / `getHistoricalSeries` / `getDividends` first checks `stockProfile.isManual`. When manual, the calls return data drawn exclusively from `manualPrices` and the user `dividends` collection, never invoking any provider adapter. Centralised in a `getQuoteForProfile(profile)` helper so every consumer (Stock page, Investments overview, Reports, Buy-Sell Planning) routes through the same gate.
+- [ ] **Buy / sell / dividend forms** still work for manual stocks (they only need the profile + a user-entered price). The negative-balance and lot-tracking machinery is independent of price source. Forms display a small "Manual stock" badge so the user is reminded that no API data backs this position.
+- [ ] **Storage:** `manualPrices` registered in Settings → Storage tab as a per-stock-breakdown card.
 
 ### AI prompt
 - [x] Built-in, non-user-editable prompts in source code (`PROMPT_A`, `PROMPT_B` in `StockProfileResolutionDialog.jsx`).
