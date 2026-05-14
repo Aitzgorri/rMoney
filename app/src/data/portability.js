@@ -35,6 +35,7 @@ const KEYS = {
   watchlistEntries:      'rmoney_watchlist_entries',
   watchlistAlerts:       'rmoney_watchlist_alerts',
   investmentReportPresets: 'rmoney_investment_report_presets',
+  pieChartPresets:         'rmoney_pie_chart_presets',
   // PERSISTED HISTORY — included in Full backup only; excluded from Sharable backup.
   apiDividendHistory: 'rmoney_api_dividend_history',
   // HOT CACHES (rmoney_market_data_cache, rmoney_market_data_log) — excluded from both backup modes.
@@ -86,6 +87,7 @@ export function exportAppData({ mode = 'sharable' } = {}) {
     watchlistEntries:        readList(KEYS.watchlistEntries),
     watchlistAlerts:         readList(KEYS.watchlistAlerts),
     investmentReportPresets: readList(KEYS.investmentReportPresets),
+    pieChartPresets:         readList(KEYS.pieChartPresets),
   }
   if (mode === 'full') {
     base.apiDividendHistory = readList(KEYS.apiDividendHistory)
@@ -226,6 +228,7 @@ export function importAppData(data) {
   write(KEYS.watchlistEntries,         data.watchlistEntries         ?? [])
   write(KEYS.watchlistAlerts,          data.watchlistAlerts          ?? [])
   write(KEYS.investmentReportPresets,  data.investmentReportPresets  ?? [])
+  write(KEYS.pieChartPresets,           data.pieChartPresets           ?? [])
   // Persisted history — present only in Full backups; absent key means keep existing data
   if ('apiDividendHistory' in data) {
     write(KEYS.apiDividendHistory, data.apiDividendHistory ?? [])

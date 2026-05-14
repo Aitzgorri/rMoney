@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 28 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–28 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phases 29–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
+**Current phase: Phase 29 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–29 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phase 29 done; Phases 30–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -736,35 +736,6 @@ SPEC-029 Stock profile resolution (extension — Project Phase 4)
 323. [x] **Tabular column structure.** Column headers: `Ex-div date | Payout date | Per share | Net | Source | (actions)`. Subline for tax %, shares, account name.
 
 **Sub-phase 28g — Enter buy / sell / dividend from stock page ✓ DONE**
-
----
-
-## Phase 29 — Reports enhancements (extends SPEC-024)
-
-> Adds the pie-chart tab, configurable presets, and tightens the existing Portfolio + Table tabs.
-
-**Sub-phase 29a — Pie-chart tab (tile model)**
-320. [ ] Add new "Pie charts" tab to Investment Reports, positioned after "By Portfolio"
-321. [ ] Each tile is a saved pie chart: name, grouping dimension (currency / country / region / continent / portfolio / stock), filters, display currency, "Other" threshold (default 1 %), show-table-below toggle
-322. [ ] Layout: desktop user picks 1 / 2 / 3 / 4 tiles per row (persisted); mobile = 1 per row
-323. [ ] Each tile has a fullscreen button (full-viewport modal showing chart + table)
-324. [ ] "Other" group behaviour: items below threshold collapse into a single "Other" slice in the pie; data table below always shows full granularity (Pattern A3)
-
-**Sub-phase 29b — Saved pie chart presets**
-325. [ ] New collection `pieChartPresets`: `id`, `name`, `gridPosition`, `grouping`, `filters`, `displayCurrency`, `otherThresholdPct`, `showTableBelow`, `chartType`
-326. [ ] CRUD: "Add chart" button creates a tile in config mode; save persists; rename and delete inline; drag-reorder sets `gridPosition`
-327. [ ] Constraint: the portfolio filter is **always single-select** on pie charts, regardless of grouping. Reason: a stock that sits in multiple selected portfolios would be summed twice, distorting the pie. Applies whenever the portfolio filter is active
-328. [ ] Settings → Storage tab: card showing pie-chart preset count + size + clear button
-
-**Sub-phase 29c — Portfolio tab cleanup**
-329. [ ] When the Portfolio tab shows "all portfolios" (no specific portfolio selected): hide the "share on whole portfolio %" column and the pie-chart visualization (one stock can be in multiple portfolios — these aggregations are misleading)
-330. [ ] In all-portfolios mode, show only: portfolio name, total value, total return ($/%), actual dividend yield, yearly dividend amount, average monthly dividend amount
-
-**Sub-phase 29d — Table tab improvements**
-331. [ ] Add filters at top of Table tab using `HybridFilterDropdown`: portfolio, currency, country, region, continent
-332. [ ] Hide rows that fall outside the active filter scope (e.g. when a portfolio filter is set, only stocks in that portfolio appear)
-333. [ ] Add "MV (trading currency)" to the available columns in the column-picker
-334. [ ] Sort by any visible column (delegated to the shared `ConfigurableTable` from Phase 27b)
 
 ---
 

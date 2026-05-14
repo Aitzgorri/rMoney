@@ -24,6 +24,7 @@ A single Reports section inside Investments that gives the user an overview of a
   - ticker, name, price (latest), currency (native), investing account
   - total invested (main currency)
   - current market value (main currency)
+  - MV (trading currency) — market value in the stock's own trading currency
   - total return (sum + %), dividend yield (trailing 12 months), dividend yield (FWD)
   - p.a. return (%)
   - price-appreciation return (sum + %)
@@ -43,6 +44,26 @@ A single Reports section inside Investments that gives the user an overview of a
 - [x] All totals in the report are expressed in main currency via SPEC-017, using current rates for "now" totals and snapshotted rates for historical attribution (returns since-buy use transaction-date rates from SPEC-019).
 - [x] **Cash inclusion**: the top-of-page "total value" rollup includes both position market value **and** cash balances (SPEC-018) so the user can reconcile against the broker statement. Position-only tables and the position-focused breakdowns (currency / regional / portfolio) exclude cash and report only stock positions.
 - [x] Region attribution per position comes from the stock's HQ country (SPEC-027 lookup + the per-stock manual override on the shared stock-profile record introduced by SPEC-020), mapped through a fixed country→region table. A stock whose HQ country doesn't map to a known region falls into "Global."
+
+### Table tab (Phase 29d)
+- [x] Table tab uses the shared `ConfigurableTable` component (Phase 27b) — built-in sort by any visible column, column-picker, fullscreen expand.
+- [x] Filter bar above the table with five `HybridFilterDropdown` filters: Portfolio, Currency, Country, Region, Continent. Active filters narrow `tableRows` via a `useMemo`; position count shown alongside the filters.
+- [x] Portfolio filter uses single-select semantics (a stock in multiple portfolios must not be double-counted).
+
+### Portfolio tab (Phase 29c)
+- [x] When no specific portfolio is scoped ("all portfolios" mode): the pie chart is hidden (a stock in multiple portfolios would be counted multiple times, distorting the pie).
+- [x] In all-portfolios mode, show a summary table instead: portfolio name, total value, total return ($/%), TTM dividend yield (%), yearly dividend amount, average monthly dividend amount.
+
+### Pie charts tab (Phase 29a + 29b)
+- [x] New "Pie charts" tab in the breakdown bar, after "By Portfolio".
+- [x] Each tile is an independently configured saved pie chart: name, grouping dimension (currency / country / region / continent / portfolio / stock), optional portfolio filter (single-select only — multi-select would double-count), optional currency filter, "Other" threshold % (items below threshold collapse into a single "Other" slice), show-table-below toggle.
+- [x] Layout: desktop user picks 1 / 2 / 3 / 4 tiles per row; mobile = 1 per row always.
+- [x] Each tile has a fullscreen button (full-viewport overlay showing chart + optional data table).
+- [x] "Other" slice in the pie aggregates items below the threshold; the data table below (when enabled) always shows full granularity.
+- [x] Tiles can be drag-reordered; order persisted via `gridPosition` field.
+- [x] "Add chart" button creates a new tile immediately in edit mode. Inline form: name, group-by, Other threshold, portfolio filter, show-table toggle. Save / Cancel / Delete actions.
+- [x] Settings → Storage tab card: pie-chart preset count + bytes + "Delete all" button with inline confirm.
+- [x] `pieChartPresets` collection included in Data Portability export (both Sharable and Full backups) and importable.
 
 ## UI / Screens
 Top of Reports (desktop layout from SPEC-015):
@@ -89,7 +110,7 @@ Saved presets
 
 ## Data
 
-`investmentReportPresets` collection:
+`investmentReportPresets` collection (localStorage key `rmoney_investment_report_presets`):
 
 ```
 {
@@ -99,10 +120,29 @@ Saved presets
     typeFilter: ['stocks' | 'options' | 'bonds' | 'crypto' | 'metals-storage' | 'metals-lease'],
     grouping: 'stock' | 'stock-x-account',
     columns: string[],                 // column ids
-    breakdown: 'table' | 'currency' | 'region-country' | 'region-continent' | 'portfolio',
+    breakdown: 'table' | 'currency' | 'region-country' | 'region-continent' | 'portfolio' | 'pie-charts',
     portfolioScopeId: string | null    // when breakdown scoped to a SPEC-022 portfolio
   },
   createdAt: ISO timestamp
+}
+```
+
+`pieChartPresets` collection (localStorage key `rmoney_pie_chart_presets`):
+
+```
+{
+  id: string,
+  name: string,
+  gridPosition: number,              // display order (0-based)
+  grouping: 'currency' | 'country' | 'region' | 'continent' | 'portfolio' | 'stock',
+  filters: {
+    portfolioId: string | null,      // single-select only
+    currencies: string[]             // multi-select
+  },
+  displayCurrency: string | null,
+  otherThresholdPct: number,         // default 1 — items below this % collapse to "Other"
+  showTableBelow: boolean,           // show full-granularity table beneath the pie
+  chartType: 'pie'                   // extensible for bar etc. in future
 }
 ```
 
@@ -113,7 +153,7 @@ Reads:
 - SPEC-027 — current prices, HQ country (region source)
 - SPEC-017 — currency conversion to main
 
-No writes to existing collections beyond its own preset list.
+No writes to existing collections beyond its own preset lists.
 
 ## Out of Scope
 - Options / bonds / crypto / metals rendering actual data. Those appear as empty filter slots; their real implementation is a future spec each (Phase 20 placeholder).

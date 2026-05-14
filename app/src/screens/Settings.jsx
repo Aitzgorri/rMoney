@@ -13,6 +13,7 @@ import {
 import { getWatchlistStorageSummary, deleteAllWatchlists } from '../data/watchlists'
 import { getUserBenchmarks, deleteAllUserBenchmarks, getBenchmarksStorageBytes } from '../data/benchmarks'
 import { getReportPresets, getReportPresetsStorageBytes, deleteAllReportPresets } from '../data/investmentReports'
+import { getPieChartPresets, getPieChartPresetsStorageBytes, deleteAllPieChartPresets } from '../data/pieChartPresets'
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
 import { testProvider } from '../data/marketDataClient'
@@ -67,6 +68,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [reportPresetCount, setReportPresetCount] = useState(() => getReportPresets().length)
   const [reportPresetBytes, setReportPresetBytes] = useState(() => getReportPresetsStorageBytes())
   const [reportPresetDeleteConfirm, setReportPresetDeleteConfirm] = useState(false)
+  const [pieChartPresetCount, setPieChartPresetCount] = useState(() => getPieChartPresets().length)
+  const [pieChartPresetBytes, setPieChartPresetBytes] = useState(() => getPieChartPresetsStorageBytes())
+  const [pieChartPresetDeleteConfirm, setPieChartPresetDeleteConfirm] = useState(false)
   const [fxBackfilling,   setFxBackfilling]   = useState(false)
   const [fxBackfillResult, setFxBackfillResult] = useState(null)  // null | { processed, failed }
   const [apiDivHistStats,  setApiDivHistStats]  = useState(() => getApiDividendHistoryStats())
@@ -1315,6 +1319,48 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     setReportPresetDeleteConfirm(false)
                   }}>Delete</button>
                 </div>
+
+          {/* Pie chart presets */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Pie chart presets</div>
+            <p className={styles.description}>
+              Saved pie chart configurations in the Investment Reports → Pie charts tab.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Charts</span>
+                  <span className={styles.storageCount}>
+                    {pieChartPresetCount} chart{pieChartPresetCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className={styles.storageBytes}>{fmtBytes(pieChartPresetBytes)}</span>
+                  <button
+                    className={styles.btnSmDanger}
+                    disabled={pieChartPresetCount === 0}
+                    onClick={() => setPieChartPresetDeleteConfirm(true)}
+                  >
+                    Delete all
+                  </button>
+                </div>
+              </div>
+            </div>
+            {pieChartPresetDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Delete all {pieChartPresetCount} pie chart preset{pieChartPresetCount !== 1 ? 's' : ''}? This cannot be undone.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setPieChartPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllPieChartPresets()
+                    setPieChartPresetCount(0)
+                    setPieChartPresetBytes(getPieChartPresetsStorageBytes())
+                    setPieChartPresetDeleteConfirm(false)
+                  }}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
               </div>
             )}
           </div>

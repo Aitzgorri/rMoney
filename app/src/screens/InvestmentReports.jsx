@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
 import { getInvestingAccounts, getCashBalances, getCurrentBalance } from '../data/investingAccounts'
 import { getPositions, getStockTransactionsByTicker } from '../data/stockTransactions'
@@ -13,6 +13,9 @@ import {
 } from '../data/investmentReports'
 import { countryDetailRegion, continentRegion, COUNTRY_DETAIL_REGIONS, CONTINENT_REGIONS } from '../utils/regionMap'
 import { fmtAmt } from '../utils/format'
+import HybridFilterDropdown from '../components/HybridFilterDropdown'
+import ConfigurableTable from '../components/ConfigurableTable'
+import { getPieChartPresets, createPieChartPreset, updatePieChartPreset, deletePieChartPreset, reorderPieChartPresets } from '../data/pieChartPresets'
 import styles from './InvestmentReports.module.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -56,6 +59,8 @@ const ALL_COLUMNS = [
     hint: 'Actual Portfolio group share minus target % from Portfolio assignments (positive = overweight)' },
   { id: 'hqCountry',       label: 'HQ country',
     hint: 'Company headquarters country — used for regional breakdowns; click a cell to set it' },
+  { id: 'mvTrading',        label: 'MV (trading)',      numeric: true,
+    hint: 'Market value in the stock\'s trading currency (shares x latest price)' },
 ]
 
 const DEFAULT_COLUMNS = ['ticker', 'name', 'price', 'marketValue', 'totalReturn', 'paReturn', 'dividendYield12m', 'shareWhole']
@@ -75,6 +80,7 @@ const BREAKDOWN_TABS = [
   { id: 'region-country',   label: 'By region' },
   { id: 'region-continent', label: 'By continent' },
   { id: 'portfolio',        label: 'By portfolio' },
+  { id: 'pie-charts',       label: 'Pie charts' },
 ]
 
 const CHART_COLORS = [
@@ -222,6 +228,7 @@ function computeRows(posRows, apiPrices, mainCurrency) {
       dividendReturn: divTotal > 0 ? divTotal : null,
       div12m,
       hqCountry: profile?.hqCountry ?? null,
+      marketValueNative,
     }
   })
 
@@ -289,9 +296,20 @@ export default function InvestmentReports() {
   const [grouping,     setGrouping]     = useState('stock')
   const [columns,      setColumns]      = useState(DEFAULT_COLUMNS)
   const [breakdown,    setBreakdown]    = useState('table')
+
+  // ── Pie charts tab state ─────────────────────────────────────────────────────
+  const [piePresets, setPiePresets] = useState(() => getPieChartPresets())
+  const [tilesPerRow, setTilesPerRow] = useState(2)
+  const [editingTileId, setEditingTileId] = useState(null)
   const [portfolioScopeId, setPortfolioScopeId] = useState(null)
   const [breakdownView, setBreakdownView] = useState('chart') // 'chart' | 'table'
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false)
+
+  // ── Table tab filters ────────────────────────────────────────────────────────
+  const [tfPortfolios,  setTfPortfolios]  = useState([])
+  const [tfCurrencies,  setTfCurrencies]  = useState([])
+  const [tfCountries,   setTfCountries]   = useState([])
+  const [tfRegions,     setTfRegions]     = useState([])
+  const [tfContinents,  setTfContinents]  = useState([])
 
   // ── Preset dialogs ───────────────────────────────────────────────────────────
   const [saveDialog,   setSaveDialog]   = useState(false)
@@ -373,6 +391,22 @@ export default function InvestmentReports() {
     return []
   }, [rowsWithPortfolio, typeFilter])
 
+  // Table tab filtered rows (applies the five HybridFilterDropdown filters)
+  const tableRows = useMemo(() => {
+    let rows = displayRows
+    if (tfPortfolios.length) {
+      const portfolioTickers = new Set(
+        assignments.filter(a => tfPortfolios.includes(a.portfolioId)).map(a => a.ticker)
+      )
+      rows = rows.filter(r => portfolioTickers.has(r.ticker))
+    }
+    if (tfCurrencies.length)  rows = rows.filter(r => tfCurrencies.includes(r.nativeCurrency))
+    if (tfCountries.length)   rows = rows.filter(r => tfCountries.includes(r.hqCountry ?? 'Unknown'))
+    if (tfRegions.length)     rows = rows.filter(r => tfRegions.includes(countryDetailRegion(r.hqCountry)))
+    if (tfContinents.length)  rows = rows.filter(r => tfContinents.includes(continentRegion(r.hqCountry)))
+    return rows
+  }, [displayRows, tfPortfolios, tfCurrencies, tfCountries, tfRegions, tfContinents, assignments])
+
   const totalPositionsMV = useMemo(
     () => displayRows.reduce((s, r) => s + (r.marketValue ?? 0), 0),
     [displayRows]
@@ -395,18 +429,27 @@ export default function InvestmentReports() {
   )
   const portfolioGroups = useMemo(() => {
     if (!portfolios.length) return []
-    // Build map: portfolioId → MV of assigned tickers
-    const mvByPortfolio = {}
-    for (const p of portfolios) {
-      const tickers = new Set(assignments.filter(a => a.portfolioId === p.id).map(a => a.ticker))
-      mvByPortfolio[p.id] = displayRows.filter(r => tickers.has(r.ticker)).reduce((s, r) => s + (r.marketValue ?? 0), 0)
-    }
     const assigned = new Set(assignments.map(a => a.ticker))
-    const unassignedMV = displayRows.filter(r => !assigned.has(r.ticker)).reduce((s, r) => s + (r.marketValue ?? 0), 0)
-    const groups = portfolios.map(p => ({ label: p.name, value: mvByPortfolio[p.id] ?? 0 }))
-    if (unassignedMV > 0) groups.push({ label: 'Unassigned', value: unassignedMV })
-    const total = groups.reduce((s, g) => s + g.value, 0)
-    return groups.filter(g => g.value > 0).map(g => ({ ...g, pct: total > 0 ? (g.value / total) * 100 : 0 })).sort((a, b) => b.value - a.value)
+    const allGroups = portfolios.map(p => {
+      const tickers = new Set(assignments.filter(a => a.portfolioId === p.id).map(a => a.ticker))
+      const rows = displayRows.filter(r => tickers.has(r.ticker))
+      const value      = rows.reduce((s, r) => s + (r.marketValue ?? 0), 0)
+      const totalReturn= rows.reduce((s, r) => s + (r.totalReturn ?? 0), 0)
+      const div12m     = rows.reduce((s, r) => s + (r.div12m ?? 0), 0)
+      return { label: p.name, value, totalReturn, div12m }
+    })
+    const unassignedRows = displayRows.filter(r => !assigned.has(r.ticker))
+    if (unassignedRows.length > 0) {
+      const value       = unassignedRows.reduce((s, r) => s + (r.marketValue ?? 0), 0)
+      const totalReturn = unassignedRows.reduce((s, r) => s + (r.totalReturn ?? 0), 0)
+      const div12m      = unassignedRows.reduce((s, r) => s + (r.div12m ?? 0), 0)
+      allGroups.push({ label: 'Unassigned', value, totalReturn, div12m })
+    }
+    const total = allGroups.reduce((s, g) => s + g.value, 0)
+    return allGroups
+      .filter(g => g.value > 0)
+      .map(g => ({ ...g, pct: total > 0 ? (g.value / total) * 100 : 0 }))
+      .sort((a, b) => b.value - a.value)
   }, [displayRows, portfolios, assignments])
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -465,13 +508,6 @@ export default function InvestmentReports() {
     setPresetId(null)
   }
 
-  function toggleColumn(id) {
-    const col = ALL_COLUMNS.find(c => c.id === id)
-    if (col?.alwaysOn) return
-    setColumns(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
-    setPresetId(null)
-  }
-
   function handleSaveCountry() {
     if (!editingCountry) return
     upsertStockProfile(editingCountry, { hqCountry: countryDraft.trim() || null })
@@ -481,7 +517,6 @@ export default function InvestmentReports() {
     setApiPrices(p => ({ ...p }))
   }
 
-  const activeColumns = ALL_COLUMNS.filter(c => columns.includes(c.id) || c.alwaysOn)
 
   function getBreakdownGroups() {
     if (breakdown === 'currency')         return currencyGroups
@@ -589,101 +624,94 @@ export default function InvestmentReports() {
       {/* ── Table view ────────────────────────────────────────────────────────── */}
       {breakdown === 'table' && (
         <div className={styles.tableSection}>
-          <div className={styles.tableTitleRow}>
-            <span className={styles.tablePositionCount}>{displayRows.length} position{displayRows.length !== 1 ? 's' : ''}</span>
-            <div className={styles.tableTitleRight}>
-              {(columns.includes('sharePortfolio') || columns.includes('vsTarget')) && portfolios.length > 0 && (
-                <div className={styles.scopeRow}>
-                  <label className={styles.scopeLabel}>Portfolio scope:</label>
-                  <select
-                    className={styles.scopeSelect}
-                    value={portfolioScopeId ?? ''}
-                    onChange={e => setPortfolioScopeId(e.target.value || null)}
-                  >
-                    <option value="">— All portfolios —</option>
-                    {portfolios.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {' '.repeat(p.depth * 2)}{p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <button
-                className={styles.btnSm}
-                onClick={() => setColumnPickerOpen(o => !o)}
+          {/* Portfolio scope selector */}
+          {(columns.includes('sharePortfolio') || columns.includes('vsTarget')) && portfolios.length > 0 && (
+            <div className={styles.scopeRow} style={{ marginBottom: 8 }}>
+              <label className={styles.scopeLabel}>Portfolio scope:</label>
+              <select
+                className={styles.scopeSelect}
+                value={portfolioScopeId ?? ''}
+                onChange={e => setPortfolioScopeId(e.target.value || null)}
               >
-                Configure columns
-              </button>
-            </div>
-          </div>
-
-          {columnPickerOpen && (
-            <div className={styles.columnPicker}>
-              <div className={styles.columnPickerTitle}>Visible columns</div>
-              <div className={styles.columnPickerGrid}>
-                {ALL_COLUMNS.map(col => (
-                  <label key={col.id} className={`${styles.columnPickerRow} ${col.alwaysOn ? styles.columnPickerDisabled : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={columns.includes(col.id) || !!col.alwaysOn}
-                      disabled={!!col.alwaysOn}
-                      onChange={() => toggleColumn(col.id)}
-                    />
-                    <span className={styles.columnPickerLabel}>
-                      {col.label}
-                      {col.hint && <span className={styles.columnPickerHint}>{col.hint}</span>}
-                    </span>
-                  </label>
+                <option value="">— All portfolios —</option>
+                {portfolios.map(p => (
+                  <option key={p.id} value={p.id}>{' '.repeat(p.depth * 2)}{p.name}</option>
                 ))}
-              </div>
+              </select>
             </div>
           )}
 
-          {displayRows.length === 0 ? (
-            <p className={styles.empty}>
-              {typeFilter.every(t => !INVESTMENT_TYPES.find(x => x.id === t)?.live)
-                ? 'No live data for the selected type(s). Stocks is the only type with real data in Phase 2.'
-                : 'No positions found.'}
-            </p>
+          {/* Filter bar */}
+          <div className={styles.tableFilterBar}>
+            {portfolios.length > 0 && (
+              <HybridFilterDropdown
+                label="Portfolio"
+                options={portfolios.map(p => ({ id: p.id, label: p.name }))}
+                selected={tfPortfolios}
+                onChange={setTfPortfolios}
+              />
+            )}
+            <HybridFilterDropdown
+              label="Currency"
+              options={[...new Set(displayRows.map(r => r.nativeCurrency))].sort().map(c => ({ id: c, label: c }))}
+              selected={tfCurrencies}
+              onChange={setTfCurrencies}
+            />
+            <HybridFilterDropdown
+              label="Country"
+              options={[...new Set(displayRows.map(r => r.hqCountry ?? 'Unknown'))].sort().map(c => ({ id: c, label: c }))}
+              selected={tfCountries}
+              onChange={setTfCountries}
+            />
+            <HybridFilterDropdown
+              label="Region"
+              options={COUNTRY_DETAIL_REGIONS.map(r => ({ id: r, label: r }))}
+              selected={tfRegions}
+              onChange={setTfRegions}
+            />
+            <HybridFilterDropdown
+              label="Continent"
+              options={CONTINENT_REGIONS.map(r => ({ id: r, label: r }))}
+              selected={tfContinents}
+              onChange={setTfContinents}
+            />
+            <span className={styles.tablePositionCount}>{tableRows.length} position{tableRows.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {typeFilter.every(t => !INVESTMENT_TYPES.find(x => x.id === t)?.live) ? (
+            <p className={styles.empty}>No live data for the selected type(s). Stocks is the only type with real data in Phase 2.</p>
           ) : (
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    {activeColumns.map(col => (
-                      <th key={col.id} className={`${styles.th} ${col.numeric ? styles.thNum : ''}`} title={col.hint}>{col.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((row, i) => (
-                    <tr key={`${row.ticker}-${row.accountId ?? i}`} className={styles.tr}>
-                      {activeColumns.map(col => (
-                        <td key={col.id} className={`${styles.td} ${col.numeric ? styles.tdNum : ''}`}>
-                          {renderCell(col.id, row, mainCurrency, editingCountry, countryDraft, setEditingCountry, setCountryDraft, handleSaveCountry)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className={styles.totalRow}>
-                    {activeColumns.map(col => (
-                      <td key={col.id} className={`${styles.tdTotal} ${col.numeric ? styles.tdNum : ''}`}>
-                        {renderTotalCell(col.id, displayRows, mainCurrency)}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <ConfigurableTable
+              storageKey="rmoney_reports_table_cols"
+              rows={tableRows}
+              rowKey={row => `${row.ticker}-${row.accountId ?? 'agg'}`}
+              emptyMessage="No positions match the active filters."
+              columns={buildCTColumns(mainCurrency, editingCountry, countryDraft, setEditingCountry, setCountryDraft, handleSaveCountry)}
+            />
           )}
         </div>
       )}
 
+
+      {/* ── Pie charts tab ─────────────────────────────────────────────────────── */}
+      {breakdown === 'pie-charts' && (
+        <PieChartsTab
+          presets={piePresets}
+          setPresets={setPiePresets}
+          displayRows={displayRows}
+          portfolios={portfolios}
+          assignments={assignments}
+          mainCurrency={mainCurrency}
+          tilesPerRow={tilesPerRow}
+          setTilesPerRow={setTilesPerRow}
+          editingTileId={editingTileId}
+          setEditingTileId={setEditingTileId}
+          isDesktop={isDesktop}
+        />
+      )}
+
       {/* ── Breakdown views ───────────────────────────────────────────────────── */}
-      {breakdown !== 'table' && (
+      {breakdown !== 'table' && breakdown !== 'pie-charts' && (
         <BreakdownSection
           groups={getBreakdownGroups()}
           mainCurrency={mainCurrency}
@@ -796,6 +824,9 @@ function renderCell(colId, row, mc, editingCountry, countryDraft, setEditingCoun
     case 'shareWhole':     return row.shareWhole != null ? fmtPctUnsigned(row.shareWhole) : <span className={styles.na}>—</span>
     case 'sharePortfolio': return row.sharePortfolio != null ? fmtPctUnsigned(row.sharePortfolio) : <span className={styles.na}>—</span>
     case 'vsTarget':       return row.vsTarget != null ? <span className={Math.abs(row.vsTarget) < 1 ? '' : styles.warn}>{fmtPct(row.vsTarget)}</span> : <span className={styles.na}>—</span>
+    case 'mvTrading':       return row.marketValueNative != null
+      ? `${fmtAmt(row.marketValueNative)} ${row.priceCurrency}`
+      : <span className={styles.na}>—</span>
     case 'hqCountry':
       if (editingCountry === row.ticker) {
         return (
@@ -855,18 +886,65 @@ function renderTotalCell(colId, rows, mc) {
   return null
 }
 
+// Build ConfigurableTable column definitions from ALL_COLUMNS
+function buildCTColumns(mc, editingCountry, countryDraft, setEditingCountry, setCountryDraft, handleSaveCountry) {
+  return ALL_COLUMNS.map(col => ({
+    id:    col.id,
+    label: col.label,
+    align: col.numeric ? 'right' : 'left',
+    defaultHidden: !DEFAULT_COLUMNS.includes(col.id) && !col.alwaysOn,
+    sortValue: col.numeric
+      ? (row) => {
+          if (col.id === 'price')           return row.priceNative
+          if (col.id === 'shares')          return row.shares
+          if (col.id === 'avgPrice')        return row.avgCost
+          if (col.id === 'totalInvested')   return row.totalInvested
+          if (col.id === 'marketValue')     return row.marketValue
+          if (col.id === 'mvTrading')       return row.marketValueNative
+          if (col.id === 'totalReturn')     return row.totalReturn
+          if (col.id === 'dividendYield12m')return row.dividendYield12m
+          if (col.id === 'paReturn')        return row.paReturn
+          if (col.id === 'priceAppReturn')  return row.priceAppReturn
+          if (col.id === 'dividendReturn')  return row.dividendReturn
+          if (col.id === 'shareWhole')      return row.shareWhole
+          if (col.id === 'sharePortfolio')  return row.sharePortfolio
+          if (col.id === 'vsTarget')        return row.vsTarget
+          return null
+        }
+      : (col.id === 'ticker' || col.id === 'name' || col.id === 'currency' ||
+         col.id === 'account' || col.id === 'hqCountry')
+        ? (row) => {
+            if (col.id === 'ticker')    return row.ticker
+            if (col.id === 'name')      return row.name ?? ''
+            if (col.id === 'currency')  return row.nativeCurrency
+            if (col.id === 'account')   return row.account
+            if (col.id === 'hqCountry') return row.hqCountry ?? ''
+            return ''
+          }
+        : undefined,
+    render: (row) => renderCell(
+      col.id, row, mc,
+      editingCountry, countryDraft, setEditingCountry, setCountryDraft, handleSaveCountry
+    ),
+  }))
+}
+
 // ─── Breakdown section ────────────────────────────────────────────────────────
 
 function BreakdownSection({ groups, mainCurrency, isDesktop, breakdownView, setBreakdownView, breakdown, portfolios, portfolioScopeId, setPortfolioScopeId, displayRows }) {
   const total = groups.reduce((s, g) => s + g.value, 0)
+  // In all-portfolios portfolio mode: skip pie (a stock in multiple portfolios would be summed twice)
+  const allPortfoliosMode = breakdown === 'portfolio' && !portfolioScopeId
 
   return (
     <div className={styles.breakdownSection}>
       <div className={styles.breakdownToolbar}>
-        <div className={styles.viewToggle}>
-          <button className={`${styles.viewBtn} ${breakdownView === 'chart' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('chart')}>Chart</button>
-          <button className={`${styles.viewBtn} ${breakdownView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('table')}>Table</button>
-        </div>
+        {!allPortfoliosMode && (
+          <div className={styles.viewToggle}>
+            <button className={`${styles.viewBtn} ${breakdownView === 'chart' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('chart')}>Chart</button>
+            <button className={`${styles.viewBtn} ${breakdownView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('table')}>Table</button>
+          </div>
+        )}
         {breakdown === 'portfolio' && portfolios.length > 0 && (
           <div className={styles.scopeRow}>
             <label className={styles.scopeLabel}>Portfolio scope:</label>
@@ -876,7 +954,7 @@ function BreakdownSection({ groups, mainCurrency, isDesktop, breakdownView, setB
               onChange={e => setPortfolioScopeId(e.target.value || null)}
             >
               <option value="">All portfolios</option>
-              {portfolios.map(p => <option key={p.id} value={p.id}>{' '.repeat(p.depth * 2)}{p.name}</option>)}
+              {portfolios.map(p => <option key={p.id} value={p.id}>{' '.repeat(p.depth * 2)}{p.name}</option>)}
             </select>
           </div>
         )}
@@ -884,6 +962,50 @@ function BreakdownSection({ groups, mainCurrency, isDesktop, breakdownView, setB
 
       {groups.length === 0 ? (
         <p className={styles.empty}>No position data available for this breakdown.</p>
+      ) : allPortfoliosMode ? (
+        <div className={styles.breakdownTablePane}>
+          <table className={styles.breakdownTable}>
+            <thead>
+              <tr>
+                <th className={styles.th}>Portfolio</th>
+                <th className={`${styles.th} ${styles.thNum}`}>Total value ({mainCurrency})</th>
+                <th className={`${styles.th} ${styles.thNum}`}>Total return ({mainCurrency})</th>
+                <th className={`${styles.th} ${styles.thNum}`}>Div yield (TTM)</th>
+                <th className={`${styles.th} ${styles.thNum}`}>Yearly div ({mainCurrency})</th>
+                <th className={`${styles.th} ${styles.thNum}`}>Avg monthly div ({mainCurrency})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(g => {
+                const yieldTTM = g.value > 0 && (g.div12m ?? 0) > 0 ? (g.div12m / g.value) * 100 : null
+                return (
+                  <tr key={g.label} className={styles.tr}>
+                    <td className={styles.td}>{g.label}</td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>{fmtAmt(g.value)}</td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>
+                      <span className={(g.totalReturn ?? 0) >= 0 ? styles.pos : styles.neg}>
+                        {(g.totalReturn ?? 0) >= 0 ? '+' : ''}{fmtAmt(g.totalReturn ?? 0)}
+                      </span>
+                    </td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>{yieldTTM != null ? fmtPctUnsigned(yieldTTM) : <span className={styles.na}>—</span>}</td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>{(g.div12m ?? 0) > 0 ? fmtAmt(g.div12m) : <span className={styles.na}>—</span>}</td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>{(g.div12m ?? 0) > 0 ? fmtAmt(g.div12m / 12) : <span className={styles.na}>—</span>}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className={styles.totalRow}>
+                <td className={styles.tdTotal}>Total</td>
+                <td className={`${styles.tdTotal} ${styles.tdNum}`}>{fmtAmt(total)}</td>
+                <td className={`${styles.tdTotal} ${styles.tdNum}`}>{fmtAmt(groups.reduce((s, g) => s + (g.totalReturn ?? 0), 0))}</td>
+                <td className={styles.tdTotal} />
+                <td className={`${styles.tdTotal} ${styles.tdNum}`}>{fmtAmt(groups.reduce((s, g) => s + (g.div12m ?? 0), 0))}</td>
+                <td className={`${styles.tdTotal} ${styles.tdNum}`}>{fmtAmt(groups.reduce((s, g) => s + (g.div12m ?? 0), 0) / 12)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       ) : (
         <div className={isDesktop && breakdownView === 'chart' ? styles.breakdownSplit : ''}>
           {breakdownView === 'chart' && (
@@ -976,4 +1098,287 @@ function PieChart({ groups, mainCurrency }) {
       </div>
     </div>
   )
+}
+
+
+// ─── Pie charts tab ───────────────────────────────────────────────────────────
+
+const GROUPING_OPTIONS = [
+  { id: 'currency',  label: 'Currency' },
+  { id: 'country',   label: 'Country' },
+  { id: 'region',    label: 'Region (detail)' },
+  { id: 'continent', label: 'Continent' },
+  { id: 'portfolio', label: 'Portfolio' },
+  { id: 'stock',     label: 'Stock' },
+]
+
+function groupRows(rows, grouping, portfolios, assignments) {
+  const map = {}
+  for (const row of rows) {
+    let key
+    if (grouping === 'currency')  key = row.nativeCurrency
+    else if (grouping === 'country')   key = row.hqCountry ?? 'Unknown'
+    else if (grouping === 'region')    key = countryDetailRegion(row.hqCountry)
+    else if (grouping === 'continent') key = continentRegion(row.hqCountry)
+    else if (grouping === 'stock')     key = `${row.ticker}${row.name ? ` — ${row.name}` : ''}`
+    else if (grouping === 'portfolio') {
+      // For portfolio grouping, a stock in N portfolios counts N times (use single-select filter)
+      const portIds = assignments.filter(a => a.ticker === row.ticker).map(a => a.portfolioId)
+      const portNames = portIds.map(id => portfolios.find(p => p.id === id)?.name ?? id)
+      const label = portNames.length ? portNames[0] : 'Unassigned'
+      key = label
+    }
+    if (!map[key]) map[key] = 0
+    map[key] += row.marketValue ?? 0
+  }
+  const total = Object.values(map).reduce((s, v) => s + v, 0)
+  return Object.entries(map)
+    .map(([label, value]) => ({ label, value, pct: total > 0 ? (value / total) * 100 : 0 }))
+    .sort((a, b) => b.value - a.value)
+}
+
+function applyOtherThreshold(groups, thresholdPct) {
+  const above = groups.filter(g => g.pct >= thresholdPct)
+  const below = groups.filter(g => g.pct < thresholdPct)
+  if (below.length === 0) return { display: groups, full: groups }
+  const otherValue = below.reduce((s, g) => s + g.value, 0)
+  const total = groups.reduce((s, g) => s + g.value, 0)
+  const display = [
+    ...above,
+    { label: `Other (${below.length})`, value: otherValue, pct: total > 0 ? (otherValue / total) * 100 : 0 },
+  ]
+  return { display, full: groups }
+}
+
+function filterRowsByPreset(rows, preset, assignments) {
+  let filtered = rows
+  if (preset.filters?.portfolioId) {
+    const tickers = new Set(assignments.filter(a => a.portfolioId === preset.filters.portfolioId).map(a => a.ticker))
+    filtered = filtered.filter(r => tickers.has(r.ticker))
+  }
+  if (preset.filters?.currencies?.length)
+    filtered = filtered.filter(r => preset.filters.currencies.includes(r.nativeCurrency))
+  return filtered
+}
+
+function PieChartsTab({ presets, setPresets, displayRows, portfolios, assignments, mainCurrency, tilesPerRow, setTilesPerRow, editingTileId, setEditingTileId, isDesktop }) {
+  const dragItem = useRef(null)
+  const dragOver = useRef(null)
+
+  function handleAddChart() {
+    const preset = createPieChartPreset({ name: 'New chart', grouping: 'currency' })
+    setPresets(getPieChartPresets())
+    setEditingTileId(preset.id)
+  }
+
+  function handleSaveTile(id, fields) {
+    updatePieChartPreset(id, fields)
+    setPresets(getPieChartPresets())
+    setEditingTileId(null)
+  }
+
+  function handleDeleteTile(id) {
+    deletePieChartPreset(id)
+    setPresets(getPieChartPresets())
+    if (editingTileId === id) setEditingTileId(null)
+  }
+
+  function handleDragStart(id) { dragItem.current = id }
+  function handleDragEnter(id) { dragOver.current = id }
+  function handleDragEnd() {
+    const from = dragItem.current
+    const to = dragOver.current
+    if (!from || !to || from === to) { dragItem.current = null; dragOver.current = null; return }
+    const ids = presets.map(p => p.id)
+    const fi = ids.indexOf(from), ti = ids.indexOf(to)
+    ids.splice(fi, 1); ids.splice(ti, 0, from)
+    reorderPieChartPresets(ids)
+    setPresets(getPieChartPresets())
+    dragItem.current = null; dragOver.current = null
+  }
+
+  const sorted = [...presets].sort((a, b) => (a.gridPosition ?? 0) - (b.gridPosition ?? 0))
+
+  return (
+    <div className={styles.pieChartsTab}>
+      <div className={styles.pieChartsToolbar}>
+        <button className={styles.btnSm} onClick={handleAddChart}>+ Add chart</button>
+        {isDesktop && (
+          <div className={styles.tilesPerRowPicker}>
+            <span className={styles.groupLabel}>Tiles per row:</span>
+            {[1, 2, 3, 4].map(n => (
+              <button
+                key={n}
+                className={`${styles.viewBtn} ${tilesPerRow === n ? styles.viewBtnActive : ''}`}
+                onClick={() => setTilesPerRow(n)}
+              >{n}</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {sorted.length === 0 ? (
+        <p className={styles.empty}>No saved pie charts yet. Click &ldquo;+ Add chart&rdquo; to create one.</p>
+      ) : (
+        <div className={styles.pieChartsGrid} style={{ gridTemplateColumns: `repeat(${isDesktop ? tilesPerRow : 1}, 1fr)` }}>
+          {sorted.map(preset => (
+            <PieChartTile
+              key={preset.id}
+              preset={preset}
+              displayRows={displayRows}
+              portfolios={portfolios}
+              assignments={assignments}
+              mainCurrency={mainCurrency}
+              isEditing={editingTileId === preset.id}
+              onEdit={() => setEditingTileId(preset.id)}
+              onSave={(fields) => handleSaveTile(preset.id, fields)}
+              onCancel={() => setEditingTileId(null)}
+              onDelete={() => handleDeleteTile(preset.id)}
+              draggable
+              onDragStart={() => handleDragStart(preset.id)}
+              onDragEnter={() => handleDragEnter(preset.id)}
+              onDragEnd={handleDragEnd}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PieChartTile({ preset, displayRows, portfolios, assignments, mainCurrency, isEditing, onEdit, onSave, onCancel, onDelete, ...dragProps }) {
+  const [fullscreen, setFullscreen] = useState(false)
+  const [draft, setDraft] = useState(null)
+
+  function startEdit() {
+    setDraft({
+      name: preset.name,
+      grouping: preset.grouping,
+      otherThresholdPct: preset.otherThresholdPct ?? 1,
+      showTableBelow: preset.showTableBelow ?? false,
+      portfolioId: preset.filters?.portfolioId ?? '',
+      currencies: preset.filters?.currencies ?? [],
+    })
+    onEdit()
+  }
+
+  function handleSave() {
+    if (!draft) return
+    onSave({
+      name: draft.name.trim() || 'Untitled',
+      grouping: draft.grouping,
+      otherThresholdPct: Number(draft.otherThresholdPct),
+      showTableBelow: draft.showTableBelow,
+      filters: {
+        portfolioId: draft.portfolioId || null,
+        currencies: draft.currencies,
+      },
+    })
+    setDraft(null)
+  }
+
+  const filteredRows = filterRowsByPreset(displayRows, preset, assignments)
+  const allGroups = groupRows(filteredRows, preset.grouping, portfolios, assignments)
+  const { display: displayGroups, full: fullGroups } = applyOtherThreshold(allGroups, preset.otherThresholdPct ?? 1)
+
+  const tileContent = (
+    <div className={`${styles.pieTile} ${fullscreen ? styles.pieTileFullscreen : ''}`} {...dragProps}>
+      <div className={styles.pieTileHeader}>
+        <span className={styles.pieTileTitle}>{preset.name}</span>
+        <div className={styles.pieTileActions}>
+          <button className={styles.btnXs} onClick={startEdit} title="Edit chart">✎</button>
+          <button className={styles.btnXs} onClick={() => setFullscreen(v => !v)} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            {fullscreen ? '✕' : '⛶'}
+          </button>
+        </div>
+      </div>
+
+      {isEditing && draft ? (
+        <div className={styles.pieTileForm}>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Name</label>
+            <input
+              className={styles.formInput}
+              value={draft.name}
+              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+            />
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Group by</label>
+            <select className={styles.formSelect} value={draft.grouping} onChange={e => setDraft(d => ({ ...d, grouping: e.target.value }))}>
+              {GROUPING_OPTIONS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+            </select>
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Other threshold (%)</label>
+            <input
+              className={styles.formInputSm}
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={draft.otherThresholdPct}
+              onChange={e => setDraft(d => ({ ...d, otherThresholdPct: e.target.value }))}
+            />
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Portfolio filter</label>
+            <select className={styles.formSelect} value={draft.portfolioId} onChange={e => setDraft(d => ({ ...d, portfolioId: e.target.value }))}>
+              <option value="">— All —</option>
+              {portfolios.map(p => <option key={p.id} value={p.id}>{' '.repeat(p.depth * 2)}{p.name}</option>)}
+            </select>
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.checkLabel}>
+              <input type="checkbox" checked={draft.showTableBelow} onChange={e => setDraft(d => ({ ...d, showTableBelow: e.target.checked }))} />
+              Show data table below chart
+            </label>
+          </div>
+          <div className={styles.formActions}>
+            <button className={styles.btnPrimary} onClick={handleSave}>Save</button>
+            <button className={styles.btnSec} onClick={() => { setDraft(null); onCancel() }}>Cancel</button>
+            <button className={styles.btnSmDanger} style={{ marginLeft: 'auto' }} onClick={() => { if (window.confirm('Delete this chart?')) { setDraft(null); onDelete() } }}>Delete</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={styles.pieTileSubtitle}>
+            {GROUPING_OPTIONS.find(g => g.id === preset.grouping)?.label ?? preset.grouping}
+            {preset.filters?.portfolioId && portfolios.find(p => p.id === preset.filters.portfolioId) &&
+              ` · ${portfolios.find(p => p.id === preset.filters.portfolioId).name}`}
+          </div>
+          <PieChart groups={displayGroups} mainCurrency={mainCurrency} />
+          {preset.showTableBelow && (
+            <table className={styles.breakdownTable} style={{ marginTop: 8 }}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Group</th>
+                  <th className={styles.th}>Value ({mainCurrency})</th>
+                  <th className={styles.th}>Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fullGroups.map(g => (
+                  <tr key={g.label} className={styles.tr}>
+                    <td className={styles.td}>{g.label}</td>
+                    <td className={styles.td}>{fmtAmt(g.value)}</td>
+                    <td className={styles.td}>{g.pct.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  )
+
+  if (fullscreen) {
+    return (
+      <div className={styles.fullscreenOverlay} onClick={e => { if (e.target === e.currentTarget) setFullscreen(false) }}>
+        {tileContent}
+      </div>
+    )
+  }
+  return tileContent
 }
