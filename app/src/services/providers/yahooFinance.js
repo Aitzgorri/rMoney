@@ -53,8 +53,13 @@ export const yahooFinance = {
     const meta = data.chart.result?.[0]?.meta
     if (!meta?.regularMarketPrice) throw new Error('no data')
     const { price, currency } = normaliseMinorUnit(meta.regularMarketPrice, meta.currency ?? null)
+    const rawPrev = meta.chartPreviousClose ?? meta.previousClose ?? null
+    const { price: previousClose } = rawPrev != null
+      ? normaliseMinorUnit(rawPrev, meta.currency ?? null)
+      : { price: null }
     return {
       price,
+      previousClose: previousClose ?? null,
       currency,
       asOf: meta.regularMarketTime ? unixToDate(meta.regularMarketTime) : null,
     }
