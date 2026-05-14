@@ -3,7 +3,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_stronghold::Builder::new(|password| {
       use sha2::{Digest, Sha256};
-      Ok(Sha256::digest(password).to_vec())
+      Sha256::digest(password).to_vec()
     }).build())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())

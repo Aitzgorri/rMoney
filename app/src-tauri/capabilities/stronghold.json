@@ -9,7 +9,7 @@
     "stronghold:allow-create-client",
     "stronghold:allow-load-client",
     "stronghold:allow-get-store-record",
-    "stronghold:allow-insert-record",
+    "stronghold:allow-save-store-record",
     "stronghold:allow-remove-store-record"
   ]
 }
