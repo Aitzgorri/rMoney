@@ -80,22 +80,12 @@ export const yahooFinance = {
       .filter(({ close }) => close != null)
   },
 
-  async getDividends(ticker, _exchange, fromDate, toDate, _config) {
-    const sym = yfTicker(ticker, null)
-    const data = await yf(`/v8/finance/chart/${sym}`, {
-      interval: '1d',
-      range:    'max',
-      events:   'div',
-    })
-    const divMap = data.chart.result?.[0]?.events?.dividends ?? {}
-    return Object.values(divMap)
-      .map(d => ({
-        exDate:   unixToDate(d.date),
-        amount:   d.amount,
-        currency: data.chart.result[0].meta?.currency ?? null,
-      }))
-      .filter(d => d.exDate >= fromDate && d.exDate <= toDate)
-      .sort((a, b) => a.exDate.localeCompare(b.exDate))
+  async getDividends(_ticker, _exchange, _fromDate, _toDate, _config) {
+    // Yahoo's chart endpoint (events=div) only exposes ex-date + amount — no payment date,
+    // no declared/future events. Returning a partial response would satisfy the chain and
+    // prevent richer providers (Twelve Data, Massive) from being consulted. Throw instead
+    // so the chain falls through. See SPEC-020 + SPEC-027.
+    throw new Error('not supported')
   },
 
   async getCorporateActions(ticker, fromDate, _config) {
