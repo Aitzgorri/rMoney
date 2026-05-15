@@ -1,7 +1,7 @@
 ---
 id: SPEC-033
 name: Stock inventory
-status: ready
+status: done
 created: 2026-05-06
 ---
 
@@ -19,27 +19,27 @@ Give the user a single page that lists every stock the app currently knows about
 ## Acceptance Criteria
 
 ### Inventory list
-- [ ] New page accessible from the **More menu** (alongside `Categories / Settings`); both desktop top-nav second row and mobile More dropdown
-- [ ] Lists all `stockProfiles` with a default filter showing **active** profiles; toggle reveals **archived** profiles
-- [ ] Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag (timestamp on hover), and four history-presence indicators (transaction count, dividend count, in-portfolio count, in-watchlist count)
-- [ ] Each history-presence indicator is a clickable deep link that navigates to the relevant filtered list (Transactions / Dividends / Portfolio editor / Watchlist editor)
-- [ ] Per-row actions: Edit profile, Archive (disabled if open lots > 0; Unarchive when already archived), Permanent delete
-- [ ] "Add stock" button at top of the page launches the SPEC-029 resolution dialog in standalone mode (no transaction context); on confirm, a new `stockProfile` row is created and appears in the inventory immediately
-- [ ] Sort: clicking any column header re-sorts the inventory; choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
-- [ ] Counts performance: history-presence counts are computed once on page mount as four maps (`{ticker → count}`) by single-passing each source collection; every row reads from the maps in O(1). Maps are recomputed when the page is re-mounted or when the active/archived filter changes, not memoised across navigations
+- [x] New page accessible from the **More menu** (alongside `Categories / Settings`); both desktop top-nav second row and mobile More dropdown
+- [x] Lists all `stockProfiles` with a default filter showing **active** profiles; toggle reveals **archived** profiles
+- [x] Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag (timestamp on hover), and four history-presence indicators (transaction count, dividend count, in-portfolio count, in-watchlist count)
+- [x] Each history-presence indicator is a clickable deep link that navigates to the relevant filtered list (Transactions / Dividends / Portfolio editor / Watchlist editor)
+- [x] Per-row actions: Edit profile, Archive (disabled if open lots > 0; Unarchive when already archived), Permanent delete
+- [x] "Add stock" button at top of the page launches the SPEC-029 resolution dialog in standalone mode (no transaction context); on confirm, a new `stockProfile` row is created and appears in the inventory immediately
+- [x] Sort: clicking any column header re-sorts the inventory; choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
+- [x] Counts performance: history-presence counts are computed once on page mount as four maps (`{ticker → count}`) by single-passing each source collection; every row reads from the maps in O(1). Maps are recomputed when the page is re-mounted or when the active/archived filter changes, not memoised across navigations
 
 ### Archive lifecycle
-- [ ] Archive **precondition: zero open lots** — the Archive button is disabled when the stock has any open position across investing accounts; tooltip explains "Sell all positions in this stock before archiving." Reason: archived stocks are hidden from selection lists, but a held position must remain visible on Stock page / Dividend page / Reports / Watchlist views, so archiving a held stock would create a contradiction
-- [ ] When precondition holds, Archive sets `archived: true` and `archivedAt: <ISO timestamp>` on the `stockProfile`
-- [ ] Archived stocks are hidden from: Buy form ticker dropdown, Sell form open-position list (always empty for archived stocks anyway), Stock page nav, Dividend page (held set is empty by precondition), Reports default views, Watchlist add-stock list
-- [ ] Archived stocks are still visible in: historical transaction lists, historical dividend lists, the Stock inventory archived view, Reports when explicitly filtered to "include archived"
-- [ ] Unarchive clears both flags; stock immediately reappears everywhere
+- [x] Archive **precondition: zero open lots** — the Archive button is disabled when the stock has any open position across investing accounts; tooltip explains "Sell all positions in this stock before archiving." Reason: archived stocks are hidden from selection lists, but a held position must remain visible on Stock page / Dividend page / Reports / Watchlist views, so archiving a held stock would create a contradiction
+- [x] When precondition holds, Archive sets `archived: true` and `archivedAt: <ISO timestamp>` on the `stockProfile`
+- [x] Archived stocks are hidden from: Buy form ticker dropdown, Sell form open-position list (always empty for archived stocks anyway), Stock page nav, Dividend page (held set is empty by precondition), Reports default views, Watchlist add-stock list
+- [x] Archived stocks are still visible in: historical transaction lists, historical dividend lists, the Stock inventory archived view, Reports when explicitly filtered to "include archived"
+- [x] Unarchive clears both flags; stock immediately reappears everywhere
 
 ### Permanent delete
-- [ ] Permanent-delete button is enabled **only** when all four history-presence counts are zero (no transactions, no dividends, no portfolio assignments, no watchlist entries)
-- [ ] When disabled, hovering the button shows a tooltip listing what's blocking, with the deep links from the row itself as the way to clean those up
-- [ ] When enabled, clicking the button opens a confirmation dialog asking the user to type the ticker; on confirm, the `stockProfile` row plus any orphan `apiDividendHistory` rows for that ticker are removed
-- [ ] No cascade deletion of any other data (the precondition is "no other data exists")
+- [x] Permanent-delete button is enabled **only** when all four history-presence counts are zero (no transactions, no dividends, no portfolio assignments, no watchlist entries)
+- [x] When disabled, hovering the button shows a tooltip listing what's blocking, with the deep links from the row itself as the way to clean those up
+- [x] When enabled, clicking the button opens a confirmation dialog asking the user to type the ticker; on confirm, the `stockProfile` row plus any orphan `apiDividendHistory` rows for that ticker are removed
+- [x] No cascade deletion of any other data (the precondition is "no other data exists")
 
 ## UI / Screens
 - **Stock inventory page:** header with `Add stock` button + active/archived filter toggle. Table with sortable columns. Per-row actions in a kebab menu or as inline buttons.

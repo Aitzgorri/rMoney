@@ -1,4 +1,4 @@
-import { getCashBalanceByCurrency, createCashBalance, addCashMovement } from './investingAccounts'
+import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvestingAccounts } from './investingAccounts'
 import { getHistoricalForex } from './marketDataClient'
 import { getMainCurrency } from './settings'
 
@@ -25,6 +25,14 @@ export function getStockTransactionsByTicker(ticker) {
   return load()
     .filter(t => t.ticker === norm && (t.type === 'buy' || t.type === 'sell' || t.type === 'split' || t.type === 'transfer'))
     .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
+}
+
+// Returns true if the ticker has at least one open lot in any investing account.
+// Used by the Stock inventory archive precondition (Phase 30).
+export function hasOpenLotsForTicker(ticker) {
+  const t = ticker.trim().toUpperCase()
+  const accounts = getInvestingAccounts()
+  return accounts.some(a => getOpenLots(a.id, t).some(lot => lot.remainingShares > 0))
 }
 
 // All tickers that appear in any buy transaction, across every account

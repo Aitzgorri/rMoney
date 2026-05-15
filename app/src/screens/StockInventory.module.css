@@ -1,0 +1,314 @@
+.page {
+  padding: 20px 24px;
+  max-width: 1400px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+/* ── Active / archived toggle ─────────────────────────────────────────────── */
+
+.filterToggle {
+  display: flex;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.filterBtn {
+  background: none;
+  border: none;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.filterBtnActive {
+  background: #1e2d4a;
+  color: #93c5fd;
+}
+
+/* ── Add row ──────────────────────────────────────────────────────────────── */
+
+.addRow {
+  display: flex;
+  gap: 8px;
+  max-width: 480px;
+}
+
+.addInput {
+  flex: 1;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  outline: none;
+}
+
+.addInput:focus { border-color: #3b82f6; }
+
+.addBtn {
+  background: #1e4080;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 7px 14px;
+  color: #93c5fd;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.addBtn:hover { background: #2a4f9e; }
+.addBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.addError {
+  font-size: 12px;
+  color: #f87171;
+  margin: 0;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.empty {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 20px;
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 8px 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #2d3448;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.th:hover { color: #94a3b8; }
+
+.sortNeutral { color: #475569; font-size: 11px; }
+.sortActive  { color: #60a5fa; font-size: 11px; }
+
+.row:nth-child(even) { background: rgba(255,255,255,0.02); }
+.row:hover { background: rgba(255,255,255,0.04); }
+
+.td {
+  padding: 9px 12px;
+  color: #cbd5e1;
+  border-bottom: 1px solid #1e2535;
+  white-space: nowrap;
+}
+
+.tdTicker {
+  padding: 9px 12px;
+  border-bottom: 1px solid #1e2535;
+  white-space: nowrap;
+}
+
+.tdCount {
+  padding: 9px 12px;
+  text-align: center;
+  border-bottom: 1px solid #1e2535;
+}
+
+.tdActions {
+  padding: 6px 12px;
+  border-bottom: 1px solid #1e2535;
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tickerBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.tickerBtn:hover { text-decoration: underline; }
+
+.missing { color: #475569; }
+
+.freq {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.countLink {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  color: #60a5fa;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.countLink:hover { background: rgba(96, 165, 250, 0.1); }
+
+.countZero {
+  color: #334155;
+  font-size: 13px;
+}
+
+.archivedBadge {
+  font-size: 11px;
+  background: #292524;
+  color: #a8a29e;
+  border: 1px solid #44403c;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Row actions ──────────────────────────────────────────────────────────── */
+
+.actionBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 3px 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.actionBtn:hover { border-color: #60a5fa; color: #93c5fd; }
+
+.actionBtnDanger:hover { border-color: #f87171; color: #fca5a5; }
+
+.actionBtnDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.actionBtnDisabled:hover { border-color: #2d3448; color: #94a3b8; }
+
+/* ── Permanent delete dialog ──────────────────────────────────────────────── */
+
+.deleteBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.deleteBox {
+  background: #131c2e;
+  border: 1px solid #7f1d1d;
+  border-radius: 12px;
+  padding: 28px 24px 20px;
+  width: 380px;
+  max-width: 95vw;
+}
+
+.deleteTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fca5a5;
+  margin: 0 0 8px;
+}
+
+.deleteNote {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.deleteInput {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  outline: none;
+  margin-bottom: 16px;
+  font-family: monospace;
+}
+
+.deleteInput:focus { border-color: #ef4444; }
+
+.deleteActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.deleteCancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 16px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.deleteCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.deleteConfirmBtn {
+  background: #7f1d1d;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteConfirmBtn:hover { background: #991b1b; }
+.deleteConfirmBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+@media (min-width: 900px) {
+  .page { padding: 24px 32px; }
+}

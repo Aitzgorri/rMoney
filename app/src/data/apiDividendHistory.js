@@ -86,6 +86,18 @@ export function upsertApiDividends(ticker, records) {
   save([...kept, ...Object.values(byExDate)])
 }
 
+// ── Delete by ticker ──────────────────────────────────────────────────────────
+
+// Removes all persisted records for a ticker and clears its refresh metadata.
+// Called by Stock inventory permanent-delete flow (Phase 30).
+export function deleteApiDividendHistoryForTicker(ticker) {
+  const t = ticker.toUpperCase()
+  save(load().filter(r => r.ticker !== t))
+  const meta = loadMeta()
+  delete meta[t]
+  saveMeta(meta)
+}
+
 // ── Stale indicator ───────────────────────────────────────────────────────────
 
 // True when the ticker has never been successfully refreshed, or the last refresh failed.

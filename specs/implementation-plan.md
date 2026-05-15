@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 29 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–29 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phase 29 done; Phases 30–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
+**Current phase: Phase 30 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–30 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phase 29 done; Phase 30 done; Phases 31–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -739,27 +739,26 @@ SPEC-029 Stock profile resolution (extension — Project Phase 4)
 
 ---
 
-## Phase 30 — Stock inventory page (NEW SPEC-033)
+## Phase 30 — Stock inventory page (NEW SPEC-033) ✓ COMPLETE
 
 > Lists every included stock; first home for the soft-delete archive lifecycle.
 
 ### SPEC-033 Stock inventory — implementation
 > All acceptance criteria below are tracked through the sub-phases of Phase 30.
 
-
 **Sub-phase 30a — Inventory list**
-335. [ ] New page accessible from the **More menu** (desktop top-nav second-row + mobile More dropdown), alongside `Categories / Settings`
-336. [ ] Lists all `stockProfiles` (active + archived togglable). Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag, history-presence indicator (transaction count, dividend count, in-portfolio count, in-watchlist count) — all clickable links to the filtered list of those records
-337. [ ] Per-row actions: Edit profile (Phase 26b), Archive / Unarchive, Permanent delete (button only enabled when all four counts are zero)
-338. [ ] "Add stock" button on the page launches the SPEC-029 resolution dialog in standalone mode (Phase 26a)
-338a. [ ] Sortable columns; sort choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
-338b. [ ] History-presence counts computed once on page mount as four `{ticker → count}` maps (single pass per source collection); rows read from maps in O(1). Maps refresh when the active/archived filter changes, not memoised across navigations
+335. [x] New page accessible from the **More menu** (desktop top-nav second-row + mobile More dropdown), alongside `Categories / Settings`
+336. [x] Lists all `stockProfiles` (active + archived togglable). Columns: ticker, name, exchange, currency, HQ country, dividend frequency, archived flag, history-presence indicator (transaction count, dividend count, in-portfolio count, in-watchlist count) — all clickable links to the filtered list of those records
+337. [x] Per-row actions: Edit profile (Phase 26b), Archive / Unarchive, Permanent delete (button only enabled when all four counts are zero)
+338. [x] "Add stock" button on the page launches the SPEC-029 resolution dialog in standalone mode (Phase 26a)
+338a. [x] Sortable columns; sort choice persisted in localStorage. Default when no choice has been made: ascending alphabetical by ticker
+338b. [x] History-presence counts computed once on page mount as four `{ticker → count}` maps (single pass per source collection); rows read from maps in O(1). Maps refresh when the active/archived filter changes, not memoised across navigations
 
 **Sub-phase 30b — Archive lifecycle + click-through to records**
-339. [ ] Archive precondition: zero open lots. The Archive button is disabled with a tooltip "Sell all positions in this stock before archiving" when any open lot exists. Reason: archived stocks are hidden from selection lists, but a held position must keep appearing on Stock page / Dividend page / Reports — archiving a held stock would create a contradiction. When precondition holds, Archive sets `archived: true` and `archivedAt: now`. The stock vanishes from selection lists, dropdowns, the Stock inventory default view, and the Dividend page. All historical data preserved.
-340. [ ] Unarchive: clears the flags; stock reappears everywhere
-341. [ ] Click-through deep links from each row navigate to the relevant filtered list (Transactions filtered by ticker, Dividends filtered by ticker, Portfolio editor for the relevant portfolio, Watchlist editor)
-342. [ ] Permanent delete: confirmation dialog; removes the `stockProfile` row plus any orphan `apiDividendHistory` entries for that ticker. Disabled when any history exists
+339. [x] Archive precondition: zero open lots. The Archive button is disabled with a tooltip "Sell all positions in this stock before archiving" when any open lot exists. When precondition holds, Archive sets `archived: true` and `archivedAt: now`.
+340. [x] Unarchive: clears the flags; stock reappears everywhere
+341. [x] Click-through deep links from each row navigate to the relevant filtered list (Transactions filtered by ticker, Dividends filtered by ticker, Portfolio editor for the relevant portfolio, Watchlist editor)
+342. [x] Permanent delete: confirmation dialog; removes the `stockProfile` row plus any orphan `apiDividendHistory` entries for that ticker. Disabled when any history exists
 
 ---
 

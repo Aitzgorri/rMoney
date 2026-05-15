@@ -26,6 +26,7 @@ const moreItems = [
   { id: 'scheduled-transfers', label: 'Scheduled transfers', icon: '🔁' },
   { id: 'bills',               label: 'Bills & Income',      icon: '💳' },
   { id: 'categories',          label: 'Categories',          icon: '🏷️' },
+  { id: 'stock-inventory',     label: 'Stock inventory',     icon: '📋' },
   { id: 'settings',            label: 'Settings',            icon: '⚙️' },
   { id: 'save-to-file',        label: 'Save to file',        icon: '💾', action: 'save' },
   { id: 'load-from-file',      label: 'Load from file',      icon: '📂', action: 'load' },

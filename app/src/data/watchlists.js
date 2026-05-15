@@ -72,6 +72,15 @@ export function deleteWatchlistEntry(entryId) {
   save(KEYS.alerts, load(KEYS.alerts).filter(a => a.watchlistEntryId !== entryId))
 }
 
+// Removes all entries (and their alerts) for a ticker across every watchlist.
+// Called when a stock profile is archived so the stock disappears from all watchlists.
+export function deleteWatchlistEntriesForTicker(ticker) {
+  const t = ticker.trim().toUpperCase()
+  const removed = new Set(load(KEYS.entries).filter(e => e.ticker === t).map(e => e.id))
+  save(KEYS.entries, load(KEYS.entries).filter(e => e.ticker !== t))
+  save(KEYS.alerts, load(KEYS.alerts).filter(a => !removed.has(a.watchlistEntryId)))
+}
+
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 
 export function getAlertsForEntry(watchlistEntryId) {

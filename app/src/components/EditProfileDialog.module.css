@@ -1,0 +1,114 @@
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.dialogBox {
+  background: #131c2e;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 28px 24px 20px;
+  width: 420px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.dialogTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 4px;
+}
+
+.dialogNote {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0 0 16px;
+}
+
+.dialogField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.dialogRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.dialogRow .dialogField { flex: 1; margin-bottom: 12px; }
+
+.dialogLabel {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.dialogInput {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dialogInput:focus { border-color: #3b82f6; }
+
+.dialogSelect {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #f1f5f9;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+
+.dialogSelect:focus { border-color: #3b82f6; }
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dialogCancelBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 7px 16px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dialogCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+
+.dialogSaveBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogSaveBtn:hover { background: #2563eb; }
+.dialogSaveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }

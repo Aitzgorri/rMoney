@@ -23,6 +23,7 @@ const MORE_NAV_TABS = [
   { id: 'scheduled-transfers',  label: 'Scheduled Transfers' },
   { id: 'bills',                label: 'Bills & Income' },
   { id: 'categories',           label: 'Categories' },
+  { id: 'stock-inventory',      label: 'Stock inventory' },
   { id: 'settings',             label: 'Settings' },
 ]
 

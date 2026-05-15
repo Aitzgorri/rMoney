@@ -67,6 +67,24 @@ export function clearManualPrice(ticker) {
   upsertStockProfile(ticker, { manualPrice: null })
 }
 
+// ─── Archive lifecycle ────────────────────────────────────────────────────────
+
+export function archiveStockProfile(ticker) {
+  upsertStockProfile(ticker, { archived: true, archivedAt: new Date().toISOString() })
+}
+
+export function unarchiveStockProfile(ticker) {
+  upsertStockProfile(ticker, { archived: false, archivedAt: null })
+}
+
+// Permanently removes the stockProfile row. Caller must ensure no other data
+// references this ticker before calling (enforced in the UI by the four-zero
+// history-presence precondition).
+export function deleteStockProfile(ticker) {
+  const t = ticker?.trim().toUpperCase()
+  save(load().filter(p => p.ticker !== t))
+}
+
 // ─── Ticker rename ────────────────────────────────────────────────────────────
 
 // Renames oldTicker to newTicker across all five ticker-keyed collections and
