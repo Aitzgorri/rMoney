@@ -11,7 +11,7 @@
 //   source: 'api' | 'manual'
 
 import { getDividends as apiGetDividends } from './marketDataClient'
-import { upsertStockProfile } from './stockProfiles'
+import { upsertStockProfile, getStockProfile } from './stockProfiles'
 
 const KEY = 'rmoney_api_dividend_history'
 const META_KEY = 'rmoney_api_dividend_history_meta'
@@ -89,13 +89,31 @@ export function upsertApiDividends(ticker, records) {
 // ── Delete by ticker ──────────────────────────────────────────────────────────
 
 // Removes all persisted records for a ticker and clears its refresh metadata.
-// Called by Stock inventory permanent-delete flow (Phase 30).
+// Called by Stock inventory permanent-delete flow (Phase 30) and by
+// renameTicker() in 'remap' mode (Phase 32j).
 export function deleteApiDividendHistoryForTicker(ticker) {
   const t = ticker.toUpperCase()
   save(load().filter(r => r.ticker !== t))
   const meta = loadMeta()
   delete meta[t]
   saveMeta(meta)
+}
+
+// Rewrites the ticker field on every history row and migrates the refresh-meta
+// entry from old → new. Called by renameTicker() in 'rename' mode (Phase 32j) —
+// fixes a latent bug where API-fetched dividend history was orphaned under the
+// old ticker after a rename.
+export function renameApiDividendHistoryTicker(oldTicker, newTicker) {
+  const o = oldTicker.toUpperCase()
+  const n = newTicker.toUpperCase()
+  if (o === n) return
+  save(load().map(r => r.ticker === o ? { ...r, ticker: n } : r))
+  const meta = loadMeta()
+  if (meta[o]) {
+    meta[n] = meta[o]
+    delete meta[o]
+    saveMeta(meta)
+  }
 }
 
 // ── Stale indicator ───────────────────────────────────────────────────────────
@@ -113,6 +131,13 @@ export function isStaleForTicker(ticker) {
 
 // Fetch dividend history from the market data provider chain and persist results.
 // Does not touch the user `dividends` collection.
+//
+// Defensive filter (Phase 32j): some provider adapters (Massive, TwelveData,
+// AlphaVantage as of 2026-05) ignore the `exchange` parameter on getDividends
+// and return the US-listed company's dividends for any bare ticker. When the
+// stock profile has a known currency and the returned records use a different
+// one, those records are almost certainly the wrong company's data — drop
+// them. Profiles without a known currency get all records (we can't tell).
 export async function refreshApiDividendHistory(ticker, exchange) {
   const t = ticker.toUpperCase()
   const today = new Date().toISOString().slice(0, 10)
@@ -123,15 +148,24 @@ export async function refreshApiDividendHistory(ticker, exchange) {
     const raw = await apiGetDividends(t, exchange, fromDate, toDate)
     if (!Array.isArray(raw)) throw new Error('no data')
 
+    const profileCurrency = getStockProfile(t)?.currency?.toUpperCase() ?? null
+    const accepted = profileCurrency
+      ? raw.filter(d => !d.currency || d.currency.toUpperCase() === profileCurrency)
+      : raw
+    const droppedCount = raw.length - accepted.length
+    if (droppedCount > 0) {
+      console.warn(`[apiDividendHistory] Dropped ${droppedCount} of ${raw.length} dividend records for ${t}: currency mismatch with profile (${profileCurrency}). Provider likely returned the wrong listing's data.`)
+    }
+
     const fetchedAt = new Date().toISOString()
-    const mapped = raw.map(d => ({
+    const mapped = accepted.map(d => ({
       ticker:    t,
       exDate:    d.exDate,
       payDate:   d.paymentDate ?? null,
       perShare:  d.amount,
       currency:  d.currency,
       type:      d.type ?? null,
-      state:     d.exDate < today ? 'paid' : 'declared',
+      state:     (d.paymentDate ?? d.exDate) < today ? 'paid' : 'declared',
       source:    'api',
       fetchedAt,
     }))
@@ -139,9 +173,9 @@ export async function refreshApiDividendHistory(ticker, exchange) {
     upsertApiDividends(t, mapped)
 
     // Write dividendFrequency to the stock profile when the provider supplies it.
-    // Use the most common non-null frequency across all records in this batch.
+    // Use the most common non-null frequency across all *accepted* records.
     const freqCounts = {}
-    for (const d of raw) {
+    for (const d of accepted) {
       if (d.frequency) freqCounts[d.frequency] = (freqCounts[d.frequency] ?? 0) + 1
     }
     const topFreq = Object.entries(freqCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null

@@ -21,6 +21,7 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - As a user, I can re-run resolution later from the stock page if I picked the wrong candidate or want to refresh the profile.
 - As a user, I can see the current market price of each candidate in the resolution dialog so I can tell apart listings that share the same name but trade on different exchanges or in different currencies.
 - As a user, when a company changes its ticker symbol, I can rename the ticker on the stock page and have all historical transactions, dividends, and watchlist entries updated automatically. Before I commit the rename, the app shows me the new ticker's name, exchange, currency, and current price so I can confirm it is the right company.
+- As a user, when I discover a ticker was mapped to the wrong security (e.g. a CSV import auto-mapped it incorrectly), I can remap the slot to a different security: the app's fetched dividend history, profile cache, and price cache for the wrong identity are cleared, but my own records (transactions, manual dividends, watchlist entries, portfolio assignments) are preserved because they're facts about what I did, independent of which security the app thinks the ticker points to.
 
 ## Acceptance Criteria
 
@@ -60,6 +61,24 @@ When a company changes its ticker symbol, the user can rename the ticker from th
   - If the lookup returns **zero candidates**: a confirmation card shows only the new ticker (no name/exchange/currency/price) and the same irreversibility warning. User can still confirm.
 - [x] On confirm, `renameTicker(oldTicker, newTicker, profile)` is called. It atomically updates all five collections — `stockProfiles`, `stockTransactions`, `dividends`, `watchlistEntries`, `portfolioAssignments` — replacing `oldTicker` with `newTicker` in every record's `ticker` field. It also upserts the resolved profile fields (name, stockExchange, currency, resolvedSource, resolvedAt) onto the new ticker's profile entry and clears the market-data price cache for the old ticker.
 - [x] After rename, the stock page navigates to the new ticker (the old ticker route no longer exists).
+
+### Rename vs. remap — mode choice *(Phase 32 / item 387)*
+- [ ] The rename confirmation step (single-candidate card, picker dialog, and zero-candidate card) requires the user to pick one of two **modes** before the confirm button activates. The choice is rendered as a pair of radio buttons above the [Cancel] [Rename] / [Remap] actions:
+  - **(*) Same company, symbol changed** — keep all history. This is the existing cascade: every record's `ticker` is rewritten from `oldTicker` to `newTicker`, the resolved profile fields are merged onto the new ticker's entry, and the prior `taxPercentOverride` / `dividendFrequency` / `manualPrice` / `hqCountryOverride` / `amountEstimationRule` carry over. Confirm button label: **"Rename"**.
+  - **( ) Different security** — reset the wrong identity but keep the user's own records. The old `stockProfile` row is removed and a fresh one is written under `newTicker` with only the resolved profile fields (no carry-over of `taxPercentOverride` / `dividendFrequency` / `manualPrice` / `hqCountryOverride` / `amountEstimationRule`). `apiDividendHistory` rows and the `apiDividendHistory_meta` entry for `oldTicker` (and `newTicker` if the symbol changed) are deleted. The hot caches (price / news / intraday / profile) are dropped via `clearCacheForTicker(oldTicker)`. **User records — `stockTransactions`, `dividends`, `watchlistEntries`, `portfolioAssignments` — are preserved**: when `oldTicker !== newTicker` they are renamed (ticker rewritten old → new), and when `oldTicker === newTicker` they stay in place. Rationale: the user's records are facts about what they did, separate from whichever company the app mistakenly thought the ticker referenced. Confirm button label: **"Remap"**.
+- [ ] When **Different security** is selected, the dialog warning text reads: *"Resets the wrong identity: replaces the stock profile and clears the app's fetched dividend history and price cache for {oldTicker}. Your own records — transactions, manual dividends, watchlist, and portfolio assignments — are kept (they're your record of what you did)."* (red-styled, same prominence as the existing rename warning).
+- [ ] Neither radio is pre-selected; the confirm button is disabled until the user picks one. This forces a deliberate choice rather than letting the user click through on autopilot.
+- [ ] The dialog title and confirmation card layout stay the same in both modes; only the warning text, confirm button label, and the underlying call path differ.
+- [ ] **Same-ticker remap is supported.** When the user enters the same ticker symbol back into the rename dialog and picks **Different security**, the remap still runs (profile replaced, all old-ticker rows purged). This covers the common CSV case where the imported ticker symbol is correct but the auto-mapped security is wrong — the user wants to keep the symbol and clear the wrong history. A same-ticker **Same company** rename remains a no-op (no work to do).
+
+### Ticker rename — API dividend history cascade *(latent bug fix — Phase 32 / item 388)*
+- [ ] In **Same company, symbol changed** mode, `renameTicker` also rewrites the `ticker` field on every row in `apiDividendHistory` and migrates the `apiDividendHistory_meta` entry from `oldTicker` to `newTicker`. Prior to this fix, API-fetched dividend rows were orphaned under the old ticker.
+- [ ] In **Different security** mode, both `apiDividendHistory` rows and the `apiDividendHistory_meta` entry for `oldTicker` are deleted (covered by the deletion rule above).
+
+### Defensive dividend-currency filter *(Phase 32 / item 391)*
+- [ ] **Background.** As of 2026-05, the Massive (Polygon), TwelveData, and AlphaVantage adapters all ignore the `exchange` argument on `getDividends`. They query their respective APIs with the bare ticker, which on Polygon/etc. defaults to the US listing. For a ticker like `GOLD` on `XMIL` (Amundi Physical Gold ETC), the chain therefore returns Barrick Gold (NYSE) dividend records — wrong identity. After a successful **Different security** remap, the next Refresh dividends button click would re-pollute the cache with the same wrong-identity records.
+- [ ] **Filter.** `refreshApiDividendHistory(ticker, exchange)` looks up `getStockProfile(ticker).currency` after the chain returns. If the profile has a known currency, any returned record whose `currency` doesn't match it is dropped before upsert. Records with no currency are kept (we can't tell). When the profile has no currency, all records are kept. The filter is logged via `console.warn` with the drop count for debugging.
+- [ ] **Why this is a heuristic, not a perfect fix.** ADRs and dual-currency cross-listings can legitimately pay in a currency different from the trading currency. The filter would incorrectly drop those. The cleaner long-term fix is per-adapter exchange-aware dividend queries (each provider has its own quirk). For now the heuristic is an acceptable trade-off — it covers the GOLD-style misidentification, which is by far the more common case in CSV-imported portfolios.
 
 ### Pre-filling parent forms
 - [x] Buy form: resolved `stockExchange` and `currency` prefill empty fields; existing user values are not overwritten.
@@ -146,7 +165,7 @@ Rename ticker — step 1 (input):
 +------------------------------------------+
 ```
 
-Rename ticker — step 2a (single candidate found, confirmation card):
+Rename ticker — step 2a (single candidate found, confirmation card with mode choice):
 
 ```
 +------------------------------------------+
@@ -157,16 +176,23 @@ Rename ticker — step 2a (single candidate found, confirmation card):
 |  Currency:  GBP                          |
 |  Price:     £8.47                        |
 |                                          |
-|  All historical transactions, dividends, |
-|  and watchlist entries will be updated.  |
-|  This cannot be undone.                  |
+|  ( ) Same company, symbol changed        |
+|      Keep all history. Records are       |
+|      moved to the new ticker.            |
 |                                          |
-|          [Cancel]   [Rename]             |
+|  ( ) Different security                  |
+|      Reset the wrong identity. Profile   |
+|      replaced, fetched dividend history  |
+|      and price cache cleared. Your own   |
+|      transactions, dividends, watchlist, |
+|      and portfolio links are kept.       |
+|                                          |
+|          [Cancel]   [Rename / Remap]     |
 +------------------------------------------+
 ```
 
 Rename ticker — step 2b (multiple candidates, picker dialog):
-Same layout as Direction A resolution dialog above, with "Rename" as the confirm button label.
+Same layout as Direction A resolution dialog above, with the rename/remap radio choice rendered between the candidate list and the confirm button. Confirm label switches between **Rename** and **Remap** based on the selected mode.
 
 Stock page header (after resolution):
 
@@ -198,17 +224,29 @@ Extended `stockProfiles` record:
 
 No new collections. The flow is stateless beyond the upsert into `stockProfiles`.
 
-`renameTicker(oldTicker, newTicker, profile)` updates all five ticker-keyed collections in one synchronous pass through localStorage:
+`renameTicker(oldTicker, newTicker, resolvedFields, mode)` takes a `mode: 'rename' | 'remap'` argument and updates all ticker-keyed collections in one synchronous pass through localStorage. Both modes call `clearCacheForTicker(oldTicker)` so stale price / news / intraday / profile entries don't persist.
 
+**Mode `'rename'`** (Same company, symbol changed — default for legacy callers):
 ```
-stockProfiles       — upsert with newTicker (carrying resolved fields), delete oldTicker entry
-stockTransactions   — every record where ticker === oldTicker → ticker = newTicker
-dividends           — every record where ticker === oldTicker → ticker = newTicker
-watchlistEntries    — every record where ticker === oldTicker → ticker = newTicker
-portfolioAssignments— every record where ticker === oldTicker → ticker = newTicker
+stockProfiles          — upsert with newTicker (carrying resolved fields + prior overrides), delete oldTicker entry
+stockTransactions      — every record where ticker === oldTicker → ticker = newTicker
+dividends              — every record where ticker === oldTicker → ticker = newTicker
+watchlistEntries       — every record where ticker === oldTicker → ticker = newTicker
+portfolioAssignments   — every record where ticker === oldTicker → ticker = newTicker
+apiDividendHistory     — every record where ticker === oldTicker → ticker = newTicker         (NEW — fixes orphan bug)
+apiDividendHistory_meta— migrate the oldTicker entry to newTicker                              (NEW — fixes orphan bug)
 ```
 
-Also calls `clearPriceCache()` for the old ticker so stale entries don't persist.
+**Mode `'remap'`** (Different security — keep user records, drop API caches):
+```
+stockProfiles          — delete oldTicker row entirely, create a fresh newTicker row from resolvedFields only (no carry-over)
+stockTransactions      — rename ticker oldTicker → newTicker (no-op when symbols are equal); rows are NOT deleted
+dividends              — rename ticker oldTicker → newTicker (no-op when symbols are equal); rows are NOT deleted
+watchlistEntries       — rename ticker oldTicker → newTicker (no-op when symbols are equal); rows are NOT deleted
+portfolioAssignments   — rename ticker oldTicker → newTicker (no-op when symbols are equal); rows are NOT deleted
+apiDividendHistory     — drop every record where ticker === oldTicker (and === newTicker, when symbol changes)
+apiDividendHistory_meta— delete the oldTicker entry (and the newTicker entry, when symbol changes)
+```
 
 Built-in AI prompts (in source, not user-editable):
 

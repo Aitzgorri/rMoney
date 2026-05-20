@@ -717,8 +717,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
       {renaming && (
         <TickerRenameDialog
           oldTicker={norm}
-          onConfirm={(newTicker, resolvedFields) => {
-            renameTicker(norm, newTicker, resolvedFields)
+          onConfirm={(newTicker, resolvedFields, mode) => {
+            renameTicker(norm, newTicker, resolvedFields, mode)
             setRenaming(false)
             onNavigate('stock', { ticker: newTicker })
           }}
@@ -731,7 +731,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           ticker={norm}
           profile={profile}
           onSave={fields => {
-            upsertStockProfile(norm, fields)
+            upsertStockProfile(norm, { ...fields, confirmed: true, confirmedAt: new Date().toISOString() })
             setEditingProfile(false)
             setProfileKey(k => k + 1)
           }}

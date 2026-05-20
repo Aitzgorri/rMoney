@@ -4,13 +4,13 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 30 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–30 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phase 29 done; Phase 30 done; Phases 31–32 outstanding — Phase 32 added 2026-05-14 from `notes 10May2025.md` review)*
+**Current phase: Phase 31 complete** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–30 mostly complete — 3 deferred items in Phase 26 remain; Phase 27 done; Phase 28 done; Phase 29 done; Phase 30 done; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 outstanding)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
 **Project Phase 3 — Investments enhancements:** Phases 25–31 below capture the requirements written in `Investments_enhancements.md` (May 2026). They extend SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-024, SPEC-027, SPEC-029 and introduce two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory). Build order respects: historical-FX snapshotting (item 146) is a hard prerequisite for XIRR + cross-currency fee folding; the API dividend history collection in Phase 25 is a hard prerequisite for the new TTM/forward yields, the Dividend page metrics, and the calendar.
 
-**Project Phase 4 — Buy-Sell Planning + UX gap closure:** Phase 32 captures the requirements written in `notes 10May2025.md` (May 2026). It introduces SPEC-034 (Buy-Sell Planning, a new sandbox screen) and extends SPEC-019, SPEC-020, SPEC-021, SPEC-018, SPEC-029 to fix gaps surfaced by user testing (auto-fill share count from lot history, single-line dividend rows, lot-quantity bounds + two-way binding, fullscreen z-index for action modals, manual stocks with user-entered prices). Phase 32 sits after Phase 31 in the build queue per the user's preference.
+**Project Phase 4 — Buy-Sell Planning + UX gap closure:** Phase 32 captures the requirements written in `notes 10May2025.md` (May 2026). It introduces SPEC-034 (Buy-Sell Planning, a new sandbox screen) and extends SPEC-019, SPEC-020, SPEC-021, SPEC-018, SPEC-029 to fix gaps surfaced by user testing (auto-fill share count from lot history, single-line dividend rows, lot-quantity bounds + two-way binding, fullscreen z-index for action modals, manual stocks with user-entered prices). Sub-phase 32j (added 2026-05-16) extends SPEC-029, SPEC-033, and SPEC-025 with: a rename-vs-remap mode choice (so a wrong CSV auto-mapping can be cleared without keeping orphan history), a confirmation review view in Stock inventory, and a post-CSV-commit nudge into that view. Phase 32 sits after Phase 31 in the build queue per the user's preference.
 
 ---
 
@@ -275,7 +275,23 @@ SPEC-029 Stock profile resolution (extension — Project Phase 4)
   └─ adds:    `isManual: bool` + `manualPriceSource` on `stockProfiles`;
               "Add manual stock" entry point on SPEC-033 Stock inventory page;
               new `manualPrices` collection (user-entered prices, keyed by ticker+date);
-              provider-chain short-circuit when `isManual === true`
+              provider-chain short-circuit when `isManual === true`;
+              `renameTicker(old, new, fields, mode: 'rename' | 'remap')` — `'remap'` resets
+              the wrong identity (drops `apiDividendHistory` + meta + hot caches, replaces
+              the profile) while keeping user records (transactions, dividends, watchlist,
+              portfolio assignments — renamed when ticker changes, kept in place when not);
+              `'rename'` cascades `apiDividendHistory` rows too (latent-bug fix, Sub-phase 32j)
+
+SPEC-033 Stock inventory (extension — Project Phase 4)
+  └─ adds:    `confirmed: bool` + `confirmedAt` on `stockProfiles`;
+              Price column (lazy live price) + Confirmed column (click to toggle) +
+              All/Confirmed/Unconfirmed filter pill in inventory;
+              deep-link entry point so SPEC-025 can navigate here pre-filtered to Unconfirmed (Sub-phase 32j)
+
+SPEC-025 Investment CSV import (extension — Project Phase 4)
+  └─ adds:    stub `stockProfile` upsert during commit (one per imported ticker, `confirmed: false`);
+              post-commit "needs confirmation" card on the Done screen with deep link into
+              SPEC-033 Stock inventory pre-filtered to Unconfirmed (Sub-phase 32j)
 
 **Key takeaway:** SPEC-002, SPEC-003, and SPEC-004 are pure data producers — everything downstream depends on them. SPEC-005 is both a producer and consumer. SPEC-009 is envelope-only (no account link) and writes to SPEC-004. SPEC-013 bridges planned items to real account transactions (SPEC-005).
 
@@ -762,46 +778,6 @@ SPEC-029 Stock profile resolution (extension — Project Phase 4)
 
 ---
 
-## Phase 31 — Dividend page (NEW SPEC-032)
-
-> Calendar + Metrics dashboards scoped to held stocks. Data flows entirely from the Phase 25 foundation.
-
-### SPEC-032 Dividend page — implementation
-> All acceptance criteria below are tracked through the sub-phases of Phase 31.
-
-
-**Sub-phase 31a — Page shell + scope**
-343. [ ] New page: `Dividends`, accessible from the **Investments nav second-row tab** (alongside `Investments overview / Portfolios / Watchlists / Benchmarks`); same entry from the Investments dropdown on mobile
-344. [ ] Tabs: `Calendar`, `Metrics`
-345. [ ] Scope: held stocks only (= stocks with at least one open lot across investing accounts). Sold-out positions vanish on next load
-346. [ ] Page-level "Refresh dividend data" button: loops `getDividends` for every held ticker; per-ticker stale indicator visible
-
-**Sub-phase 31b — Calendar tab (month view)**
-347. [ ] Month grid with one cell per day; renders ex-div and pay-date markers per held stock
-348. [ ] Marker color coding: pay-date = green; ex-div = blue; declared = solid; estimated = dashed
-349. [ ] Toggle: "Show: Ex-div + Pay | Pay only" (default "Pay only")
-350. [ ] Month navigation: prev / next / today; persists last viewed month in localStorage
-350a. [ ] Marker collision: each cell shows up to 3 colored dots; when > 3 events fall on a single day, the third dot is replaced by a "+ N more" link that opens a per-day popup listing every event with full details (ticker, name, amount per share, declared/estimated state)
-
-**Sub-phase 31c — Calendar tab (table view) + view memory**
-351. [ ] "Month | Table" view toggle at top of Calendar tab; remembers last view in localStorage (default "Table view" per enhancement 4.2)
-352. [ ] Table view: vertically scrollable; renders next 3 months of records by default; lazy-loads further months in chunks as user scrolls down
-353. [ ] Table columns: date, ticker, name, type (ex-div / pay), amount per share, status (declared / estimated)
-
-**Sub-phase 31d — Metrics tab: payout chart + saved presets**
-354. [ ] Configurable chart: X-axis bucket (week / month / quarter / year), Y-axis (gross / net), bar / line toggle
-355. [ ] Filters: company, portfolio, country, region, continent, year range (default last 2 years + current year)
-356. [ ] Multi-dataset: user can stack one dataset per portfolio (or per region etc.) — chart legend labels each
-357. [ ] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction
-358. [ ] Saved chart configurations stored in a new `dividendChartPresets` collection (name, X bucket, Y type, filters, datasets, chart type); CRUD in-page; Settings → Storage card
-
-**Sub-phase 31e — Metrics tab: tables grouped by company / portfolio / country / region / continent**
-359. [ ] Group selector at the top of the Metrics tab tables section
-360. [ ] Column-picker: TTM yield, Forward yield, Last 12-months amount, Next 12-months amount (declared + estimated), CAGR 3y, CAGR 5y, CAGR 10y
-361. [ ] CAGR computation: per-share, from `apiDividendHistory` only (Definition A — industry-standard "stock dividend growth rate"); shows "NA" when fewer than N+1 years of history are present
-362. [ ] Yield computations match Stock page (Phase 28b) — single source of truth; group rows aggregate the underlying stocks' positions weighted by MV
-362a. [ ] Sort: clicking any column header re-sorts the table; sort choice persisted in localStorage per (grouping, column) so each grouping remembers its own sort. Default when no choice has been made: descending by `Last 12-months amount`
-
 ---
 
 # Project Phase 4 — Buy-Sell Planning + UX gap closure (sourced from `notes 10May2025.md`)
@@ -868,3 +844,19 @@ SPEC-029 Stock profile resolution (extension — Project Phase 4)
 
 **Sub-phase 32i — Generic edit/delete control discoverability audit (cross-spec)**
 386. [ ] User reported on 2026-05-14 that they could not find edit/delete controls on several record types (investment-side transactions, dividends, investing accounts, budgeting accounts/transactions). The controls exist (per Phase 26c, SPEC-002, SPEC-005, SPEC-006, EditDividendDialog) — this item is a UX audit pass, not new functionality. Walk every list view, ensure: edit (`✎`) and delete (`🗑`) buttons are visible without hovering on touch devices, accessible-label is set, and the button is in the row's main visual block (not an off-screen kebab menu). Document any control that is keyboard- or screen-reader-only and add a visible icon counterpart. No spec changes — this is an implementation-time pass
+
+**Sub-phase 32j — Ticker remap, confirmation review, CSV-import nudge (extends SPEC-029, SPEC-033, SPEC-025)**
+
+> Reported on 2026-05-16 after a CSV import auto-mapped a ticker to the wrong security (GOLD case) and the user saw historical dividends from the prior mapping bleed into the new one. Three connected pieces: (1) rename vs. remap mode choice so a wrong CSV mapping can be corrected without keeping the orphan history; (2) a confirmation review view in Stock inventory so the user can see at a glance which tickers still need a manual sign-off; (3) a post-CSV-commit nudge that points the user to that view with the newly-imported tickers pre-filtered.
+>
+> Build order inside this sub-phase: 387 → 388 (small, isolated, unlocks the bug fix) → 389 (data model + UI for confirmation review) → 390 (CSV nudge, depends on 389's deep-link entry point).
+
+387. [ ] **Rename vs. remap mode choice in TickerRenameDialog (extends SPEC-029).** Add a mandatory radio choice to the rename confirmation step (single-candidate card, picker dialog, and zero-candidate card): *Same company, symbol changed* (cascade — user records and API dividend history follow the symbol) or *Different security* (reset the wrong identity — drop the old profile, clear `apiDividendHistory` + meta + hot caches, write a fresh profile with no carry-over of overrides; **user records — `stockTransactions`, `dividends`, `watchlistEntries`, `portfolioAssignments` — are kept**, renamed if the symbol changed and left in place if it didn't). Neither radio is pre-selected; confirm button is disabled until the user picks one. Warning text switches based on the mode; confirm-button label switches between **Rename** and **Remap**. The data layer changes in `renameTicker(oldTicker, newTicker, resolvedFields, mode)` — accepts `mode: 'rename' | 'remap'`, defaults to `'rename'` for legacy callers, branches the per-collection logic accordingly. Same-ticker remap is allowed (no-op rename for user records, but API caches still cleared) — this is the common CSV-mismapped-ticker fix-up case.
+
+388. [ ] **API dividend history cascade in rename mode (latent bug fix, extends SPEC-029).** `renameTicker` in `'rename'` mode must also rewrite the `ticker` field on every row in `apiDividendHistory` and migrate the `apiDividendHistory_meta` entry from `oldTicker` to `newTicker`. Prior to this fix, API-fetched dividend rows were left orphaned under the old ticker (root cause of the GOLD bug). In `'remap'` mode the same rows are deleted (covered by 387). Ship as part of the same change-set as 387 so both modes go in together.
+
+389. [ ] **Confirmation review view on Stock inventory (extends SPEC-033).** Extend `stockProfiles` with `confirmed: bool` (default `false`) + `confirmedAt: ISO | null`. One-shot migration on first load: rows with a non-null `name` → `confirmed: true`, others → `confirmed: false`. Auto-set `confirmed: true` on confirm in StockProfileResolutionDialog, TickerRenameDialog (both modes), and EditProfileDialog save. Stock inventory page gains: a **Price** column (lazy live price from the market-data client, manual price fallback, "—"), a **Confirmed** column (clickable ✓/○ that flips the flag and updates `confirmedAt`), and an **All / Confirmed / Unconfirmed** filter pill (persisted in `rmoney_stock_inventory_confirm_filter`, supports a deep-link prop so external screens can pre-apply it). Both new columns are sortable via the existing sort pattern. Empty-state copy per filter selection.
+
+390. [ ] **Post-CSV-commit confirmation nudge (extends SPEC-025).** After CSV commit, the importer calls `upsertStockProfile(ticker, {})` for every unique ticker in the committed batch — only creates a stub when no row exists, never overwrites existing fields. New stubs land with `confirmed: false`. Builds `needsConfirmation` from the imported tickers whose profile has `confirmed !== true`. The Done screen renders a warning-styled card listing the tickers (truncated gracefully for long lists) with a *"Review in Stock inventory"* button that navigates to SPEC-033's inventory page with the **Unconfirmed** filter pre-applied via the deep-link entry point built in 389. Card hides when every imported ticker is already confirmed.
+
+391. [ ] **Defensive currency-mismatch filter in `refreshApiDividendHistory` (extends SPEC-029).** The Massive (Polygon), TwelveData, and AlphaVantage adapters all ignore the `exchange` argument on `getDividends` and return the US-listed company's records for any bare ticker. This causes wrong-identity dividend records to refill the cache after a successful **Different security** remap. Add a heuristic filter at the upsert boundary: when the stock profile has a known `currency`, drop any returned record whose `currency` differs (records with no currency are kept). Logs the drop count via `console.warn`. Acceptable trade-off: legitimately cross-currency ADRs would be dropped — the right long-term fix is per-adapter exchange-aware queries, but the heuristic covers the common CSV-mismapping case immediately.

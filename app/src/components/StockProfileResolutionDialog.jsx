@@ -124,12 +124,15 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
         resolvedSource: selected.source,
       }
     }
+    const now = new Date().toISOString()
     upsertStockProfile(resolved.ticker, {
       name:           resolved.name,
       stockExchange:  resolved.stockExchange,
       currency:       resolved.currency,
       resolvedSource: resolved.resolvedSource,
-      resolvedAt:     new Date().toISOString(),
+      resolvedAt:     now,
+      confirmed:      true,
+      confirmedAt:    now,
     })
     onConfirm(resolved)
   }

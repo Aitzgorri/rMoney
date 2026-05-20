@@ -8,9 +8,11 @@ import styles from './TickerRenameDialog.module.css'
 //   step 'confirm' — single or zero candidates; shows a summary card
 //   step 'pick'    — multiple exact-match candidates; user selects one
 //
-// onConfirm(newTicker, resolvedFields) — called with the bare new ticker and
-//   any resolved profile fields (name, stockExchange, currency, …).
-//   The caller is responsible for calling renameTicker() and navigating away.
+// onConfirm(newTicker, resolvedFields, mode) — called with the bare new ticker,
+//   any resolved profile fields (name, stockExchange, currency, …), and the
+//   user-selected mode ('rename' = same company, symbol changed; 'remap' =
+//   different security, clear old data). The caller is responsible for
+//   calling renameTicker() and navigating away.
 
 export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
   const [step,         setStep]         = useState('input')
@@ -19,6 +21,10 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
   const [lookError,    setLookError]    = useState(null)
   const [candidates,   setCandidates]   = useState([])   // exact-match results from searchSymbols
   const [selectedIdx,  setSelectedIdx]  = useState(0)    // picker selection
+
+  // 'rename' = same company, symbol changed; 'remap' = different security.
+  // null means the user hasn't chosen yet; confirm button stays disabled.
+  const [mode, setMode] = useState(null)
 
   // Price for the confirm card (single/zero candidate path)
   const [confirmPrice, setConfirmPrice] = useState(null) // null | 'loading' | { price, currency }
@@ -79,10 +85,12 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
     setStep('input')
     setConfirmPrice(null)
     setPickerPrices({})
+    setMode(null)
     fetchedKeys.current.clear()
   }
 
   function handleRename() {
+    if (!mode) return
     if (step === 'confirm') {
       const c = candidates[0]
       onConfirm(newTicker, c ? {
@@ -91,7 +99,7 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
         currency:       c.currency ?? null,
         resolvedSource: 'market',
         resolvedAt:     new Date().toISOString(),
-      } : {})
+      } : {}, mode)
     } else {
       const c = candidates[selectedIdx]
       onConfirm(newTicker, {
@@ -100,7 +108,7 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
         currency:       c.currency ?? null,
         resolvedSource: 'market',
         resolvedAt:     new Date().toISOString(),
-      })
+      }, mode)
     }
   }
 
@@ -167,14 +175,17 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
               </span>
             </div>
           </div>
-          <p className={styles.warning}>
-            All historical transactions, dividends, and watchlist entries will be updated.
-            This cannot be undone.
-          </p>
+          <ModeChoice mode={mode} setMode={setMode} oldTicker={oldTicker} />
           <div className={styles.actions}>
             <button className={styles.backBtn} onClick={handleBack}>Back</button>
             <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-            <button className={styles.renameBtn} onClick={handleRename}>Rename</button>
+            <button
+              className={styles.renameBtn}
+              onClick={handleRename}
+              disabled={!mode}
+            >
+              {mode === 'remap' ? 'Remap' : 'Rename'}
+            </button>
           </div>
         </>)}
 
@@ -209,18 +220,66 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
               )
             })}
           </div>
-          <p className={styles.warning}>
-            All historical transactions, dividends, and watchlist entries will be updated.
-            This cannot be undone.
-          </p>
+          <ModeChoice mode={mode} setMode={setMode} oldTicker={oldTicker} />
           <div className={styles.actions}>
             <button className={styles.backBtn} onClick={handleBack}>Back</button>
             <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-            <button className={styles.renameBtn} onClick={handleRename}>Rename</button>
+            <button
+              className={styles.renameBtn}
+              onClick={handleRename}
+              disabled={!mode}
+            >
+              {mode === 'remap' ? 'Remap' : 'Rename'}
+            </button>
           </div>
         </>)}
 
       </div>
+    </div>
+  )
+}
+
+// Mode picker — both options must be deliberately chosen; nothing is preselected
+// so the user can't click through on autopilot. 'rename' = same company keeps
+// all history under the new symbol; 'remap' = different security purges the
+// old-ticker rows.
+function ModeChoice({ mode, setMode, oldTicker }) {
+  return (
+    <div className={styles.modeGroup}>
+      <label className={`${styles.modeRow} ${mode === 'rename' ? styles.modeRowSelected : ''}`}>
+        <input
+          type="radio"
+          name="renameMode"
+          checked={mode === 'rename'}
+          onChange={() => setMode('rename')}
+          className={styles.radio}
+        />
+        <div className={styles.modeText}>
+          <div className={styles.modeTitle}>Same company, symbol changed</div>
+          <div className={styles.modeDesc}>
+            Keep all history. Transactions, dividends, watchlist entries, and
+            fetched dividend history are moved to the new ticker.
+          </div>
+        </div>
+      </label>
+      <label className={`${styles.modeRow} ${mode === 'remap' ? styles.modeRowSelectedDanger : ''}`}>
+        <input
+          type="radio"
+          name="renameMode"
+          checked={mode === 'remap'}
+          onChange={() => setMode('remap')}
+          className={styles.radio}
+        />
+        <div className={styles.modeText}>
+          <div className={styles.modeTitle}>Different security</div>
+          <div className={styles.modeDescDanger}>
+            Resets the wrong identity: replaces the stock profile and clears the
+            app's fetched dividend history and price cache for {oldTicker}.
+            Your own records — transactions, manual dividends, watchlist, and
+            portfolio assignments — are kept (they're your record of what you did).
+          </div>
+        </div>
+      </label>
     </div>
   )
 }

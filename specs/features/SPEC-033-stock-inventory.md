@@ -1,7 +1,7 @@
 ---
 id: SPEC-033
 name: Stock inventory
-status: done
+status: in-progress
 created: 2026-05-06
 ---
 
@@ -15,6 +15,8 @@ Give the user a single page that lists every stock the app currently knows about
 - As an investor, I can edit a stock's profile (name, exchange, currency, HQ country, dividend frequency, estimation rule) when broker data was wrong or has changed.
 - As an investor, I can archive a sold-out position so it stops cluttering selection lists, but I retain its full historical data for tax and reporting purposes.
 - As an investor, I can permanently delete a stock I added by mistake, *only* once I've manually cleared its transactions, dividends, portfolio assignments, and watchlist entries — so accidental data loss is impossible.
+- As an investor, I can see at a glance which tickers in my inventory have been **confirmed** (I personally verified the mapping points to the right company) and which are still **unconfirmed** (likely from a CSV import or an auto-created stub), so I can work through the unconfirmed pile until everything I hold is verified.
+- As an investor, I can flip a confirmed ticker back to unconfirmed when I want to revisit a mapping later, so the inventory doubles as a review queue I can curate.
 
 ## Acceptance Criteria
 
@@ -41,16 +43,31 @@ Give the user a single page that lists every stock the app currently knows about
 - [x] When enabled, clicking the button opens a confirmation dialog asking the user to type the ticker; on confirm, the `stockProfile` row plus any orphan `apiDividendHistory` rows for that ticker are removed
 - [x] No cascade deletion of any other data (the precondition is "no other data exists")
 
+### Confirmation review view *(Phase 32 / item 389)*
+- [ ] Each `stockProfile` carries a `confirmed: bool` (default `false`) and `confirmedAt: ISO timestamp | null`. A profile is "confirmed" when the user has actively endorsed its mapping to a real security; otherwise it is "unconfirmed" and should be reviewed.
+- [ ] **Auto-confirm on user-driven endorsement.** Confirming a profile in any of these UIs sets `confirmed: true` + `confirmedAt: now`:
+  - StockProfileResolutionDialog confirm (SPEC-029) — both Direction A and B.
+  - TickerRenameDialog confirm (SPEC-029) — both `'rename'` and `'remap'` modes, since both involve the user actively selecting/confirming a security.
+  - EditProfileDialog save (this page + Stock page) — saving any edit counts as endorsement.
+  - StockInventory "Add stock" flow — the standalone resolution dialog confirm already triggers the rule above.
+- [ ] **No automatic un-confirm.** The flag flips to `false` only when the user explicitly clicks the toggle in the inventory.
+- [ ] **Migration on first load.** Existing `stockProfiles` rows are stamped at app boot: rows with a non-null `name` → `confirmed: true`, `confirmedAt: <migration timestamp>`. Rows without a `name` → `confirmed: false`, `confirmedAt: null`. Migration runs once per device and is idempotent (skips rows that already have a `confirmed` field).
+- [ ] **New column: Price.** Each row shows the current price from the market-data client (same source as the Stock page header), falling back to manual price (`getManualPrice`), then "—". Price is loaded lazily per row using a `{ticker → priceState}` map; rows render without price first and update when calls resolve. Failed calls render "—" with no retry on the same page load. Price column is sortable (numeric, with "—" sorted last in both directions).
+- [ ] **New column: Confirmed.** A clickable cell showing a checkbox-like indicator (✓ for confirmed, ○ for unconfirmed) plus the label "Confirmed" / "Needs review". Clicking the cell flips `confirmed` on the profile, writes `confirmedAt: now` (when flipping to true) or `confirmedAt: null` (when flipping to false), and re-renders the row. Tooltip explains the action. Column is sortable.
+- [ ] **New filter pill: All / Confirmed / Unconfirmed.** Rendered next to the existing Active/Archived toggle. Default selection is **All**. The selection is persisted in localStorage under `rmoney_stock_inventory_confirm_filter`. The pill interacts independently of the Active/Archived toggle — e.g. "Archived + Unconfirmed" is a valid combined view.
+- [ ] **Deep-link support.** The inventory page accepts an optional initial-filter prop / query parameter so other screens (e.g. CSV import post-commit nudge — SPEC-025) can navigate here with **Unconfirmed** pre-selected. On arrival the pill matches the deep-link value, which then becomes the new persisted preference.
+- [ ] **Empty-state copy** for each filter: All → "No stocks in inventory yet"; Confirmed → "No confirmed stocks. Visit a stock's profile and confirm the mapping to add it here."; Unconfirmed → "All stocks are confirmed — nothing to review.".
+
 ## UI / Screens
 - **Stock inventory page:** header with `Add stock` button + active/archived filter toggle. Table with sortable columns. Per-row actions in a kebab menu or as inline buttons.
 - **Edit profile dialog (shared with Stock page):** form fields name, exchange (MIC dropdown), currency (ISO list), HQ country, dividend frequency, dividend estimation rule. Ticker is read-only; rename uses the existing Phase 22 rename flow.
 - **Permanent-delete dialog:** "Type `TICKER` to confirm" input; cancel button; destructive-styled confirm button.
 
 ## Data
-- **Reads:** `stockProfiles`, `stockTransactions` (history count), `dividends` (history count), `portfolioAssignments` (history count), `watchlistEntries` (history count).
-- **Writes:** extends `stockProfiles` with `archived: bool` (default `false`) and `archivedAt: ISO timestamp | null`. No new collection.
+- **Reads:** `stockProfiles`, `stockTransactions` (history count), `dividends` (history count), `portfolioAssignments` (history count), `watchlistEntries` (history count), market-data client (current price per row, lazy).
+- **Writes:** extends `stockProfiles` with `archived: bool` (default `false`), `archivedAt: ISO timestamp | null`, `confirmed: bool` (default `false`), and `confirmedAt: ISO timestamp | null`. No new collection.
 - **Cascade rule on permanent delete:** removes the `stockProfile` row and any `apiDividendHistory` rows for the same ticker. Hot caches keyed by ticker (price / news / latest profile) are dropped from memory but not actively cleared (they'd expire on TTL anyway).
-- **Migration:** existing `stockProfiles` rows get `archived: false`, `archivedAt: null` on first load.
+- **Migration:** existing `stockProfiles` rows get `archived: false`, `archivedAt: null` on first load. They also get `confirmed: true` / `confirmedAt: <migration timestamp>` if `name` is non-null, otherwise `confirmed: false` / `confirmedAt: null` (one-shot, idempotent — skip rows where `confirmed` is already defined).
 
 ## Out of Scope
 - Bulk archive / bulk delete operations.

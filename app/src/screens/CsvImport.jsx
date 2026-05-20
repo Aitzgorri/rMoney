@@ -12,12 +12,13 @@ import {
 } from '../data/investingAccounts'
 import { createBuy, createSell } from '../data/stockTransactions'
 import { createDividend, resolveDividendTaxPercent } from '../data/dividends'
+import { getStockProfile, upsertStockProfile } from '../data/stockProfiles'
 import { fmtAmt } from '../utils/format'
 import styles from './CsvImport.module.css'
 
 // ─── CsvImport — multi-step wizard ───────────────────────────────────────────
 
-export default function CsvImport({ accountId, onBack }) {
+export default function CsvImport({ accountId, onBack, onNavigate }) {
   const account  = getInvestingAccount(accountId)
   const templates = getCsvTemplates()
 
@@ -240,8 +241,21 @@ export default function CsvImport({ accountId, onBack }) {
       updateInvestingAccount(accountId, { defaultCsvTemplateId: templateId })
     }
 
+    // Ensure every imported ticker has a stockProfile row so it shows up in
+    // the Stock inventory and can be reviewed. Stub-only — existing profiles
+    // are left untouched (so a previously-confirmed profile stays confirmed).
+    const importedTickers = new Set()
+    for (const row of toImport) {
+      const t = row.parsed.ticker
+      if (t) importedTickers.add(String(t).trim().toUpperCase())
+    }
+    for (const t of importedTickers) {
+      if (!getStockProfile(t)) upsertStockProfile(t, {})
+    }
+    const needsConfirmation = [...importedTickers].filter(t => getStockProfile(t)?.confirmed !== true)
+
     const totalSkipped = skipped.size + dupCount
-    setResult({ imported: committed.length, skipped: totalSkipped, dups: dupCount, errors: errCount })
+    setResult({ imported: committed.length, skipped: totalSkipped, dups: dupCount, errors: errCount, needsConfirmation })
     setStep('done')
   }
 
@@ -274,6 +288,26 @@ export default function CsvImport({ accountId, onBack }) {
               {result.skipped - result.dups > 0 && (
                 <div className={`${styles.doneStat} ${styles.doneStatWarn}`}>
                   <strong>{result.skipped - result.dups}</strong> row{result.skipped - result.dups !== 1 ? 's' : ''} skipped
+                </div>
+              )}
+              {result.needsConfirmation?.length > 0 && (
+                <div className={styles.needsConfirmCard}>
+                  <div className={styles.needsConfirmTitle}>
+                    {result.needsConfirmation.length} ticker{result.needsConfirmation.length !== 1 ? 's' : ''} need{result.needsConfirmation.length === 1 ? 's' : ''} confirmation
+                  </div>
+                  <div className={styles.needsConfirmList}>
+                    {renderTickerList(result.needsConfirmation)}
+                  </div>
+                  <div className={styles.needsConfirmNote}>
+                    These tickers were imported without a confirmed mapping to a real security.
+                    Confirm each one to be sure it points to the company you intended.
+                  </div>
+                  <button
+                    className={styles.btnSecondary}
+                    onClick={() => onNavigate?.('stock-inventory', { confirmFilter: 'unconfirmed' })}
+                  >
+                    Review in Stock inventory
+                  </button>
                 </div>
               )}
             </>
@@ -595,6 +629,14 @@ export default function CsvImport({ accountId, onBack }) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Compact ticker list for the post-import "needs confirmation" card. Shows the
+// first 10 names plus an "and N more" suffix when the list is long.
+function renderTickerList(tickers) {
+  const cap = 10
+  if (tickers.length <= cap) return tickers.join(', ')
+  return tickers.slice(0, cap).join(', ') + `, and ${tickers.length - cap} more`
+}
 
 function describeRow(p) {
   if (!p.type) return `Row ${p._rowIndex}`

@@ -7,6 +7,7 @@ import { vaultExists } from './utils/secrets'
 import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
+import { migrateConfirmedField } from './data/stockProfiles'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -27,6 +28,7 @@ import Watchlists from './screens/Watchlists'
 import Benchmarks from './screens/Benchmarks'
 import InvestmentReports from './screens/InvestmentReports'
 import StockInventory from './screens/StockInventory'
+import DividendPage from './screens/DividendPage'
 import styles from './App.module.css'
 
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
@@ -62,6 +64,7 @@ export default function App() {
     if (vaultStatus !== 'ready' && vaultStatus !== 'dev') return
     runDueScheduledTransfers()
     checkAndGeneratePending()
+    migrateConfirmedField()
     if (sessionStorage.getItem('rmoney_keys_not_restored')) {
       sessionStorage.removeItem('rmoney_keys_not_restored')
       setKeysNotRestored(true)
@@ -127,9 +130,10 @@ export default function App() {
       case 'watchlists':         return <Watchlists onNavigate={navigate} />
       case 'benchmarks':         return <Benchmarks />
       case 'reports':            return <InvestmentReports />
+      case 'dividends':          return <DividendPage />
       case 'stock':              return <StockPage ticker={navParams.ticker} onBack={goBack} onNavigate={navigate} />
-      case 'csv-import':         return <CsvImport accountId={navParams.accountId} onBack={goBack} />
-      case 'stock-inventory':    return <StockInventory onNavigate={navigate} />
+      case 'csv-import':         return <CsvImport accountId={navParams.accountId} onBack={goBack} onNavigate={navigate} />
+      case 'stock-inventory':    return <StockInventory onNavigate={navigate} initialConfirmFilter={navParams.confirmFilter} />
       default:                   return <Dashboard onNavigate={navigate} />
     }
   }

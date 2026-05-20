@@ -1,7 +1,7 @@
 ---
 id: SPEC-025
 name: Investment CSV Import
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
@@ -16,6 +16,7 @@ Let the user import CSV files of investment transactions into the app, with reus
 - As a user, I can manage my templates in Settings — rename, edit column mappings, delete — so I'm not locked into the first-import mapping forever.
 - As a user, each of my investing accounts can have a default template attached. Then importing from that account is two clicks: pick account + file → preview → commit.
 - As a user, the app shows me a preview of the mapped rows before it commits anything, so I can catch bad rows (missing dates, unknown tickers) without creating broken records.
+- As a user, after a CSV commit finishes, the app tells me which imported tickers still need confirmation and lets me jump straight to the Stock inventory pre-filtered to those tickers, so I can verify each mapping points to the right security.
 
 ## Acceptance Criteria
 - [x] **Template CRUD** lives in Settings → Import Templates. User can rename and delete templates. Deletion is blocked if the template is referenced as the default on any investing account; the app shows which account(s) reference it and asks the user to unlink first. Templates are created from the import wizard (Save as template checkbox). Column-mapping edits require re-importing with the manual mapping path.
@@ -28,6 +29,16 @@ Let the user import CSV files of investment transactions into the app, with reus
 - [x] **Preview validation** per row flags: missing required field, unparseable date, negative or zero quantity. Rows with errors are visually flagged and skipped by default; user can toggle skip/include per row.
 - [x] **On commit**, imported rows are written as SPEC-019 stock transactions or SPEC-020 dividend records per row type. Existing rows are detected by `transactionExternalId` when present — duplicates are skipped with a notice. Transfer rows are counted as skipped (require a destination account, not yet supported).
 - [x] Commit is atomic: if any row fails to write due to a schema-level error, the whole batch rolls back and the user gets a clear error.
+
+### Post-commit confirmation nudge *(Phase 32 / item 390)*
+- [ ] **Stub `stockProfile` creation.** During commit, after all `createBuy` / `createSell` / `createDividend` calls succeed, the importer collects every unique ticker that appeared in the committed records and calls `upsertStockProfile(ticker, {})` for each. The upsert only creates a row if none exists (existing rows are untouched, so confirmed profiles are not flipped back). New stubs land with `confirmed: false`, `confirmedAt: null` (SPEC-033 default). This guarantees every imported ticker appears in the Stock inventory so the user can review it from one place.
+- [ ] **"Needs confirmation" card on the Done screen.** After commit, build `needsConfirmation = unique imported tickers where the stockProfile has confirmed !== true`. If the list is non-empty, render a warning-styled card below the existing import-stats block with:
+  - Title: *"N ticker(s) need confirmation"* (where N is the list length).
+  - Body: comma-separated list of the tickers. If more than 10, show the first 10 plus "and {extra} more".
+  - Explanation: *"These tickers were imported without a confirmed mapping to a real security. Confirm each one to be sure it points to the company you intended."*
+  - Button: *"Review in Stock inventory"* — navigates to the Stock inventory page (SPEC-033) with the **Unconfirmed** filter pre-applied via the deep-link entry point.
+- [ ] If every imported ticker is already confirmed, the card is not rendered (silent success).
+- [ ] The card does not block the existing **Close** button; the user can dismiss the screen without reviewing if they want.
 
 ## UI / Screens
 Settings → Import templates (CRUD):
@@ -101,7 +112,7 @@ Import preview — 42 rows parsed, 40 will be imported, 2 errors
 
 Reference from SPEC-018 investing account: `defaultCsvTemplateId: string | null`.
 
-Writes: SPEC-019 stockTransactions, SPEC-020 dividends.
+Writes: SPEC-019 stockTransactions, SPEC-020 dividends, SPEC-033 `stockProfiles` (stub rows for newly-imported tickers, `confirmed: false`).
 
 ## Out of Scope
 - Formats other than CSV in Phase 2 (no Excel, no OFX, no QIF).

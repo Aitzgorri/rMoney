@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile,
+  getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile, setConfirmed,
   archiveStockProfile, unarchiveStockProfile, deleteStockProfile,
 } from '../data/stockProfiles'
 import { getStockTransactionsByTicker, hasOpenLotsForTicker } from '../data/stockTransactions'
@@ -8,35 +8,58 @@ import { getDividendsByTicker } from '../data/dividends'
 import { getAllPortfolioAssignments } from '../data/portfolios'
 import { getAllWatchlistEntries, deleteWatchlistEntriesForTicker } from '../data/watchlists'
 import { deleteApiDividendHistoryForTicker } from '../data/apiDividendHistory'
+import { getLatestPrice } from '../data/marketDataClient'
+import { fmtAmt } from '../utils/format'
 import EditProfileDialog from '../components/EditProfileDialog'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import styles from './StockInventory.module.css'
 
-const SORT_KEY = 'rmoney_stock_inventory_sort'
+const SORT_KEY    = 'rmoney_stock_inventory_sort'
+const FILTER_KEY  = 'rmoney_stock_inventory_confirm_filter'
 
 function loadSort() {
   try { return JSON.parse(localStorage.getItem(SORT_KEY)) ?? { key: 'ticker', dir: 'asc' } } catch { return { key: 'ticker', dir: 'asc' } }
 }
 function saveSort(s) { localStorage.setItem(SORT_KEY, JSON.stringify(s)) }
 
+function loadConfirmFilter() {
+  const v = localStorage.getItem(FILTER_KEY)
+  return v === 'confirmed' || v === 'unconfirmed' ? v : 'all'
+}
+function saveConfirmFilter(v) { localStorage.setItem(FILTER_KEY, v) }
+
 function detectDirection(input) {
   return /^[A-Z0-9.]{1,8}$/.test(input.trim().toUpperCase()) ? 'A' : 'B'
 }
 
-export default function StockInventory({ onNavigate }) {
+// `initialConfirmFilter` — optional override (e.g. CSV-import deep link passes
+// 'unconfirmed'). Becomes the new persisted preference on arrival.
+export default function StockInventory({ onNavigate, initialConfirmFilter }) {
   const [showArchived, setShowArchived] = useState(false)
+  const [confirmFilter, setConfirmFilter] = useState(() => {
+    const valid = ['all', 'confirmed', 'unconfirmed']
+    return valid.includes(initialConfirmFilter) ? initialConfirmFilter : loadConfirmFilter()
+  })
   const [sort, setSort] = useState(loadSort)
   const [profiles, setProfiles] = useState([])
   const [txCounts, setTxCounts] = useState({})
   const [divCounts, setDivCounts] = useState({})
   const [portfolioCounts, setPortfolioCounts] = useState({})
   const [watchlistCounts, setWatchlistCounts] = useState({})
+  const [prices, setPrices] = useState({})       // { ticker: 'loading' | { price, currency } | null }
   const [editingTicker, setEditingTicker] = useState(null)
   const [deletingTicker, setDeletingTicker] = useState(null)
   const [deleteInput, setDeleteInput] = useState('')
   const [addInput, setAddInput] = useState('')
   const [addError, setAddError] = useState('')
   const [resolving, setResolving] = useState(null) // { ticker, direction }
+
+  // If a deep-link arrived with a filter override, persist it so the user's
+  // next visit to this page remembers what brought them here.
+  useEffect(() => {
+    const valid = ['all', 'confirmed', 'unconfirmed']
+    if (valid.includes(initialConfirmFilter)) saveConfirmFilter(initialConfirmFilter)
+  }, [initialConfirmFilter])
 
   function refresh() {
     const list = showArchived ? getArchivedStockProfiles() : getActiveStockProfiles()
@@ -63,9 +86,33 @@ export default function StockInventory({ onNavigate }) {
     setDivCounts(divMap)
     setPortfolioCounts(portMap)
     setWatchlistCounts(watchMap)
+
+    // Fire price lookups lazily per ticker. getLatestPrice consults the manual-
+    // price override + the in-memory cache before hitting the network, so this
+    // is cheap on second renders.
+    setPrices(prev => {
+      const next = { ...prev }
+      for (const p of list) { if (next[p.ticker] === undefined) next[p.ticker] = 'loading' }
+      return next
+    })
+    for (const p of list) {
+      getLatestPrice(p.ticker, p.stockExchange ?? null)
+        .then(r => setPrices(prev => ({ ...prev, [p.ticker]: { price: r.price, currency: r.currency } })))
+        .catch(() => setPrices(prev => ({ ...prev, [p.ticker]: null })))
+    }
   }
 
   useEffect(() => { refresh() }, [showArchived])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleConfirmFilter(v) {
+    setConfirmFilter(v)
+    saveConfirmFilter(v)
+  }
+
+  function handleToggleConfirmed(ticker, current) {
+    setConfirmed(ticker, !current)
+    refresh()
+  }
 
   // ── Sort ──────────────────────────────────────────────────────────────────────
 
@@ -80,8 +127,28 @@ export default function StockInventory({ onNavigate }) {
     return <span className={styles.sortActive}>{sort.dir === 'asc' ? '↑' : '↓'}</span>
   }
 
-  const sorted = [...profiles].sort((a, b) => {
+  // Apply the Confirmed filter pill before sorting.
+  const filtered = profiles.filter(p => {
+    if (confirmFilter === 'confirmed')   return p.confirmed === true
+    if (confirmFilter === 'unconfirmed') return p.confirmed !== true
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
     const mul = sort.dir === 'asc' ? 1 : -1
+    // Price column sorts numerically with missing values pushed last in both
+    // directions; Confirmed sorts as boolean (true first when ascending).
+    if (sort.key === 'price') {
+      const av = prices[a.ticker]?.price
+      const bv = prices[b.ticker]?.price
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
+      return (av - bv) * mul
+    }
+    if (sort.key === 'confirmed') {
+      return ((a.confirmed === true ? 1 : 0) - (b.confirmed === true ? 1 : 0)) * mul
+    }
     const av = a[sort.key] ?? ''
     const bv = b[sort.key] ?? ''
     return String(av).localeCompare(String(bv)) * mul
@@ -99,12 +166,15 @@ export default function StockInventory({ onNavigate }) {
   }
 
   function handleResolved(candidate) {
+    const now = new Date().toISOString()
     upsertStockProfile(candidate.ticker, {
       name: candidate.name ?? null,
       stockExchange: candidate.exchange ?? null,
       currency: candidate.currency ?? null,
       resolvedSource: candidate.source ?? 'manual',
-      resolvedAt: new Date().toISOString(),
+      resolvedAt: now,
+      confirmed: true,
+      confirmedAt: now,
     })
     setAddInput('')
     setResolving(null)
@@ -174,6 +244,20 @@ export default function StockInventory({ onNavigate }) {
               onClick={() => setShowArchived(true)}
             >Archived</button>
           </div>
+          <div className={styles.filterToggle}>
+            <button
+              className={`${styles.filterBtn} ${confirmFilter === 'all' ? styles.filterBtnActive : ''}`}
+              onClick={() => handleConfirmFilter('all')}
+            >All</button>
+            <button
+              className={`${styles.filterBtn} ${confirmFilter === 'confirmed' ? styles.filterBtnActive : ''}`}
+              onClick={() => handleConfirmFilter('confirmed')}
+            >Confirmed</button>
+            <button
+              className={`${styles.filterBtn} ${confirmFilter === 'unconfirmed' ? styles.filterBtnActive : ''}`}
+              onClick={() => handleConfirmFilter('unconfirmed')}
+            >Unconfirmed</button>
+          </div>
         </div>
         <div className={styles.addRow}>
           <input
@@ -191,9 +275,7 @@ export default function StockInventory({ onNavigate }) {
       </div>
 
       {sorted.length === 0 ? (
-        <p className={styles.empty}>
-          {showArchived ? 'No archived stocks.' : 'No stocks yet. Add one above.'}
-        </p>
+        <p className={styles.empty}>{emptyMessage(showArchived, confirmFilter, profiles.length)}</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -203,6 +285,8 @@ export default function StockInventory({ onNavigate }) {
                 <th className={styles.th} onClick={() => handleSort('name')}>Name {sortIcon('name')}</th>
                 <th className={styles.th} onClick={() => handleSort('stockExchange')}>Exchange {sortIcon('stockExchange')}</th>
                 <th className={styles.th} onClick={() => handleSort('currency')}>Currency {sortIcon('currency')}</th>
+                <th className={styles.th} onClick={() => handleSort('price')}>Price {sortIcon('price')}</th>
+                <th className={styles.th} onClick={() => handleSort('confirmed')}>Confirmed {sortIcon('confirmed')}</th>
                 <th className={styles.th} onClick={() => handleSort('hqCountry')}>HQ country {sortIcon('hqCountry')}</th>
                 <th className={styles.th} onClick={() => handleSort('dividendFrequency')}>Div freq {sortIcon('dividendFrequency')}</th>
                 {showArchived && <th className={styles.th} onClick={() => handleSort('archivedAt')}>Archived {sortIcon('archivedAt')}</th>}
@@ -236,6 +320,19 @@ export default function StockInventory({ onNavigate }) {
                     <td className={styles.td}>{p.name ?? <span className={styles.missing}>—</span>}</td>
                     <td className={styles.td}>{p.stockExchange ?? <span className={styles.missing}>—</span>}</td>
                     <td className={styles.td}>{p.currency ?? <span className={styles.missing}>—</span>}</td>
+                    <td className={styles.td}>{renderPrice(prices[p.ticker])}</td>
+                    <td className={styles.td}>
+                      <button
+                        className={styles.confirmedBtn}
+                        onClick={() => handleToggleConfirmed(p.ticker, p.confirmed === true)}
+                        title={p.confirmed === true ? 'Confirmed — click to mark as needing review' : 'Needs review — click to mark as confirmed'}
+                        aria-label={p.confirmed === true ? `Mark ${p.ticker} as needing review` : `Mark ${p.ticker} as confirmed`}
+                      >
+                        <span className={p.confirmed === true ? styles.confirmedYes : styles.confirmedNo}>
+                          {p.confirmed === true ? '✓ Confirmed' : '○ Needs review'}
+                        </span>
+                      </button>
+                    </td>
                     <td className={styles.td}>{p.hqCountry ?? <span className={styles.missing}>—</span>}</td>
                     <td className={styles.td}><span className={styles.freq}>{p.dividendFrequency ?? 'unknown'}</span></td>
                     {showArchived && (
@@ -332,7 +429,7 @@ export default function StockInventory({ onNavigate }) {
           ticker={editingTicker}
           profile={profiles.find(p => p.ticker === editingTicker) ?? null}
           onSave={fields => {
-            upsertStockProfile(editingTicker, fields)
+            upsertStockProfile(editingTicker, { ...fields, confirmed: true, confirmedAt: new Date().toISOString() })
             setEditingTicker(null)
             refresh()
           }}
@@ -371,4 +468,17 @@ export default function StockInventory({ onNavigate }) {
       )}
     </div>
   )
+}
+
+function renderPrice(state) {
+  if (state === undefined || state === 'loading') return <span className={styles.missing}>…</span>
+  if (state === null) return <span className={styles.missing}>—</span>
+  return <span>{fmtAmt(state.price)} {state.currency ?? ''}</span>
+}
+
+function emptyMessage(showArchived, confirmFilter, totalLoaded) {
+  if (totalLoaded === 0) return showArchived ? 'No archived stocks.' : 'No stocks yet. Add one above.'
+  if (confirmFilter === 'confirmed')   return 'No confirmed stocks. Visit a stock\'s profile and confirm the mapping to add it here.'
+  if (confirmFilter === 'unconfirmed') return 'All stocks are confirmed — nothing to review.'
+  return showArchived ? 'No archived stocks.' : 'No stocks yet. Add one above.'
 }
