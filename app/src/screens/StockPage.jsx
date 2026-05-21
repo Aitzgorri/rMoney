@@ -26,6 +26,37 @@ function fmtPct(n) {
   return `${sign}${abs}%`
 }
 
+// ─── Dividend list columns (SPEC-021 / Phase 32b) ─────────────────────────────
+// Always-visible columns can't be hidden via the picker. The `netMain` column
+// is conditional on the currency toggle being set to Main.
+const DIV_COLUMNS = [
+  { id: 'exDate',   label: 'Ex-div',     title: 'Ex-dividend date',                                                       mandatory: true,  minWidth: 90  },
+  { id: 'payDate',  label: 'Pay',        title: 'Payout date',                                                            mandatory: true,  minWidth: 85  },
+  { id: 'perShare', label: 'Per share',  title: 'Dividend amount per share (trading currency)',                           mandatory: true,  minWidth: 110 },
+  { id: 'shares',   label: 'Shares',     title: 'Eligible share count on the ex-dividend date',                                             minWidth: 70  },
+  { id: 'taxPct',   label: 'Tax %',      title: 'Tax withholding percent applied to this payout',                                           minWidth: 55  },
+  { id: 'net',      label: 'Net',        title: 'Net amount after tax (trading currency)',                                 mandatory: true,  minWidth: 105 },
+  { id: 'netMain',  label: 'Net (main)', title: 'Net amount converted to your main currency',                                              minWidth: 105, conditional: 'main' },
+  { id: 'type',     label: 'Type',       title: 'Regular or Special dividend',                                                              minWidth: 80  },
+  { id: 'source',   label: 'Source',     title: 'Where this record comes from: User entry, API fetch, Declared, Estimated',                 minWidth: 80  },
+  { id: 'account',  label: 'Account',    title: 'Investing account that received the payout',                                               minWidth: 100, defaultHidden: true },
+  { id: 'actions',  label: '',           title: '',                                                                        mandatory: true,  minWidth: 92  },
+]
+
+function loadHiddenDivCols() {
+  try {
+    const raw = localStorage.getItem('rmoney_dividend_columns')
+    if (!raw) return new Set(DIV_COLUMNS.filter(c => c.defaultHidden).map(c => c.id))
+    return new Set(JSON.parse(raw))
+  } catch {
+    return new Set(DIV_COLUMNS.filter(c => c.defaultHidden).map(c => c.id))
+  }
+}
+
+function saveHiddenDivCols(set) {
+  try { localStorage.setItem('rmoney_dividend_columns', JSON.stringify([...set])) } catch { /* ignore */ }
+}
+
 // ─── StockPage ────────────────────────────────────────────────────────────────
 
 export default function StockPage({ ticker, onBack, onNavigate }) {
@@ -60,7 +91,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [editingDividend,     setEditingDividend]     = useState(null) // user dividend record being edited
   const [convertingEstimated, setConvertingEstimated] = useState(null) // estimated future payout being converted
   const [declaringNew,        setDeclaringNew]        = useState(false) // standalone + Declare dialog
+  const [divColPickerOpen,    setDivColPickerOpen]    = useState(false) // dividend column picker dropdown
+  const [divHiddenCols,       setDivHiddenCols]       = useState(() => loadHiddenDivCols())
   const payoutListRef = useRef(null)
+  const divColPickerRef = useRef(null)
 
   const [actionForm,       setActionForm]       = useState(null)  // null | 'buy' | 'sell' | 'dividend'
   const [actionAccountId,  setActionAccountId]  = useState(null)
@@ -131,6 +165,25 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   }, [mainCurrency])
 
   useEffect(() => { setPayoutChunksVisible(1); setIntradayUnsupported(null) }, [norm])
+
+  // Close the dividend column picker on outside click
+  useEffect(() => {
+    if (!divColPickerOpen) return
+    function onMouseDown(e) {
+      if (!divColPickerRef.current?.contains(e.target)) setDivColPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [divColPickerOpen])
+
+  function toggleDivCol(id) {
+    setDivHiddenCols(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      saveHiddenDivCols(next)
+      return next
+    })
+  }
 
   const accounts     = getInvestingAccounts()
   const accountsById = Object.fromEntries(accounts.map(a => [a.id, a]))
@@ -1211,6 +1264,30 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                       onBlur={e => handleManualAmtSave(e.target.value)}
                     />
                   )}
+                  <div ref={divColPickerRef} className={styles.divColPickerWrap}>
+                    <button
+                      className={styles.divColPickerBtn}
+                      onClick={() => setDivColPickerOpen(v => !v)}
+                      title="Show / hide columns"
+                      type="button"
+                    >⊞ Columns</button>
+                    {divColPickerOpen && (
+                      <div className={styles.divColPickerPanel}>
+                        <div className={styles.divColPickerTitle}>Visible columns</div>
+                        {DIV_COLUMNS.filter(c => c.id !== 'actions' && (!c.conditional || c.conditional === currencyMode)).map(col => (
+                          <label key={col.id} className={styles.divColPickerItem}>
+                            <input
+                              type="checkbox"
+                              checked={!divHiddenCols.has(col.id)}
+                              disabled={col.mandatory}
+                              onChange={() => toggleDivCol(col.id)}
+                            />
+                            <span>{col.label || col.title}{col.mandatory ? ' (always)' : ''}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     className={styles.declareNewBtn}
                     onClick={() => setDeclaringNew(true)}
@@ -1220,119 +1297,142 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
               </div>
 
               {/* Unified dividend table */}
-              {(mergedPayouts.length > 0 || futurePayouts.length > 0) && (
-                <div
-                  ref={payoutListRef}
-                  className={styles.divTableWrap}
-                  style={{ maxHeight: '570px', overflowY: 'auto' }}
-                  onScroll={e => {
-                    const el = e.currentTarget
-                    if (hasMorePayouts && el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
-                      setPayoutChunksVisible(n => n + 1)
+              {(mergedPayouts.length > 0 || futurePayouts.length > 0) && (() => {
+                const visibleCols = DIV_COLUMNS.filter(c =>
+                  !divHiddenCols.has(c.id) &&
+                  (!c.conditional || c.conditional === currencyMode)
+                )
+                const futureNormalized = futurePayouts.map((fp, i) => {
+                  const isDeclared = fp.state === 'declared'
+                  const derived = fp.perShare != null && totalShares > 0
+                    ? computeDividendDerived({ dividendPerShare: fp.perShare, shareCount: totalShares, taxPercent: projTaxPct })
+                    : null
+                  return {
+                    key:           `future-${i}`,
+                    rowClass:      `${styles.divFutureRow} ${isDeclared ? styles.projRowDeclared : styles.projRowEstimated}`,
+                    exDate:        fp.exDate,
+                    payDate:       fp.payDate || null,
+                    perShareLabel: fp.perShare != null ? `${isDeclared ? '' : '~'}${fmtAmt(fp.perShare)} ${fp.currency ?? ''}` : '—',
+                    shares:        totalShares > 0 ? totalShares : null,
+                    taxPct:        projTaxPct > 0 ? projTaxPct : null,
+                    netLabel:      derived ? `${isDeclared ? '' : '~'}${fmtAmt(derived.netTotal)} ${fp.currency ?? ''}` : '—',
+                    netMainLabel:  (() => {
+                      if (!derived) return '—'
+                      const c = convertToMain(derived.netTotal, fp.currency, mainCurrency)
+                      return c != null ? `${isDeclared ? '' : '~'}${fmtAmt(c)} ${mainCurrency}` : '—'
+                    })(),
+                    type:          fp.type === 'special' ? 'special' : 'regular',
+                    sourceLabel:   isDeclared ? (fp.source === 'manual' ? 'Manual' : 'Declared') : 'Est.',
+                    sourceClass:   isDeclared ? styles.sourceChipDeclared : styles.sourceChipEstimated,
+                    accountName:   '—',
+                    action:        !isDeclared ? <button className={styles.projDeclareBtn} onClick={() => setConvertingEstimated(fp)} title="Convert to declared">→ Declare</button> : null,
+                  }
+                })
+                const pastNormalized = payoutsToShow.map(item => {
+                  if (item.source === 'user') {
+                    const d = item.record
+                    const { netTotal } = computeDividendDerived(d)
+                    const account = accountsById[d.investingAccountId]
+                    const netMain = convertToMain(netTotal, d.currency, mainCurrency)
+                    return {
+                      key:           d.id,
+                      rowClass:      '',
+                      exDate:        d.exDividendDate || '—',
+                      payDate:       d.payoutDate || null,
+                      perShareLabel: `${fmtAmt(d.dividendPerShare)} ${d.currency}`,
+                      shares:        d.shareCount,
+                      taxPct:        d.taxPercent > 0 ? d.taxPercent : null,
+                      netLabel:      `${fmtAmt(netTotal)} ${d.currency}`,
+                      netMainLabel:  netMain != null ? `${fmtAmt(netMain)} ${mainCurrency}` : '—',
+                      type:          d.type === 'special' ? 'special' : 'regular',
+                      sourceLabel:   'User',
+                      sourceClass:   styles.sourceChipUser,
+                      accountName:   account?.name ?? '—',
+                      action:        <button className={styles.divEditBtn} onClick={() => setEditingDividend(d)} title="Edit dividend">✎</button>,
                     }
-                  }}
-                >
-                  {/* Column headers */}
-                  <div className={styles.divTableHeader}>
-                    <span className={styles.divColExDate}>Ex-div date</span>
-                    <span className={styles.divColPayDate}>Pay date</span>
-                    <span className={styles.divColPerShare}>Per share</span>
-                    <span className={styles.divColNet}>Net</span>
-                    <span className={styles.divColSource}>Source</span>
-                    <span className={styles.divColActions}></span>
-                  </div>
-
-                  {/* Future rows — ascending (nearest upcoming first) */}
-                  {futurePayouts.map((fp, i) => {
-                    const isDeclared = fp.state === 'declared'
-                    const derived = fp.perShare != null && totalShares > 0
-                      ? computeDividendDerived({ dividendPerShare: fp.perShare, shareCount: totalShares, taxPercent: projTaxPct })
-                      : null
-                    const sourceLabel = isDeclared ? (fp.source === 'manual' ? 'Manual' : 'Declared') : 'Est.'
-                    const sourceCls = isDeclared ? styles.sourceChipDeclared : styles.sourceChipEstimated
-                    return (
-                      <div
-                        key={`future-${i}`}
-                        className={`${styles.divTableRow} ${styles.divFutureRow} ${isDeclared ? styles.projRowDeclared : styles.projRowEstimated}`}
+                  }
+                  const r = item.record
+                  return {
+                    key:           `api-${r.exDate}`,
+                    rowClass:      styles.divRowApiUnified,
+                    exDate:        r.exDate,
+                    payDate:       r.payDate || null,
+                    perShareLabel: r.perShare != null ? `${fmtAmt(r.perShare)} ${r.currency ?? ''}` : '—',
+                    shares:        null,
+                    taxPct:        null,
+                    netLabel:      '—',
+                    netMainLabel:  '—',
+                    type:          r.type === 'special' ? 'special' : 'regular',
+                    sourceLabel:   'API',
+                    sourceClass:   styles.sourceChipApi,
+                    accountName:   '—',
+                    action:        null,
+                  }
+                })
+                const renderCell = (col, row) => {
+                  switch (col.id) {
+                    case 'exDate':   return row.exDate || '—'
+                    case 'payDate':  return row.payDate || '—'
+                    case 'perShare': return row.perShareLabel
+                    case 'shares':   return row.shares != null ? trimDec(row.shares) : '—'
+                    case 'taxPct':   return row.taxPct != null ? `${row.taxPct}%` : '—'
+                    case 'net':      return row.netLabel
+                    case 'netMain':  return row.netMainLabel
+                    case 'type':     return row.type === 'special'
+                                       ? <span className={styles.divSpecialBadge}>Special</span>
+                                       : <span className={styles.divTypeRegular}>Regular</span>
+                    case 'source':   return <span className={`${styles.divColSourceChip} ${row.sourceClass}`}>{row.sourceLabel}</span>
+                    case 'account':  return row.accountName
+                    case 'actions':  return row.action
+                    default:         return null
+                  }
+                }
+                const renderRow = (row) => (
+                  <div key={row.key} className={`${styles.divTableRow} ${row.rowClass}`}>
+                    {visibleCols.map(col => (
+                      <span
+                        key={col.id}
+                        className={`${styles.divCell} ${col.id === 'net' || col.id === 'netMain' ? styles.divCellNet : ''} ${col.id === 'actions' ? styles.divCellActions : ''}`}
+                        style={{ minWidth: col.minWidth, flexShrink: 0 }}
                       >
-                        <span className={styles.divColExDate}>{fp.exDate}</span>
-                        <span className={styles.divColPayDate}>{fp.payDate || '—'}</span>
-                        <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
-                          <span>{fp.perShare != null ? `${isDeclared ? '' : '~'}${fmtAmt(fp.perShare)} ${fp.currency ?? ''}` : '—'}</span>
-                          {fp.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                          <div className={styles.divSubline}>{trimDec(totalShares)} sh{projTaxPct > 0 ? ` · ${projTaxPct}% tax` : ''}</div>
-                        </div>
-                        <span className={styles.divColNet}>
-                          {derived != null ? `${isDeclared ? '' : '~'}${fmtAmt(derived.netTotal)} ${fp.currency ?? ''}` : '—'}
-                        </span>
-                        <span className={`${styles.divColSource} ${sourceCls}`}>{sourceLabel}</span>
-                        <span className={styles.divColActions}>
-                          {!isDeclared && (
-                            <button className={styles.projDeclareBtn} onClick={() => setConvertingEstimated(fp)} title="Convert to declared">→ Declare</button>
-                          )}
-                        </span>
-                      </div>
-                    )
-                  })}
-
-                  {/* Today divider */}
-                  {mergedPayouts.length > 0 && (
-                    <div className={styles.divTodayDivider}>
-                      Today — {new Date().toISOString().slice(0, 10)}
+                        {renderCell(col, row)}
+                      </span>
+                    ))}
+                  </div>
+                )
+                return (
+                  <div
+                    ref={payoutListRef}
+                    className={styles.divTableWrap}
+                    style={{ maxHeight: '570px', overflowY: 'auto' }}
+                    onScroll={e => {
+                      const el = e.currentTarget
+                      if (hasMorePayouts && el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+                        setPayoutChunksVisible(n => n + 1)
+                      }
+                    }}
+                  >
+                    <div className={styles.divTableHeader}>
+                      {visibleCols.map(col => (
+                        <span
+                          key={col.id}
+                          className={styles.divCell}
+                          style={{ minWidth: col.minWidth, flexShrink: 0 }}
+                          title={col.title}
+                        >{col.label}</span>
+                      ))}
                     </div>
-                  )}
-
-                  {/* Past rows — descending (most recent first) */}
-                  {payoutsToShow.map(item => {
-                    if (item.source === 'user') {
-                      const d = item.record
-                      const { netTotal } = computeDividendDerived(d)
-                      const account = accountsById[d.investingAccountId]
-                      const netDisplay = currencyMode === 'main'
-                        ? (() => {
-                            const c = convertToMain(netTotal, d.currency, mainCurrency)
-                            return c != null ? `${fmtAmt(c)} ${mainCurrency}` : `${fmtAmt(netTotal)} ${d.currency}`
-                          })()
-                        : `${fmtAmt(netTotal)} ${d.currency}`
-                      return (
-                        <div key={d.id} className={styles.divTableRow}>
-                          <span className={styles.divColExDate}>{d.exDividendDate || '—'}</span>
-                          <span className={styles.divColPayDate}>{d.payoutDate}</span>
-                          <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
-                            <span>{fmtAmt(d.dividendPerShare)} {d.currency}</span>
-                            {d.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                            <div className={styles.divSubline}>
-                              {trimDec(d.shareCount)} sh{d.taxPercent > 0 ? ` · ${d.taxPercent}% tax` : ''}{account ? ` · ${account.name}` : ''}
-                            </div>
-                          </div>
-                          <span className={styles.divColNet}>{netDisplay}</span>
-                          <span className={`${styles.divColSource} ${styles.sourceChipUser}`}>User</span>
-                          <span className={styles.divColActions}>
-                            <button className={styles.divEditBtn} onClick={() => setEditingDividend(d)} title="Edit dividend">✎</button>
-                          </span>
-                        </div>
-                      )
-                    } else {
-                      const r = item.record
-                      return (
-                        <div key={`api-${r.exDate}`} className={`${styles.divTableRow} ${styles.divRowApiUnified}`}>
-                          <span className={styles.divColExDate}>{r.exDate}</span>
-                          <span className={styles.divColPayDate}>{r.payDate || '—'}</span>
-                          <div className={`${styles.divColPerShare} ${styles.divColBlock}`}>
-                            <span>{r.perShare != null ? `${fmtAmt(r.perShare)} ${r.currency ?? ''}` : '—'}</span>
-                            {r.type === 'special' && <span className={styles.divSpecialBadge}>Special</span>}
-                          </div>
-                          <span className={styles.divColNet}>—</span>
-                          <span className={`${styles.divColSource} ${styles.sourceChipApi}`}>API</span>
-                          <span className={styles.divColActions}></span>
-                        </div>
-                      )
-                    }
-                  })}
-
-                  {hasMorePayouts && <div className={styles.divLoadMore}>↓ scroll for older</div>}
-                </div>
-              )}
+                    {futureNormalized.map(renderRow)}
+                    {mergedPayouts.length > 0 && (
+                      <div className={styles.divTodayDivider}>
+                        Today — {new Date().toISOString().slice(0, 10)}
+                      </div>
+                    )}
+                    {pastNormalized.map(renderRow)}
+                    {hasMorePayouts && <div className={styles.divLoadMore}>↓ scroll for older</div>}
+                  </div>
+                )
+              })()}
 
               {/* Empty state — position held but no dividend history */}
               {mergedPayouts.length === 0 && futurePayouts.length === 0 && totalShares > 0 && (

@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32j done, sub-phases 32b–32i outstanding)*
+**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32j done, sub-phases 32c–32i outstanding)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -790,8 +790,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 **Sub-phase 32a — Dividend cash-landing regression fix + auto-fill share count ✓ DONE** *(items 365 + 365a complete; `getOpenLots(accountId, ticker, asOfDate)` now accepts an as-of date; DividendForm auto-fills shares from lots held on `exDividendDate − 1` with an inline hint and "No shares held" warning chip; cash-landing investigation confirmed the data path is intact end-to-end — the original report was a stuck filter selection in `HybridFilterDropdown`)*
 
-**Sub-phase 32b — Dividend list single-line layout (extends SPEC-021)**
-366. [ ] Reformat the unified dividend list rows on the Stock page so all data renders **on one line** — no wraps, no sublines. Columns: `Ex-div | Pay | Per share | Shares | Tax % | Net | Type | Source | Account | (actions)`. Headers use compact short labels with a tooltip on each describing the full meaning. The `Special` indicator becomes a column value (chip rendered inside the `Type` column) instead of an inline element next to `Per share`. When the currency-toggle is set to Main, an extra "Net (main)" column becomes visible. Non-essential columns are hide-able via the standard `ConfigurableTable` column-picker; `Ex-div`, `Pay`, `Per share`, `Net`, and `(actions)` are always visible
+**Sub-phase 32b — Dividend list single-line layout ✓ DONE** *(item 366 complete; unified dividend list now renders one cell per column on a single line with `white-space: nowrap`; columns: `Ex-div | Pay | Per share | Shares | Tax % | Net | (Net (main)) | Type | Source | Account | actions`; headers carry `title` tooltips; Type column shows the Special chip / Regular label; Net (main) appears only when the page currency-toggle is set to Main; inline ⊞ Columns picker dropdown persists visibility in `rmoney_dividend_columns`; sticky header row; the full `ConfigurableTable` component wasn't reused because of the `Today — YYYY-MM-DD` divider and three structurally-distinct row variants — the picker UI mirrors the ConfigurableTable look)*
 
 **Sub-phase 32c — Sell form lot-picker validation + two-way binding (extends SPEC-019)**
 367. [ ] Per-lot share-input field is constrained to the lot's remaining shares. Higher input is clamped at input time; field's `max` attribute is set; small "max N" hint renders next to the field

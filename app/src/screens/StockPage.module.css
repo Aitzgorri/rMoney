@@ -734,6 +734,61 @@
 
 .declareNewBtn:hover { background: rgba(34, 197, 94, 0.08); }
 
+.divColPickerWrap { position: relative; display: inline-block; }
+
+.divColPickerBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 5px;
+  padding: 2px 10px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.divColPickerBtn:hover { background: rgba(148, 163, 184, 0.08); color: #cbd5e1; }
+
+.divColPickerPanel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 0;
+  min-width: 180px;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.divColPickerTitle {
+  padding: 2px 12px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  border-bottom: 1px solid #2d3448;
+  margin-bottom: 4px;
+}
+
+.divColPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.divColPickerItem:hover { background: rgba(148, 163, 184, 0.08); }
+
+.divColPickerItem input[type="checkbox"] { cursor: pointer; }
+.divColPickerItem input[type="checkbox"]:disabled { cursor: not-allowed; }
+
 .divTableWrap { display: flex; flex-direction: column; gap: 2px; }
 
 .divTableHeader {
@@ -746,15 +801,22 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #334155;
+  position: sticky;
+  top: 0;
+  background: #141b29;
+  z-index: 1;
 }
+
+.divTableHeader > .divCell { cursor: help; }
 
 .divTableRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   background: #1e2535;
   border-radius: 8px;
+  white-space: nowrap;
 }
 
 .divFutureRow { background: rgba(248, 250, 252, 0.02); }
@@ -777,40 +839,37 @@
   margin: 2px 0;
 }
 
-.divColExDate  { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 90px; }
-.divColPayDate { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 85px; }
-.divColPerShare { flex: 1; font-size: 13px; color: #94a3b8; min-width: 0; }
-.divColNet {
+/* Generic single-line cell: each column sets its minWidth inline */
+.divCell {
+  font-size: 12px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+}
+
+.divCellNet {
   font-size: 13px;
   font-weight: 500;
   color: #fbbf24;
-  flex-shrink: 0;
-  min-width: 105px;
 }
-.divColSource {
-  flex-shrink: 0;
-  min-width: 68px;
-  display: flex;
-  align-items: center;
-}
-.divColActions {
-  flex-shrink: 0;
-  min-width: 82px;
-  display: flex;
-  align-items: center;
+
+.divCellActions {
   justify-content: flex-end;
 }
 
-/* Block layout for per-share cell (allows subline below) */
-.divColBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  align-items: flex-start;
+.divTypeRegular {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-/* Small subline: shares · tax · account */
-.divSubline { font-size: 10px; color: #475569; }
+.divColSourceChip {
+  display: inline-flex;
+}
 
 /* Source chips */
 .sourceChipUser {
