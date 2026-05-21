@@ -38,7 +38,7 @@ Desktop.ini
 .claude/scheduled_tasks.lock
 
 # ── Local scratch notes (not part of the project) ─────────────────────────────
-/notes 16May2026.md
+scratch_notes/
 
 # ── Obsidian vault (personal notes, not part of the project) ──────────────────
 .obsidian/
