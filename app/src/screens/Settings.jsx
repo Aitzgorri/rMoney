@@ -14,6 +14,7 @@ import { getWatchlistStorageSummary, deleteAllWatchlists } from '../data/watchli
 import { getUserBenchmarks, deleteAllUserBenchmarks, getBenchmarksStorageBytes } from '../data/benchmarks'
 import { getReportPresets, getReportPresetsStorageBytes, deleteAllReportPresets } from '../data/investmentReports'
 import { getPieChartPresets, getPieChartPresetsStorageBytes, deleteAllPieChartPresets } from '../data/pieChartPresets'
+import { getDividendChartPresets, getDividendChartPresetsStorageBytes, deleteAllDividendChartPresets } from '../data/dividendChartPresets'
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
 import { testProvider } from '../data/marketDataClient'
@@ -71,6 +72,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [pieChartPresetCount, setPieChartPresetCount] = useState(() => getPieChartPresets().length)
   const [pieChartPresetBytes, setPieChartPresetBytes] = useState(() => getPieChartPresetsStorageBytes())
   const [pieChartPresetDeleteConfirm, setPieChartPresetDeleteConfirm] = useState(false)
+  const [divChartPresetCount, setDivChartPresetCount] = useState(() => getDividendChartPresets().length)
+  const [divChartPresetBytes, setDivChartPresetBytes] = useState(() => getDividendChartPresetsStorageBytes())
+  const [divChartPresetDeleteConfirm, setDivChartPresetDeleteConfirm] = useState(false)
   const [fxBackfilling,   setFxBackfilling]   = useState(false)
   const [fxBackfillResult, setFxBackfillResult] = useState(null)  // null | { processed, failed }
   const [apiDivHistStats,  setApiDivHistStats]  = useState(() => getApiDividendHistoryStats())
@@ -1356,6 +1360,48 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     setPieChartPresetCount(0)
                     setPieChartPresetBytes(getPieChartPresetsStorageBytes())
                     setPieChartPresetDeleteConfirm(false)
+                  }}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dividend chart presets */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Dividend chart presets</div>
+            <p className={styles.description}>
+              Saved payout chart configurations in the Dividends → Metrics tab.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Charts</span>
+                  <span className={styles.storageCount}>
+                    {divChartPresetCount} chart{divChartPresetCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className={styles.storageBytes}>{fmtBytes(divChartPresetBytes)}</span>
+                  <button
+                    className={styles.btnSmDanger}
+                    disabled={divChartPresetCount === 0}
+                    onClick={() => setDivChartPresetDeleteConfirm(true)}
+                  >
+                    Delete all
+                  </button>
+                </div>
+              </div>
+            </div>
+            {divChartPresetDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Delete all {divChartPresetCount} dividend chart preset{divChartPresetCount !== 1 ? 's' : ''}? This cannot be undone.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setDivChartPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllDividendChartPresets()
+                    setDivChartPresetCount(0)
+                    setDivChartPresetBytes(getDividendChartPresetsStorageBytes())
+                    setDivChartPresetDeleteConfirm(false)
                   }}>Delete</button>
                 </div>
               </div>

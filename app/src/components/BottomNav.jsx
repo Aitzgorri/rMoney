@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getTriggeredAlertCount } from '../data/watchlists'
 import styles from './BottomNav.module.css'
 
-const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'stock', 'csv-import'])
+const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'dividends', 'stock', 'csv-import'])
 
 const investmentItems = [
   { id: 'investments', label: 'Investments overview', icon: '📈' },
@@ -10,6 +10,7 @@ const investmentItems = [
   { id: 'watchlists',  label: 'Watchlists',           icon: '👁️' },
   { id: 'benchmarks',  label: 'Benchmarks',           icon: '📊' },
   { id: 'reports',     label: 'Reports',              icon: '📋' },
+  { id: 'dividends',   label: 'Dividends',            icon: '💰' },
 ]
 
 const tabs = [

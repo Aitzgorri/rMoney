@@ -1,7 +1,7 @@
 ---
 id: SPEC-032
 name: Dividend page
-status: ready
+status: done
 created: 2026-05-06
 ---
 
@@ -19,41 +19,41 @@ Give the user a dedicated screen to see when their dividends are coming in, how 
 ## Acceptance Criteria
 
 ### Page shell
-- [ ] New `Dividends` page accessible from the **Investments nav second-row tab** on desktop (alongside `Investments overview / Portfolios / Watchlists / Benchmarks`) and from the Investments dropdown in mobile bottom-nav
-- [ ] Two tabs: `Calendar` and `Metrics`
-- [ ] Scope is **held stocks only** — a stock with no open lots across investing accounts does not appear on the page
-- [ ] Page-level "Refresh dividend data" button loops `getDividends` for every held ticker; each ticker shows a stale-data indicator (amber dot + tooltip) when its `apiDividendHistory` row is empty or its last refresh failed
+- [x] New `Dividends` page accessible from the **Investments nav second-row tab** on desktop (alongside `Investments overview / Portfolios / Watchlists / Benchmarks`) and from the Investments dropdown in mobile bottom-nav
+- [x] Two tabs: `Calendar` and `Metrics`
+- [x] Scope is **held stocks only** — a stock with no open lots across investing accounts does not appear on the page
+- [x] Page-level "Refresh dividend data" button loops `getDividends` for every held ticker; each ticker shows a stale-data indicator (amber dot + tooltip) when its `apiDividendHistory` row is empty or its last refresh failed
 
 ### Calendar tab — month view
-- [ ] Month grid with one cell per day in the displayed month
-- [ ] Each cell shows ex-div and pay-date markers per held stock
-- [ ] Marker colour coding: pay-date = green; ex-div = blue. Declared = solid; estimated = dashed
-- [ ] Toggle "Show: Ex-div + Pay | Pay only" with default "Pay only"
-- [ ] Month nav prev / next / today; persists last viewed month in localStorage
-- [ ] Marker collision: each cell shows up to 3 colored dots (one per event); when a cell has > 3 events, the third dot is replaced by a "+ N more" link that opens a per-day popup listing every event with full details (ticker, name, amount per share, declared/estimated state)
+- [x] Month grid with one cell per day in the displayed month
+- [x] Each cell shows ex-div and pay-date markers per held stock
+- [x] Marker colour coding: pay-date = green; ex-div = blue. Declared = solid; estimated = dashed
+- [x] Toggle "Show: Ex-div + Pay | Pay only" with default "Pay only"
+- [x] Month nav prev / next / today; persists last viewed month in localStorage
+- [x] Marker collision: each cell shows up to 3 colored dots (one per event); when a cell has > 3 events, the third dot is replaced by a "+ N more" link that opens a per-day popup listing every event with full details (ticker, name, amount per share, declared/estimated state)
 
 ### Calendar tab — table view
-- [ ] "Month | Table" view toggle at top of the Calendar tab; remembers last view in localStorage. Default = Table view (matches the source enhancement)
-- [ ] Table view is vertically scrollable; renders next 3 months of records by default
-- [ ] As the user scrolls down, further months load in chunks (one month per chunk)
-- [ ] Columns: date, ticker, name, type (ex-div / pay), amount per share, status (declared / estimated)
+- [x] "Month | Table" view toggle at top of the Calendar tab; remembers last view in localStorage. Default = Table view (matches the source enhancement)
+- [x] Table view is vertically scrollable; renders next 3 months of records by default
+- [x] As the user scrolls down, further months load in chunks (one month per chunk)
+- [x] Columns: date, ticker, name, type (ex-div / pay), amount per share, status (declared / estimated)
 
 ### Metrics tab — payout chart
-- [ ] X-axis bucket selector: week / month / quarter / year
-- [ ] Y-axis selector: gross / net (net uses user `dividends.taxPercent`)
-- [ ] Bar / line toggle
-- [ ] Filters: company, portfolio, country, region, continent, year range. Default range = last 2 years + current year
-- [ ] Multi-dataset: user can stack one dataset per portfolio (or per region etc.); chart legend labels each
-- [ ] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction. Projection input excludes special dividends (per SPEC-020) — only `type === 'regular'` (or untyped legacy) records feed cadence detection and per-share estimation; declared specials still render as themselves but are not extrapolated forward
-- [ ] Saved chart configurations stored in a new `dividendChartPresets` collection (`name`, X bucket, Y type, filters, datasets, chart type); CRUD inline; Settings → Storage tab card
+- [x] X-axis bucket selector: week / month / quarter / year
+- [x] Y-axis selector: gross / net (net uses user `dividends.taxPercent`)
+- [x] Bar / line toggle
+- [x] Filters: company, portfolio, country, region, continent, year range. Default range = last 2 years + current year
+- [x] Multi-dataset: user can stack one dataset per portfolio (or per region etc.); chart legend labels each
+- [x] Future buckets include both declared (`apiDividendHistory.state='declared'`) and estimated (projected) dividends, with the same solid / dashed visual distinction. Projection input excludes special dividends (per SPEC-020) — only `type === 'regular'` (or untyped legacy) records feed cadence detection and per-share estimation; declared specials still render as themselves but are not extrapolated forward
+- [x] Saved chart configurations stored in a new `dividendChartPresets` collection (`name`, X bucket, Y type, filters, datasets, chart type); CRUD inline; Settings → Storage tab card
 
 ### Metrics tab — tables
-- [ ] Group selector: by company / by portfolio / by country / by region / by continent
-- [ ] Column-picker (visible columns): TTM yield, Forward yield, Last 12-months amount, Next 12-months amount (declared + estimated), CAGR 3y, CAGR 5y, CAGR 10y
-- [ ] CAGR uses **per-share** values from `apiDividendHistory` only (industry-standard "stock dividend growth rate"); shows "NA" when fewer than N+1 years of API history are present
-- [ ] Yield calculations match the Stock page (Phase 28b) — single source of truth
-- [ ] Group-level rows aggregate the underlying held stocks weighted by current MV
-- [ ] Sort: clicking any column header re-sorts the table; sort choice (column + direction) is persisted in localStorage per (grouping, column) so each grouping remembers its own sort. Default when no choice has been made: descending by `Last 12-months amount`
+- [x] Group selector: by company / by portfolio / by country / by region / by continent
+- [x] Column-picker (visible columns): TTM yield, Forward yield, Last 12-months amount, Next 12-months amount (declared + estimated), CAGR 3y, CAGR 5y, CAGR 10y
+- [x] CAGR uses **per-share** values from `apiDividendHistory` only (industry-standard "stock dividend growth rate"); shows "NA" when fewer than N+1 years of API history are present
+- [x] Yield calculations match the Stock page (Phase 28b) — single source of truth
+- [x] Group-level rows aggregate the underlying held stocks weighted by current MV
+- [x] Sort: clicking any column header re-sorts the table; sort choice (column + direction) is persisted in localStorage per (grouping, column) so each grouping remembers its own sort. Default when no choice has been made: descending by `Last 12-months amount`
 
 ## UI / Screens
 - **Page header:** title, scope description ("held stocks only"), `Refresh dividend data` button, last-refresh timestamp.

@@ -7,9 +7,10 @@ const INVESTMENTS_TABS = [
   { id: 'watchlists',  label: 'Watchlists' },
   { id: 'benchmarks',  label: 'Benchmarks' },
   { id: 'reports',     label: 'Reports' },
+  { id: 'dividends',   label: 'Dividends' },
 ]
 
-const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'stock', 'csv-import'])
+const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'dividends', 'stock', 'csv-import'])
 
 const primaryTabs = [
   { id: 'dashboard',    label: 'Dashboard' },
