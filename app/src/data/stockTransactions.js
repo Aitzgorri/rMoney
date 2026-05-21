@@ -44,8 +44,10 @@ export function getAllKnownTickers() {
 // Lots are split-adjusted: shares scale up and price scales down by any split that happened after the buy.
 // Sell/transfer-out allocations are translated into the post-split basis using splits that happened after them.
 // Transfers-in (where this account is the destination) are synthesized as lots preserving the original buy's date and price.
-export function getOpenLots(investingAccountId, ticker) {
-  const all = load().filter(t => t.ticker === ticker)
+// asOfDate (optional ISO date): when provided, only transactions dated ≤ asOfDate are considered. Splits after
+// asOfDate are ignored, so the returned shares/price reflect the lot as it existed at end-of-day on asOfDate.
+export function getOpenLots(investingAccountId, ticker, asOfDate = null) {
+  const all = load().filter(t => t.ticker === ticker && (!asOfDate || t.date <= asOfDate))
 
   // Direct buys in this account
   const directBuys = all.filter(t => t.type === 'buy' && t.investingAccountId === investingAccountId)

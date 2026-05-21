@@ -663,6 +663,24 @@
   padding: 2px 0;
 }
 
+.shareAutoHint {
+  font-size: 11px;
+  color: #64748b;
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.shareWarnChip {
+  display: inline-block;
+  font-size: 11px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin: 4px 0 0;
+}
+
 .cancelBtn {
   flex: 1;
   background: #2d3448;

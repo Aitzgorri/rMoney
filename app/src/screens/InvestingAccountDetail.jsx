@@ -1686,10 +1686,26 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
 
 // ─── Dividend form ────────────────────────────────────────────────────────────
 
+// Returns the ISO date one calendar day before `iso` (used to look up shares held
+// on the day before ex-dividend, i.e. the broker's holder-of-record cutoff).
+function dateMinusOneDay(iso) {
+  if (!iso) return null
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
+function sharesHeldOn(accountId, ticker, asOfDate) {
+  if (!accountId || !ticker || ticker === '__other__' || !asOfDate) return 0
+  return getOpenLots(accountId, ticker, asOfDate).reduce((s, l) => s + l.remainingShares, 0)
+}
+
 function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, tickerLocked = false }) {
   const initTicker = defaultTicker ?? (positions[0]?.ticker ?? '')
   const initPos    = positions.find(p => p.ticker === initTicker)
   const initTaxPct = resolveDividendTaxPercent(initTicker)
+  const initLookup = dateMinusOneDay(today())
+  const initShares = sharesHeldOn(accountId, initTicker, initLookup)
 
   const [exDividendDate,   setExDividendDate]   = useState(today)
   const [payoutDate,       setPayoutDate]       = useState(today)
@@ -1698,13 +1714,34 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
   const [currency,         setCurrency]         = useState(initPos?.currency ?? 'USD')
   const [dividendType,     setDividendType]     = useState('regular')
   const [dividendPerShare, setDividendPerShare] = useState('')
-  const [shareCount,       setShareCount]       = useState(initPos ? trimDecimals(initPos.shares) : '')
+  const [shareCount,       setShareCount]       = useState(initShares > 0 ? trimDecimals(initShares) : '')
+  const [autoFilledFromDate, setAutoFilledFromDate] = useState(initShares > 0 ? initLookup : null)
   const [taxPctStr,        setTaxPctStr]        = useState(String(initTaxPct))
   const [taxAmtStr,        setTaxAmtStr]        = useState('')
   const [taxMode,          setTaxMode]          = useState('pct')  // 'pct' | 'amt'
 
   const isOther   = ticker === '__other__'
   const finalTicker = isOther ? customTicker.trim().toUpperCase() : ticker
+  const lookupDate = dateMinusOneDay(exDividendDate)
+  const sharesAsOf = sharesHeldOn(accountId, finalTicker, lookupDate)
+  // Warning shows once the user has a real ticker and date but the lot history says zero shares on that date.
+  const showNoSharesWarning = !!finalTicker && finalTicker !== '__other__' && !!lookupDate && sharesAsOf === 0
+
+  // Re-fill shareCount when the lookup target changes (ticker or exDividendDate).
+  // Any manual edit clears autoFilledFromDate; the next ticker/date change overrides
+  // the manual value (matching the spec: changing the ex-dividend date re-triggers auto-fill).
+  useEffect(() => {
+    if (!finalTicker || finalTicker === '__other__' || !lookupDate) {
+      setAutoFilledFromDate(null)
+      return
+    }
+    const newSc = sharesAsOf > 0 ? trimDecimals(sharesAsOf) : ''
+    setShareCount(newSc)
+    setAutoFilledFromDate(sharesAsOf > 0 ? lookupDate : null)
+    if (taxMode === 'pct') syncTaxAmt(taxPctStr, dividendPerShare, newSc)
+    else syncTaxPct(taxAmtStr, dividendPerShare, newSc)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalTicker, lookupDate, accountId])
 
   function syncTaxAmt(pctStr, ppsStr, scStr) {
     const pct = parseFloat(pctStr || '0')
@@ -1722,12 +1759,11 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
     setTicker(t)
     if (t !== '__other__') {
       const pos = positions.find(p => p.ticker === t)
-      if (pos) { setCurrency(pos.currency); setShareCount(trimDecimals(pos.shares)) }
+      if (pos) setCurrency(pos.currency)
       const newPct = resolveDividendTaxPercent(t)
       setTaxPctStr(String(newPct))
       setTaxMode('pct')
-      const sc = pos ? pos.shares : Number(shareCount || 0)
-      syncTaxAmt(String(newPct), dividendPerShare, String(sc))
+      // shareCount is re-filled by the auto-fill effect; tax sync happens there too.
     }
   }
 
@@ -1739,6 +1775,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
 
   function handleShareCountChange(v) {
     setShareCount(v)
+    setAutoFilledFromDate(null)
     if (taxMode === 'pct') syncTaxAmt(taxPctStr, dividendPerShare, v)
     else syncTaxPct(taxAmtStr, dividendPerShare, v)
   }
@@ -1854,6 +1891,12 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Shares</label>
           <input className={styles.formInput} type="number" min="0.000001" step="any" value={shareCount} onChange={e => handleShareCountChange(e.target.value)} placeholder="15" />
+          {autoFilledFromDate && (
+            <p className={styles.shareAutoHint}>Auto-filled from lots on {autoFilledFromDate}</p>
+          )}
+          {showNoSharesWarning && (
+            <p className={styles.shareWarnChip}>No shares held on {lookupDate}</p>
+          )}
         </div>
       </div>
 

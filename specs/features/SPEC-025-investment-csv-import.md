@@ -31,14 +31,14 @@ Let the user import CSV files of investment transactions into the app, with reus
 - [x] Commit is atomic: if any row fails to write due to a schema-level error, the whole batch rolls back and the user gets a clear error.
 
 ### Post-commit confirmation nudge *(Phase 32 / item 390)*
-- [ ] **Stub `stockProfile` creation.** During commit, after all `createBuy` / `createSell` / `createDividend` calls succeed, the importer collects every unique ticker that appeared in the committed records and calls `upsertStockProfile(ticker, {})` for each. The upsert only creates a row if none exists (existing rows are untouched, so confirmed profiles are not flipped back). New stubs land with `confirmed: false`, `confirmedAt: null` (SPEC-033 default). This guarantees every imported ticker appears in the Stock inventory so the user can review it from one place.
-- [ ] **"Needs confirmation" card on the Done screen.** After commit, build `needsConfirmation = unique imported tickers where the stockProfile has confirmed !== true`. If the list is non-empty, render a warning-styled card below the existing import-stats block with:
+- [x] **Stub `stockProfile` creation.** During commit, after all `createBuy` / `createSell` / `createDividend` calls succeed, the importer collects every unique ticker that appeared in the committed records and calls `upsertStockProfile(ticker, {})` for each. The upsert only creates a row if none exists (existing rows are untouched, so confirmed profiles are not flipped back). New stubs land with `confirmed: false`, `confirmedAt: null` (SPEC-033 default). This guarantees every imported ticker appears in the Stock inventory so the user can review it from one place.
+- [x] **"Needs confirmation" card on the Done screen.** After commit, build `needsConfirmation = unique imported tickers where the stockProfile has confirmed !== true`. If the list is non-empty, render a warning-styled card below the existing import-stats block with:
   - Title: *"N ticker(s) need confirmation"* (where N is the list length).
   - Body: comma-separated list of the tickers. If more than 10, show the first 10 plus "and {extra} more".
   - Explanation: *"These tickers were imported without a confirmed mapping to a real security. Confirm each one to be sure it points to the company you intended."*
   - Button: *"Review in Stock inventory"* — navigates to the Stock inventory page (SPEC-033) with the **Unconfirmed** filter pre-applied via the deep-link entry point.
-- [ ] If every imported ticker is already confirmed, the card is not rendered (silent success).
-- [ ] The card does not block the existing **Close** button; the user can dismiss the screen without reviewing if they want.
+- [x] If every imported ticker is already confirmed, the card is not rendered (silent success).
+- [x] The card does not block the existing **Close** button; the user can dismiss the screen without reviewing if they want.
 
 ## UI / Screens
 Settings → Import templates (CRUD):
