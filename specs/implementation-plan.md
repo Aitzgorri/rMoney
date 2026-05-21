@@ -8,9 +8,9 @@
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
-**Project Phase 3 — Investments enhancements:** Phases 25–31 below capture the requirements written in `Investments_enhancements.md` (May 2026). They extend SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-024, SPEC-027, SPEC-029 and introduce two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory). Build order respects: historical-FX snapshotting (item 146) is a hard prerequisite for XIRR + cross-currency fee folding; the API dividend history collection in Phase 25 is a hard prerequisite for the new TTM/forward yields, the Dividend page metrics, and the calendar.
+**Project Phase 3 — Investments enhancements:** Phases 25–31 below capture the requirements written in `scratch_notes/Investments_enhancements.md` (May 2026). They extend SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-024, SPEC-027, SPEC-029 and introduce two new specs (SPEC-032 Dividend page, SPEC-033 Stock inventory). Build order respects: historical-FX snapshotting (item 146) is a hard prerequisite for XIRR + cross-currency fee folding; the API dividend history collection in Phase 25 is a hard prerequisite for the new TTM/forward yields, the Dividend page metrics, and the calendar.
 
-**Project Phase 4 — Buy-Sell Planning + UX gap closure:** Phase 32 captures the requirements written in `notes 10May2025.md` (May 2026). It introduces SPEC-034 (Buy-Sell Planning, a new sandbox screen) and extends SPEC-019, SPEC-020, SPEC-021, SPEC-018, SPEC-029 to fix gaps surfaced by user testing (auto-fill share count from lot history, single-line dividend rows, lot-quantity bounds + two-way binding, fullscreen z-index for action modals, manual stocks with user-entered prices). Sub-phase 32j (added 2026-05-16) extends SPEC-029, SPEC-033, and SPEC-025 with: a rename-vs-remap mode choice (so a wrong CSV auto-mapping can be cleared without keeping orphan history), a confirmation review view in Stock inventory, and a post-CSV-commit nudge into that view. Phase 32 sits after Phase 31 in the build queue per the user's preference.
+**Project Phase 4 — Buy-Sell Planning + UX gap closure:** Phase 32 captures the requirements written in `scratch_notes/notes 10May2025.md` (May 2026). It introduces SPEC-034 (Buy-Sell Planning, a new sandbox screen) and extends SPEC-019, SPEC-020, SPEC-021, SPEC-018, SPEC-029 to fix gaps surfaced by user testing (auto-fill share count from lot history, single-line dividend rows, lot-quantity bounds + two-way binding, fullscreen z-index for action modals, manual stocks with user-entered prices). Sub-phase 32j (added 2026-05-16) extends SPEC-029, SPEC-033, and SPEC-025 with: a rename-vs-remap mode choice (so a wrong CSV auto-mapping can be cleared without keeping orphan history), a confirmation review view in Stock inventory, and a post-CSV-commit nudge into that view. Phase 32 sits after Phase 31 in the build queue per the user's preference.
 
 ---
 
@@ -627,7 +627,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 ---
 
-# Project Phase 3 — Investments enhancements (sourced from `Investments_enhancements.md`)
+# Project Phase 3 — Investments enhancements (sourced from `scratch_notes/Investments_enhancements.md`)
 
 > Build order is foundation-first. Phases 25 (data foundation) and 26 (stock lifecycle + transaction edits) unlock everything in 27–31. Phases 27–29 are screen-shaped extensions to existing specs (no new specs). Phases 30–31 introduce the two new specs (SPEC-033 Stock inventory, SPEC-032 Dividend page).
 >
@@ -780,7 +780,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 ---
 
-# Project Phase 4 — Buy-Sell Planning + UX gap closure (sourced from `notes 10May2025.md`)
+# Project Phase 4 — Buy-Sell Planning + UX gap closure (sourced from `scratch_notes/notes 10May2025.md`)
 
 > Build order: tackle the small UX gaps first (32a–32c) so the new planning screen (32d–32h) inherits a solid foundation. Manual stocks (32i) sits last — it touches every market-data read site, so doing it before the planning screen would force the planning screen to thread the manual-stock check through every yield calc that hasn't been written yet.
 >
