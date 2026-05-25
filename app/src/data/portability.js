@@ -38,6 +38,8 @@ const KEYS = {
   pieChartPresets:         'rmoney_pie_chart_presets',
   // User-entered prices for manual stocks (Phase 32e) — included in both backup modes.
   manualPrices:            'rmoney_manual_prices',
+  // Buy-Sell Planning scenarios (Phase 32g) — included in both backup modes.
+  tradingScenarios:        'rmoney_trading_scenarios',
   // PERSISTED HISTORY — included in Full backup only; excluded from Sharable backup.
   apiDividendHistory: 'rmoney_api_dividend_history',
   // HOT CACHES (rmoney_market_data_cache, rmoney_market_data_log) — excluded from both backup modes.
@@ -91,6 +93,7 @@ export function exportAppData({ mode = 'sharable' } = {}) {
     investmentReportPresets: readList(KEYS.investmentReportPresets),
     pieChartPresets:         readList(KEYS.pieChartPresets),
     manualPrices:            readList(KEYS.manualPrices),
+    tradingScenarios:        readList(KEYS.tradingScenarios),
   }
   if (mode === 'full') {
     base.apiDividendHistory = readList(KEYS.apiDividendHistory)
@@ -233,6 +236,7 @@ export function importAppData(data) {
   write(KEYS.investmentReportPresets,  data.investmentReportPresets  ?? [])
   write(KEYS.pieChartPresets,           data.pieChartPresets           ?? [])
   write(KEYS.manualPrices,              data.manualPrices              ?? [])
+  write(KEYS.tradingScenarios,          data.tradingScenarios          ?? [])
   // Persisted history — present only in Full backups; absent key means keep existing data
   if ('apiDividendHistory' in data) {
     write(KEYS.apiDividendHistory, data.apiDividendHistory ?? [])

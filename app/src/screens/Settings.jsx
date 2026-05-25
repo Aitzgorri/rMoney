@@ -20,6 +20,7 @@ import { getDividendChartPresets, getDividendChartPresetsStorageBytes, deleteAll
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
 import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
+import { getTradingScenariosStats, deleteAllTradingScenarios } from '../data/tradingScenarios'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -84,6 +85,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [apiDivHistDeleteConfirm, setApiDivHistDeleteConfirm] = useState(false)
   const [manualPricesStats, setManualPricesStats] = useState(() => getManualPricesStats())
   const [manualPricesDeleteConfirm, setManualPricesDeleteConfirm] = useState(false)
+  const [tradingScenariosStats, setTradingScenariosStats] = useState(() => getTradingScenariosStats())
+  const [tradingScenariosDeleteConfirm, setTradingScenariosDeleteConfirm] = useState(false)
   const [renamingId,      setRenamingId]      = useState(null)
   const [renameValue,     setRenameValue]     = useState('')
   const [deletingTpl,     setDeletingTpl]     = useState(null)
@@ -1586,6 +1589,64 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     clearAllManualPrices()
                     setManualPricesStats(getManualPricesStats())
                     setManualPricesDeleteConfirm(false)
+                  }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Buy-Sell Planning scenarios (user data — included in all backups) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Buy-Sell Planning</div>
+            <p className={styles.description}>
+              Saved planning scenarios from the Buy-Sell Planning screen (planned buys, sells, top-ups,
+              FX overrides). User data — included in both Sharable and Full backups.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                {tradingScenariosStats.scenarioCount === 0 ? (
+                  <div className={styles.storageEmptyRow}>No scenarios saved yet.</div>
+                ) : (
+                  tradingScenariosStats.perScenario.map(row => (
+                    <div key={row.id} className={styles.storageRow}>
+                      <span className={styles.storageTicker}>{row.name}</span>
+                      <span className={styles.storageCount}>
+                        {row.sellRows} sell{row.sellRows !== 1 ? 's' : ''},
+                        {' '}{row.buyRows} buy{row.buyRows !== 1 ? 's' : ''}
+                      </span>
+                      <span className={styles.storageBytes}>{fmtBytes(row.bytes)}</span>
+                    </div>
+                  ))
+                )}
+                {tradingScenariosStats.scenarioCount > 0 && (
+                  <div className={`${styles.storageRow} ${styles.storageSubtotal}`}>
+                    <span className={styles.storageTicker}>Total</span>
+                    <span className={styles.storageCount}>
+                      {tradingScenariosStats.scenarioCount} scenario{tradingScenariosStats.scenarioCount !== 1 ? 's' : ''}
+                    </span>
+                    <span className={styles.storageBytes}>{fmtBytes(tradingScenariosStats.bytes)}</span>
+                    <button
+                      className={styles.btnSmDanger}
+                      onClick={() => setTradingScenariosDeleteConfirm(true)}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {tradingScenariosDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Clear all Buy-Sell Planning scenarios ({tradingScenariosStats.scenarioCount} total)?
+                  This cannot be undone — planned trades that have not been executed will be lost.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setTradingScenariosDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllTradingScenarios()
+                    setTradingScenariosStats(getTradingScenariosStats())
+                    setTradingScenariosDeleteConfirm(false)
                   }}>Clear</button>
                 </div>
               </div>

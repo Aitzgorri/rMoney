@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { getTriggeredAlertCount } from '../data/watchlists'
 import styles from './BottomNav.module.css'
 
-const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'dividends', 'stock', 'csv-import'])
+const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'dividends', 'planning-trades', 'stock', 'csv-import'])
 
 const investmentItems = [
-  { id: 'investments', label: 'Investments overview', icon: '📈' },
-  { id: 'portfolios',  label: 'Portfolios',           icon: '🗂️' },
-  { id: 'watchlists',  label: 'Watchlists',           icon: '👁️' },
-  { id: 'benchmarks',  label: 'Benchmarks',           icon: '📊' },
-  { id: 'reports',     label: 'Reports',              icon: '📋' },
-  { id: 'dividends',   label: 'Dividends',            icon: '💰' },
+  { id: 'investments',     label: 'Investments overview', icon: '📈' },
+  { id: 'portfolios',      label: 'Portfolios',           icon: '🗂️' },
+  { id: 'watchlists',      label: 'Watchlists',           icon: '👁️' },
+  { id: 'benchmarks',      label: 'Benchmarks',           icon: '📊' },
+  { id: 'reports',         label: 'Reports',              icon: '📋' },
+  { id: 'dividends',       label: 'Dividends',            icon: '💰' },
+  { id: 'planning-trades', label: 'Buy-Sell Planning',    icon: '⚖️' },
 ]
 
 const tabs = [

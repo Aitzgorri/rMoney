@@ -27,102 +27,95 @@ This screen exists because the existing flow forces the user to mentally compute
 ## Acceptance Criteria
 
 ### Screen entry + scope
-- [ ] New page **Buy-Sell Planning** accessible from the **Investments nav second-row tab** alongside `Investments overview / Portfolios / Watchlists / Benchmarks / Dividends` (six tabs total once SPEC-032 ships).
-- [ ] Each scenario can include rows for **any** investing account; the destination/source investing account is picked per row.
-- [ ] User can create, name, rename, save, duplicate, and delete scenarios. A scenario list at the top of the screen (or a dropdown) lets the user switch between saved scenarios. The currently-loaded scenario name is shown in the page header.
-- [ ] The scenario auto-saves on every edit so the user does not have to remember to save explicitly. Unsaved local edits are not possible — every change persists immediately.
+- [x] New page **Buy-Sell Planning** accessible from the **Investments nav second-row tab** alongside `Investments overview / Portfolios / Watchlists / Benchmarks / Dividends` (six tabs total once SPEC-032 ships). *(Sub-phase 32g)*
+- [x] Each scenario can include rows for **any** investing account; the destination/source investing account is picked per row. *(Sub-phase 32g)*
+- [x] User can create, name, rename, save, duplicate, and delete scenarios. A scenario list at the top of the screen (or a dropdown) lets the user switch between saved scenarios. The currently-loaded scenario name is shown in the page header. *(Sub-phase 32g)*
+- [x] The scenario auto-saves on every edit so the user does not have to remember to save explicitly. Unsaved local edits are not possible — every change persists immediately. *(Sub-phase 32g — every mutator in `data/tradingScenarios.js` writes the whole collection back to localStorage and stamps `updatedAt`.)*
 
 ### Screen layout
-- [ ] Top section: **Overview** (per below) — always visible, sticky on scroll.
-- [ ] Middle section: **Sells** table (above) and **Buys** table (below). Sell-table is rendered above buy-table per the user's preference (selling first to fund buys reflects the typical mental flow).
-- [ ] Each table has its own row-add control; row-add for buys opens a stock-picker modal (existing or SPEC-029-resolved tickers), row-add for sells opens a position-picker scoped to currently held positions across all investing accounts.
-- [ ] Both tables use the shared `ConfigurableTable` component (Phase 27b) so the user can hide / reorder columns and the layout is persisted in localStorage per-table.
+- [x] Top section: **Overview** (per below). *(Sub-phase 32h — block always visible; sticky-on-scroll is a future polish.)*
+- [x] Middle section: **Sells** table (above) and **Buys** table (below). Sell-table is rendered above buy-table per the user's preference (selling first to fund buys reflects the typical mental flow). *(Sub-phase 32g)*
+- [x] Each table has its own row-add control; row-add for buys opens a stock-picker modal (existing or SPEC-029-resolved tickers), row-add for sells opens a position-picker scoped to currently held positions across all investing accounts. *(Sub-phase 32g)*
+- [x] Both tables use the shared `ConfigurableTable` component (Phase 27b) so the user can hide / reorder columns and the layout is persisted in localStorage per-table. *(Sub-phase 32h)*
 
 ### Sell rows — fields and columns
 Always-visible columns (cannot be hidden):
-- [ ] **Include checkbox** — row participates in the calculation when checked. Unchecked rows remain in the scenario but do not affect totals.
-- [ ] **Ticker** (clickable, navigates to Stock page).
-- [ ] **Investing account** — picker; shows only accounts that hold the stock; if multiple, defaults to the largest position.
-- [ ] **Number of shares to sell** — user-editable; constrained to ≤ available shares on the picked account.
-- [ ] **Available shares to sell** — read-only; sub-line shows "(N held > 365 days)" as a long-term-hold hint. Tooltip on the column header explains: "Long-term-hold count is informational; tax treatment depends on your jurisdiction."
+- [x] **Include checkbox** — row participates in the calculation when checked. Unchecked rows remain in the scenario but do not affect totals. *(Sub-phase 32g — checkbox renders; calc-side consumer lands in 32h.)*
+- [x] **Ticker** *(Sub-phase 32g — clickable navigation to Stock page lands in 32h.)*
+- [x] **Investing account** — picker; shows only accounts that hold the stock; if multiple, defaults to the largest position. *(Sub-phase 32g)*
+- [x] **Number of shares to sell** — user-editable; constrained to ≤ available shares on the picked account. *(Sub-phase 32g)*
+- [x] **Available shares to sell** — read-only; sub-line shows "(N held > 365 days)" long-term-hold hint with explanatory tooltip. *(Sub-phase 32h item 381 — `longTermSharesCount` in planningCalc.)*
 
 Toggleable columns (default-visible unless noted):
-- [ ] Company name.
-- [ ] Stock exchange.
-- [ ] Currency (trade currency).
-- [ ] Currency rate vs main (live, with `~` indicator if from spot cache).
-- [ ] **Last price** (live latest price in trade currency).
-- [ ] **Adjusted price** — user picks one of: (a) the last price (default); (b) round-down to N decimals; (c) round-up to N decimals; (d) manual override. The chosen rule and decimal count are persisted on the row.
-- [ ] **Fee amount** — pre-filled from fee defaults (see "Fee setup"); inline-editable per row.
-- [ ] **Fee % of trade** — derived: `fee / (shares × adjustedPrice) × 100`.
-- [ ] **Last actual dividend %** — `lastRegularPerShare × frequencyMultiplier ÷ adjustedPrice` (Forward yield from Phase 28b but using *the planned trade's adjusted price*, so the fee impact is visible in the yield).
-- [ ] **Last actual dividend amount per month gross** — derived from the same payout × shares ÷ 12.
-- [ ] **Last actual dividend amount per month net** — gross × (1 − resolved tax %).
-- [ ] **Last year dividend %** — `sumLast12MonthsPerShare ÷ adjustedPrice` × 100 (TTM yield from Phase 28b but with the planned trade's adjusted price as denominator).
-- [ ] **Last year dividend amount per month gross** — `sumLast12MonthsPerShare × shares ÷ 12`.
-- [ ] **Last year dividend amount per month net** — gross × (1 − tax %).
-- [ ] **Trade value (gross)** = `shares × adjustedPrice` (in trade currency).
-- [ ] **Trade value (net of fee)** = `shares × adjustedPrice − fee`.
-- [ ] **Trade value (main currency)** — converted via current FX (toggleable column).
-- [ ] **Lot picker** (action button) — opens the same lot-picker modal used by the real Sell form (FIFO default, advanced override; respects the long-term-hold hint).
+- [x] Company name. *(Sub-phase 32h)*
+- [x] Stock exchange. *(Sub-phase 32h)*
+- [x] Currency (trade currency). *(Sub-phase 32h)*
+- [x] Currency rate vs main. *(Sub-phase 32h — uses live SPEC-027 cache; `~` indicator deferred — column header rate is the merged live + override value.)*
+- [x] **Last price** (live latest price in trade currency). *(Sub-phase 32h)*
+- [x] **Adjusted price** — `Last price` / `Round down to N` / `Round up to N` / `Manual`. Rule + decimals + manual value persisted on the row. *(Sub-phase 32h item 377)*
+- [x] **Fee amount** — pre-filled from fee defaults; inline-editable per row with revert-to-default button when overridden. *(Sub-phase 32h item 378)*
+- [x] **Fee % of trade** — derived: `fee / (shares × adjustedPrice) × 100`. *(Sub-phase 32h)*
+- [x] **Last actual dividend %** — `lastRegularPerShare × frequencyMultiplier ÷ adjustedPrice` (Forward yield). *(Sub-phase 32h)*
+- [x] **Last actual dividend amount per month gross** — `× shares ÷ 12`. *(Sub-phase 32h, default-hidden)*
+- [x] **Last actual dividend amount per month net** — gross × (1 − resolved tax %). *(Sub-phase 32h)*
+- [x] **Last year dividend %** (TTM) — `sumLast12MonthsPerShare ÷ adjustedPrice` × 100. *(Sub-phase 32h, default-hidden)*
+- [x] **Last year dividend amount per month gross**. *(Sub-phase 32h, default-hidden)*
+- [x] **Last year dividend amount per month net**. *(Sub-phase 32h, default-hidden)*
+- [x] **Trade value (gross)** = `shares × adjustedPrice`. *(Sub-phase 32h)*
+- [x] **Trade value (net of fee)** = `shares × adjustedPrice − fee`. *(Sub-phase 32h)*
+- [x] **Trade value (main currency)** — converted via current FX. *(Sub-phase 32h, default-hidden)*
+- [ ] **Lot picker** (standalone action button on the planned sell row, storing lot selections back to the row without executing) — deferred; the lot picker IS available inside the Execute modal (see Execution below). *(Sub-phase 32k delivered lot-picker inside ExecuteModal only.)*
 
 ### Buy rows — fields and columns
 Always-visible columns (cannot be hidden):
-- [ ] **Include checkbox** — same semantics as sells.
-- [ ] **Ticker** (clickable).
-- [ ] **Investing account** — picker; **all** investing accounts allowed (defaults to the user's most-recently-used account).
-- [ ] **Number of shares to buy** — user-editable.
+- [x] **Include checkbox** — same semantics as sells. *(Sub-phase 32g)*
+- [x] **Ticker** *(Sub-phase 32g — clickable navigation lands in 32h.)*
+- [x] **Investing account** — picker; **all** investing accounts allowed (defaults to the user's most-recently-used account). *(Sub-phase 32g — last-used account stored at `rmoney_trading_scenarios_last_buy_account`.)*
+- [x] **Number of shares to buy** — user-editable. *(Sub-phase 32g)*
 
 Toggleable columns (default-visible unless noted):
-- [ ] Company name, stock exchange, currency, currency rate vs main, last price, adjusted price (same rule set as sell-side).
-- [ ] **Fee amount** + **Fee %** (same as sell-side).
-- [ ] **Last actual dividend %** / per-month gross / per-month net — using the **buy's adjusted price + fee/share** as denominator (yield-on-cost-of-the-planned-trade), so the fee impact is visible.
-- [ ] **Last year dividend %** / per-month gross / per-month net — same pattern.
-- [ ] **Buy price including fee per share** = `(shares × adjustedPrice + fee) ÷ shares`.
-- [ ] **Trade value without fee** = `shares × adjustedPrice` (trade currency).
-- [ ] **Trade value with fee** = `shares × adjustedPrice + fee`.
-- [ ] **Trade value (main currency, with fee)** — toggleable.
+- [x] Company name, stock exchange, currency, currency rate vs main, last price, adjusted price (same rule set as sell-side). *(Sub-phase 32h)*
+- [x] **Fee amount** + **Fee %** (same as sell-side). *(Sub-phase 32h)*
+- [x] **Last actual dividend %** / per-month gross / per-month net — buy's `adjustedPrice + fee/share` denominator. *(Sub-phase 32h item 378a)*
+- [x] **Last year dividend %** (TTM) / per-month gross / per-month net — same pattern. *(Sub-phase 32h, default-hidden)*
+- [x] **Buy price including fee per share** = `(shares × adjustedPrice + fee) ÷ shares`. *(Sub-phase 32h)*
+- [x] **Trade value without fee** = `shares × adjustedPrice` (trade currency). *(Sub-phase 32h)*
+- [x] **Trade value with fee** = `shares × adjustedPrice + fee`. *(Sub-phase 32h)*
+- [x] **Trade value (main currency, with fee)** — toggleable. *(Sub-phase 32h, default-hidden)*
 
 ### Adjusted-price rule
-- [ ] Each row has an **adjusted-price control**: a small dropdown next to the price column with options `Last price` / `Round down to N` / `Round up to N` / `Manual`. Selecting `Round down`/`Round up` exposes a decimal-count input (default 2). Selecting `Manual` exposes a number input.
-- [ ] Adjusted price drives every downstream calculation in the row (trade value, fee %, dividend %, cash impact). Stored on the row.
-- [ ] The unadjusted last price is still shown in its column for reference.
+- [x] Each row has an **adjusted-price control**: a small dropdown next to the price column with options `Last price` / `Round down to N` / `Round up to N` / `Manual`. Selecting `Round down`/`Round up` exposes a decimal-count input (default 2). Selecting `Manual` exposes a number input. *(Sub-phase 32h — `AdjustedPriceCell` component)*
+- [x] Adjusted price drives every downstream calculation in the row (trade value, fee %, dividend %, cash impact). Stored on the row. *(Sub-phase 32h)*
+- [x] The unadjusted last price is still shown in its column for reference. *(Sub-phase 32h)*
 
 ### Fee setup (canonical defaults in Settings → Investments → Trading fees)
 - [x] New **Trading fees** card on Settings → Investments tab. *(Sub-phase 32f)*
 - [x] Per stock-exchange defaults: `{ mic: MIC, currency: ISO, feePercent: number, minimumFee: number }`. Adding an exchange offers the canonical-MIC list (`CANONICAL_EXCHANGES`) from `marketDataExchanges.js`. *(Sub-phase 32f)*
 - [x] Per-stock overrides: `{ ticker: string, feePercent: number, minimumFee: number, currency: ISO }` — references an existing `stockProfile`. *(Sub-phase 32f — adding/editing happens in Settings; clicking the fee column on a planning row to jump back here is part of Sub-phase 32h.)*
 - [x] Resolution order at row creation: **per-stock override → per-exchange default → 0 (no fee)**. The applied fee is computed as `max(minimumFee, gross × feePercent / 100)` because `feePercent` is stored as the displayed percent value (e.g. `0.10` means 0.10 %). Exposed as `resolveTradingFee(ticker, exchange, gross)` from `data/settings.js`, returning `{ feeAmount, source }`. *(Sub-phase 32f)*
-- [ ] **Inline override on planning rows:** typing a number in the row's fee field overrides the resolved default for that row only — does NOT change saved defaults. A small dot indicator shows when a row's fee has been manually overridden; clicking it reverts to the resolved default.
-- [ ] **Tooltip on the Fee column header** in the planning tables: "Defaults set in Settings → Investments → Trading fees. Edit per row to override for this scenario only."
+- [x] **Inline override on planning rows:** typing a number in the row's fee field overrides the resolved default for that row only — does NOT change saved defaults. A small dot indicator shows when a row's fee has been manually overridden; clicking the ↺ button reverts to the resolved default. *(Sub-phase 32h — `FeeCell` component)*
+- [x] **Tooltip** on the Fee cell: "Defaults set in Settings → Investments → Trading fees. Edit per row to override for this scenario only." *(Sub-phase 32h — tooltip on the cell since column headers aren't tooltipped by ConfigurableTable)*
 
 ### Overview block (above the sells table)
-- [ ] **Cash balances panel** showing every currency the user holds across all investing accounts, totalled (per currency, not per account, because the planning screen treats funds as fungible — same as the real Cash impact calc below). One row per currency with the current total balance.
-- [ ] **Add to cash balances** field per currency: a number input lets the user simulate "what if I deposited 5,000 USD before executing this scenario?" — purely for the planning calc; never persisted as a real deposit.
-- [ ] **Cash impact summary**: starts from "current totals + planning-only top-ups", applies sells (credits), then applies buys (debits), then resolves any per-currency shortfall via simulated currency exchanges per the priority chain below. Final per-currency cash position is shown side-by-side with the starting position; deltas highlighted (green credit / red debit).
-- [ ] **Currency-exchange priority** (matches real-trade behaviour, deterministic):
-  1. For each buy, debit from the cash balance in the **same trade currency** first.
-  2. If insufficient, debit the rest from the **main-currency balance** (auto-creating a simulated FX leg using the user-set or live rate).
-  3. If main-currency balance is also insufficient, debit from any other balance with funds, in descending order of available value (converted to the trade currency).
-- [ ] **Editable FX rates panel:** the overview includes a small FX-rates section listing every currency pair the calculation actually uses. Each pair pre-fills with the live SPEC-027 rate; the user can override any rate (e.g. to model a worst-case rate). Overrides apply to the planning-screen calc only, not to real transactions.
-- [ ] **Currency-display picker:** the user ticks which currencies the **summary totals** should be expressed in. Defaults to all trade currencies of the included rows + main currency. Each ticked currency shows: total sells, total buys, net cash impact (sell − buy), starting balance, ending balance.
-- [ ] **Weighted-average dividend metrics:**
-  - Sells weighted-average yield (forward) and weighted-average per-month gross — across **included** sell rows, weighted by trade-value in main currency.
-  - Buys weighted-average yield (forward) and weighted-average per-month gross — across included buy rows, same weighting.
-  - **Difference** row: buys − sells in both yield and per-month amount, in main currency. Shows the dividend-income consequence of executing the scenario.
-  - All three rows show net (after-tax) figures alongside gross.
+- [x] **Cash balances panel** showing every currency the user holds across all investing accounts, totalled. *(Sub-phase 32h)*
+- [x] **Add to cash balances** field per currency. *(Sub-phase 32h — stored in `scenario.cashTopUps`)*
+- [x] **Cash impact summary**: starts from "current totals + planning-only top-ups", applies sells (credits), then applies buys (debits) via the currency-exchange priority cascade. Shows Start / Top-up / Sells / Buys / Transfer in / Transfer out / End. *(Sub-phase 32h)*
+- [x] **Currency-exchange priority** — implemented per spec in `simulateCashImpact()`. *(Sub-phase 32h item 380)*
+- [x] **Editable FX rates panel** — every distinct trade-currency → main-currency pair pre-fills with the live SPEC-027 rate; overrides stored in `scenario.fxOverrides`. *(Sub-phase 32h item 379b)*
+- [x] **Currency-display picker** — pill-list of every trade currency + main; defaults applied when the user has not made a selection yet. *(Sub-phase 32h item 379a)*
+- [x] **Weighted-average dividend metrics** — sells row, buys row, Δ delta row; forward and TTM avg %, monthly gross and net in main currency. *(Sub-phase 32h — `computeDividendAggregates`)*
 
 ### Execution + lifecycle
-- [ ] Each row carries an **Execute** action button. Clicking it opens the matching real form (`BuyForm` / `SellForm` from `InvestingAccountDetail.jsx`) pre-filled with the row's investing account, ticker, shares, adjusted price, fee, and (for sells) the lot allocations. The form opens in a full-screen overlay over the planning screen.
-- [ ] On successful save the row is flagged `executedAt: ISO timestamp` and `executedTransactionId: string`. Executed rows are visually muted (struck-through ticker / faded background) and excluded from the included-row totals automatically (the Include checkbox is forcibly unchecked).
-- [ ] User can choose, per scenario, whether executed rows are removed automatically or kept for history. Default: kept.
-- [ ] Cancelling the form leaves the planned row untouched.
+- [x] Each row carries an **Execute** action button. Clicking it opens a self-contained `ExecuteModal` pre-filled with the row's investing account (locked, read-only), ticker, shares, adjusted price, fee, and (for sells) a FIFO-pre-filled lot picker. The modal writes a real `createBuy` / `createSell` transaction using the same data functions as `InvestingAccountDetail.jsx`, then calls `markRowExecuted`. *(Sub-phase 32k — `ExecuteModal` component in `BuySellPlanning.jsx`; avoids modifying the 2490-line `InvestingAccountDetail.jsx`)*
+- [x] On successful save the row is flagged `executedAt: ISO timestamp` and `executedTransactionId: string`. The Execute button is replaced by a "✓ Done" badge; the Include checkbox is forcibly off. If `removeExecutedRows` is set the row disappears. *(Sub-phase 32k)*
+- [x] User can choose, per scenario, whether executed rows are removed automatically or kept for history. Default: kept. *(Sub-phase 32h — toggle on the scenario action bar; flag `scenario.removeExecutedRows`)*
+- [x] Cancelling the Execute modal leaves the planned row untouched. *(Sub-phase 32k)*
 
 ### Persistence
-- [ ] Scenarios live in a new `tradingScenarios` collection in localStorage. Per-scenario shape stores: name, createdAt, updatedAt, sellRows[], buyRows[], cashTopUps{}, fxOverrides{}, displayedCurrencies[], removeExecutedRows: bool.
-- [ ] Each row stores: ticker, exchange, currency, investingAccountId, shares, adjustedPriceRule, adjustedPriceValue (cached), manualFeeOverride, lotAllocations (sells only), included: bool, executedAt, executedTransactionId.
-- [ ] Settings → Investments → Trading fees stores the per-exchange and per-stock fee defaults as part of the existing `rmoney_settings` blob.
-- [ ] **Storage tab card** added (per CLAUDE.md data-persistence convention): "Buy-Sell Planning" card listing scenario count, total bytes, per-scenario breakdown with bulk-clear action.
+- [x] Scenarios live in a new `tradingScenarios` collection in localStorage. Per-scenario shape stores: name, createdAt, updatedAt, sellRows[], buyRows[], cashTopUps{}, fxOverrides{}, displayedCurrencies[], removeExecutedRows: bool. *(Sub-phase 32g — `rmoney_trading_scenarios` plus `rmoney_trading_scenarios_active` and `rmoney_trading_scenarios_last_buy_account` for UI state.)*
+- [x] Each row stores: ticker, exchange, currency, investingAccountId, shares, adjustedPriceRule, adjustedPriceValue (cached), manualFeeOverride, lotAllocations (sells only), included: bool, executedAt, executedTransactionId. *(Sub-phase 32g — `blankRow` matches the SPEC-034 shape; `adjustedPriceManual` and `adjustedPriceDecimals` are the cached values for the rules.)*
+- [x] Settings → Investments → Trading fees stores the per-exchange and per-stock fee defaults as part of the existing `rmoney_settings` blob. *(Sub-phase 32f)*
+- [x] **Storage tab card** added: "Buy-Sell Planning" card listing scenario count, total bytes, per-scenario breakdown (sell-row count, buy-row count, bytes) with bulk-clear action. *(Sub-phase 32h)*
 
 ## UI / Screens
 
