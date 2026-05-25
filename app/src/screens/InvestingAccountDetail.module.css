@@ -403,6 +403,9 @@
 
 /* ── Transaction form overlay (highest z-index) ──────────────────────────── */
 
+/* Z-index 600 places this above ConfigurableTable.fullscreenOverlay (500)
+   so action modals opened from rows of a fullscreened positions table
+   render on top instead of being hidden behind the overlay. */
 .txOverlay {
   position: fixed;
   inset: 0;
@@ -410,7 +413,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 400;
+  z-index: 600;
   padding: 24px;
   overflow-y: auto;
 }
@@ -524,6 +527,9 @@
 
 /* ── Dialog / overlay ────────────────────────────────────────────────────── */
 
+/* Z-index 600 places this above ConfigurableTable.fullscreenOverlay (500)
+   and .movementsFullscreenSection (300) so action modals opened from a
+   fullscreened table render on top. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -531,7 +537,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 600;
   padding: 24px;
 }
 

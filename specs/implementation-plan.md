@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32c + 32j done, sub-phases 32d–32i outstanding)*
+**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32c + 32d + 32j done, sub-phases 32e–32i outstanding)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -794,8 +794,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 **Sub-phase 32c — Sell form lot-picker validation + two-way binding ✓ DONE** *(items 367 + 368 complete; `SellForm` and `SellEditForm` now clamp per-lot inputs to each lot's remaining shares at input time, with a "max N" hint next to every input; both forms track a `manualMode` flag — opening the picker pre-fills via FIFO and stays in "total → lots" mode, but the first edit to any lot input flips into "lots → total" mode where the top-level Shares field auto-syncs to the sum; closing and reopening the picker resets to auto-mode. Edit-form clamps against credit-restored remaining shares so the user can redistribute up to what is truly available.)*
 
-**Sub-phase 32d — Action-modal z-index above ConfigurableTable fullscreen overlay (extends SPEC-018)**
-369. [ ] When the Positions table is in fullscreen mode and the user clicks a row action (Sell / Dividend / row detail), the action's modal renders **above** the fullscreen overlay so the user can interact with it. Apply via document-body portal for action modals (or strict z-index above `fullscreenOverlay`). Same fix lives in any future use of `ConfigurableTable` (Reports table tab in Phase 29d)
+**Sub-phase 32d — Action-modal z-index above ConfigurableTable fullscreen overlay (extends SPEC-018) ✓ DONE** *(item 369 complete; `InvestingAccountDetail.module.css` bumps `.overlay` 200→600 and `.txOverlay` 400→600, strictly above `ConfigurableTable.fullscreenOverlay` (500) and `.movementsFullscreenSection` (300) — Sell / Dividend / Edit-exchange / Edit-buy / Edit-sell / linked-tx modals now render on top when either fullscreen mode is active. Convention documented in SPEC-018 item 236 for reuse in Phase 29d Reports table)*
 
 **Sub-phase 32e — Manual stocks: custom assets with user-entered prices (extends SPEC-029)**
 370. [ ] Extend `stockProfiles` with `isManual: bool` (default `false`) and `manualPriceSource: 'user' | null`. New `manualPrices` collection keyed by `(ticker, date)`
