@@ -106,6 +106,63 @@ export function setSelectedAiPromptId(id) {
   setSetting('selectedAiPromptId', id)
 }
 
+// ─── Trading fees (Sub-phase 32f, foundation for SPEC-034) ───────────────────
+//
+// Stored shape on `rmoney_settings.tradingFees`:
+//   {
+//     exchanges: [{ mic, currency, feePercent, minimumFee }],
+//     stocks:    [{ ticker, currency, feePercent, minimumFee }],
+//   }
+//
+// `feePercent` is stored as a percent value (e.g. 0.10 means 0.10 % of the
+// trade), not a multiplier. The user reads and types percents in the Settings
+// UI, so storing them in the same units avoids silent ×100 mistakes.
+// `minimumFee` is the absolute floor in the same currency as the trade.
+
+export function getTradingFees() {
+  const fees = getSetting('tradingFees', null)
+  return {
+    exchanges: Array.isArray(fees?.exchanges) ? fees.exchanges : [],
+    stocks:    Array.isArray(fees?.stocks)    ? fees.stocks    : [],
+  }
+}
+
+export function setTradingFees(config) {
+  setSetting('tradingFees', {
+    exchanges: Array.isArray(config?.exchanges) ? config.exchanges : [],
+    stocks:    Array.isArray(config?.stocks)    ? config.stocks    : [],
+  })
+}
+
+// Resolution order: per-stock override → per-exchange default → no fee.
+// Returns { feeAmount, source: 'stock' | 'exchange' | 'none' }.
+// `gross` is the trade gross in the trade currency; `feeAmount` is returned in
+// the same currency. Always non-negative.
+export function resolveTradingFee(ticker, exchange, gross) {
+  const fees   = getTradingFees()
+  const t      = ticker?.trim().toUpperCase()
+  const mic    = exchange?.trim().toUpperCase()
+  const grossN = Math.max(0, Number(gross) || 0)
+
+  function computed(rule) {
+    const pct = Math.max(0, Number(rule.feePercent) || 0)
+    const min = Math.max(0, Number(rule.minimumFee) || 0)
+    return Math.max(min, grossN * pct / 100)
+  }
+
+  if (t) {
+    const stockRule = fees.stocks.find(s => s.ticker?.toUpperCase() === t)
+    if (stockRule) return { feeAmount: computed(stockRule), source: 'stock' }
+  }
+
+  if (mic) {
+    const exRule = fees.exchanges.find(e => e.mic?.toUpperCase() === mic)
+    if (exRule) return { feeAmount: computed(exRule), source: 'exchange' }
+  }
+
+  return { feeAmount: 0, source: 'none' }
+}
+
 // ─── Market data providers ───────────────────────────────────────────────────
 
 const DEFAULT_PROVIDERS = {

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee } from '../data/settings'
+import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
+import { getActiveStockProfiles } from '../data/stockProfiles'
 import { getSecret, setSecret, deleteSecret } from '../utils/secrets'
 import { getBudgetWarningThreshold, setBudgetWarningThreshold } from '../data/budgets'
 import { getCsvTemplates, canDeleteCsvTemplate, deleteCsvTemplate, updateCsvTemplate, getTemplateUsers } from '../data/csvTemplates'
@@ -98,6 +100,11 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [mdTestStatus,  setMdTestStatus]  = useState({})            // { [id]: 'testing' | 'ok' | string }
   const [mdCacheStats, setMdCacheStats] = useState(() => getCacheStats())
   const [debugLog,     setDebugLog]     = useState(() => import.meta.env.DEV ? getCallLog() : [])
+
+  // Trading fees (Sub-phase 32f)
+  const [tradingFees,    setTradingFeesState]    = useState(() => getTradingFees())
+  const [editingFeeRow,  setEditingFeeRow]       = useState(null)  // { kind: 'exchange'|'stock', index: number, draft: {...} } | null
+  const [feeRowError,    setFeeRowError]         = useState('')
 
   async function handleFxBackfill() {
     setFxBackfilling(true)
@@ -245,6 +252,267 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   }
 
   const period = getCurrentPeriod()
+
+  // ─── Trading fees helpers (Sub-phase 32f) ──────────────────────────────────
+
+  // Currencies offered in the fee-rule dropdown: SUPPORTED + any canonical-exchange
+  // currency (e.g. HKD) so users can express fees in the venue's native currency.
+  const feeCurrencyOptions = Array.from(
+    new Set([...SUPPORTED_CURRENCIES, ...CANONICAL_EXCHANGES.map(e => e.currency)])
+  ).sort()
+
+  const stockProfilesForFee = getActiveStockProfiles().sort((a, b) => a.ticker.localeCompare(b.ticker))
+
+  function startAddExchangeFee() {
+    setFeeRowError('')
+    setEditingFeeRow({
+      kind: 'exchange',
+      index: -1,
+      draft: { mic: '', currency: '', feePercent: '', minimumFee: '' },
+    })
+  }
+
+  function startEditExchangeFee(index) {
+    const rule = tradingFees.exchanges[index]
+    setFeeRowError('')
+    setEditingFeeRow({
+      kind: 'exchange',
+      index,
+      draft: {
+        mic: rule.mic ?? '',
+        currency: rule.currency ?? '',
+        feePercent: rule.feePercent ?? '',
+        minimumFee: rule.minimumFee ?? '',
+      },
+    })
+  }
+
+  function startAddStockFee() {
+    setFeeRowError('')
+    setEditingFeeRow({
+      kind: 'stock',
+      index: -1,
+      draft: { ticker: '', currency: '', feePercent: '', minimumFee: '' },
+    })
+  }
+
+  function startEditStockFee(index) {
+    const rule = tradingFees.stocks[index]
+    setFeeRowError('')
+    setEditingFeeRow({
+      kind: 'stock',
+      index,
+      draft: {
+        ticker: rule.ticker ?? '',
+        currency: rule.currency ?? '',
+        feePercent: rule.feePercent ?? '',
+        minimumFee: rule.minimumFee ?? '',
+      },
+    })
+  }
+
+  function updateFeeDraft(patch) {
+    setEditingFeeRow(s => s ? { ...s, draft: { ...s.draft, ...patch } } : s)
+  }
+
+  // When the user picks a MIC, auto-fill the currency from the canonical list
+  // unless they have already typed something different.
+  function pickExchangeMic(mic) {
+    const canonical = CANONICAL_EXCHANGES.find(e => e.mic === mic)
+    setEditingFeeRow(s => {
+      if (!s) return s
+      const keepCurrency = s.draft.currency && s.draft.currency !== canonical?.currency
+      return {
+        ...s,
+        draft: {
+          ...s.draft,
+          mic,
+          currency: keepCurrency ? s.draft.currency : (canonical?.currency ?? s.draft.currency),
+        },
+      }
+    })
+  }
+
+  // When the user picks a ticker, default the currency to the stock profile's
+  // currency if known and the user hasn't already typed one.
+  function pickStockTicker(ticker) {
+    const profile = stockProfilesForFee.find(p => p.ticker === ticker)
+    setEditingFeeRow(s => {
+      if (!s) return s
+      const haveCurrency = s.draft.currency
+      return {
+        ...s,
+        draft: {
+          ...s.draft,
+          ticker,
+          currency: haveCurrency ? s.draft.currency : (profile?.currency ?? s.draft.currency),
+        },
+      }
+    })
+  }
+
+  function cancelFeeEdit() {
+    setEditingFeeRow(null)
+    setFeeRowError('')
+  }
+
+  function saveFeeEdit() {
+    if (!editingFeeRow) return
+    const { kind, index, draft } = editingFeeRow
+    const identifier = kind === 'exchange' ? draft.mic : draft.ticker?.trim().toUpperCase()
+    if (!identifier) {
+      setFeeRowError(kind === 'exchange' ? 'Pick an exchange' : 'Pick a stock')
+      return
+    }
+    if (!draft.currency) {
+      setFeeRowError('Pick a currency')
+      return
+    }
+    const feePercent = Number(draft.feePercent)
+    const minimumFee = Number(draft.minimumFee)
+    if (!Number.isFinite(feePercent) || feePercent < 0) {
+      setFeeRowError('Fee % must be 0 or more')
+      return
+    }
+    if (!Number.isFinite(minimumFee) || minimumFee < 0) {
+      setFeeRowError('Minimum fee must be 0 or more')
+      return
+    }
+
+    const list = kind === 'exchange' ? [...tradingFees.exchanges] : [...tradingFees.stocks]
+    const newRule = kind === 'exchange'
+      ? { mic: identifier, currency: draft.currency, feePercent, minimumFee }
+      : { ticker: identifier, currency: draft.currency, feePercent, minimumFee }
+
+    // Reject duplicates on the identifying field (except when editing the row itself)
+    const dupIndex = list.findIndex((r, i) =>
+      i !== index &&
+      (kind === 'exchange' ? r.mic === identifier : r.ticker?.toUpperCase() === identifier)
+    )
+    if (dupIndex !== -1) {
+      setFeeRowError(kind === 'exchange'
+        ? `A rule for ${identifier} already exists`
+        : `An override for ${identifier} already exists`)
+      return
+    }
+
+    if (index === -1) list.push(newRule)
+    else list[index] = newRule
+
+    const next = kind === 'exchange'
+      ? { ...tradingFees, exchanges: list }
+      : { ...tradingFees, stocks: list }
+    setTradingFees(next)
+    setTradingFeesState(next)
+    setEditingFeeRow(null)
+    setFeeRowError('')
+  }
+
+  function deleteFeeRow(kind, index) {
+    const list = kind === 'exchange' ? [...tradingFees.exchanges] : [...tradingFees.stocks]
+    list.splice(index, 1)
+    const next = kind === 'exchange'
+      ? { ...tradingFees, exchanges: list }
+      : { ...tradingFees, stocks: list }
+    setTradingFees(next)
+    setTradingFeesState(next)
+    if (editingFeeRow?.kind === kind && editingFeeRow.index === index) cancelFeeEdit()
+  }
+
+  function renderFeeEditor() {
+    if (!editingFeeRow) return null
+    const { kind, draft } = editingFeeRow
+    const usedExchangeMics = new Set(tradingFees.exchanges.map(e => e.mic))
+    const usedStockTickers = new Set(tradingFees.stocks.map(s => s.ticker?.toUpperCase()))
+    return (
+      <div className={styles.feeEditor} key="fee-editor">
+        <div className={styles.feeEditorGrid}>
+          {kind === 'exchange' ? (
+            <label className={styles.feeField}>
+              <span className={styles.feeFieldLabel}>Exchange</span>
+              <select
+                className={styles.input}
+                value={draft.mic ?? ''}
+                onChange={e => pickExchangeMic(e.target.value)}
+              >
+                <option value="">Select exchange…</option>
+                {CANONICAL_EXCHANGES.map(ex => {
+                  const taken = usedExchangeMics.has(ex.mic) && ex.mic !== tradingFees.exchanges[editingFeeRow.index]?.mic
+                  return (
+                    <option key={ex.mic} value={ex.mic} disabled={taken}>
+                      {ex.mic} — {ex.name}{taken ? ' (already set)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+          ) : (
+            <label className={styles.feeField}>
+              <span className={styles.feeFieldLabel}>Stock</span>
+              <select
+                className={styles.input}
+                value={draft.ticker ?? ''}
+                onChange={e => pickStockTicker(e.target.value)}
+              >
+                <option value="">Select stock…</option>
+                {stockProfilesForFee.map(p => {
+                  const taken = usedStockTickers.has(p.ticker) && p.ticker !== tradingFees.stocks[editingFeeRow.index]?.ticker
+                  return (
+                    <option key={p.ticker} value={p.ticker} disabled={taken}>
+                      {p.ticker}{p.name ? ` — ${p.name}` : ''}{taken ? ' (already set)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+          )}
+
+          <label className={styles.feeField}>
+            <span className={styles.feeFieldLabel}>Currency</span>
+            <select
+              className={styles.input}
+              value={draft.currency ?? ''}
+              onChange={e => updateFeeDraft({ currency: e.target.value })}
+            >
+              <option value="">…</option>
+              {feeCurrencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+
+          <label className={styles.feeField}>
+            <span className={styles.feeFieldLabel}>Fee %</span>
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              step="0.0001"
+              value={draft.feePercent ?? ''}
+              placeholder="0.10"
+              onChange={e => updateFeeDraft({ feePercent: e.target.value })}
+            />
+          </label>
+
+          <label className={styles.feeField}>
+            <span className={styles.feeFieldLabel}>Minimum fee</span>
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              step="0.01"
+              value={draft.minimumFee ?? ''}
+              placeholder="0.00"
+              onChange={e => updateFeeDraft({ minimumFee: e.target.value })}
+            />
+          </label>
+        </div>
+        {feeRowError && <div className={styles.fieldError}>{feeRowError}</div>}
+        <div className={styles.dialogActionsRow}>
+          <button className={styles.btnSmSec} onClick={cancelFeeEdit}>Cancel</button>
+          <button className={styles.btnSm} onClick={saveFeeEdit}>Save</button>
+        </div>
+      </div>
+    )
+  }
 
   // ─── Market data helpers ────────────────────────────────────────────────────
 
@@ -582,6 +850,113 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     </div>
                   </>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Trading fees (Sub-phase 32f) ───────────────────────────────── */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Trading fees</div>
+            <p className={styles.description}>
+              Default trading fees pre-fill the Buy-Sell Planning screen and (optionally) new
+              Buy / Sell entries. Resolution order: <strong>per-stock override</strong> →
+              {' '}<strong>per-exchange default</strong> → no fee.
+              Computed as <code>max(minimum fee, gross × fee %)</code>, where the fee % is the
+              percent value shown below (0.10 means 0.10 % of the trade).
+            </p>
+
+            {/* Per-exchange defaults */}
+            <div className={styles.feeSectionHeader}>
+              <span className={styles.feeSectionTitle}>Per stock exchange</span>
+              {!(editingFeeRow?.kind === 'exchange' && editingFeeRow.index === -1) && (
+                <button className={styles.btnSm} onClick={startAddExchangeFee}>+ Add exchange</button>
+              )}
+            </div>
+            {tradingFees.exchanges.length === 0 && !(editingFeeRow?.kind === 'exchange' && editingFeeRow.index === -1) ? (
+              <p className={styles.preview}>No exchange defaults yet.</p>
+            ) : (
+              <div className={styles.feeList}>
+                {tradingFees.exchanges.map((rule, i) => {
+                  const isEditing = editingFeeRow?.kind === 'exchange' && editingFeeRow.index === i
+                  if (isEditing) {
+                    return <div key={`ex-edit-${i}`}>{renderFeeEditor()}</div>
+                  }
+                  const canonical = CANONICAL_EXCHANGES.find(e => e.mic === rule.mic)
+                  return (
+                    <div key={`ex-${rule.mic}-${i}`} className={styles.feeRow}>
+                      <div className={styles.feeRowInfo}>
+                        <span className={styles.feeRowMain}>{rule.mic}</span>
+                        {canonical && <span className={styles.feeRowSub}>{canonical.name}</span>}
+                      </div>
+                      <span className={styles.feeBadge}>{rule.currency}</span>
+                      <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
+                      <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      <button className={styles.btnSm} onClick={() => startEditExchangeFee(i)}>Edit</button>
+                      <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('exchange', i)}>Delete</button>
+                    </div>
+                  )
+                })}
+                {editingFeeRow?.kind === 'exchange' && editingFeeRow.index === -1 && (
+                  <div key="ex-edit-new">{renderFeeEditor()}</div>
+                )}
+              </div>
+            )}
+
+            {/* Per-stock overrides */}
+            <div className={styles.feeSectionHeader}>
+              <span className={styles.feeSectionTitle}>Per stock overrides</span>
+              {!(editingFeeRow?.kind === 'stock' && editingFeeRow.index === -1) && (
+                <button className={styles.btnSm} onClick={startAddStockFee} disabled={stockProfilesForFee.length === 0}>
+                  + Add stock override
+                </button>
+              )}
+            </div>
+            {stockProfilesForFee.length === 0 ? (
+              <p className={styles.preview}>No stocks in your inventory yet. Add a stock first to set a per-stock fee override.</p>
+            ) : tradingFees.stocks.length === 0 && !(editingFeeRow?.kind === 'stock' && editingFeeRow.index === -1) ? (
+              <p className={styles.preview}>No per-stock overrides yet. Stocks fall back to the matching exchange default.</p>
+            ) : (
+              <div className={styles.feeList}>
+                {tradingFees.stocks.map((rule, i) => {
+                  const isEditing = editingFeeRow?.kind === 'stock' && editingFeeRow.index === i
+                  if (isEditing) {
+                    return <div key={`st-edit-${i}`}>{renderFeeEditor()}</div>
+                  }
+                  const profile = stockProfilesForFee.find(p => p.ticker === rule.ticker)
+                  return (
+                    <div key={`st-${rule.ticker}-${i}`} className={styles.feeRow}>
+                      <div className={styles.feeRowInfo}>
+                        <span className={styles.feeRowMain}>{rule.ticker}</span>
+                        {profile?.name && <span className={styles.feeRowSub}>{profile.name}</span>}
+                      </div>
+                      <span className={styles.feeBadge}>{rule.currency}</span>
+                      <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
+                      <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      <button className={styles.btnSm} onClick={() => startEditStockFee(i)}>Edit</button>
+                      <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('stock', i)}>Delete</button>
+                    </div>
+                  )
+                })}
+                {editingFeeRow?.kind === 'stock' && editingFeeRow.index === -1 && (
+                  <div key="st-edit-new">{renderFeeEditor()}</div>
+                )}
+              </div>
+            )}
+
+            {/* Resolution preview */}
+            {(tradingFees.exchanges.length > 0 || tradingFees.stocks.length > 0) && (
+              <div className={styles.preview}>
+                Example: a 1,000 trade with the matching rule would charge <strong>
+                  {(() => {
+                    const sample = tradingFees.stocks[0] ?? tradingFees.exchanges[0]
+                    const { feeAmount, source } = resolveTradingFee(
+                      sample.ticker ?? null,
+                      sample.mic ?? null,
+                      1000,
+                    )
+                    return `${feeAmount.toFixed(2)} ${sample.currency} (${source})`
+                  })()}
+                </strong>.
               </div>
             )}
           </div>

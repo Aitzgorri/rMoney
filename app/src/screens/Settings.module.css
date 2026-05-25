@@ -415,6 +415,113 @@
   font-style: italic;
 }
 
+/* ── Trading fees (Sub-phase 32f) ────────────────────────────────────────── */
+
+.feeSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.feeSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.feeList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #0f1520;
+  border-radius: 8px;
+  border: 1px solid #2d3448;
+  flex-wrap: wrap;
+}
+
+.feeRowInfo {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.feeRowMain {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.02em;
+}
+
+.feeRowSub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.feeBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #93c5fd;
+  background: rgba(59,130,246,0.12);
+  border-radius: 6px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+}
+
+.feeRowVal {
+  font-size: 12px;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+  min-width: 70px;
+  text-align: right;
+}
+
+.feeEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #141926;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+}
+
+.feeEditorGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .feeEditorGrid { grid-template-columns: 1fr 1fr; }
+}
+
+.feeField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feeFieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
 /* ─── Market data providers ──────────────────────────────────────────────── */
 
 .providerSection {

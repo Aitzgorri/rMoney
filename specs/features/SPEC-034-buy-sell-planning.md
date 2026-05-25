@@ -89,10 +89,10 @@ Toggleable columns (default-visible unless noted):
 - [ ] The unadjusted last price is still shown in its column for reference.
 
 ### Fee setup (canonical defaults in Settings → Investments → Trading fees)
-- [ ] New **Trading fees** card on Settings → Investments tab.
-- [ ] Per stock-exchange defaults: `{ exchange: MIC, currency: ISO, feePercent: number, minimumFee: number }`. Adding an exchange offers the resolved-MIC list from `marketDataExchanges.js`.
-- [ ] Per-stock overrides: `{ ticker: string, feePercent: number, minimumFee: number, currency: ISO }` — references an existing `stockProfile`. Editable from the planning screen by clicking the fee column on a row.
-- [ ] Resolution order at row creation: **per-stock override → per-exchange default → 0 (no fee)**. The applied fee is computed as `max(minimumFee, gross × feePercent)`.
+- [x] New **Trading fees** card on Settings → Investments tab. *(Sub-phase 32f)*
+- [x] Per stock-exchange defaults: `{ mic: MIC, currency: ISO, feePercent: number, minimumFee: number }`. Adding an exchange offers the canonical-MIC list (`CANONICAL_EXCHANGES`) from `marketDataExchanges.js`. *(Sub-phase 32f)*
+- [x] Per-stock overrides: `{ ticker: string, feePercent: number, minimumFee: number, currency: ISO }` — references an existing `stockProfile`. *(Sub-phase 32f — adding/editing happens in Settings; clicking the fee column on a planning row to jump back here is part of Sub-phase 32h.)*
+- [x] Resolution order at row creation: **per-stock override → per-exchange default → 0 (no fee)**. The applied fee is computed as `max(minimumFee, gross × feePercent / 100)` because `feePercent` is stored as the displayed percent value (e.g. `0.10` means 0.10 %). Exposed as `resolveTradingFee(ticker, exchange, gross)` from `data/settings.js`, returning `{ feeAmount, source }`. *(Sub-phase 32f)*
 - [ ] **Inline override on planning rows:** typing a number in the row's fee field overrides the resolved default for that row only — does NOT change saved defaults. A small dot indicator shows when a row's fee has been manually overridden; clicking it reverts to the resolved default.
 - [ ] **Tooltip on the Fee column header** in the planning tables: "Defaults set in Settings → Investments → Trading fees. Edit per row to override for this scenario only."
 
@@ -201,16 +201,16 @@ The toolbar `[...]` opens scenario actions: rename, duplicate, delete, toggle "r
 }
 ```
 
-Settings extension (`rmoney_settings.tradingFees`):
+Settings extension (`rmoney_settings.tradingFees`) — **`feePercent` is stored as the displayed percent value, not a multiplier**, so the math is `gross × feePercent / 100`:
 
 ```
 {
   exchanges: [
-    { mic: 'XLON', currency: 'GBP', feePercent: 0.0010, minimumFee: 5.00 },
-    { mic: 'XNAS', currency: 'USD', feePercent: 0.0050, minimumFee: 1.00 }
+    { mic: 'XLON', currency: 'GBP', feePercent: 0.10, minimumFee: 5.00 },   // 0.10 %
+    { mic: 'XNAS', currency: 'USD', feePercent: 0.50, minimumFee: 1.00 }    // 0.50 %
   ],
   stocks: [
-    { ticker: 'BYG', feePercent: 0.0008, minimumFee: 4.00, currency: 'GBP' }
+    { ticker: 'BYG', currency: 'GBP', feePercent: 0.08, minimumFee: 4.00 }  // 0.08 %
   ]
 }
 ```

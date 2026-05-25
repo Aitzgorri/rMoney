@@ -52,6 +52,33 @@ export function resolveExchange(input) {
   return MIC_SYNONYMS[key] ?? key
 }
 
+// Canonical exchange list — one entry per MIC code with a human-readable name
+// and the default trading currency. Used wherever the app needs to offer the
+// user a picker over recognised exchanges (e.g. Settings → Investments →
+// Trading fees, Sub-phase 32f).
+export const CANONICAL_EXCHANGES = [
+  { mic: 'XLON', name: 'London Stock Exchange',          currency: 'GBP' },
+  { mic: 'XFRA', name: 'Frankfurt Stock Exchange',       currency: 'EUR' },
+  { mic: 'XETR', name: 'XETRA (Frankfurt)',              currency: 'EUR' },
+  { mic: 'XAMS', name: 'Euronext Amsterdam',             currency: 'EUR' },
+  { mic: 'XPAR', name: 'Euronext Paris',                 currency: 'EUR' },
+  { mic: 'XSWX', name: 'SIX Swiss Exchange',             currency: 'CHF' },
+  { mic: 'XMAD', name: 'Bolsa de Madrid',                currency: 'EUR' },
+  { mic: 'XMIL', name: 'Borsa Italiana (Milan)',         currency: 'EUR' },
+  { mic: 'XBRU', name: 'Euronext Brussels',              currency: 'EUR' },
+  { mic: 'XLIS', name: 'Euronext Lisbon',                currency: 'EUR' },
+  { mic: 'XSTO', name: 'OMX Stockholm',                  currency: 'SEK' },
+  { mic: 'XHEL', name: 'OMX Helsinki',                   currency: 'EUR' },
+  { mic: 'XOSL', name: 'Oslo Børs',                      currency: 'NOK' },
+  { mic: 'XCSE', name: 'Nasdaq Copenhagen',              currency: 'DKK' },
+  { mic: 'XASX', name: 'Australian Securities Exchange', currency: 'AUD' },
+  { mic: 'XTKS', name: 'Tokyo Stock Exchange',           currency: 'JPY' },
+  { mic: 'XTSE', name: 'Toronto Stock Exchange',         currency: 'CAD' },
+  { mic: 'XHKG', name: 'Hong Kong Stock Exchange',       currency: 'HKD' },
+  { mic: 'XNYS', name: 'New York Stock Exchange',        currency: 'USD' },
+  { mic: 'XNAS', name: 'NASDAQ',                         currency: 'USD' },
+]
+
 // Values from PROVIDER_EXCHANGE.yahoo — used to recognise and strip embedded suffixes.
 const YAHOO_SUFFIX_SET = new Set(['L','DE','AS','PA','SW','MC','MI','BR','LS','ST','HE','OL','CO','AX','T','TO','HK'])
 
