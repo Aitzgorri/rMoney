@@ -929,6 +929,13 @@
 
 .lotInput:focus { outline: none; }
 
+.lotMaxHint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 /* Date field tooltip wrapper */
 .dateTooltipWrap {
   position: relative;

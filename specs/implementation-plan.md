@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32j done, sub-phases 32c–32i outstanding)*
+**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32c + 32j done, sub-phases 32d–32i outstanding)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -792,9 +792,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 **Sub-phase 32b — Dividend list single-line layout ✓ DONE** *(item 366 complete; unified dividend list now renders one cell per column on a single line with `white-space: nowrap`; columns: `Ex-div | Pay | Per share | Shares | Tax % | Net | (Net (main)) | Type | Source | Account | actions`; headers carry `title` tooltips; Type column shows the Special chip / Regular label; Net (main) appears only when the page currency-toggle is set to Main; inline ⊞ Columns picker dropdown persists visibility in `rmoney_dividend_columns`; sticky header row; the full `ConfigurableTable` component wasn't reused because of the `Today — YYYY-MM-DD` divider and three structurally-distinct row variants — the picker UI mirrors the ConfigurableTable look)*
 
-**Sub-phase 32c — Sell form lot-picker validation + two-way binding (extends SPEC-019)**
-367. [ ] Per-lot share-input field is constrained to the lot's remaining shares. Higher input is clamped at input time; field's `max` attribute is set; small "max N" hint renders next to the field
-368. [ ] Two-way binding between the top-level "Shares" field and the per-lot quantities. When the user edits any per-lot quantity, the top-level "Shares" auto-updates to the sum of all lot quantities. The reverse (top-level → FIFO re-allocation across lots) remains the default starting behaviour; "auto-fill from lots" wins once the user has touched any lot quantity
+**Sub-phase 32c — Sell form lot-picker validation + two-way binding ✓ DONE** *(items 367 + 368 complete; `SellForm` and `SellEditForm` now clamp per-lot inputs to each lot's remaining shares at input time, with a "max N" hint next to every input; both forms track a `manualMode` flag — opening the picker pre-fills via FIFO and stays in "total → lots" mode, but the first edit to any lot input flips into "lots → total" mode where the top-level Shares field auto-syncs to the sum; closing and reopening the picker resets to auto-mode. Edit-form clamps against credit-restored remaining shares so the user can redistribute up to what is truly available.)*
 
 **Sub-phase 32d — Action-modal z-index above ConfigurableTable fullscreen overlay (extends SPEC-018)**
 369. [ ] When the Positions table is in fullscreen mode and the user clicks a row action (Sell / Dividend / row detail), the action's modal renders **above** the fullscreen overlay so the user can interact with it. Apply via document-body portal for action modals (or strict z-index above `fullscreenOverlay`). Same fix lives in any future use of `ConfigurableTable` (Reports table tab in Phase 29d)

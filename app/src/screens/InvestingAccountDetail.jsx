@@ -1954,6 +1954,10 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
   const [extId,         setExtId]         = useState('')
   const [showLots,      setShowLots]      = useState(false)
   const [lotInputs,     setLotInputs]     = useState({})
+  // Phase 32c / item 368: once the user edits any per-lot quantity, the form switches
+  // to "lots → total" mode (shares = sum of lot inputs). Reset by closing + reopening
+  // the picker.
+  const [manualMode,    setManualMode]    = useState(false)
 
   const selectedPos = positions.find(p => p.ticker === ticker)
   const currency = selectedPos?.currency ?? ''
@@ -1963,11 +1967,45 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
     setTicker(t)
     setShowLots(false)
     setLotInputs({})
+    setManualMode(false)
+  }
+
+  function handleSharesChange(value) {
+    setShares(value)
+    // "Total → lots" mode: re-run FIFO when the picker is open and the user hasn't
+    // taken manual control of any lot input yet.
+    if (showLots && !manualMode && openLots.length > 0) {
+      const sharesToSell = Number(value || 0)
+      const inputs = {}
+      if (sharesToSell > 0) {
+        const { allocations } = computeFifoAllocations(openLots, sharesToSell)
+        for (const alloc of allocations) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
+      }
+      for (const lot of openLots) if (!(lot.id in inputs)) inputs[lot.id] = '0'
+      setLotInputs(inputs)
+    }
+  }
+
+  function handleLotChange(lotId, raw) {
+    const lot = openLots.find(l => l.id === lotId)
+    if (!lot) return
+    // Phase 32c / item 367: clamp at input time to the lot's remaining shares so
+    // the user can't allocate more than is available.
+    let clamped = raw
+    const numVal = Number(raw)
+    if (Number.isFinite(numVal) && numVal > lot.remainingShares) {
+      clamped = String(lot.remainingShares)
+    }
+    const nextInputs = { ...lotInputs, [lotId]: clamped }
+    setLotInputs(nextInputs)
+    setManualMode(true)
+    const sum = Object.values(nextInputs).reduce((s, v) => s + Number(v || 0), 0)
+    setShares(sum > 0 ? trimDecimals(sum) : '')
   }
 
   function toggleLots() {
     if (!showLots) {
-      // Pre-fill with FIFO
+      // Pre-fill with FIFO and reset to auto-mode.
       const sharesToSell = Number(shares || 0)
       const inputs = {}
       if (sharesToSell > 0 && openLots.length > 0) {
@@ -1976,6 +2014,7 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
       }
       for (const lot of openLots) if (!(lot.id in inputs)) inputs[lot.id] = '0'
       setLotInputs(inputs)
+      setManualMode(false)
     }
     setShowLots(v => !v)
   }
@@ -2022,7 +2061,7 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
         <label className={styles.formLabel}>
           Shares {maxShares > 0 && <span className={styles.available}>({trimDecimals(maxShares)} available)</span>}
         </label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} placeholder="10" autoFocus={!tickerLocked && positions.length === 0} />
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => handleSharesChange(e.target.value)} placeholder="10" autoFocus={!tickerLocked && positions.length === 0} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share {currency && `(${currency})`}</label>
@@ -2051,8 +2090,9 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
                     className={styles.lotInput}
                     type="number" min="0" max={lot.remainingShares} step="any"
                     value={lotInputs[lot.id] ?? '0'}
-                    onChange={e => setLotInputs(prev => ({ ...prev, [lot.id]: e.target.value }))}
+                    onChange={e => handleLotChange(lot.id, e.target.value)}
                   />
+                  <span className={styles.lotMaxHint}>max {trimDecimals(lot.remainingShares)}</span>
                 </div>
               ))}
               {!lotValid && (
@@ -2144,6 +2184,9 @@ function SellEditForm({ txn, accountId, onSave, onCancel }) {
     for (const alloc of txn.lotAllocations ?? []) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
     return inputs
   })
+  // Phase 32c / item 368: lot-edit toggles manual mode (lots → total). Closing +
+  // reopening the picker resets to auto-mode (total → lots via FIFO).
+  const [manualMode,    setManualMode]    = useState(false)
 
   // Open lots EXCLUDING the shares being sold (they're currently "consumed" by this sell record).
   // updateSell deletes and recreates the movements, so for UI purposes we show the lots as if this sell didn't exist.
@@ -2156,6 +2199,37 @@ function SellEditForm({ txn, accountId, onSave, onCancel }) {
       : lot
   })
 
+  function handleSharesChange(value) {
+    setShares(value)
+    if (showLots && !manualMode && lotsWithCredit.length > 0) {
+      const sharesToSell = Number(value || 0)
+      const inputs = {}
+      if (sharesToSell > 0) {
+        const { allocations } = computeFifoAllocations(lotsWithCredit, sharesToSell)
+        for (const alloc of allocations) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
+      }
+      for (const lot of lotsWithCredit) if (!(lot.id in inputs)) inputs[lot.id] = '0'
+      setLotInputs(inputs)
+    }
+  }
+
+  function handleLotChange(lotId, raw) {
+    const lot = lotsWithCredit.find(l => l.id === lotId)
+    if (!lot) return
+    // Phase 32c / item 367: clamp to lot's remaining shares (including the credit-back
+    // from the existing allocation, so the user can redistribute up to what's truly available).
+    let clamped = raw
+    const numVal = Number(raw)
+    if (Number.isFinite(numVal) && numVal > lot.remainingShares) {
+      clamped = String(lot.remainingShares)
+    }
+    const nextInputs = { ...lotInputs, [lotId]: clamped }
+    setLotInputs(nextInputs)
+    setManualMode(true)
+    const sum = Object.values(nextInputs).reduce((s, v) => s + Number(v || 0), 0)
+    setShares(sum > 0 ? trimDecimals(sum) : '')
+  }
+
   function toggleLots() {
     if (!showLots) {
       const sharesToSell = Number(shares || 0)
@@ -2166,6 +2240,7 @@ function SellEditForm({ txn, accountId, onSave, onCancel }) {
       }
       for (const lot of lotsWithCredit) if (!(lot.id in inputs)) inputs[lot.id] = '0'
       setLotInputs(inputs)
+      setManualMode(false)
     }
     setShowLots(v => !v)
   }
@@ -2198,7 +2273,7 @@ function SellEditForm({ txn, accountId, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Shares</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} autoFocus />
+        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => handleSharesChange(e.target.value)} autoFocus />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share ({txn.currency})</label>
@@ -2227,8 +2302,9 @@ function SellEditForm({ txn, accountId, onSave, onCancel }) {
                     className={styles.lotInput}
                     type="number" min="0" max={lot.remainingShares} step="any"
                     value={lotInputs[lot.id] ?? '0'}
-                    onChange={e => setLotInputs(prev => ({ ...prev, [lot.id]: e.target.value }))}
+                    onChange={e => handleLotChange(lot.id, e.target.value)}
                   />
+                  <span className={styles.lotMaxHint}>max {trimDecimals(lot.remainingShares)}</span>
                 </div>
               ))}
               {!lotValid && (
