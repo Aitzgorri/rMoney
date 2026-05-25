@@ -779,6 +779,21 @@
 
 .relookupBtn:hover { color: #f1f5f9; border-color: #60a5fa; }
 
+/* Manual-stock chip (Phase 32e) — shown in Buy/Sell/Dividend forms beside the
+   ticker to remind users that no API data backs this position. */
+.manualStockChip {
+  display: inline-block;
+  background: #422006;
+  color: #fdba74;
+  border: 1px solid #7c2d12;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 2px 7px;
+  margin-top: 4px;
+}
+
 /* ── Dividend form extras ─────────────────────────────────────────────────── */
 
 .formLabelHint {

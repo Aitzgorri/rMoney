@@ -17,6 +17,7 @@ import { getPieChartPresets, getPieChartPresetsStorageBytes, deleteAllPieChartPr
 import { getDividendChartPresets, getDividendChartPresetsStorageBytes, deleteAllDividendChartPresets } from '../data/dividendChartPresets'
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
+import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -79,6 +80,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [fxBackfillResult, setFxBackfillResult] = useState(null)  // null | { processed, failed }
   const [apiDivHistStats,  setApiDivHistStats]  = useState(() => getApiDividendHistoryStats())
   const [apiDivHistDeleteConfirm, setApiDivHistDeleteConfirm] = useState(false)
+  const [manualPricesStats, setManualPricesStats] = useState(() => getManualPricesStats())
+  const [manualPricesDeleteConfirm, setManualPricesDeleteConfirm] = useState(false)
   const [renamingId,      setRenamingId]      = useState(null)
   const [renameValue,     setRenameValue]     = useState('')
   const [deletingTpl,     setDeletingTpl]     = useState(null)
@@ -1152,6 +1155,62 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     clearApiDividendHistory()
                     setApiDivHistStats(getApiDividendHistoryStats())
                     setApiDivHistDeleteConfirm(false)
+                  }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Manual stock prices (user-entered — included in all backups) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Manual stock prices</div>
+            <p className={styles.description}>
+              User-entered prices for manual stocks (assets the market data providers can't quote).
+              You enter these from each stock's page. Included in both Sharable and Full backups.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                {manualPricesStats.tickerCount === 0 ? (
+                  <div className={styles.storageEmptyRow}>No manual prices stored yet.</div>
+                ) : (
+                  manualPricesStats.perTicker.map(row => (
+                    <div key={row.ticker} className={styles.storageRow}>
+                      <span className={styles.storageTicker}>{row.ticker}</span>
+                      <span className={styles.storageCount}>{row.count} price{row.count !== 1 ? 's' : ''}</span>
+                      <span className={styles.storageBytes}>{fmtBytes(row.bytes)}</span>
+                    </div>
+                  ))
+                )}
+                {manualPricesStats.tickerCount > 0 && (
+                  <div className={`${styles.storageRow} ${styles.storageSubtotal}`}>
+                    <span className={styles.storageTicker}>Total</span>
+                    <span className={styles.storageCount}>
+                      {manualPricesStats.tickerCount} ticker{manualPricesStats.tickerCount !== 1 ? 's' : ''},
+                      {' '}{manualPricesStats.recordCount} price{manualPricesStats.recordCount !== 1 ? 's' : ''}
+                    </span>
+                    <span className={styles.storageBytes}>{fmtBytes(manualPricesStats.bytes)}</span>
+                    <button
+                      className={styles.btnSmDanger}
+                      onClick={() => setManualPricesDeleteConfirm(true)}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {manualPricesDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Clear all manual stock prices ({manualPricesStats.recordCount} records across {manualPricesStats.tickerCount} tickers)?
+                  This cannot be undone — these are user-entered prices, not API data, so they will not be re-fetched.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setManualPricesDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    clearAllManualPrices()
+                    setManualPricesStats(getManualPricesStats())
+                    setManualPricesDeleteConfirm(false)
                   }}>Clear</button>
                 </div>
               </div>

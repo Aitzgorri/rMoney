@@ -4,6 +4,12 @@ import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent
 import { getInvestingAccounts, getCashBalances, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
+import {
+  getLatestManualPrice as getLatestManualStockPrice,
+  getManualPricesForTicker,
+  setManualPriceEntry,
+  deleteManualPriceEntry,
+} from '../data/manualPrices'
 import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews } from '../data/marketDataClient'
 import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker, upsertApiDividends } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
@@ -73,6 +79,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [editingSplitTx,  setEditingSplitTx]  = useState(null)  // split stockTransaction being edited
   const [manualPriceForm, setManualPriceForm] = useState(null)   // null | { amount: string, currency: string }
   const [manualPriceKey,  setManualPriceKey]  = useState(0)      // bump to re-read manual price after save/clear
+  const [manualStockForm, setManualStockForm] = useState(null)   // null | { date, amount, currency } — for isManual stocks
+  const [manualStockListOpen, setManualStockListOpen] = useState(false)
   const [livePrice,       setLivePrice]       = useState(null)   // null | { price, currency, asOf, providerName }
   const [priceStatus,     setPriceStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [chartPeriod,     setChartPeriod]     = useState('6M')
@@ -106,9 +114,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   // profileKey / manualPriceKey state bumps force re-renders; reads below stay fresh each render
   const profile     = getStockProfile(norm)
   const manualPrice = getManualPrice(norm)
+  const isManualStockProfile = profile?.isManual === true
+  // Latest user-entered price for manual stocks (Phase 32e). Replaces the live-price line entirely.
+  const latestManualStock = isManualStockProfile ? getLatestManualStockPrice(norm) : null
 
   const fetchPrice = useCallback(async (forceRefresh = false) => {
-    if (manualPrice) return   // manual override in place — no API call needed
+    if (manualPrice || isManualStockProfile) return   // override or manual stock — no API call needed
     setPriceStatus('loading')
     try {
       const result = await getLatestPrice(norm, profile?.stockExchange ?? null, { forceRefresh })
@@ -117,7 +128,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     } catch {
       setPriceStatus('unavailable')
     }
-  }, [norm, profile?.stockExchange, manualPrice])
+  }, [norm, profile?.stockExchange, manualPrice, isManualStockProfile])
 
   useEffect(() => { fetchPrice() }, [fetchPrice])
 
@@ -269,9 +280,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const FILTER_LABELS = { all: 'All', buy: 'Buy', sell: 'Sell', transfer: 'Transfer', split: 'Split', dividend: 'Dividend', 'currency-exchange': 'FX' }
 
   // ── Return metrics ──────────────────────────────────────────────────────────
+  // Effective price source priority: per-stock manual override > manual-stock latest > live API price.
   const effectivePrice = manualPrice
     ? { price: manualPrice.amount, currency: manualPrice.currency }
-    : livePrice ?? null
+    : latestManualStock
+      ? { price: latestManualStock.price, currency: latestManualStock.currency }
+      : livePrice ?? null
   const totalShares         = positions.reduce((s, { pos }) => s + pos.shares, 0)
   const posCurrency         = positions[0]?.pos.currency ?? null
   const totalInvestedNative = positions.reduce((s, { pos }) => s + pos.shares * pos.avgCost, 0)
@@ -635,13 +649,15 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
           <button className={styles.dividendBtn} onClick={() => openAction('dividend')}>+ Dividend</button>
         </>}
-        <button
-          className={styles.profileBtn}
-          onClick={() => setResolving(true)}
-          title={profile?.name ? 'Refresh profile' : 'Resolve profile'}
-        >
-          {profile?.name ? 'Refresh profile' : 'Resolve profile'}
-        </button>
+        {!isManualStockProfile && (
+          <button
+            className={styles.profileBtn}
+            onClick={() => setResolving(true)}
+            title={profile?.name ? 'Refresh profile' : 'Resolve profile'}
+          >
+            {profile?.name ? 'Refresh profile' : 'Resolve profile'}
+          </button>
+        )}
         <button
           className={styles.profileBtn}
           onClick={() => setEditingProfile(true)}
@@ -656,15 +672,17 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         >
           Rename ticker
         </button>
-        <button
-          className={styles.profileBtn}
-          onClick={handleRefreshDividends}
-          disabled={divRefreshStatus === 'loading'}
-          title="Fetch dividend history from market data providers"
-        >
-          {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
-        </button>
-        {isStale && (
+        {!isManualStockProfile && (
+          <button
+            className={styles.profileBtn}
+            onClick={handleRefreshDividends}
+            disabled={divRefreshStatus === 'loading'}
+            title="Fetch dividend history from market data providers"
+          >
+            {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
+          </button>
+        )}
+        {!isManualStockProfile && isStale && (
           <span
             className={styles.staleDot}
             title="Dividend data is missing or outdated — click Refresh dividends"
@@ -687,7 +705,35 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
       {/* Price row */}
       <div className={styles.manualPriceRow}>
-        {manualPrice ? (
+        {isManualStockProfile ? (
+          <>
+            <span className={styles.manualStockBadge} title="No API data — prices are entered by you">Manual stock</span>
+            {latestManualStock ? (
+              <>
+                <span className={styles.manualPriceLabel}>Price:</span>
+                <span className={styles.manualPriceValue}>{fmtAmt(latestManualStock.price)} {latestManualStock.currency}</span>
+                <span className={styles.priceSource}>as of {latestManualStock.date}</span>
+              </>
+            ) : (
+              <span className={styles.priceUnavailable}>No price set yet</span>
+            )}
+            <button
+              className={styles.manualPriceBtn}
+              onClick={() => setManualStockForm({
+                date: new Date().toISOString().slice(0, 10),
+                amount: '',
+                currency: latestManualStock?.currency ?? profile?.currency ?? 'USD',
+              })}
+            >
+              {latestManualStock ? 'Set price' : 'Set first price'}
+            </button>
+            {getManualPricesForTicker(norm).length > 0 && (
+              <button className={styles.manualPriceBtn} onClick={() => setManualStockListOpen(o => !o)}>
+                {manualStockListOpen ? 'Hide history' : 'Price history'}
+              </button>
+            )}
+          </>
+        ) : manualPrice ? (
           <>
             <span className={styles.manualPriceLabel}>Price (manual):</span>
             <span className={styles.manualPriceValue}>{fmtAmt(manualPrice.amount)} {manualPrice.currency}</span>
@@ -755,6 +801,70 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           <button className={styles.manualPriceCancelBtn} onClick={() => setManualPriceForm(null)}>
             Cancel
           </button>
+        </div>
+      )}
+
+      {/* Manual-stock price-entry form (Phase 32e) — accepts date + price + currency. */}
+      {manualStockForm && (
+        <div className={styles.manualPriceForm}>
+          <input
+            className={styles.manualPriceInput}
+            type="date"
+            value={manualStockForm.date}
+            onChange={e => setManualStockForm(f => ({ ...f, date: e.target.value }))}
+            style={{ minWidth: 140 }}
+          />
+          <input
+            className={styles.manualPriceInput}
+            type="number"
+            min="0"
+            step="any"
+            value={manualStockForm.amount}
+            placeholder="Price"
+            onChange={e => setManualStockForm(f => ({ ...f, amount: e.target.value }))}
+            autoFocus
+          />
+          <input
+            className={styles.manualPriceCurrencyInput}
+            value={manualStockForm.currency}
+            placeholder="USD"
+            maxLength={4}
+            onChange={e => setManualStockForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))}
+          />
+          <button
+            className={styles.manualPriceSaveBtn}
+            disabled={!manualStockForm.date || !manualStockForm.amount || !manualStockForm.currency}
+            onClick={() => {
+              setManualPriceEntry(norm, manualStockForm.date, manualStockForm.amount, manualStockForm.currency)
+              setManualStockForm(null)
+              setManualPriceKey(k => k + 1)
+            }}
+          >
+            Save
+          </button>
+          <button className={styles.manualPriceCancelBtn} onClick={() => setManualStockForm(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Manual-stock price history (Phase 32e) — collapsed by default. */}
+      {isManualStockProfile && manualStockListOpen && (
+        <div className={styles.manualStockHistory}>
+          {getManualPricesForTicker(norm).map(row => (
+            <div key={row.date} className={styles.manualStockHistoryRow}>
+              <span className={styles.manualStockHistoryDate}>{row.date}</span>
+              <span className={styles.manualStockHistoryPrice}>{fmtAmt(row.price)} {row.currency}</span>
+              <button
+                className={styles.manualPriceBtn}
+                onClick={() => setManualStockForm({ date: row.date, amount: String(row.price), currency: row.currency })}
+              >Edit</button>
+              <button
+                className={styles.manualPriceClearBtn}
+                onClick={() => { deleteManualPriceEntry(norm, row.date); setManualPriceKey(k => k + 1) }}
+              >Delete</button>
+            </div>
+          ))}
         </div>
       )}
 

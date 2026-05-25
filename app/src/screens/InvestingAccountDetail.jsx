@@ -1640,6 +1640,9 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
               </button>
             </div>
           )}
+          {getStockProfile(ticker.trim().toUpperCase())?.isManual === true && (
+            <span className={styles.manualStockChip} title="No API data — prices are entered manually">Manual stock</span>
+          )}
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Exchange (optional)</label>
@@ -1851,6 +1854,10 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
         </div>
       </div>
 
+      {getStockProfile(finalTicker)?.isManual === true && (
+        <span className={styles.manualStockChip} title="No API data — prices are entered manually">Manual stock</span>
+      )}
+
       {isOther && (
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Ticker symbol</label>
@@ -2051,6 +2058,9 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
           </select>
         ) : (
           <input className={styles.formInput} value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" autoFocus />
+        )}
+        {getStockProfile(ticker)?.isManual === true && (
+          <span className={styles.manualStockChip} title="No API data — prices are entered manually">Manual stock</span>
         )}
       </div>
       <div className={styles.formRow}>

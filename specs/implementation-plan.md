@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32c + 32d + 32j done, sub-phases 32e–32i outstanding)*
+**Current phase: Phase 32 in progress** *(All MVP feature phases complete: 3, 4b, 5b, 5c, 6, 6b, 7; Phases 8–18 and 22–31 mostly complete — 3 deferred items in Phase 26 remain; Phase 31 done — Dividend page (SPEC-032) complete; Phase 32 in progress — sub-phases 32a + 32b + 32c + 32d + 32e + 32j done, sub-phases 32f–32i outstanding)*
 
 **Post-MVP — Project Phase 2 enhancements:** Phases 8–21 below cover the Phase 2 work from `project goal.md` (desktop layout, data portability, app-wide currency conversion, and the full Investments module). Start these after Phase 7.
 
@@ -796,12 +796,7 @@ SPEC-025 Investment CSV import (extension — Project Phase 4)
 
 **Sub-phase 32d — Action-modal z-index above ConfigurableTable fullscreen overlay (extends SPEC-018) ✓ DONE** *(item 369 complete; `InvestingAccountDetail.module.css` bumps `.overlay` 200→600 and `.txOverlay` 400→600, strictly above `ConfigurableTable.fullscreenOverlay` (500) and `.movementsFullscreenSection` (300) — Sell / Dividend / Edit-exchange / Edit-buy / Edit-sell / linked-tx modals now render on top when either fullscreen mode is active. Convention documented in SPEC-018 item 236 for reuse in Phase 29d Reports table)*
 
-**Sub-phase 32e — Manual stocks: custom assets with user-entered prices (extends SPEC-029)**
-370. [ ] Extend `stockProfiles` with `isManual: bool` (default `false`) and `manualPriceSource: 'user' | null`. New `manualPrices` collection keyed by `(ticker, date)`
-370a. [ ] "Add manual stock" entry point on Stock inventory (SPEC-033 Phase 30); creates `{ ticker, name, stockExchange (free-text, default `MANUAL`), currency, hqCountryOverride, isManual: true, manualPriceSource: 'user', resolvedSource: 'manual' }`
-370b. [ ] Stock page header: `[Set price]` button replaces the live-price line when `isManual === true`; opens a small form to enter `(price, date)`; latest manual price is shown wherever live prices are normally read. Manual-price history accessible from the same place
-370c. [ ] Provider-chain short-circuit: introduce `getQuoteForProfile(profile)` helper that gates every `getLatestPrice` / `getHistoricalSeries` / `getDividends` call. When `profile.isManual === true`, returns user-entered prices and user `dividends` only — no provider call. All consumers (Stock page, Investments overview, Reports, Buy-Sell Planning) route through this helper. "Manual stock" badge rendered on Stock page + Buy/Sell/Dividend forms
-370d. [ ] Storage tab: `manualPrices` registered as a per-stock-breakdown card
+**Sub-phase 32e — Manual stocks: custom assets with user-entered prices (extends SPEC-029) ✓ DONE** *(items 370–370d complete; `stockProfiles` gained `isManual` + `manualPriceSource`; new `manualPrices` collection (`rmoney_manual_prices`) keyed by `(ticker, date)` in `data/manualPrices.js`; `AddManualStockDialog` wired into Stock inventory beside the existing Add stock button; Stock page replaces the live-price line with a `[Set price]` form + collapsed price-history list and a "Manual stock" badge, hiding Refresh profile / Refresh dividends; `marketDataClient` short-circuits `getLatestPrice` / `getHistoricalSeries` / `getDividends` / `getIntradaySeries` / `getNews` / `getCorporateActions` on `isManualStock(ticker)`, with a convenience `getQuoteForProfile(profile)` export for callers that already hold a profile; Buy / Sell / Dividend forms in `InvestingAccountDetail` render the "Manual stock" chip below the ticker field; `renameTicker` cascades manual-price rows in both modes, permanent-delete drops them; Settings → Storage tab gained a "Manual stock prices" card with per-ticker breakdown + bulk-clear; portability includes the collection in both Sharable and Full backups.)*
 
 **Sub-phase 32f — Trading fees configuration (foundation for SPEC-034)**
 371. [ ] Settings → Investments tab: new "Trading fees" card. Per stock-exchange defaults: `{ mic, currency, feePercent, minimumFee }`. Per-stock overrides: `{ ticker, feePercent, minimumFee, currency }`. Adding an exchange offers the canonical-MIC list from `marketDataExchanges.js`

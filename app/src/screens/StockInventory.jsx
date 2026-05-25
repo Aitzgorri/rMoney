@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
 import {
   getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile, setConfirmed,
-  archiveStockProfile, unarchiveStockProfile, deleteStockProfile,
+  archiveStockProfile, unarchiveStockProfile, deleteStockProfile, createManualStockProfile,
 } from '../data/stockProfiles'
 import { getStockTransactionsByTicker, hasOpenLotsForTicker } from '../data/stockTransactions'
 import { getDividendsByTicker } from '../data/dividends'
 import { getAllPortfolioAssignments } from '../data/portfolios'
 import { getAllWatchlistEntries, deleteWatchlistEntriesForTicker } from '../data/watchlists'
 import { deleteApiDividendHistoryForTicker } from '../data/apiDividendHistory'
+import { deleteManualPricesForTicker } from '../data/manualPrices'
 import { getLatestPrice } from '../data/marketDataClient'
 import { fmtAmt } from '../utils/format'
 import EditProfileDialog from '../components/EditProfileDialog'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
+import AddManualStockDialog from '../components/AddManualStockDialog'
 import styles from './StockInventory.module.css'
 
 const SORT_KEY    = 'rmoney_stock_inventory_sort'
@@ -53,6 +55,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
   const [addInput, setAddInput] = useState('')
   const [addError, setAddError] = useState('')
   const [resolving, setResolving] = useState(null) // { ticker, direction }
+  const [manualAddOpen, setManualAddOpen] = useState(false)
 
   // If a deep-link arrived with a filter override, persist it so the user's
   // next visit to this page remembers what brought them here.
@@ -200,6 +203,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
     if (deleteInput.trim().toUpperCase() !== ticker.toUpperCase()) return
     deleteStockProfile(ticker)
     deleteApiDividendHistoryForTicker(ticker)
+    deleteManualPricesForTicker(ticker)
     setDeletingTicker(null)
     setDeleteInput('')
     refresh()
@@ -269,6 +273,13 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
           />
           <button className={styles.addBtn} onClick={handleAdd} disabled={!addInput.trim()}>
             + Add stock
+          </button>
+          <button
+            className={styles.addBtn}
+            onClick={() => setManualAddOpen(true)}
+            title="Add an asset with no API data — you enter the prices"
+          >
+            + Manual stock
           </button>
         </div>
         {addError && <p className={styles.addError}>{addError}</p>}
@@ -411,6 +422,18 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* ── Add manual stock dialog ────────────────────────────────────────── */}
+      {manualAddOpen && (
+        <AddManualStockDialog
+          onConfirm={fields => {
+            createManualStockProfile(fields)
+            setManualAddOpen(false)
+            refresh()
+          }}
+          onCancel={() => setManualAddOpen(false)}
+        />
       )}
 
       {/* ── Resolution dialog ──────────────────────────────────────────────── */}

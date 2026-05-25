@@ -1,6 +1,7 @@
 import { getMarketDataProviders } from './settings'
 import { getSecret } from '../utils/secrets'
-import { getManualPrice } from './stockProfiles'
+import { getManualPrice, isManualStock } from './stockProfiles'
+import { getLatestManualPrice, getManualPricesForTicker } from './manualPrices'
 import {
   getCachedPrice, setCachedPrice,
   getCachedNews, setCachedNews,
@@ -73,6 +74,13 @@ async function callChain(methodName, methodArgs) {
 export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) {
   const t = ticker.toUpperCase()
 
+  // Manual stocks: no provider call — read the latest user-entered price.
+  if (isManualStock(t)) {
+    const latest = getLatestManualPrice(t)
+    if (latest) return Promise.resolve({ price: latest.price, currency: latest.currency, asOf: latest.date, providerName: 'manual-stock' })
+    return Promise.reject(new Error('no manual price set'))
+  }
+
   const manual = getManualPrice(t)
   if (manual) return Promise.resolve({ price: manual.amount, currency: manual.currency, asOf: manual.setAt, providerName: 'manual' })
 
@@ -93,6 +101,9 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
 export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {}) {
   const t = ticker.toUpperCase()
 
+  // Manual stocks: no intraday data — reject so the chart falls through to "unavailable"
+  if (isManualStock(t)) return Promise.reject(new Error('not supported for manual stocks'))
+
   if (!forceRefresh) {
     const cached = getCachedIntraday(t, exchange)
     if (cached) return Promise.resolve(cached)
@@ -108,27 +119,55 @@ export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {
 // Returns [{ date, close }] — not cached in Phase 2
 export function getHistoricalSeries(ticker, exchange, period, resolution) {
   const t = ticker.toUpperCase()
+
+  // Manual stocks: synthesize the series from user-entered manual prices.
+  if (isManualStock(t)) {
+    const rows = getManualPricesForTicker(t)
+    if (rows.length === 0) return Promise.reject(new Error('no manual price history'))
+    // Sort ascending and pick rows in the requested period window.
+    const asc = [...rows].reverse()
+    const fromIso = isoNDaysAgo(period)
+    const inWindow = fromIso ? asc.filter(r => r.date >= fromIso) : asc
+    return Promise.resolve(inWindow.map(r => ({ date: r.date, close: r.price })))
+  }
+
   return dedup(`series:${t}:${exchange ?? ''}:${period}:${resolution}`, async () => {
     const { result } = await callChain('getHistoricalSeries', [t, exchange, period, resolution])
     return result
   })
 }
 
+function isoNDaysAgo(period) {
+  const map = { '1M': 31, '3M': 93, '6M': 186, '1Y': 366, '5Y': 1830 }
+  const days = map[period]
+  if (!days) return null  // 'All' or unknown — return all rows
+  return new Date(Date.now() - days * 24 * 3600 * 1000).toISOString().slice(0, 10)
+}
+
 // Returns [{ exDate, amount, currency, paymentDate? }]
 export async function getDividends(ticker, exchange, fromDate, toDate) {
-  const { result } = await callChain('getDividends', [ticker.toUpperCase(), exchange ?? null, fromDate, toDate])
+  const t = ticker.toUpperCase()
+  // Manual stocks have no API-driven dividend feed — user-recorded dividends
+  // (in the `dividends` collection) are the only source for these tickers.
+  if (isManualStock(t)) return []
+  const { result } = await callChain('getDividends', [t, exchange ?? null, fromDate, toDate])
   return result
 }
 
 // Returns [{ date, type, ratio? }]
 export async function getCorporateActions(ticker, fromDate) {
-  const { result } = await callChain('getCorporateActions', [ticker.toUpperCase(), fromDate])
+  const t = ticker.toUpperCase()
+  if (isManualStock(t)) return []
+  const { result } = await callChain('getCorporateActions', [t, fromDate])
   return result
 }
 
 // Returns { items: [{ headline, source, url, publishedAt }], providerName }
 export function getNews(ticker, limit = 5, { forceRefresh = false } = {}) {
   const t = ticker.toUpperCase()
+
+  // Manual stocks have no news feed — return empty list so the section hides.
+  if (isManualStock(t)) return Promise.resolve({ items: [], providerName: 'manual-stock' })
 
   if (!forceRefresh) {
     const cached = getCachedNews(t)
@@ -224,6 +263,32 @@ async function _searchSymbols(query) {
   }
 
   return Array.from(merged.values())
+}
+
+// Convenience wrapper for callers that already have a stockProfile in hand
+// (Phase 32e). When `profile.isManual === true`, every provider read is
+// short-circuited to user-entered prices and an empty dividend feed — no
+// network call. Returns the same shape as `getLatestPrice` so consumers can
+// drop in. The standalone provider-chain functions above also self-gate on
+// `isManualStock(ticker)`, so this helper is purely ergonomic: it skips the
+// localStorage profile lookup the gate would otherwise perform.
+//
+// `profile` may be null/undefined — falls back to the standard chain.
+export function getQuoteForProfile(profile, options = {}) {
+  if (!profile?.ticker) return Promise.reject(new Error('profile missing ticker'))
+  if (profile.isManual === true) {
+    const latest = getLatestManualPrice(profile.ticker)
+    if (latest) {
+      return Promise.resolve({
+        price: latest.price,
+        currency: latest.currency,
+        asOf: latest.date,
+        providerName: 'manual-stock',
+      })
+    }
+    return Promise.reject(new Error('no manual price set'))
+  }
+  return getLatestPrice(profile.ticker, profile.stockExchange ?? null, options)
 }
 
 // Tests a single named provider with a lightweight AAPL price call.

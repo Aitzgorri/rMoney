@@ -3,6 +3,7 @@ import {
   deleteApiDividendHistoryForTicker,
   renameApiDividendHistoryTicker,
 } from './apiDividendHistory'
+import { renameManualPricesTicker } from './manualPrices'
 
 const KEY = 'rmoney_stock_profiles'
 
@@ -87,7 +88,35 @@ export function getDividendFrequency(ticker) {
   return getStockProfile(ticker)?.dividendFrequency ?? 'unknown'
 }
 
-// ─── Manual price override ───────────────────────────────────────────────────
+// ─── Manual stocks (Phase 32e / SPEC-029) ────────────────────────────────────
+
+// Returns true when the stock is user-tracked with no provider data
+// (pre-IPO RSUs, private equity, custom baskets, delisted holdings the user
+// still tracks). For these tickers, the market-data provider chain is bypassed
+// and every quote reads from the `manualPrices` collection.
+export function isManualStock(ticker) {
+  return getStockProfile(ticker)?.isManual === true
+}
+
+// Creates a new manual-stock profile. Caller must check ticker uniqueness.
+// Sets confirmed: true because the user is explicitly declaring the mapping.
+export function createManualStockProfile({ ticker, name, stockExchange, currency, hqCountry }) {
+  const now = new Date().toISOString()
+  upsertStockProfile(ticker, {
+    name: name ?? null,
+    stockExchange: stockExchange?.trim() || 'MANUAL',
+    currency: currency?.trim().toUpperCase() ?? null,
+    hqCountry: hqCountry?.trim() || null,
+    isManual: true,
+    manualPriceSource: 'user',
+    resolvedSource: 'manual',
+    resolvedAt: now,
+    confirmed: true,
+    confirmedAt: now,
+  })
+}
+
+// ─── Manual price override (per-stock - distinct from manual-stock above) ────
 
 export function getManualPrice(ticker) {
   return getStockProfile(ticker)?.manualPrice ?? null
@@ -168,6 +197,7 @@ export function renameTicker(oldTicker, newTicker, resolvedFields = {}, mode = '
     renameInKey('rmoney_dividends', old, next)
     renameInKey('rmoney_watchlist_entries', old, next)
     renameInKey('rmoney_portfolio_assignments', old, next)
+    renameManualPricesTicker(old, next)
 
     // API caches: drop the wrong-identity data so it doesn't bleed through.
     deleteApiDividendHistoryForTicker(old)
@@ -184,6 +214,7 @@ export function renameTicker(oldTicker, newTicker, resolvedFields = {}, mode = '
     renameInKey('rmoney_watchlist_entries', old, next)
     renameInKey('rmoney_portfolio_assignments', old, next)
     renameApiDividendHistoryTicker(old, next)
+    renameManualPricesTicker(old, next)
   }
 
   // Clear cached price / profile / news / intraday for the old ticker in both modes
