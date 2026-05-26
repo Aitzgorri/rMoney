@@ -187,8 +187,8 @@ function AccountCard({ account, mainCurrency, isSelected, onClick, onEdit, onDel
             </span>
           )}
           <div className={styles.cardActions}>
-            <button className={styles.actionBtn} onClick={e => { e.stopPropagation(); onEdit() }} title="Edit">✎</button>
-            <button className={styles.actionBtnDelete} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete">×</button>
+            <button className={styles.actionBtn} onClick={e => { e.stopPropagation(); onEdit() }} title="Edit" aria-label="Edit account">✎</button>
+            <button className={styles.actionBtnDelete} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete" aria-label="Delete account">×</button>
           </div>
         </div>
       </div>

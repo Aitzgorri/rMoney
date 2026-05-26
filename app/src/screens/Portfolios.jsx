@@ -314,8 +314,8 @@ function PortfolioNodeRow({ node, depth, isFirst, isLast, showWarning, onEdit, o
       )}
 
       <div className={styles.nodeActions}>
-        <button className={styles.moveBtn} onClick={onMoveUp} disabled={isFirst} title="Move up">↑</button>
-        <button className={styles.moveBtn} onClick={onMoveDown} disabled={isLast} title="Move down">↓</button>
+        <button className={styles.moveBtn} onClick={onMoveUp} disabled={isFirst} title="Move up" aria-label="Move up">↑</button>
+        <button className={styles.moveBtn} onClick={onMoveDown} disabled={isLast} title="Move down" aria-label="Move down">↓</button>
         <button className={styles.actionBtn} onClick={onEdit}>Edit</button>
         <button className={styles.actionBtn} onClick={onAddChild}>+ Group</button>
         <button className={styles.actionBtn} onClick={onAddStock}>+ Stock</button>
@@ -323,6 +323,7 @@ function PortfolioNodeRow({ node, depth, isFirst, isLast, showWarning, onEdit, o
           className={`${styles.actionBtn} ${styles.actionBtnDelete}`}
           onClick={onDelete}
           title="Delete"
+          aria-label="Delete portfolio node"
         >×</button>
       </div>
     </div>
@@ -355,7 +356,7 @@ function AssignmentRow({ assignment, depth, isEditing, onEditStart, onEditSave, 
       </span>
       <div className={styles.assignActions}>
         <button className={styles.actionBtn} onClick={onEditStart}>Edit %</button>
-        <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={onDelete}>×</button>
+        <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={onDelete} aria-label="Remove stock assignment">×</button>
       </div>
     </div>
   )

@@ -360,8 +360,8 @@ function EnvelopeRow({ envelope, balance, isBuiltIn, isArchived, onClick, editin
           </span>
           {isBuiltIn && !isArchived && (
             <div className={styles.actions}>
-              <button className={styles.actionBtn} onClick={onRename} title="Rename">✎</button>
-              <button className={styles.actionBtn} onClick={onArchive} title="Archive">⊘</button>
+              <button className={styles.actionBtn} onClick={onRename} title="Rename" aria-label="Rename">✎</button>
+              <button className={styles.actionBtn} onClick={onArchive} title="Archive" aria-label="Archive">⊘</button>
             </div>
           )}
         </>
@@ -445,9 +445,9 @@ function EnvelopeNode({
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.actionBtn} onClick={() => onStartEditing(envelope)} title="Rename">✎</button>
-          <button className={styles.actionBtn} onClick={() => onStartAdding(envelope.id)} title="Add sub-envelope">+</button>
-          <button className={styles.actionBtnDelete} onClick={() => onDeleteRequest(envelope)} title="Delete">×</button>
+          <button className={styles.actionBtn} onClick={() => onStartEditing(envelope)} title="Rename" aria-label="Rename">✎</button>
+          <button className={styles.actionBtn} onClick={() => onStartAdding(envelope.id)} title="Add sub-envelope" aria-label="Add sub-envelope">+</button>
+          <button className={styles.actionBtnDelete} onClick={() => onDeleteRequest(envelope)} title="Delete" aria-label="Delete envelope">×</button>
         </div>
       </div>
 

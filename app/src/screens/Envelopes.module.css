@@ -41,7 +41,6 @@
   padding: 12px 14px;
 }
 
-.builtInRow:hover .actions { opacity: 1; }
 
 .archivedRow { opacity: 0.5; }
 
@@ -134,11 +133,8 @@
 .actions {
   display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
 
-.row:hover .actions { opacity: 1; }
 
 .actionBtn {
   background: #2d3448;

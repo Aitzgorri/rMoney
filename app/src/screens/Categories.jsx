@@ -327,10 +327,10 @@ function CategoryNode({
         <BudgetBadge categoryId={category.id} all={all} />
 
         <div className={styles.actions}>
-          <button className={styles.actionBtn} onClick={() => onStartAdding(category.id, activeType)} title="Add subcategory">+</button>
+          <button className={styles.actionBtn} onClick={() => onStartAdding(category.id, activeType)} title="Add subcategory" aria-label="Add subcategory">+</button>
           {category.isBuiltIn
-            ? <button className={styles.actionBtn} onClick={() => onArchiveRequest(category)} title="Archive">⊘</button>
-            : <button className={styles.actionBtnDelete} onClick={() => onDeleteRequest(category)} title="Delete">×</button>
+            ? <button className={styles.actionBtn} onClick={() => onArchiveRequest(category)} title="Archive" aria-label="Archive">⊘</button>
+            : <button className={styles.actionBtnDelete} onClick={() => onDeleteRequest(category)} title="Delete" aria-label="Delete category">×</button>
           }
         </div>
       </div>

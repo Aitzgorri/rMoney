@@ -112,11 +112,7 @@
 .cardActions {
   display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
-
-.accountCard:hover .cardActions { opacity: 1; }
 
 .actionBtn {
   background: #2d3448;

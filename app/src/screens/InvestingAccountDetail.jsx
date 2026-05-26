@@ -564,8 +564,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                     <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('deposit') }}>Deposit</button>
                     <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('withdraw') }}>Withdraw</button>
                     <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('exchange') }}>Exchange</button>
-                    <button className={styles.actionBtnIcon} onClick={() => startEditOpening(bal)} title="Edit opening balance">✎</button>
-                    <button className={`${styles.actionBtnIcon} ${styles.dangerIcon}`} onClick={() => handleDeleteBalanceRequest(bal)} title="Delete">×</button>
+                    <button className={styles.actionBtnIcon} onClick={() => startEditOpening(bal)} title="Edit opening balance" aria-label="Edit opening balance">✎</button>
+                    <button className={`${styles.actionBtnIcon} ${styles.dangerIcon}`} onClick={() => handleDeleteBalanceRequest(bal)} title="Delete cash balance" aria-label="Delete cash balance">×</button>
                   </div>
                   {editingOpeningId === bal.id && (
                     <div className={styles.openingEdit}>
@@ -983,7 +983,7 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
         </span>
         {!isOpening && <span className={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</span>}
         {onDelete && (
-          <button className={styles.movementDeleteBtn} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete">×</button>
+          <button className={styles.movementDeleteBtn} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete movement" aria-label="Delete movement">×</button>
         )}
       </div>
       {isExpanded && (

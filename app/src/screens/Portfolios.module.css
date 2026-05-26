@@ -142,12 +142,8 @@
 .nodeActions {
   display: flex;
   gap: 2px;
-  opacity: 0;
-  transition: opacity 0.12s;
   flex-shrink: 0;
 }
-
-.nodeRow:hover .nodeActions { opacity: 1; }
 
 .actionBtn {
   background: #2d3448;
@@ -217,12 +213,8 @@
 .assignActions {
   display: flex;
   gap: 3px;
-  opacity: 0;
-  transition: opacity 0.12s;
   flex-shrink: 0;
 }
-
-.assignRow:hover .assignActions { opacity: 1; }
 
 /* ── Warning line ─────────────────────────────────────────────────────────── */
 
