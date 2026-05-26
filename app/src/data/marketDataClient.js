@@ -7,6 +7,7 @@ import {
   getCachedNews, setCachedNews, getCachedNewsStale,
   getCachedMarketProfile, setCachedMarketProfile,
   getCachedIntraday, setCachedIntraday, getCachedIntradayStale,
+  isCoolingDown, setCooldown, clearCooldown,
 } from '../utils/marketDataCache'
 import { logCall, sanitiseReason } from '../utils/marketDataLogger'
 import { ibkr }         from '../services/providers/ibkr'
@@ -87,6 +88,14 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
   if (!forceRefresh) {
     const cached = getCachedPrice(t, exchange)
     if (cached) return Promise.resolve(cached)
+    if (isCoolingDown('prices', t, exchange)) {
+      logCall({ callType: 'getLatestPrice', args: [t, exchange], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
+      const stale = getCachedPriceStale(t, exchange)
+      if (stale) return Promise.resolve({ ...stale, providerName: 'stale-cache', isStale: true })
+      const lkp = getStockProfile(t)?.lastKnownPrice
+      if (lkp) return Promise.resolve({ price: lkp.amount, currency: lkp.currency, asOf: lkp.fetchedAt, providerName: 'lastKnownPrice', isStale: true })
+      return Promise.reject(new Error('unavailable (cooldown)'))
+    }
   }
 
   return dedup(`price:${t}:${exchange ?? ''}`, async () => {
@@ -94,6 +103,7 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
       const { result, providerName } = await callChain('getLatestPrice', [t, exchange])
       const entry = { ...result, providerName }
       setCachedPrice(t, exchange, entry)
+      clearCooldown('prices', t, exchange)
       // Persist as lastKnownPrice so offline renders can fall back to it.
       // Guard: only update an existing profile — never create one here.
       if (getStockProfile(t)) {
@@ -103,6 +113,7 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
       }
       return entry
     } catch (err) {
+      setCooldown('prices', t, exchange)
       const stale = getCachedPriceStale(t, exchange)
       if (stale) return { ...stale, providerName: 'stale-cache', isStale: true }
       const lkp = getStockProfile(t)?.lastKnownPrice
@@ -124,14 +135,22 @@ export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {
   if (!forceRefresh) {
     const cached = getCachedIntraday(t, exchange)
     if (cached) return Promise.resolve(cached)
+    if (isCoolingDown('intraday', t, exchange)) {
+      logCall({ callType: 'getIntradaySeries', args: [t, exchange], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
+      const stale = getCachedIntradayStale(t, exchange)
+      if (stale) return Promise.resolve(stale)
+      return Promise.reject(new Error('unavailable (cooldown)'))
+    }
   }
 
   return dedup(`intraday:${t}:${exchange ?? ''}`, async () => {
     try {
       const { result } = await callChain('getIntradaySeries', [t, exchange])
       setCachedIntraday(t, exchange, result)
+      clearCooldown('intraday', t, exchange)
       return result
     } catch (err) {
+      setCooldown('intraday', t, exchange)
       const stale = getCachedIntradayStale(t, exchange)
       if (stale) return stale
       throw err
@@ -154,9 +173,20 @@ export function getHistoricalSeries(ticker, exchange, period, resolution) {
     return Promise.resolve(inWindow.map(r => ({ date: r.date, close: r.price })))
   }
 
+  if (isCoolingDown('historical', t, exchange)) {
+    logCall({ callType: 'getHistoricalSeries', args: [t, exchange, period, resolution], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
+    return Promise.reject(new Error('unavailable (cooldown)'))
+  }
+
   return dedup(`series:${t}:${exchange ?? ''}:${period}:${resolution}`, async () => {
-    const { result } = await callChain('getHistoricalSeries', [t, exchange, period, resolution])
-    return result
+    try {
+      const { result } = await callChain('getHistoricalSeries', [t, exchange, period, resolution])
+      clearCooldown('historical', t, exchange)
+      return result
+    } catch (err) {
+      setCooldown('historical', t, exchange)
+      throw err
+    }
   })
 }
 
@@ -195,6 +225,12 @@ export function getNews(ticker, limit = 5, { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedNews(t)
     if (cached) return Promise.resolve({ items: cached, providerName: 'cache' })
+    if (isCoolingDown('news', t, null)) {
+      logCall({ callType: 'getNews', args: [t, limit], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
+      const stale = getCachedNewsStale(t)
+      if (stale) return Promise.resolve({ items: stale, providerName: 'stale-cache', isStale: true })
+      return Promise.reject(new Error('unavailable (cooldown)'))
+    }
   }
 
   return dedup(`news:${t}:${limit}`, async () => {
@@ -202,8 +238,10 @@ export function getNews(ticker, limit = 5, { forceRefresh = false } = {}) {
       const { result, providerName } = await callChain('getNews', [t, limit])
       const items = Array.isArray(result) ? result : result.items ?? []
       setCachedNews(t, items)
+      clearCooldown('news', t, null)
       return { items, providerName }
     } catch (err) {
+      setCooldown('news', t, null)
       const stale = getCachedNewsStale(t)
       if (stale) return { items: stale, providerName: 'stale-cache', isStale: true }
       throw err

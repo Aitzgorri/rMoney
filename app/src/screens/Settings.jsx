@@ -915,10 +915,11 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               Lower values give fresher data but use more API quota. Range: 1–1440 minutes.
             </p>
             {[
-              { field: 'pricesMin',   label: 'Prices',   hint: 'Stock price' },
-              { field: 'forexMin',    label: 'Forex',    hint: 'Currency exchange rates' },
-              { field: 'newsMin',     label: 'News',     hint: 'Company news headlines' },
-              { field: 'intradayMin', label: 'Intraday', hint: '1-minute intraday bars' },
+              { field: 'pricesMin',          label: 'Prices',        hint: 'Stock price' },
+              { field: 'forexMin',           label: 'Forex',         hint: 'Currency exchange rates' },
+              { field: 'newsMin',            label: 'News',          hint: 'Company news headlines' },
+              { field: 'intradayMin',        label: 'Intraday',      hint: '1-minute intraday bars' },
+              { field: 'failureCooldownMin', label: 'After failure', hint: 'How long to wait before retrying a ticker that just failed across every provider (404 / 429 / coverage gap). Cleared by Reset API.' },
             ].map(({ field, label, hint }) => (
               <div key={field} className={styles.field}>
                 <label className={styles.label} title={hint}>{label} (min)</label>

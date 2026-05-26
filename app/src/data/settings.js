@@ -227,19 +227,21 @@ export function setMarketDataProviders(config) {
 export function getApiCacheTtl() {
   const s = getSetting('apiCacheTtl', {})
   return {
-    pricesMin:   s.pricesMin   ?? 60,
-    forexMin:    s.forexMin    ?? 60,
-    newsMin:     s.newsMin     ?? 15,
-    intradayMin: s.intradayMin ?? 5,
+    pricesMin:          s.pricesMin          ?? 60,
+    forexMin:           s.forexMin           ?? 60,
+    newsMin:            s.newsMin            ?? 15,
+    intradayMin:        s.intradayMin        ?? 5,
+    failureCooldownMin: s.failureCooldownMin ?? 15,
   }
 }
 
 export function setApiCacheTtl(shape) {
   setSetting('apiCacheTtl', {
-    pricesMin:   Number(shape.pricesMin)   || 60,
-    forexMin:    Number(shape.forexMin)    || 60,
-    newsMin:     Number(shape.newsMin)     || 15,
-    intradayMin: Number(shape.intradayMin) || 5,
+    pricesMin:          Number(shape.pricesMin)          || 60,
+    forexMin:           Number(shape.forexMin)           || 60,
+    newsMin:            Number(shape.newsMin)            || 15,
+    intradayMin:        Number(shape.intradayMin)        || 5,
+    failureCooldownMin: Number(shape.failureCooldownMin) || 15,
   })
 }
 

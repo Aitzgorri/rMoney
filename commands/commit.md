@@ -54,7 +54,7 @@ Phase 33 is split per `RELEASE.md` and `specs/implementation-plan.md`:
 
 | Release | Sub-phases |
 |---|---|
-| **v0.33.0** — Foundation + bug fixes + Android pipeline | 33a, 33b, 33c, 33d, 33i, 33k, 33m, 21a |
+| **v0.33.0** — Foundation + bug fixes + Android pipeline | 33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o, 21a |
 | **v0.34.0** — Dividend overhaul | 33e, 33f, 33g, 33h, 33j, 33l, 33n |
 
 If a single change crosses the boundary, flag it to the user before suggesting a commit — that is a sign the change should be split.
