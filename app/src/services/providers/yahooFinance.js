@@ -15,6 +15,16 @@ import { normaliseMinorUnit } from '../../utils/marketDataNormalise'
 const BASE = 'https://query1.finance.yahoo.com'
 const PROXY = { requiresProxy: true }
 
+// MIC → ISO 3166-1 alpha-2 country code. Used by getStockProfile as a fallback
+// when the API doesn't return country directly. Accurate for companies on their
+// home exchange; user can override via hqCountryOverride if needed.
+const MIC_COUNTRY = {
+  XLON: 'GB', XFRA: 'DE', XETR: 'DE', XAMS: 'NL', XPAR: 'FR',
+  XSWX: 'CH', XMAD: 'ES', XMIL: 'IT', XBRU: 'BE', XLIS: 'PT',
+  XSTO: 'SE', XHEL: 'FI', XOSL: 'NO', XCSE: 'DK', XASX: 'AU',
+  XTKS: 'JP', XTSE: 'CA', XHKG: 'HK', XNYS: 'US', XNAS: 'US',
+}
+
 function yfTicker(ticker, exchange) {
   const bare = stripProviderSuffix(ticker)
   if (!exchange) return bare
@@ -168,23 +178,21 @@ export const yahooFinance = {
       })
   },
 
-  async getStockProfile(ticker, _config) {
-    // Yahoo Finance quoteSummary uses a different base path but same proxy
-    const url = new URL(`/v10/finance/quoteSummary/${ticker}`, BASE)
-    url.searchParams.set('modules', 'assetProfile,price')
-    const r = await marketDataFetch(url.toString(), {}, PROXY)
-    if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const data = await r.json()
-    const err = data?.quoteSummary?.error
-    if (err) throw new Error(err.description ?? 'Yahoo Finance error')
-    const price   = data.quoteSummary?.result?.[0]?.price
-    const profile = data.quoteSummary?.result?.[0]?.assetProfile
-    if (!price?.shortName && !price?.longName) throw new Error('no data')
+  async getStockProfile(ticker, exchange, _config) {
+    // quoteSummary now returns 401 on many plans — use the chart endpoint instead,
+    // which is the same one getLatestPrice uses and works without auth.
+    const sym = yfTicker(ticker, exchange)
+    const data = await yf(`/v8/finance/chart/${sym}`, { interval: '1d', range: '1d' })
+    const meta = data.chart.result?.[0]?.meta
+    if (!meta?.regularMarketPrice) throw new Error('no data')
+    // Infer country from the exchange MIC. This is accurate for companies
+    // listed on their home exchange; the user can override via hqCountryOverride.
+    const mic = resolveExchange(exchange)
     return {
-      name:      price.longName ?? price.shortName ?? null,
-      exchanges: price.exchangeName ? [price.exchangeName] : [],
-      hqCountry: profile?.country ?? null,
-      currency:  price.currency ?? null,
+      name:      meta.longName ?? meta.shortName ?? null,
+      exchanges: meta.exchangeName ? [meta.exchangeName] : [],
+      hqCountry: MIC_COUNTRY[mic] ?? null,
+      currency:  meta.currency ?? null,
     }
   },
 }

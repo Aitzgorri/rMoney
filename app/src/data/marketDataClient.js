@@ -1,6 +1,6 @@
 import { getMarketDataProviders } from './settings'
 import { getSecret } from '../utils/secrets'
-import { getManualPrice, isManualStock } from './stockProfiles'
+import { getManualPrice, isManualStock, getStockProfile, upsertStockProfile } from './stockProfiles'
 import { getLatestManualPrice, getManualPricesForTicker } from './manualPrices'
 import {
   getCachedPrice, setCachedPrice,
@@ -90,10 +90,25 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
   }
 
   return dedup(`price:${t}:${exchange ?? ''}`, async () => {
-    const { result, providerName } = await callChain('getLatestPrice', [t, exchange])
-    const entry = { ...result, providerName }
-    setCachedPrice(t, exchange, entry)
-    return entry
+    try {
+      const { result, providerName } = await callChain('getLatestPrice', [t, exchange])
+      const entry = { ...result, providerName }
+      setCachedPrice(t, exchange, entry)
+      // Persist as lastKnownPrice so offline renders can fall back to it.
+      // Guard: only update an existing profile — never create one here.
+      if (getStockProfile(t)) {
+        upsertStockProfile(t, {
+          lastKnownPrice: { amount: result.price, currency: result.currency, fetchedAt: new Date().toISOString() },
+        })
+      }
+      return entry
+    } catch (err) {
+      const lkp = getStockProfile(t)?.lastKnownPrice
+      if (lkp) {
+        return { price: lkp.amount, currency: lkp.currency, asOf: lkp.fetchedAt, providerName: 'lastKnownPrice', isStale: true }
+      }
+      throw err
+    }
   })
 }
 
@@ -201,16 +216,19 @@ export async function getIndexSeries(indexTicker, period, resolution) {
 }
 
 // Returns { name, exchanges, hqCountry, currency, providerName }
-export function getMarketProfile(ticker, { forceRefresh = false } = {}) {
+// Pass exchange (MIC code or display name) so adapters can qualify the ticker
+// for non-US listings (e.g. 'VNA' + 'XETR' → Yahoo Finance uses 'VNA.DE').
+export function getMarketProfile(ticker, exchange, { forceRefresh = false } = {}) {
   const t = ticker.toUpperCase()
+  const ex = exchange ?? null
 
   if (!forceRefresh) {
     const cached = getCachedMarketProfile(t)
     if (cached) return Promise.resolve(cached)
   }
 
-  return dedup(`profile:${t}`, async () => {
-    const { result, providerName } = await callChain('getStockProfile', [t])
+  return dedup(`profile:${t}:${ex ?? ''}`, async () => {
+    const { result, providerName } = await callChain('getStockProfile', [t, ex])
     const entry = { ...result, providerName }
     setCachedMarketProfile(t, entry)
     return entry

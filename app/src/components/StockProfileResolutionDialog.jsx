@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getAiConnection } from '../data/settings'
 import { getSecret } from '../utils/secrets'
 import { upsertStockProfile } from '../data/stockProfiles'
-import { searchSymbols, getLatestPrice } from '../data/marketDataClient'
+import { searchSymbols, getLatestPrice, getMarketProfile } from '../data/marketDataClient'
 import { fmtAmt } from '../utils/format'
 import CurrencyDropdown from './CurrencyDropdown'
 import styles from './StockProfileResolutionDialog.module.css'
@@ -126,6 +126,8 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
       }
     }
     const now = new Date().toISOString()
+    const k = `${resolved.ticker}|${resolved.stockExchange ?? ''}`
+    const priceData = selected !== 'manual' ? prices[k] : null
     upsertStockProfile(resolved.ticker, {
       name:           resolved.name,
       stockExchange:  resolved.stockExchange,
@@ -134,7 +136,15 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
       resolvedAt:     now,
       confirmed:      true,
       confirmedAt:    now,
+      ...(priceData ? { lastKnownPrice: { amount: priceData.price, currency: priceData.currency, fetchedAt: now } } : {}),
     })
+    // Background: fetch the full market profile to capture hqCountry from providers.
+    // Pass the exchange so Yahoo Finance can qualify non-US tickers (e.g. VNA → VNA.DE).
+    // hqCountryOverride (user-set) is never touched here — preserved by upsertStockProfile merge.
+    getMarketProfile(resolved.ticker, resolved.stockExchange, { forceRefresh: true })
+      .then(mp => { if (mp.hqCountry) upsertStockProfile(resolved.ticker, { hqCountry: mp.hqCountry }) })
+      .catch(() => {})
+
     onConfirm(resolved)
   }
 

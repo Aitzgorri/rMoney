@@ -1,12 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getStockProfile, upsertStockProfile } from '../data/stockProfiles'
+import { getMarketProfile } from '../data/marketDataClient'
 import CurrencyDropdown from './CurrencyDropdown'
 import styles from './EditProfileDialog.module.css'
 
-export default function EditProfileDialog({ ticker, profile, onSave, onCancel }) {
+export default function EditProfileDialog({ ticker, profile: profileProp, onSave, onCancel }) {
+  // Read fresh from localStorage at mount — the background getMarketProfile fetch may have
+  // written hqCountry after the parent's state snapshot was taken.
+  const [profile] = useState(() => getStockProfile(ticker) ?? profileProp)
+
   const [name,      setName]      = useState(profile?.name ?? '')
   const [exchange,  setExchange]  = useState(profile?.stockExchange ?? '')
   const [currency,  setCurrency]  = useState(profile?.currency ?? '')
-  const [hqCountry, setHqCountry] = useState(profile?.hqCountry ?? '')
+  // Pre-populate with the effective value so the user sees the current country.
+  // Saving always writes to hqCountryOverride; clearing the field sets it to null
+  // and lets the auto-fetched hqCountry take over again.
+  const [hqCountryOverride, setHqCountryOverride] = useState(
+    profile?.hqCountryOverride ?? profile?.hqCountry ?? ''
+  )
+  const [fetchedHqCountry, setFetchedHqCountry] = useState(profile?.hqCountry ?? null)
+
+  // Fire a non-blocking profile fetch so the country field reflects the provider value
+  // even if the background fetch in StockProfileResolutionDialog hadn't completed yet.
+  useEffect(() => {
+    let cancelled = false
+    getMarketProfile(ticker, profile?.stockExchange ?? null, { forceRefresh: true })
+      .then(mp => {
+        if (cancelled || !mp.hqCountry) return
+        upsertStockProfile(ticker, { hqCountry: mp.hqCountry })
+        setFetchedHqCountry(mp.hqCountry)
+        // Only auto-fill the field if user hasn't typed an override
+        setHqCountryOverride(prev => prev === '' ? mp.hqCountry : prev)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [frequency, setFrequency] = useState(profile?.dividendFrequency ?? 'unknown')
   const [estRule,   setEstRule]   = useState(profile?.amountEstimationRule ?? 'last-paid')
   const [manualAmt, setManualAmt] = useState(String(profile?.manualEstimatedAmount ?? ''))
@@ -17,7 +47,7 @@ export default function EditProfileDialog({ ticker, profile, onSave, onCancel })
       name:                 name.trim() || null,
       stockExchange:        exchange.trim().toUpperCase() || null,
       currency:             currency || null,
-      hqCountry:            hqCountry.trim() || null,
+      hqCountryOverride:    hqCountryOverride.trim() || null,
       dividendFrequency:    frequency,
       amountEstimationRule: estRule,
       manualEstimatedAmount: estRule === 'manual' && manualAmt !== '' ? Number(manualAmt) : null,
@@ -46,7 +76,10 @@ export default function EditProfileDialog({ ticker, profile, onSave, onCancel })
           </div>
           <div className={styles.dialogField}>
             <label className={styles.dialogLabel}>HQ country</label>
-            <input className={styles.dialogInput} value={hqCountry} onChange={e => setHqCountry(e.target.value)} placeholder="United States" />
+            <input className={styles.dialogInput} value={hqCountryOverride} onChange={e => setHqCountryOverride(e.target.value)} placeholder="US" />
+            {fetchedHqCountry && profile?.hqCountryOverride && fetchedHqCountry !== profile.hqCountryOverride && (
+              <p className={styles.dialogHint}>Provider-fetched: <strong>{fetchedHqCountry}</strong></p>
+            )}
           </div>
           <div className={styles.dialogRow}>
             <div className={styles.dialogField}>

@@ -146,7 +146,7 @@ export const twelveData = {
       })
   },
 
-  async getStockProfile(ticker, config) {
+  async getStockProfile(ticker, _exchange, config) {
     const data = await td('/profile', { symbol: ticker }, config)
     if (!data.name) throw new Error('no data')
     return {

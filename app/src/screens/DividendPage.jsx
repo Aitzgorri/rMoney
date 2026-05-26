@@ -5,7 +5,7 @@ import {
   getApiDividendHistoryForTicker, refreshApiDividendHistory, isStaleForTicker, getRefreshMeta,
 } from '../data/apiDividendHistory'
 import { getDividendsByTicker, resolveDividendTaxPercent } from '../data/dividends'
-import { getStockProfile } from '../data/stockProfiles'
+import { getStockProfile, getEffectiveHqCountry } from '../data/stockProfiles'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getLatestPrice } from '../data/marketDataClient'
 import { convertToMain, ensureRates } from '../utils/currency'
@@ -495,9 +495,9 @@ export default function DividendPage() {
       rows.push({
         ticker,
         name:      profile?.name ?? ticker,
-        country:   profile?.hqCountry ?? null,
-        region:    countryDetailRegion(profile?.hqCountry),
-        continent: continentRegion(profile?.hqCountry),
+        country:   getEffectiveHqCountry(profile),
+        region:    countryDetailRegion(getEffectiveHqCountry(profile)),
+        continent: continentRegion(getEffectiveHqCountry(profile)),
         portfolio: assignments.find(a => a.ticker === ticker)?.portfolioId ?? null,
         marketValueMain,
         ttmYield,

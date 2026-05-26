@@ -53,6 +53,8 @@
   font-weight: 500;
 }
 
+.dialogHint { font-size: 11px; color: #64748b; margin: 4px 0 0; }
+
 .dialogInput {
   background: #1e2535;
   border: 1px solid #2d3448;

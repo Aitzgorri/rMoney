@@ -80,6 +80,24 @@ export function migrateConfirmedField() {
   localStorage.setItem(MIGRATION_KEY, '1')
 }
 
+// ─── HQ country (Phase 33b / SPEC-027) ──────────────────────────────────────
+
+// Resolution order: hqCountryOverride (user-set via Edit profile) → hqCountry
+// (auto-fetched from provider via Refresh profile / Re-identify ticker) → null.
+// Pass null-check at call site or fall through to 'Global' for display grouping.
+export function getEffectiveHqCountry(profile) {
+  return profile?.hqCountryOverride ?? profile?.hqCountry ?? null
+}
+
+// ─── Last-known price (Phase 33b / SPEC-029) ─────────────────────────────────
+
+// Returns { amount, currency, fetchedAt } or null.
+// Written by marketDataClient on every successful live fetch, and by the
+// resolution / rename dialogs when a candidate price is confirmed.
+export function getLastKnownPrice(ticker) {
+  return getStockProfile(ticker)?.lastKnownPrice ?? null
+}
+
 // ─── Dividend frequency ───────────────────────────────────────────────────────
 
 // Returns the stored dividendFrequency for the ticker, or 'unknown' if not set.

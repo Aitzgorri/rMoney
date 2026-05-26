@@ -170,6 +170,7 @@
 .tickerBtn:hover { text-decoration: underline; }
 
 .missing { color: #475569; }
+.staleIcon { margin-left: 4px; font-size: 0.8em; opacity: 0.6; cursor: help; }
 
 .confirmedBtn {
   background: none;

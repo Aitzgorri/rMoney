@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile, setConfirmed,
   archiveStockProfile, unarchiveStockProfile, deleteStockProfile, createManualStockProfile,
+  getEffectiveHqCountry,
 } from '../data/stockProfiles'
 import { getStockTransactionsByTicker, hasOpenLotsForTicker } from '../data/stockTransactions'
 import { getDividendsByTicker } from '../data/dividends'
@@ -100,7 +101,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
     })
     for (const p of list) {
       getLatestPrice(p.ticker, p.stockExchange ?? null)
-        .then(r => setPrices(prev => ({ ...prev, [p.ticker]: { price: r.price, currency: r.currency } })))
+        .then(r => setPrices(prev => ({ ...prev, [p.ticker]: { price: r.price, currency: r.currency, isStale: r.isStale ?? false, fetchedAt: r.asOf } })))
         .catch(() => setPrices(prev => ({ ...prev, [p.ticker]: null })))
     }
   }
@@ -152,8 +153,9 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
     if (sort.key === 'confirmed') {
       return ((a.confirmed === true ? 1 : 0) - (b.confirmed === true ? 1 : 0)) * mul
     }
-    const av = a[sort.key] ?? ''
-    const bv = b[sort.key] ?? ''
+    // hqCountry sort must use the effective value (override takes priority over auto-fetched)
+    const av = sort.key === 'hqCountry' ? (getEffectiveHqCountry(a) ?? '') : (a[sort.key] ?? '')
+    const bv = sort.key === 'hqCountry' ? (getEffectiveHqCountry(b) ?? '') : (b[sort.key] ?? '')
     return String(av).localeCompare(String(bv)) * mul
   })
 
@@ -344,7 +346,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
                         </span>
                       </button>
                     </td>
-                    <td className={styles.td}>{p.hqCountry ?? <span className={styles.missing}>—</span>}</td>
+                    <td className={styles.td}>{getEffectiveHqCountry(p) ?? <span className={styles.missing}>—</span>}</td>
                     <td className={styles.td}><span className={styles.freq}>{p.dividendFrequency ?? 'unknown'}</span></td>
                     {showArchived && (
                       <td className={styles.td} title={p.archivedAt ? new Date(p.archivedAt).toLocaleString() : ''}>
@@ -496,7 +498,17 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
 function renderPrice(state) {
   if (state === undefined || state === 'loading') return <span className={styles.missing}>…</span>
   if (state === null) return <span className={styles.missing}>—</span>
-  return <span>{fmtAmt(state.price)} {state.currency ?? ''}</span>
+  return (
+    <span>
+      {fmtAmt(state.price)} {state.currency ?? ''}
+      {state.isStale && (
+        <span
+          className={styles.staleIcon}
+          title={`Last known price from ${state.fetchedAt ? new Date(state.fetchedAt).toLocaleString() : 'unknown time'} — live data unavailable`}
+        >⏱</span>
+      )}
+    </span>
+  )
 }
 
 function emptyMessage(showArchived, confirmFilter, totalLoaded) {

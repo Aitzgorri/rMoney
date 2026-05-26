@@ -4,7 +4,7 @@ import { getInvestingAccounts, getCashBalances, getCurrentBalance } from '../dat
 import { getPositions, getStockTransactionsByTicker } from '../data/stockTransactions'
 import { getDividendsByTicker, computeDividendDerived } from '../data/dividends'
 import { getPortfoliosFlat, getAllPortfolioAssignments } from '../data/portfolios'
-import { getStockProfile, upsertStockProfile, getManualPrice } from '../data/stockProfiles'
+import { getStockProfile, upsertStockProfile, getManualPrice, getEffectiveHqCountry } from '../data/stockProfiles'
 import { getLatestPrice } from '../data/marketDataClient'
 import { convertToMain, ensureRates, getCachedRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
@@ -227,7 +227,7 @@ function computeRows(posRows, apiPrices, mainCurrency) {
       priceAppReturn: totalReturn,
       dividendReturn: divTotal > 0 ? divTotal : null,
       div12m,
-      hqCountry: profile?.hqCountry ?? null,
+      hqCountry: getEffectiveHqCountry(profile),
       marketValueNative,
     }
   })
@@ -510,7 +510,7 @@ export default function InvestmentReports() {
 
   function handleSaveCountry() {
     if (!editingCountry) return
-    upsertStockProfile(editingCountry, { hqCountry: countryDraft.trim() || null })
+    upsertStockProfile(editingCountry, { hqCountryOverride: countryDraft.trim() || null })
     setEditingCountry(null)
     setCountryDraft('')
     // Force re-render by mutating a dummy state (profiles read fresh each render)
@@ -848,7 +848,7 @@ function renderCell(colId, row, mc, editingCountry, countryDraft, setEditingCoun
         <span
           className={styles.hqCountryCell}
           onClick={() => { setEditingCountry(row.ticker); setCountryDraft(row.hqCountry ?? '') }}
-          title="Click to set HQ country"
+          title="Click to set HQ country override"
         >
           {row.hqCountry ?? <span className={styles.naLink}>set</span>}
         </span>

@@ -91,23 +91,29 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
 
   function handleRename() {
     if (!mode) return
+    const now = new Date().toISOString()
     if (step === 'confirm') {
       const c = candidates[0]
+      const p = (confirmPrice && confirmPrice !== 'loading') ? confirmPrice : null
       onConfirm(newTicker, c ? {
         name:           c.name ?? null,
         stockExchange:  c.exchange ?? null,
         currency:       c.currency ?? null,
         resolvedSource: 'market',
-        resolvedAt:     new Date().toISOString(),
+        resolvedAt:     now,
+        ...(p ? { lastKnownPrice: { amount: p.price, currency: p.currency, fetchedAt: now } } : {}),
       } : {}, mode)
     } else {
       const c = candidates[selectedIdx]
+      const k = `${c.ticker}|${c.exchange ?? ''}`
+      const p = pickerPrices[k] ?? null
       onConfirm(newTicker, {
         name:           c.name ?? null,
         stockExchange:  c.exchange ?? null,
         currency:       c.currency ?? null,
         resolvedSource: 'market',
-        resolvedAt:     new Date().toISOString(),
+        resolvedAt:     now,
+        ...(p ? { lastKnownPrice: { amount: p.price, currency: p.currency, fetchedAt: now } } : {}),
       }, mode)
     }
   }

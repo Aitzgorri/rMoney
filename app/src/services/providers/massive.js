@@ -163,7 +163,7 @@ export const massive = {
     throw new Error('not supported')
   },
 
-  async getStockProfile(ticker, config) {
+  async getStockProfile(ticker, _exchange, config) {
     const data = await pg(`/v3/reference/tickers/${ticker}`, {}, config)
     const r = data.results
     if (!r?.name) throw new Error('no data')

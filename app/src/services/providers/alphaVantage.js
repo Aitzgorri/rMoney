@@ -135,7 +135,7 @@ export const alphaVantage = {
     throw new Error('not supported')
   },
 
-  async getStockProfile(ticker, config) {
+  async getStockProfile(ticker, _exchange, config) {
     const data = await av({ function: 'OVERVIEW', symbol: ticker }, config)
     if (!data.Symbol) throw new Error('no data')
     return {

@@ -10,7 +10,7 @@ import {
   setManualPriceEntry,
   deleteManualPriceEntry,
 } from '../data/manualPrices'
-import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews } from '../data/marketDataClient'
+import { getLatestPrice, getHistoricalSeries, getIntradaySeries, getNews, getMarketProfile } from '../data/marketDataClient'
 import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTicker, upsertApiDividends } from '../data/apiDividendHistory'
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
@@ -880,6 +880,11 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           onConfirm={(newTicker, resolvedFields, mode) => {
             renameTicker(norm, newTicker, resolvedFields, mode)
             setRenaming(false)
+            // Background: fetch hqCountry from provider chain for the new ticker.
+            // Pass the exchange so Yahoo Finance can qualify non-US tickers.
+            getMarketProfile(newTicker, resolvedFields.stockExchange, { forceRefresh: true })
+              .then(mp => { if (mp.hqCountry) upsertStockProfile(newTicker, { hqCountry: mp.hqCountry }) })
+              .catch(() => {})
             onNavigate('stock', { ticker: newTicker })
           }}
           onCancel={() => setRenaming(false)}

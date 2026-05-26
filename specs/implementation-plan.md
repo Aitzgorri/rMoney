@@ -204,16 +204,16 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 **Sub-phase 33b — Last-known price persistence on stock profile + HQ country lookup verification**
 
 ### SPEC-029 Stock Profile Resolution — Phase 33 items
-396. [ ] Extend `stockProfiles` with `lastKnownPrice: { amount, currency, fetchedAt } | null`
-397. [ ] First-time resolve writes `lastKnownPrice` from the price the resolution dialog already fetched for the candidate
-398. [ ] `marketDataClient.getLatestPrice` updates `lastKnownPrice` on every successful provider fetch (skipped when `isManual === true`)
-399. [ ] Re-resolve rewrites identity fields (name, exchange, currency) AND `lastKnownPrice`; other fields preserved
-400. [ ] Offline / failed-fetch read sites fall back to `profile.lastKnownPrice` before showing "—"; clock-icon indicator + tooltip with `fetchedAt`
+396. [x] Extend `stockProfiles` with `lastKnownPrice: { amount, currency, fetchedAt } | null`
+397. [x] First-time resolve writes `lastKnownPrice` from the price the resolution dialog already fetched for the candidate
+398. [x] `marketDataClient.getLatestPrice` updates `lastKnownPrice` on every successful provider fetch (skipped when `isManual === true`)
+399. [x] Re-resolve rewrites identity fields (name, exchange, currency) AND `lastKnownPrice`; other fields preserved
+400. [x] Offline / failed-fetch read sites fall back to `profile.lastKnownPrice` before showing "—"; clock-icon indicator + tooltip with `fetchedAt`
 
 ### SPEC-027 Market Data Integration — Phase 33 items (HQ country, promoted from Phase 11)
-400a. [ ] **HQ country lookup verification pass.** Audit `getStockProfile` across every adapter; ensure `hqCountry` is returned when the provider exposes it. Today Yahoo + Massive return it; verify TwelveData (`/stocks?symbol=...`) and AlphaVantage (`OVERVIEW` function) populate `Country` and surface it through the adapter. Document any provider that does not in the spec out-of-scope section
-400b. [ ] **Refresh profile writes hqCountry.** When the user re-confirms a candidate via Refresh profile or Re-identify ticker, the resolved profile's `hqCountry` is written from whichever adapter returned it (first-non-null wins). Existing manual `hqCountryOverride` on the profile is preserved if set
-400c. [ ] **HQ country fallback display.** Wherever a screen reads HQ country (Reports regional / continent breakdowns, Dividend page Metrics tab grouping), the resolution order is `hqCountryOverride → hqCountry → 'Global'`. The Edit profile dialog (SPEC-033) makes both fields inspectable so the user understands which value the app is using
+400a. [x] **HQ country lookup verification pass.** All four implemented adapters return `hqCountry`. IBKR, Finnhub, Stooq are not implemented. No adapter changes needed.
+400b. [x] **Refresh profile writes hqCountry.** Background `getMarketProfile` call fires after resolution dialog confirm (StockProfileResolutionDialog) and after re-identify ticker (StockPage TickerRenameDialog onConfirm); writes `hqCountry` from first-non-null adapter result.
+400c. [x] **HQ country fallback display.** `getEffectiveHqCountry(profile)` helper in stockProfiles.js; EditProfileDialog now reads/writes `hqCountryOverride`; InvestmentReports row-builder + inline country edit, DividendPage, StockInventory all use the helper.
 
 **Sub-phase 33c — Configurable cache TTLs + offline fallback + per-page Reset API**
 

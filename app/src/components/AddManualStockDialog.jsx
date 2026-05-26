@@ -87,7 +87,7 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
             className={styles.input}
             value={hqCountry}
             onChange={e => setHqCountry(e.target.value)}
-            placeholder="e.g. United States"
+            placeholder="e.g. US"
           />
         </div>
 

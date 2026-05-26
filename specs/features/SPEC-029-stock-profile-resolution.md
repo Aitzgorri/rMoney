@@ -107,10 +107,10 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - [x] Existing profiles without these fields are treated as unresolved — stock page shows ticker only with "Resolve profile" prompt.
 
 ### Last-known price persistence on the profile *(Phase 33)*
-- [ ] **First-time resolve writes a price snapshot.** When the user confirms a resolution candidate, the price already fetched for that candidate (see "current price" in the dialog) is written onto the profile as `lastKnownPrice: { amount, currency, fetchedAt }`. The user always sees a non-blank price for a freshly-resolved stock even when the next page render is offline.
-- [ ] **Every successful provider price fetch updates the profile.** `marketDataClient.getLatestPrice(ticker, exchange)` updates `lastKnownPrice` on success. Failure to fetch never clears the field — the stored snapshot remains visible until the next successful refresh. Manual stocks (`isManual: true`) are exempt; their price comes from `manualPrices` directly.
-- [ ] **Re-resolve (Refresh profile) rewrites identity fields.** When the user re-confirms a candidate via Refresh profile, the profile's `name`, `stockExchange`, and `currency` are rewritten to the picked candidate's values and a fresh `lastKnownPrice` snapshot is taken. This makes Refresh profile authoritative for the identity quartet (name, exchange, currency, latest price). Other fields (HQ country, dividend frequency, tax %, manual price source) are preserved.
-- [ ] **Offline rendering.** Every screen that calls `getLatestPrice` and gets back nothing (provider chain unavailable, all failed) falls back to `profile.lastKnownPrice` before showing "—". A small clock icon next to the price indicates the value is the last-known snapshot with a tooltip showing `fetchedAt`.
+- [x] **First-time resolve writes a price snapshot.** When the user confirms a resolution candidate, the price already fetched for that candidate (see "current price" in the dialog) is written onto the profile as `lastKnownPrice: { amount, currency, fetchedAt }`. The user always sees a non-blank price for a freshly-resolved stock even when the next page render is offline.
+- [x] **Every successful provider price fetch updates the profile.** `marketDataClient.getLatestPrice(ticker, exchange)` updates `lastKnownPrice` on success. Failure to fetch never clears the field — the stored snapshot remains visible until the next successful refresh. Manual stocks (`isManual: true`) are exempt; their price comes from `manualPrices` directly.
+- [x] **Re-resolve (Refresh profile) rewrites identity fields.** When the user re-confirms a candidate via Refresh profile, the profile's `name`, `stockExchange`, and `currency` are rewritten to the picked candidate's values and a fresh `lastKnownPrice` snapshot is taken. This makes Refresh profile authoritative for the identity quartet (name, exchange, currency, latest price). Other fields (HQ country, dividend frequency, tax %, manual price source) are preserved.
+- [x] **Offline rendering.** Every screen that calls `getLatestPrice` and gets back nothing (provider chain unavailable, all failed) falls back to `profile.lastKnownPrice` before showing "—". A small clock icon (⏱) next to the price indicates the value is the last-known snapshot with a tooltip showing `fetchedAt`.
 
 ## UI / Screens
 
@@ -232,7 +232,12 @@ Extended `stockProfiles` record:
 
   // Last-known price snapshot (Phase 33) — persisted so offline / failed-fetch screens still show a price.
   // Updated on every successful provider price fetch; not cleared on failure.
-  lastKnownPrice: { amount: number, currency: string, fetchedAt: ISO timestamp } | null
+  lastKnownPrice: { amount: number, currency: string, fetchedAt: ISO timestamp } | null,
+
+  // HQ country (Phase 33) — two fields to distinguish auto-fetched from user-overridden.
+  hqCountry: string | null,         // written by Refresh profile / Re-identify ticker (provider first-non-null)
+  hqCountryOverride: string | null, // written by user via Edit profile dialog; wins over hqCountry in display
+  // Effective value for display: hqCountryOverride ?? hqCountry ?? 'Global'
 }
 ```
 
