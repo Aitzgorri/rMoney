@@ -55,6 +55,13 @@ After implementing any feature or enhancement — including small UI improvement
 - When starting work on a new phase or item, check the plan to understand dependencies and shared code that should be built or reused.
 - The plan also lists **shared code concerns** (reusable utilities, components) — consult this before building anything that might duplicate existing patterns.
 
+## Commit convention
+The authoritative commit-message format and commit workflow for this project live in [`commands/commit.md`](commands/commit.md). **Re-read it before composing any commit message** — it documents the `Phase NN[letter]: …`, `Phase NN <topic>: …`, and non-phase `Tooling: …` / `Docs: …` variants, plus the v0.33.0 / v0.34.0 release-line awareness rules.
+
+The rest of the `commands/` folder documents the `npm run spec:*` and `npm run plan:validate` helpers and tells the assistant when to invoke each one. Treat those files as part of the project's workflow contract — when in doubt about which command to run, check the corresponding file.
+
+After any meaningful change (spec edit, code change, plan edit), proactively propose a commit using the format in `commands/commit.md`, then wait for explicit confirmation before running `git commit`.
+
 ## UI Conventions
 - **Hierarchical dropdowns (MANDATORY)**: Every `<select>` that lists envelopes or categories MUST render the tree in flat order with visual level indentation — **no exceptions, no matter where the dropdown appears** (forms, modals, dialogs, settings, widget configuration, filters, etc.). Use `getEnvelopesFlat` / `getCategoriesFlat` to obtain the items (each with a `depth` field), and prefix each option label with `INDENT.repeat(item.depth)`. Import `INDENT` (and `indentLabel` if useful) from `src/utils/hierarchy.js` — do NOT redeclare it locally. Never use `getActiveEnvelopes()` or `getCategories()` directly in a `<select>` — always use the `Flat` variant.
 
