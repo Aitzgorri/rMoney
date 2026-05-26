@@ -3,10 +3,10 @@ import { getSecret } from '../utils/secrets'
 import { getManualPrice, isManualStock, getStockProfile, upsertStockProfile } from './stockProfiles'
 import { getLatestManualPrice, getManualPricesForTicker } from './manualPrices'
 import {
-  getCachedPrice, setCachedPrice,
-  getCachedNews, setCachedNews,
+  getCachedPrice, setCachedPrice, getCachedPriceStale,
+  getCachedNews, setCachedNews, getCachedNewsStale,
   getCachedMarketProfile, setCachedMarketProfile,
-  getCachedIntraday, setCachedIntraday,
+  getCachedIntraday, setCachedIntraday, getCachedIntradayStale,
 } from '../utils/marketDataCache'
 import { logCall, sanitiseReason } from '../utils/marketDataLogger'
 import { ibkr }         from '../services/providers/ibkr'
@@ -103,6 +103,8 @@ export function getLatestPrice(ticker, exchange, { forceRefresh = false } = {}) 
       }
       return entry
     } catch (err) {
+      const stale = getCachedPriceStale(t, exchange)
+      if (stale) return { ...stale, providerName: 'stale-cache', isStale: true }
       const lkp = getStockProfile(t)?.lastKnownPrice
       if (lkp) {
         return { price: lkp.amount, currency: lkp.currency, asOf: lkp.fetchedAt, providerName: 'lastKnownPrice', isStale: true }
@@ -125,9 +127,15 @@ export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {
   }
 
   return dedup(`intraday:${t}:${exchange ?? ''}`, async () => {
-    const { result } = await callChain('getIntradaySeries', [t, exchange])
-    setCachedIntraday(t, exchange, result)
-    return result
+    try {
+      const { result } = await callChain('getIntradaySeries', [t, exchange])
+      setCachedIntraday(t, exchange, result)
+      return result
+    } catch (err) {
+      const stale = getCachedIntradayStale(t, exchange)
+      if (stale) return stale
+      throw err
+    }
   })
 }
 
@@ -190,10 +198,16 @@ export function getNews(ticker, limit = 5, { forceRefresh = false } = {}) {
   }
 
   return dedup(`news:${t}:${limit}`, async () => {
-    const { result, providerName } = await callChain('getNews', [t, limit])
-    const items = Array.isArray(result) ? result : result.items ?? []
-    setCachedNews(t, items)
-    return { items, providerName }
+    try {
+      const { result, providerName } = await callChain('getNews', [t, limit])
+      const items = Array.isArray(result) ? result : result.items ?? []
+      setCachedNews(t, items)
+      return { items, providerName }
+    } catch (err) {
+      const stale = getCachedNewsStale(t)
+      if (stale) return { items: stale, providerName: 'stale-cache', isStale: true }
+      throw err
+    }
   })
 }
 

@@ -11,6 +11,7 @@ import { getAllWatchlistEntries, deleteWatchlistEntriesForTicker } from '../data
 import { deleteApiDividendHistoryForTicker } from '../data/apiDividendHistory'
 import { deleteManualPricesForTicker } from '../data/manualPrices'
 import { getLatestPrice } from '../data/marketDataClient'
+import { resetPageCaches } from '../utils/marketDataCache'
 import { fmtAmt } from '../utils/format'
 import EditProfileDialog from '../components/EditProfileDialog'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -57,6 +58,14 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
   const [addError, setAddError] = useState('')
   const [resolving, setResolving] = useState(null) // { ticker, direction }
   const [manualAddOpen, setManualAddOpen] = useState(false)
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('stock-inventory')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   // If a deep-link arrived with a filter override, persist it so the user's
   // next visit to this page remembers what brought them here.
@@ -282,6 +291,14 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
             title="Add an asset with no API data — you enter the prices"
           >
             + Manual stock
+          </button>
+          <button
+            className={styles.addBtn}
+            onClick={handleResetApi}
+            disabled={resetState !== 'idle'}
+            title="Clear cached prices so the next load fetches fresh data"
+          >
+            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
           </button>
         </div>
         {addError && <p className={styles.addError}>{addError}</p>}

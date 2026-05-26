@@ -1,7 +1,17 @@
 import { getHistoricalForex } from '../data/marketDataClient'
 
 const CACHE_KEY = 'rmoney_exchange_rates'
-const TTL_MS = 60 * 60 * 1000
+
+function getForexTtlMs() {
+  // Read directly from localStorage to avoid a circular dep (settings.js → currency.js).
+  try {
+    const s = JSON.parse(localStorage.getItem('rmoney_settings')) ?? {}
+    const min = s.apiCacheTtl?.forexMin
+    return (Number.isFinite(min) && min > 0 ? min : 60) * 60_000
+  } catch {
+    return 60 * 60_000
+  }
+}
 
 export const SUPPORTED_CURRENCIES = [
   'AUD', 'CAD', 'CHF', 'CNY', 'CZK', 'DKK', 'EUR', 'GBP',
@@ -39,7 +49,11 @@ function saveCache(data) {
 
 function isCacheValid(cache, baseCurrency) {
   if (!cache || !cache.fetchedAt || cache.baseCurrency !== baseCurrency) return false
-  return Date.now() - new Date(cache.fetchedAt).getTime() < TTL_MS
+  return Date.now() - new Date(cache.fetchedAt).getTime() < getForexTtlMs()
+}
+
+export function clearForexCache() {
+  localStorage.removeItem(CACHE_KEY)
 }
 
 export async function fetchRates(baseCurrency) {

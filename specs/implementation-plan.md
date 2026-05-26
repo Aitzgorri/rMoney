@@ -215,15 +215,15 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 400b. [x] **Refresh profile writes hqCountry.** Background `getMarketProfile` call fires after resolution dialog confirm (StockProfileResolutionDialog) and after re-identify ticker (StockPage TickerRenameDialog onConfirm); writes `hqCountry` from first-non-null adapter result.
 400c. [x] **HQ country fallback display.** `getEffectiveHqCountry(profile)` helper in stockProfiles.js; EditProfileDialog now reads/writes `hqCountryOverride`; InvestmentReports row-builder + inline country edit, DividendPage, StockInventory all use the helper.
 
-**Sub-phase 33c — Configurable cache TTLs + offline fallback + per-page Reset API**
+**Sub-phase 33c — Configurable cache TTLs + offline fallback + per-page Reset API** ✓ done
 
 ### SPEC-027 Market Data Integration — Phase 33 items
-401. [ ] `settings.apiCacheTtl = { pricesMin, forexMin, newsMin, intradayMin }` with current values as defaults; Settings → Investments → "API call frequency" card with one row per category
-402. [ ] Reads consult cache → in-flight dedup → fresh fetch; respect the configured TTL
-403. [ ] Offline fallback: when every enabled provider fails, return the most recent cached value regardless of staleness; surface a ⏱ icon + tooltip with cache age
-404. [ ] `resetPageCaches(pageId)` helper — pages register their data dependencies (prices / forex / news / intraday / dividend history / profiles)
-405. [ ] "Reset API" button at the right end of the page action row on: Investments overview, Stock page, Stock inventory, Dividend page, Investment reports, Buy-Sell planning. Spinner + completion toast
-406. [ ] Settings → Storage → "API dividend history" card: per-ticker list capped at 20 rows tall, vertical scroll, sorted alphabetically by ticker
+401. [x] `settings.apiCacheTtl = { pricesMin, forexMin, newsMin, intradayMin }` with current values as defaults; Settings → Investments → "API call frequency" card with one row per category
+402. [x] Reads consult cache → in-flight dedup → fresh fetch; respect the configured TTL
+403. [x] Offline fallback: when every enabled provider fails, return the most recent cached value regardless of staleness; surface a ⏱ icon + tooltip with cache age
+404. [x] `resetPageCaches(pageId)` helper — pages register their data dependencies (prices / forex / news / intraday / dividend history / profiles)
+405. [x] "Reset API" button at the right end of the page action row on: Investments overview, Stock page, Stock inventory, Dividend page, Investment reports, Buy-Sell planning. Spinner + completion toast
+406. [x] Settings → Storage → "API dividend history" card: per-ticker list capped at 20 rows tall, vertical scroll, sorted alphabetically by ticker
 
 **Sub-phase 33d — Re-identify button rename + Stock inventory wider table**
 

@@ -24,6 +24,7 @@ import StockProfileResolutionDialog from '../components/StockProfileResolutionDi
 import TickerRenameDialog from '../components/TickerRenameDialog'
 import EditProfileDialog from '../components/EditProfileDialog'
 import CurrencyDropdown from '../components/CurrencyDropdown'
+import { resetPageCaches } from '../utils/marketDataCache'
 import styles from './StockPage.module.css'
 
 function fmtPct(n) {
@@ -104,6 +105,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [divHiddenCols,       setDivHiddenCols]       = useState(() => loadHiddenDivCols())
   const payoutListRef = useRef(null)
   const divColPickerRef = useRef(null)
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('stock-page')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   const [actionForm,       setActionForm]       = useState(null)  // null | 'buy' | 'sell' | 'dividend'
   const [actionAccountId,  setActionAccountId]  = useState(null)
@@ -702,6 +711,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             mainCurrency={mainCurrency}
           />
         )}
+        <button
+          className={styles.profileBtn}
+          onClick={handleResetApi}
+          disabled={resetState !== 'idle'}
+          title="Clear cached prices and news so the next load fetches fresh data"
+        >
+          {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
+        </button>
       </div>
 
       {/* Price row */}

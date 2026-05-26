@@ -16,6 +16,7 @@ import {
   getDividendChartPresets, createDividendChartPreset, updateDividendChartPreset, deleteDividendChartPreset,
 } from '../data/dividendChartPresets'
 import { fmtAmt } from '../utils/format'
+import { resetPageCaches } from '../utils/marketDataCache'
 import styles from './DividendPage.module.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -344,6 +345,14 @@ export default function DividendPage() {
   // ── Refresh button ────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false)
   const [refreshStatus, setRefreshStatus] = useState({}) // ticker → 'ok'|'error'|'loading'
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('dividend-page')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   async function handleRefreshAll() {
     setRefreshing(true)
@@ -549,6 +558,14 @@ export default function DividendPage() {
             disabled={refreshing}
           >
             {refreshing ? 'Refreshing…' : 'Refresh dividend data'}
+          </button>
+          <button
+            className={styles.refreshBtn}
+            onClick={handleResetApi}
+            disabled={resetState !== 'idle'}
+            title="Clear cached prices and forex rates so the next load fetches fresh data"
+          >
+            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
           </button>
         </div>
       </div>

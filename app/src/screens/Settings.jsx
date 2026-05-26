@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl } from '../data/settings'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
@@ -94,6 +94,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [favAddOpen, setFavAddOpen] = useState(false)
   const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
+  const [cacheTtl,            setCacheTtlState]            = useState(() => getApiCacheTtl())
   const [defaultCsvDateFmt, setDefaultCsvDateFmtState] = useState(() => getDefaultCsvDateFormat())
   const [templates,         setTemplates]              = useState(() => getCsvTemplates())
   const [aiConn,          setAiConnForm]        = useState(() => { const c = getAiConnection() ?? {}; return { providerName: c.providerName ?? '', endpointUrl: c.endpointUrl ?? '', model: c.model ?? '', enabled: c.enabled ?? true } })
@@ -243,6 +244,13 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     const n = Math.min(100, Math.max(0, Number(value)))
     setDividendTaxPctState(n)
     setDividendDefaultTaxPercent(n)
+  }
+
+  function handleCacheTtlChange(field, value) {
+    const n = Math.min(1440, Math.max(1, Number(value) || 1))
+    const updated = { ...cacheTtl, [field]: n }
+    setCacheTtlState(updated)
+    setApiCacheTtl(updated)
   }
 
   async function handleSaveAiConn() {
@@ -898,6 +906,34 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                  'a manually set amount per stock'}
               </strong> by default
             </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>API call frequency</div>
+            <p className={styles.description}>
+              How long to reuse a cached API response before fetching fresh data.
+              Lower values give fresher data but use more API quota. Range: 1–1440 minutes.
+            </p>
+            {[
+              { field: 'pricesMin',   label: 'Prices',   hint: 'Stock price' },
+              { field: 'forexMin',    label: 'Forex',    hint: 'Currency exchange rates' },
+              { field: 'newsMin',     label: 'News',     hint: 'Company news headlines' },
+              { field: 'intradayMin', label: 'Intraday', hint: '1-minute intraday bars' },
+            ].map(({ field, label, hint }) => (
+              <div key={field} className={styles.field}>
+                <label className={styles.label} title={hint}>{label} (min)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1440}
+                  step={1}
+                  value={cacheTtl[field]}
+                  onChange={e => handleCacheTtlChange(field, e.target.value)}
+                  style={{ width: 80 }}
+                />
+              </div>
+            ))}
           </div>
 
           <div className={styles.card}>
@@ -1612,7 +1648,10 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               Included in Full backup; excluded from Sharable export.
             </p>
             <div className={styles.storageTable}>
-              <div className={styles.storageSection}>
+              <div
+                className={styles.storageSection}
+                style={apiDivHistStats.tickerCount > 20 ? { maxHeight: '20lh', overflowY: 'auto' } : undefined}
+              >
                 {apiDivHistStats.tickerCount === 0 ? (
                   <div className={styles.storageEmptyRow}>No dividend history stored yet.</div>
                 ) : (

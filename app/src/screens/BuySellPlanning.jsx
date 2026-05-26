@@ -23,6 +23,7 @@ import {
   computeDividendAggregates,
 } from '../utils/planningCalc'
 import ConfigurableTable from '../components/ConfigurableTable'
+import { resetPageCaches } from '../utils/marketDataCache'
 import styles from './BuySellPlanning.module.css'
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
@@ -47,6 +48,15 @@ export default function BuySellPlanning({ onNavigate }) {
   // Live price + FX caches (ticker → { price, currency }, ccy → number)
   const [livePrices, setLivePrices] = useState({})
   const [liveFx, setLiveFx]         = useState(() => getCachedRates() ?? null)
+
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('buy-sell-planning')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   // Modals
   const [newScenarioOpen, setNewScenarioOpen] = useState(false)
@@ -486,6 +496,14 @@ export default function BuySellPlanning({ onNavigate }) {
               </label>
             </>
           )}
+          <button
+            className={styles.scenarioBtn}
+            onClick={handleResetApi}
+            disabled={resetState !== 'idle'}
+            title="Clear cached prices and forex rates so the next load fetches fresh data"
+          >
+            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
+          </button>
         </div>
       </header>
 

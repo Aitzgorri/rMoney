@@ -5,10 +5,10 @@
 //
 // Invariant: stores only normalised response data (price, rate, text).
 // NEVER stores API URLs, API keys, or any credential material.
+import { getApiCacheTtl } from '../data/settings'
+import { clearForexCache } from './currency'
+
 const CACHE_KEY = 'rmoney_market_data_cache'
-const TTL_PRICES_MS   = 60 * 60 * 1000     // 1 hour
-const TTL_NEWS_MS     = 15 * 60 * 1000     // 15 minutes
-const TTL_INTRADAY_MS =  5 * 60 * 1000     // 5 minutes
 // Profiles cached indefinitely — only cleared by explicit refresh action
 
 function loadCache() {
@@ -30,8 +30,13 @@ function cacheKey(ticker, exchange) {
 export function getCachedPrice(ticker, exchange) {
   const entry = loadCache().prices?.[cacheKey(ticker, exchange)]
   if (!entry) return null
-  if (Date.now() - new Date(entry.fetchedAt).getTime() > TTL_PRICES_MS) return null
+  const ttlMs = getApiCacheTtl().pricesMin * 60_000
+  if (Date.now() - new Date(entry.fetchedAt).getTime() > ttlMs) return null
   return entry
+}
+
+export function getCachedPriceStale(ticker, exchange) {
+  return loadCache().prices?.[cacheKey(ticker, exchange)] ?? null
 }
 
 export function setCachedPrice(ticker, exchange, data) {
@@ -65,8 +70,13 @@ export function clearAllMarketCaches() {
 export function getCachedNews(ticker) {
   const entry = loadCache().news?.[ticker.toUpperCase()]
   if (!entry) return null
-  if (Date.now() - new Date(entry.fetchedAt).getTime() > TTL_NEWS_MS) return null
+  const ttlMs = getApiCacheTtl().newsMin * 60_000
+  if (Date.now() - new Date(entry.fetchedAt).getTime() > ttlMs) return null
   return entry.items
+}
+
+export function getCachedNewsStale(ticker) {
+  return loadCache().news?.[ticker.toUpperCase()]?.items ?? null
 }
 
 export function setCachedNews(ticker, items) {
@@ -82,8 +92,13 @@ export function setCachedNews(ticker, items) {
 export function getCachedIntraday(ticker, exchange) {
   const entry = loadCache().intraday?.[cacheKey(ticker, exchange)]
   if (!entry) return null
-  if (Date.now() - new Date(entry.fetchedAt).getTime() > TTL_INTRADAY_MS) return null
+  const ttlMs = getApiCacheTtl().intradayMin * 60_000
+  if (Date.now() - new Date(entry.fetchedAt).getTime() > ttlMs) return null
   return entry.points
+}
+
+export function getCachedIntradayStale(ticker, exchange) {
+  return loadCache().intraday?.[cacheKey(ticker, exchange)]?.points ?? null
 }
 
 export function setCachedIntraday(ticker, exchange, points) {
@@ -126,6 +141,32 @@ export function clearCacheForTicker(ticker) {
   if (c.profiles) delete c.profiles[t]
   if (c.news)     delete c.news[t]
   saveCache(c)
+}
+
+// ─── Page cache reset ─────────────────────────────────────────────────────────
+
+const PAGE_CACHE_DEPS = {
+  'investments':        ['prices', 'forex'],
+  'stock-page':         ['prices', 'intraday', 'news'],
+  'stock-inventory':    ['prices'],
+  'dividend-page':      ['prices', 'forex'],
+  'investment-reports': ['prices', 'forex'],
+  'buy-sell-planning':  ['prices', 'forex'],
+}
+
+// Clears only the hot-cache buckets the given page depends on.
+// Forex lives in a separate localStorage key (currency.js) — cleared via import.
+// Does NOT touch apiDividendHistory (persisted, rate-limited).
+export function resetPageCaches(pageId) {
+  const deps = PAGE_CACHE_DEPS[pageId] ?? []
+  const c = loadCache()
+  const updated = { ...c }
+  if (deps.includes('prices'))   updated.prices   = {}
+  if (deps.includes('news'))     updated.news     = {}
+  if (deps.includes('intraday')) updated.intraday = {}
+  if (deps.includes('profiles')) updated.profiles = {}
+  saveCache(updated)
+  if (deps.includes('forex')) clearForexCache()
 }
 
 // ─── Storage info ─────────────────────────────────────────────────────────────

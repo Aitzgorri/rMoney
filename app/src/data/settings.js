@@ -222,6 +222,27 @@ export function setMarketDataProviders(config) {
   setSetting('marketDataProviders', safe)
 }
 
+// ─── API cache TTLs ──────────────────────────────────────────────────────────
+
+export function getApiCacheTtl() {
+  const s = getSetting('apiCacheTtl', {})
+  return {
+    pricesMin:   s.pricesMin   ?? 60,
+    forexMin:    s.forexMin    ?? 60,
+    newsMin:     s.newsMin     ?? 15,
+    intradayMin: s.intradayMin ?? 5,
+  }
+}
+
+export function setApiCacheTtl(shape) {
+  setSetting('apiCacheTtl', {
+    pricesMin:   Number(shape.pricesMin)   || 60,
+    forexMin:    Number(shape.forexMin)    || 60,
+    newsMin:     Number(shape.newsMin)     || 15,
+    intradayMin: Number(shape.intradayMin) || 5,
+  })
+}
+
 // ─── Investing UI state ──────────────────────────────────────────────────────
 
 export function getLastSelectedInvestingAccountId() {

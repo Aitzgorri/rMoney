@@ -212,7 +212,7 @@ export function getApiDividendHistoryStats() {
       count: rows.length,
       bytes: new Blob([JSON.stringify(rows)]).size,
     }))
-    .sort((a, b) => b.bytes - a.bytes)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker))
   return {
     tickerCount: perTicker.length,
     recordCount: records.length,

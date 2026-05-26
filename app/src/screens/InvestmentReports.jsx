@@ -16,6 +16,7 @@ import { fmtAmt } from '../utils/format'
 import HybridFilterDropdown from '../components/HybridFilterDropdown'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { getPieChartPresets, createPieChartPreset, updatePieChartPreset, deletePieChartPreset, reorderPieChartPresets } from '../data/pieChartPresets'
+import { resetPageCaches } from '../utils/marketDataCache'
 import styles from './InvestmentReports.module.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -324,6 +325,14 @@ export default function InvestmentReports() {
   const [pricesLoading, setPricesLoading] = useState(false)
   const [ratesStatus,  setRatesStatus]  = useState('idle') // 'idle'|'loading'|'ok'|'error'
   const [ratesVersion, setRatesVersion] = useState(0)
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('investment-reports')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   // ── Country edit ─────────────────────────────────────────────────────────────
   const [editingCountry, setEditingCountry] = useState(null) // ticker
@@ -556,6 +565,14 @@ export default function InvestmentReports() {
             disabled={ratesStatus === 'loading'}
           >
             {ratesStatus === 'loading' ? 'Refreshing…' : ratesStatus === 'ok' ? 'Rates refreshed' : ratesStatus === 'error' ? 'Refresh failed' : 'Refresh rates'}
+          </button>
+          <button
+            className={styles.btnSm}
+            onClick={handleResetApi}
+            disabled={resetState !== 'idle'}
+            title="Clear cached prices and forex rates so the next load fetches fresh data"
+          >
+            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
           </button>
         </div>
       </div>

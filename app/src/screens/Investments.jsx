@@ -17,6 +17,7 @@ import {
 } from '../data/settings'
 import { fmtAmt } from '../utils/format'
 import { getPositions } from '../data/stockTransactions'
+import { resetPageCaches } from '../utils/marketDataCache'
 import InvestingAccountDetail from './InvestingAccountDetail'
 import styles from './Investments.module.css'
 
@@ -32,6 +33,14 @@ export default function Investments({ onNavigate }) {
   })
   const [formMode, setFormMode] = useState(null)   // null | 'new' | account (for edit)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [resetState, setResetState] = useState('idle')
+
+  function handleResetApi() {
+    setResetState('running')
+    resetPageCaches('investments')
+    setTimeout(() => { setResetState('done') }, 300)
+    setTimeout(() => { setResetState('idle') }, 2300)
+  }
 
   const mainCurrency = getMainCurrency()
 
@@ -100,6 +109,14 @@ export default function Investments({ onNavigate }) {
         <div className={styles.header}>
           <h1 className={styles.title}>Investments</h1>
           <button className={styles.newBtn} onClick={() => setFormMode('new')}>+ New account</button>
+          <button
+            className={styles.newBtn}
+            onClick={handleResetApi}
+            disabled={resetState !== 'idle'}
+            title="Clear cached prices and forex rates so the next load fetches fresh data"
+          >
+            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
+          </button>
         </div>
 
         {formMode && (
