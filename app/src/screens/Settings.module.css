@@ -641,3 +641,149 @@
   font-style: italic;
   margin: 0;
 }
+
+/* ── Favorite currencies ─────────────────────────────────────────────────── */
+
+.favList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.favRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #0f1520;
+  border-radius: 8px;
+  border: 1px solid #2d3448;
+  cursor: default;
+}
+
+.favRow.dragging {
+  opacity: 0.4;
+}
+
+.favRow.dragOver {
+  border-color: #3b82f6;
+}
+
+.dragHandle {
+  color: #475569;
+  cursor: grab;
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.favCode {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  min-width: 36px;
+}
+
+.favName {
+  font-size: 13px;
+  color: #64748b;
+  flex: 1;
+}
+
+.favRemoveBtn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.favRemoveBtn:hover:not(:disabled) {
+  color: #f87171;
+}
+
+.favRemoveBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.addCurrencyRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.addCurrencyInput {
+  flex: 1;
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f1f5f9;
+  font-size: 13px;
+}
+
+.addCurrencyInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.addCurrencyBtn {
+  background: #1e3a5f;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #93c5fd;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.addCurrencyBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.addCurrencyBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.addCurrencySuggestions {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.addCurrencySuggestion {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+}
+
+.addCurrencySuggestion:hover {
+  background: rgba(59,130,246,0.12);
+}
+
+.addCurrencySuggestion.alreadyFav {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.suggCode {
+  font-weight: 600;
+  color: #e2e8f0;
+  min-width: 36px;
+}
+
+.suggName {
+  color: #64748b;
+}

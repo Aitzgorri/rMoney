@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CurrencyDropdown from './CurrencyDropdown'
 import styles from './AccountForm.module.css'
 
 const ACCOUNT_TYPES = [
@@ -7,8 +8,6 @@ const ACCOUNT_TYPES = [
   { value: 'cash',     label: 'Cash',         icon: '💵' },
   { value: 'credit',   label: 'Credit Card',  icon: '💳' },
 ]
-
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'CZK', 'CHF', 'PLN']
 
 const EMPTY = {
   type: 'savings',
@@ -82,9 +81,7 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
       <div className={styles.row}>
         <div className={styles.field} style={{ flex: 1 }}>
           <label className={styles.label}>Currency</label>
-          <select className={styles.input} value={form.currency} onChange={e => set('currency', e.target.value)}>
-            {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <CurrencyDropdown className={styles.input} value={form.currency} onChange={v => set('currency', v)} />
         </div>
         <div className={styles.field} style={{ flex: 2 }}>
           <label className={styles.label}>Starting Balance</label>

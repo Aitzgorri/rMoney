@@ -193,13 +193,13 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 
 ---
 
-**Sub-phase 33a — Shared CurrencyDropdown**
+**Sub-phase 33a — Shared CurrencyDropdown** ✓ done
 
 ### SPEC-017 Currency Conversion — Phase 33 items
-392. [ ] New `components/CurrencyDropdown.jsx` — favorites + divider + alphabetical others, reads `settings.favoriteCurrencies` + `utils/iso4217.js`
-393. [ ] Settings → General → "Favorite currencies" card — drag-reorder, add (searchable picker over ISO 4217), remove (× disabled for main currency), one-shot migration seeding from `SUPPORTED_CURRENCIES`
-394. [ ] Replace every inline `CURRENCIES = [...]` constant and free-text currency input in the codebase with `CurrencyDropdown`: AccountForm, BuyForm, SellForm, DividendForm, AddManualStockDialog, StockProfileResolutionDialog manual row, Planning income/expense, Budget form, Trading fees rows, Currency display picker, Edit profile dialog, cross-currency deposit / standalone exchange
-395. [ ] Main-currency auto-add: when the user picks a new main currency, add it to favorites at the top if absent
+392. [x] New `components/CurrencyDropdown.jsx` — favorites + divider + alphabetical others, reads `settings.favoriteCurrencies` + `utils/iso4217.js`
+393. [x] Settings → General → "Favorite currencies" card — drag-reorder, add (searchable picker over ISO 4217), remove (× disabled for main currency), one-shot migration seeding from `SUPPORTED_CURRENCIES`
+394. [x] Replace every inline `CURRENCIES = [...]` constant and free-text currency input in the codebase with `CurrencyDropdown`
+395. [x] Main-currency auto-add: when the user picks a new main currency, add it to favorites at the top if absent
 
 **Sub-phase 33b — Last-known price persistence on stock profile + HQ country lookup verification**
 

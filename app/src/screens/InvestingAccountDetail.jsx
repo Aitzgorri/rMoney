@@ -50,6 +50,7 @@ import { getLatestPrice } from '../data/marketDataClient'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './InvestingAccountDetail.module.css'
 
 function today() { return new Date().toISOString().split('T')[0] }
@@ -1182,10 +1183,9 @@ function NewBalanceForm({ accountId, existingCurrencies, onSave, onCancel }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    const cur = currency.trim().toUpperCase()
-    if (!cur) return
-    if (existingCurrencies.has(cur)) { setError(`A ${cur} balance already exists for this account.`); return }
-    createCashBalance({ investingAccountId: accountId, currency: cur, openingBalance: Number(openingBalance) })
+    if (!currency) return
+    if (existingCurrencies.has(currency)) { setError(`A ${currency} balance already exists for this account.`); return }
+    createCashBalance({ investingAccountId: accountId, currency, openingBalance: Number(openingBalance) })
     onSave()
   }
 
@@ -1194,12 +1194,10 @@ function NewBalanceForm({ accountId, existingCurrencies, onSave, onCancel }) {
       <h3 className={styles.formTitle}>New cash balance</h3>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Currency (ISO 4217)</label>
-        <input
+        <CurrencyDropdown
           className={styles.formInput}
           value={currency}
-          onChange={e => { setCurrency(e.target.value); setError('') }}
-          placeholder="USD, EUR, CZK…"
-          autoFocus
+          onChange={v => { setCurrency(v); setError('') }}
         />
         {error && <span className={styles.fieldError}>{error}</span>}
       </div>
@@ -1596,7 +1594,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSave) return
-    onSave({ date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency: currency.trim().toUpperCase(), fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
+    onSave({ date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency, fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
   }
 
   return (
@@ -1658,7 +1656,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Currency</label>
-          <input className={styles.formInput} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="USD" />
+          <CurrencyDropdown className={styles.formInput} value={currency} onChange={setCurrency} />
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Fee</label>
@@ -1808,7 +1806,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
     return `${y} ${MONTHS[m - 1]} ${d}`
   }
 
-  const canSave = finalTicker && currency.trim() && Number(dividendPerShare) > 0 && Number(shareCount) > 0 && payoutDate
+  const canSave = finalTicker && currency && Number(dividendPerShare) > 0 && Number(shareCount) > 0 && payoutDate
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -1819,7 +1817,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
     onSave({
       investingAccountId: accountId,
       ticker: finalTicker,
-      currency: currency.trim().toUpperCase(),
+      currency,
       exDividendDate,
       payoutDate,
       dividendPerShare: Number(dividendPerShare),
@@ -1850,7 +1848,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
         </div>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Currency</label>
-          <input className={styles.formInput} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="USD" />
+          <CurrencyDropdown className={styles.formInput} value={currency} onChange={setCurrency} />
         </div>
       </div>
 

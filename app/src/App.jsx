@@ -8,6 +8,7 @@ import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
+import { migrateFavoriteCurrencies } from './data/settings'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -66,6 +67,7 @@ export default function App() {
     runDueScheduledTransfers()
     checkAndGeneratePending()
     migrateConfirmedField()
+    migrateFavoriteCurrencies()
     if (sessionStorage.getItem('rmoney_keys_not_restored')) {
       sessionStorage.removeItem('rmoney_keys_not_restored')
       setKeysNotRestored(true)

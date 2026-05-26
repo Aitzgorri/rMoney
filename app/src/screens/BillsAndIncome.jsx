@@ -16,6 +16,7 @@ import { getCategoriesFlat } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './BillsAndIncome.module.css'
 import { fmtAmt } from '../utils/format'
 
@@ -433,9 +434,8 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
               <input className={styles.input} type="number" min="0" step="0.01" value={form.amount}
                 onChange={e => set('amount', e.target.value)} required />
             </label>
-            <label className={styles.label} style={{ width: 80 }}>Currency
-              <input className={styles.input} value={form.currency}
-                onChange={e => set('currency', e.target.value.toUpperCase())} maxLength={4} />
+            <label className={styles.label} style={{ width: 100 }}>Currency
+              <CurrencyDropdown className={styles.input} value={form.currency} onChange={v => set('currency', v)} />
             </label>
           </div>
 

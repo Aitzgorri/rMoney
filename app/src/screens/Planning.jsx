@@ -25,12 +25,12 @@ import { getDescendantIds } from '../utils/treeDnd'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Planning.module.css'
 import { fmtAmt } from '../utils/format'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 const TODAY = new Date().toISOString().split('T')[0]
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'CZK', 'CHF', 'PLN']
 
 // ─── Sync helpers ─────────────────────────────────────────────────────────────
 // Note: planned incomes are scratchpad-only (SPEC-009) — they do not sync to
@@ -833,8 +833,8 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
               <label className={styles.label} style={{ flex: 1 }}>Amount
                 <input className={styles.input} type="number" min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} required />
               </label>
-              <label className={styles.label} style={{ width: 80 }}>Currency
-                <input className={styles.input} value={form.currency} onChange={e => set('currency', e.target.value.toUpperCase())} maxLength={4} />
+              <label className={styles.label} style={{ width: 100 }}>Currency
+                <CurrencyDropdown className={styles.input} value={form.currency} onChange={v => set('currency', v)} />
               </label>
             </div>
 
@@ -1053,9 +1053,7 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
                     <input className={styles.amountInput} type="number" min="0" step="0.01" value={form.monthly} onChange={e => handleAmountChange('monthly', e.target.value)} onBlur={() => handleAmountBlur('monthly')} />
                   </label>
                   <label className={styles.amountLabel}>
-                    <select className={styles.currencySelect} value={form.currency} onChange={e => set('currency', e.target.value)}>
-                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <CurrencyDropdown className={styles.currencySelect} value={form.currency} onChange={v => set('currency', v)} />
                   </label>
                 </div>
               </>

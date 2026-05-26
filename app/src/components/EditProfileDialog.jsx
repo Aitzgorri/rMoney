@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CurrencyDropdown from './CurrencyDropdown'
 import styles from './EditProfileDialog.module.css'
 
 export default function EditProfileDialog({ ticker, profile, onSave, onCancel }) {
@@ -15,7 +16,7 @@ export default function EditProfileDialog({ ticker, profile, onSave, onCancel })
     onSave({
       name:                 name.trim() || null,
       stockExchange:        exchange.trim().toUpperCase() || null,
-      currency:             currency.trim().toUpperCase() || null,
+      currency:             currency || null,
       hqCountry:            hqCountry.trim() || null,
       dividendFrequency:    frequency,
       amountEstimationRule: estRule,
@@ -40,7 +41,7 @@ export default function EditProfileDialog({ ticker, profile, onSave, onCancel })
             </div>
             <div className={styles.dialogField}>
               <label className={styles.dialogLabel}>Currency (ISO)</label>
-              <input className={styles.dialogInput} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="USD" maxLength={4} />
+              <CurrencyDropdown className={styles.dialogInput} value={currency} onChange={setCurrency} />
             </div>
           </div>
           <div className={styles.dialogField}>

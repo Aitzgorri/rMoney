@@ -4,6 +4,7 @@ import { getSecret } from '../utils/secrets'
 import { upsertStockProfile } from '../data/stockProfiles'
 import { searchSymbols, getLatestPrice } from '../data/marketDataClient'
 import { fmtAmt } from '../utils/format'
+import CurrencyDropdown from './CurrencyDropdown'
 import styles from './StockProfileResolutionDialog.module.css'
 
 const PROMPT_A = (ticker) =>
@@ -109,7 +110,7 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
         ticker:         isB ? manualTicker.trim().toUpperCase() : ticker,
         name:           manualName.trim() || null,
         stockExchange:  manualExchange.trim() || null,
-        currency:       manualCurrency.trim().toUpperCase() || null,
+        currency:       manualCurrency || null,
         resolvedSource: 'manual',
       }
     } else {
@@ -259,13 +260,11 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
                 </div>
                 <div className={styles.manualField}>
                   <label className={styles.manualLabel}>Currency</label>
-                  <input
+                  <CurrencyDropdown
                     className={`${styles.manualInput} ${styles.manualInputShort}`}
                     value={manualCurrency}
-                    onChange={e => setManualCurrency(e.target.value.toUpperCase())}
-                    placeholder="USD"
+                    onChange={v => { setManualCurrency(v); setSelected('manual') }}
                     disabled={selected !== 'manual'}
-                    onClick={() => setSelected('manual')}
                   />
                 </div>
               </div>

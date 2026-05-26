@@ -1,4 +1,4 @@
-import { inferLocaleCurrency } from '../utils/currency'
+import { inferLocaleCurrency, SUPPORTED_CURRENCIES } from '../utils/currency'
 
 const KEY = 'rmoney_settings'
 
@@ -49,6 +49,24 @@ export function getCurrencyDisplay() {
 
 export function setCurrencyDisplay(mode) {
   setSetting('currencyDisplay', mode)
+}
+
+// Ordered list of ISO 4217 codes the user considers "favorites".
+// Shown at the top of every CurrencyDropdown, in user-defined order.
+export function getFavoriteCurrencies() {
+  return getSetting('favoriteCurrencies', null) ?? [...SUPPORTED_CURRENCIES]
+}
+
+export function setFavoriteCurrencies(codes) {
+  setSetting('favoriteCurrencies', codes)
+}
+
+// One-shot boot migration: seed favoriteCurrencies when the setting is absent.
+export function migrateFavoriteCurrencies() {
+  const raw = load()
+  if (!Array.isArray(raw.favoriteCurrencies)) {
+    save({ ...raw, favoriteCurrencies: [...SUPPORTED_CURRENCIES] })
+  }
 }
 
 // ─── CSV import defaults ─────────────────────────────────────────────────────

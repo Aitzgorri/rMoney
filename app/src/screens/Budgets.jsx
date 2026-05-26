@@ -14,6 +14,7 @@ import { indentLabel } from '../utils/hierarchy'
 import { convertAmount } from '../utils/frequency'
 import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Budgets.module.css'
 import { fmtAmt } from '../utils/format'
 
@@ -384,7 +385,7 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
           </div>
           <div className={styles.field}>
             <label className={styles.label}>Currency</label>
-            <input className={`${styles.input} ${styles.currencyInput}`} type="text" maxLength={3} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="EUR" />
+            <CurrencyDropdown className={styles.input} value={currency} onChange={setCurrency} />
           </div>
         </div>
         <div className={styles.field}>

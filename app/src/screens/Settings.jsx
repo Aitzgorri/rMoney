@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee } from '../data/settings'
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies } from '../data/settings'
+import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
 import { getSecret, setSecret, deleteSecret } from '../utils/secrets'
@@ -28,9 +38,36 @@ import { buildIbkrAuthUrl, getIbkrOAuthStatus } from '../services/providers/ibkr
 import { DATE_FORMATS } from '../utils/csvParse'
 import { getCurrentPeriod } from '../utils/planningPeriod'
 import { SUPPORTED_CURRENCIES } from '../utils/currency'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Settings.module.css'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
+
+function FavCurrencyRow({ code, name, isMain, onRemove }) {
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: code })
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: code })
+
+  return (
+    <div
+      ref={node => { setDragRef(node); setDropRef(node) }}
+      className={[
+        styles.favRow,
+        isDragging ? styles.dragging : '',
+        isOver && !isDragging ? styles.dragOver : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <span className={styles.dragHandle} {...listeners} {...attributes}>⠿</span>
+      <span className={styles.favCode}>{code}</span>
+      <span className={styles.favName}>{name}</span>
+      <button
+        className={styles.favRemoveBtn}
+        disabled={isMain}
+        title={isMain ? 'Cannot remove the main currency' : `Remove ${code}`}
+        onClick={onRemove}
+      >×</button>
+    </div>
+  )
+}
 
 function fmtLogTime(iso) {
   if (!iso) return ''
@@ -52,6 +89,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [warningThreshold, setWarningThreshold] = useState(() => getBudgetWarningThreshold())
   const [mainCurrency, setMainCurrencyState] = useState(() => getMainCurrency())
   const [currencyDisplay, setCurrencyDisplayState] = useState(() => getCurrencyDisplay())
+  const [favCurrencies, setFavCurrenciesState] = useState(() => getFavoriteCurrencies())
+  const [favAddQuery, setFavAddQuery] = useState('')
+  const [favAddOpen, setFavAddOpen] = useState(false)
   const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
   const [defaultCsvDateFmt, setDefaultCsvDateFmtState] = useState(() => getDefaultCsvDateFormat())
@@ -154,7 +194,45 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   function handleMainCurrencyChange(code) {
     setMainCurrencyState(code)
     setMainCurrency(code)
+    // Auto-add new main currency to favorites if absent
+    setFavCurrenciesState(prev => {
+      if (prev.includes(code)) return prev
+      const next = [code, ...prev]
+      setFavoriteCurrencies(next)
+      return next
+    })
   }
+
+  function handleFavReorder({ active, over }) {
+    if (!over || active.id === over.id) return
+    const from = favCurrencies.indexOf(active.id)
+    const to   = favCurrencies.indexOf(over.id)
+    if (from === -1 || to === -1) return
+    const next = [...favCurrencies]
+    next.splice(to, 0, next.splice(from, 1)[0])
+    setFavCurrenciesState(next)
+    setFavoriteCurrencies(next)
+  }
+
+  function handleFavRemove(code) {
+    const next = favCurrencies.filter(c => c !== code)
+    setFavCurrenciesState(next)
+    setFavoriteCurrencies(next)
+  }
+
+  function handleFavAdd(code) {
+    if (!code || favCurrencies.includes(code)) return
+    const next = [...favCurrencies, code]
+    setFavCurrenciesState(next)
+    setFavoriteCurrencies(next)
+    setFavAddQuery('')
+    setFavAddOpen(false)
+  }
+
+  const favSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
+  )
 
   function handleCurrencyDisplayChange(mode) {
     setCurrencyDisplayState(mode)
@@ -271,7 +349,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     setEditingFeeRow({
       kind: 'exchange',
       index: -1,
-      draft: { mic: '', currency: '', feePercent: '', minimumFee: '' },
+      draft: { mic: '', currency: mainCurrency, feePercent: '', minimumFee: '' },
     })
   }
 
@@ -295,7 +373,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     setEditingFeeRow({
       kind: 'stock',
       index: -1,
-      draft: { ticker: '', currency: '', feePercent: '', minimumFee: '' },
+      draft: { ticker: '', currency: mainCurrency, feePercent: '', minimumFee: '' },
     })
   }
 
@@ -472,14 +550,11 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
 
           <label className={styles.feeField}>
             <span className={styles.feeFieldLabel}>Currency</span>
-            <select
+            <CurrencyDropdown
               className={styles.input}
-              value={draft.currency ?? ''}
-              onChange={e => updateFeeDraft({ currency: e.target.value })}
-            >
-              <option value="">…</option>
-              {feeCurrencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+              value={draft.currency ?? mainCurrency}
+              onChange={v => updateFeeDraft({ currency: v })}
+            />
           </label>
 
           <label className={styles.feeField}>
@@ -682,15 +757,11 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             </p>
             <div className={styles.field}>
               <label className={styles.label}>Main currency</label>
-              <select
+              <CurrencyDropdown
                 className={styles.input}
                 value={mainCurrency}
-                onChange={e => handleMainCurrencyChange(e.target.value)}
-              >
-                {SUPPORTED_CURRENCIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                onChange={handleMainCurrencyChange}
+              />
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Default display</label>
@@ -706,6 +777,56 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             <div className={styles.preview}>
               Totals will be shown in <strong>{mainCurrency}</strong> by default
             </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Favorite currencies</div>
+            <p className={styles.description}>
+              These appear at the top of every currency picker. Drag to reorder. The main currency cannot be removed.
+            </p>
+            <DndContext sensors={favSensors} onDragEnd={handleFavReorder}>
+              <div className={styles.favList}>
+                {favCurrencies.map(code => (
+                  <FavCurrencyRow
+                    key={code}
+                    code={code}
+                    name={ISO4217_MAP[code] ?? ''}
+                    isMain={code === mainCurrency}
+                    onRemove={() => handleFavRemove(code)}
+                  />
+                ))}
+              </div>
+            </DndContext>
+            <div className={styles.addCurrencyRow}>
+              <input
+                className={styles.addCurrencyInput}
+                placeholder="Search currency to add…"
+                value={favAddQuery}
+                onChange={e => { setFavAddQuery(e.target.value.toUpperCase()); setFavAddOpen(true) }}
+                onFocus={() => setFavAddOpen(true)}
+                onBlur={() => setTimeout(() => setFavAddOpen(false), 150)}
+              />
+            </div>
+            {favAddOpen && favAddQuery.length > 0 && (() => {
+              const q = favAddQuery.toLowerCase()
+              const matches = ISO4217.filter(c =>
+                c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+              ).slice(0, 12)
+              return matches.length > 0 ? (
+                <div className={styles.addCurrencySuggestions}>
+                  {matches.map(c => (
+                    <div
+                      key={c.code}
+                      className={`${styles.addCurrencySuggestion}${favCurrencies.includes(c.code) ? ` ${styles.alreadyFav}` : ''}`}
+                      onMouseDown={() => handleFavAdd(c.code)}
+                    >
+                      <span className={styles.suggCode}>{c.code}</span>
+                      <span className={styles.suggName}>{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null
+            })()}
           </div>
 
           <div className={styles.card}>

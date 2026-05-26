@@ -23,6 +23,7 @@ import CurrencyToggle from '../components/CurrencyToggle'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import TickerRenameDialog from '../components/TickerRenameDialog'
 import EditProfileDialog from '../components/EditProfileDialog'
+import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './StockPage.module.css'
 
 function fmtPct(n) {
@@ -780,12 +781,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             onChange={e => setManualPriceForm(f => ({ ...f, amount: e.target.value }))}
             autoFocus
           />
-          <input
+          <CurrencyDropdown
             className={styles.manualPriceCurrencyInput}
             value={manualPriceForm.currency}
-            placeholder="USD"
-            maxLength={4}
-            onChange={e => setManualPriceForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))}
+            onChange={v => setManualPriceForm(f => ({ ...f, currency: v }))}
           />
           <button
             className={styles.manualPriceSaveBtn}
@@ -824,12 +823,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             onChange={e => setManualStockForm(f => ({ ...f, amount: e.target.value }))}
             autoFocus
           />
-          <input
+          <CurrencyDropdown
             className={styles.manualPriceCurrencyInput}
             value={manualStockForm.currency}
-            placeholder="USD"
-            maxLength={4}
-            onChange={e => setManualStockForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))}
+            onChange={v => setManualStockForm(f => ({ ...f, currency: v }))}
           />
           <button
             className={styles.manualPriceSaveBtn}
@@ -2016,13 +2013,7 @@ function ConvertToDeclaredDialog({ defaultExDate = '', defaultPerShare = '', def
             </div>
             <div className={styles.dialogField}>
               <label className={styles.dialogLabel}>Currency *</label>
-              <input
-                className={styles.dialogInput}
-                value={currency}
-                maxLength={4}
-                placeholder="USD"
-                onChange={e => setCurrency(e.target.value.toUpperCase())}
-              />
+              <CurrencyDropdown className={styles.dialogInput} value={currency} onChange={setCurrency} />
             </div>
           </div>
           <div className={styles.dialogActions}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getStockProfile } from '../data/stockProfiles'
+import CurrencyDropdown from './CurrencyDropdown'
 import styles from './AddManualStockDialog.module.css'
 
 // Manual-stock creation form (Phase 32e / SPEC-029).
@@ -16,7 +17,7 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
   const [error, setError]         = useState('')
 
   const normTicker = ticker.trim().toUpperCase()
-  const canSave = normTicker && name.trim() && currency.trim()
+  const canSave = normTicker && name.trim() && currency
 
   function handleSave() {
     if (!canSave) return
@@ -28,7 +29,7 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
       ticker: normTicker,
       name: name.trim(),
       stockExchange: stockExchange.trim() || 'MANUAL',
-      currency: currency.trim().toUpperCase(),
+      currency: currency,
       hqCountry: hqCountry.trim() || null,
     })
   }
@@ -76,13 +77,7 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
           </div>
           <div className={styles.field}>
             <label className={styles.label}>Currency</label>
-            <input
-              className={styles.input}
-              value={currency}
-              onChange={e => setCurrency(e.target.value.toUpperCase())}
-              placeholder="USD"
-              maxLength={4}
-            />
+            <CurrencyDropdown className={styles.input} value={currency} onChange={setCurrency} />
           </div>
         </div>
 
