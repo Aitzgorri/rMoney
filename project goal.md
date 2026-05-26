@@ -51,7 +51,7 @@ App name: rMoney
 - User may have multiple investing accounts
 - Investing accounts are accounts the user has in a bank, broker or other entity which enbles trading investments and storing them
 - To each investing account the user shall be able to define a csv import for each investing account by selecting which columns from the csv shall be uploaded and to which app data (date, stock ticker, number of stocks, price, currency, transaction ID (optional), fee (by default 0)). This csv setup shall be used to upload transactions for that investing account
-- For Interactive Brokers it shall be possible to connect directly to download the transactions automatically
+- For Interactive Brokers it shall be possible to connect directly to download the transactions automatically *(status as of 2026-05: deferred — IBKR retail accounts cannot use the cloud-based Web API OAuth flow; only institutional / advisor accounts qualify. The IBKR slot remains in the SPEC-027 provider chain as a stub. Manual CSV import (SPEC-025) is the current path for IBKR users. Will revisit when IBKR ships retail OAuth.)*
 - User shall be able to define main currency. This currency is used mainly in calculation of share of investments on the investment portfoilios or category groups. The investments in other currencies than the main currency shall be re-calculated based on the latest currency exchange rate
 
 ### Stocks requirements

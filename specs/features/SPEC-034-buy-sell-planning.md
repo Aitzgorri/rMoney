@@ -95,6 +95,7 @@ Toggleable columns (default-visible unless noted):
 - [x] Resolution order at row creation: **per-stock override → per-exchange default → 0 (no fee)**. The applied fee is computed as `max(minimumFee, gross × feePercent / 100)` because `feePercent` is stored as the displayed percent value (e.g. `0.10` means 0.10 %). Exposed as `resolveTradingFee(ticker, exchange, gross)` from `data/settings.js`, returning `{ feeAmount, source }`. *(Sub-phase 32f)*
 - [x] **Inline override on planning rows:** typing a number in the row's fee field overrides the resolved default for that row only — does NOT change saved defaults. A small dot indicator shows when a row's fee has been manually overridden; clicking the ↺ button reverts to the resolved default. *(Sub-phase 32h — `FeeCell` component)*
 - [x] **Tooltip** on the Fee cell: "Defaults set in Settings → Investments → Trading fees. Edit per row to override for this scenario only." *(Sub-phase 32h — tooltip on the cell since column headers aren't tooltipped by ConfigurableTable)*
+- [ ] **Maximum fee per exchange / per stock (Phase 33).** Extend per-exchange and per-stock fee records with an optional `maximumFee: number | null` field (default null = no cap). Resolution becomes `clamp(gross × feePercent / 100, minimumFee, maximumFee ?? Infinity)`. The Settings → Investments → Trading fees card adds a "Max fee" input column next to "Min fee", with a small "—" placeholder when null. Validation: when both min and max are set, `max >= min` (else inline error). Useful for brokers that cap commission at a flat number regardless of trade size.
 
 ### Overview block (above the sells table)
 - [x] **Cash balances panel** showing every currency the user holds across all investing accounts, totalled. *(Sub-phase 32h)*
@@ -104,6 +105,13 @@ Toggleable columns (default-visible unless noted):
 - [x] **Editable FX rates panel** — every distinct trade-currency → main-currency pair pre-fills with the live SPEC-027 rate; overrides stored in `scenario.fxOverrides`. *(Sub-phase 32h item 379b)*
 - [x] **Currency-display picker** — pill-list of every trade currency + main; defaults applied when the user has not made a selection yet. *(Sub-phase 32h item 379a)*
 - [x] **Weighted-average dividend metrics** — sells row, buys row, Δ delta row; forward and TTM avg %, monthly gross and net in main currency. *(Sub-phase 32h — `computeDividendAggregates`)*
+
+### Phase 33 — refresh + disregard-cash + overspend + table alignment
+
+- [ ] **"Refresh data" button in the page header** triggers `resetPageCaches('buy-sell-planning')` (SPEC-027 Phase 33) — refreshes latest prices for every ticker referenced by an included row, refreshes FX rates for the displayed currencies, refreshes the stock profile for any ticker whose latest mapping might be stale (most common need: the user just remapped a ticker on the Stock inventory page and wants the plan to pick up the new identity). Renders a "Refreshing…" spinner while in flight. Available as the page-level reset button at the right end of the action row.
+- [ ] **"Disregard cash balance" toggle** in the Overview block, beside the cash-balances panel. When ON, the Start column of the cash-impact table is set to **zero per currency** and the per-currency top-up inputs become the only initial cash source. The cash-balances panel itself becomes muted (greyed) with a label "(ignored in this scenario)". The currency-exchange priority cascade still runs, but it cascades only against the top-up amounts (matching trade currency → main currency → other top-ups by descending value). The flag is persisted per scenario as `scenario.ignoreActualBalances: boolean`.
+- [ ] **Overspend display in the cash impact table.** Currently `simulateCashImpact()` reports `shortfall` per currency when buys exceed available cash even after the cascade. Render this in a new column "Overspend" placed right of "End", per-currency. End remains clamped at ≥ 0 (matching the existing UI invariant) but Overspend shows the absolute shortfall. When `Overspend > 0` the row is tinted red. When `Overspend === 0` the cell shows "—".
+- [ ] **Cash-impact and dividend-impact tables — column alignment fix.** Header cells render with the same `text-align` as their column's value cells. Currency code prefix lives in its own narrow column (right-aligned text) so numeric values line up by decimal across all rows. Start column always shows a value (or "0.00" when literal zero, never blank). Applied consistently to the cash-impact table (Start / Top-up / Sells / Buys / Transfer in / Transfer out / End / Overspend) and the dividend-impact table (Sells avg yield / amount / Buys avg yield / amount / Δ rows).
 
 ### Execution + lifecycle
 - [x] Each row carries an **Execute** action button. Clicking it opens a self-contained `ExecuteModal` pre-filled with the row's investing account (locked, read-only), ticker, shares, adjusted price, fee, and (for sells) a FIFO-pre-filled lot picker. The modal writes a real `createBuy` / `createSell` transaction using the same data functions as `InvestingAccountDetail.jsx`, then calls `markRowExecuted`. *(Sub-phase 32k — `ExecuteModal` component in `BuySellPlanning.jsx`; avoids modifying the 2490-line `InvestingAccountDetail.jsx`)*
@@ -199,11 +207,11 @@ Settings extension (`rmoney_settings.tradingFees`) — **`feePercent` is stored 
 ```
 {
   exchanges: [
-    { mic: 'XLON', currency: 'GBP', feePercent: 0.10, minimumFee: 5.00 },   // 0.10 %
-    { mic: 'XNAS', currency: 'USD', feePercent: 0.50, minimumFee: 1.00 }    // 0.50 %
+    { mic: 'XLON', currency: 'GBP', feePercent: 0.10, minimumFee: 5.00, maximumFee: 25.00 },  // Phase 33: maximumFee optional
+    { mic: 'XNAS', currency: 'USD', feePercent: 0.50, minimumFee: 1.00, maximumFee: null }    // null = uncapped
   ],
   stocks: [
-    { ticker: 'BYG', currency: 'GBP', feePercent: 0.08, minimumFee: 4.00 }  // 0.08 %
+    { ticker: 'BYG', currency: 'GBP', feePercent: 0.08, minimumFee: 4.00, maximumFee: 20.00 }
   ]
 }
 ```

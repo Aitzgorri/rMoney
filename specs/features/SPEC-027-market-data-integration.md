@@ -126,6 +126,24 @@ Most providers (Massive, Twelve Data, Finnhub, Alpha Vantage) set `Access-Contro
 - [ ] Stock profiles (name, exchanges, HQ country) are cached indefinitely per stock, with a "refresh profile" action on the stock page.
 - [ ] News is fetched on demand with a 15-minute TTL so rapid re-opens of the same stock page don't thrash the provider.
 
+### HQ country lookup — verification + write-back *(Phase 33)*
+- [ ] **Verification pass across every adapter.** `getStockProfile(ticker)` must populate `hqCountry` whenever the provider exposes it. Today Yahoo + Massive return it; verify TwelveData (`/stocks?symbol=...` → `country`) and AlphaVantage (`OVERVIEW` → `Country`) hand it through their adapters. Document any provider that genuinely doesn't carry HQ country in the out-of-scope section here.
+- [ ] **Refresh profile writes `hqCountry`.** When the user re-confirms a candidate via Refresh profile (SPEC-029) or Re-identify ticker, the resolved profile's `hqCountry` is written from whichever adapter returned it first (first-non-null wins). The existing per-stock manual override (`hqCountryOverride`, owned by SPEC-020) is preserved when set — display order is `hqCountryOverride ?? hqCountry ?? 'Global'`.
+- [ ] **Consumers.** Once populated, `hqCountry` feeds: Reports regional / continent breakdowns (SPEC-024), Dividend page metrics-tab grouping (SPEC-032), and the per-country tax level of the dividend tax hierarchy (SPEC-020 item 178, also Phase 33).
+
+### Configurable cache TTLs *(Phase 33)*
+- [ ] **Per-data-type TTL inputs** in Settings → Investments → "API call frequency" card. One row per cache category: Prices (default 60 min), Forex (default 60 min), News (default 15 min), Intraday (default 5 min). Each row exposes a number input (minutes), valid range 1–1440, with a brief explanation. Settings live under `settings.apiCacheTtl: { pricesMin, forexMin, newsMin, intradayMin }`.
+- [ ] **Persisted history (`apiDividendHistory`) and profile cache are not TTL'd** and therefore not exposed in this card — they only refresh on explicit user action (Refresh dividends / Refresh profile / Re-identify ticker).
+- [ ] **A cache hit within TTL never calls the network.** Read sites consult the cache first, then the in-flight dedup map, then fall to a fresh fetch. The 10-minute behaviour the user originally described is achievable by lowering Prices / Forex to 10 (or whatever the user prefers) — the default values preserve current behaviour and avoid changing observable cadence on upgrade.
+- [ ] **Offline fallback (Phase 33).** When all enabled providers fail (network is offline, every adapter throws), every read function returns the most recent cached value regardless of how stale it is, and the caller surfaces it with a small ⏱ icon + tooltip showing the cache age. This matches the user's expectation: "in case there is no internet connection the user shall see the last retrieved data". The fallback is bypassed only when the cache itself is empty — then "—" is rendered as today. `lastKnownPrice` on the stock profile (SPEC-029 Phase 33) is consulted as a final fallback when even the hot cache is empty.
+
+### Per-page reset / refresh all *(Phase 33)*
+- [ ] **"Reset API" button on every page that displays API data.** Position is the right end of the page's primary action row (Investments overview, Stock page, Stock inventory, Dividend page, Investment reports, Buy-Sell planning). The button triggers an immediate refresh of every cache entry the page reads from: prices, forex, news / intraday / dividend history / profiles as applicable per page. Implemented as a generic `resetPageCaches(pageId)` helper with each page registering its data dependencies.
+- [ ] While running the button shows "Refreshing…" with a spinner; on completion shows a brief "Refreshed" toast with the count of successful calls and any failures. Subsequent page reads pick up the fresh data automatically. The button does NOT clear the `apiDividendHistory` collection — that requires explicit "Refresh dividends" (per-stock) or the Storage tab bulk-clear.
+
+### Storage card readability *(Phase 33)*
+- [ ] **Settings → Storage → "API dividend history" card** caps the per-ticker breakdown list at 20 rows tall with vertical scroll inside the card. Rows are sorted alphabetically by ticker (ascending) by default. The summary row (total bytes, total rows) stays sticky above the scroll area. Matches the readability standard expected for any per-stock breakdown card.
+
 ### Telemetry / errors
 - [x] Each call logs which provider served it + latency + outcome (success / failure reason). Exposed in a dev-only debug panel in Settings for troubleshooting rate-limit and coverage issues.
 - [x] The debug panel refreshes automatically when the user switches to the Market data tab, and provides a manual **Refresh** button alongside the existing **Clear** button.

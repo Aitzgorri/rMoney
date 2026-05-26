@@ -53,7 +53,7 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - [x] Cancel behavior: buy form save is not blocked (no lock on unresolved tickers); watchlist entry is not added; stock-page re-resolve writes nothing.
 
 ### Ticker rename
-- [x] The stock page header shows a **"Rename ticker"** button alongside "Refresh profile". It is always visible (not conditional on the profile being resolved).
+- [x] The stock page header shows a **"Rename ticker"** button alongside "Refresh profile". It is always visible (not conditional on the profile being resolved). *(Phase 33: button label is renamed to **"Re-identify ticker"** to match the dialog's mode-choice between rename and remap. Reason: the primary intent for most users hitting this button is to fix a wrong CSV mapping (remap), not to follow a corporate symbol change (rename). The new label reads better alongside the existing "Refresh profile" / "Resolve profile" verbs.)*
 - [x] Clicking "Rename ticker" opens a small input dialog: a single field for the new ticker and a "Look up" button (or Enter to submit). The old ticker is shown as context.
 - [x] On submit, the app runs `searchSymbols(newTicker)` and `getLatestPrice(newTicker)` in parallel.
   - If the lookup returns **one candidate**: a confirmation card shows the candidate's name, stock exchange, currency, and current price, plus the warning "All historical transactions, dividends, and watchlist entries will be updated. This cannot be undone." Buttons: [Cancel] [Rename].
@@ -105,6 +105,12 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 ### Persistence
 - [x] `stockProfiles` extended with `name`, `stockExchange`, `currency`, `resolvedSource`, `resolvedAt`.
 - [x] Existing profiles without these fields are treated as unresolved — stock page shows ticker only with "Resolve profile" prompt.
+
+### Last-known price persistence on the profile *(Phase 33)*
+- [ ] **First-time resolve writes a price snapshot.** When the user confirms a resolution candidate, the price already fetched for that candidate (see "current price" in the dialog) is written onto the profile as `lastKnownPrice: { amount, currency, fetchedAt }`. The user always sees a non-blank price for a freshly-resolved stock even when the next page render is offline.
+- [ ] **Every successful provider price fetch updates the profile.** `marketDataClient.getLatestPrice(ticker, exchange)` updates `lastKnownPrice` on success. Failure to fetch never clears the field — the stored snapshot remains visible until the next successful refresh. Manual stocks (`isManual: true`) are exempt; their price comes from `manualPrices` directly.
+- [ ] **Re-resolve (Refresh profile) rewrites identity fields.** When the user re-confirms a candidate via Refresh profile, the profile's `name`, `stockExchange`, and `currency` are rewritten to the picked candidate's values and a fresh `lastKnownPrice` snapshot is taken. This makes Refresh profile authoritative for the identity quartet (name, exchange, currency, latest price). Other fields (HQ country, dividend frequency, tax %, manual price source) are preserved.
+- [ ] **Offline rendering.** Every screen that calls `getLatestPrice` and gets back nothing (provider chain unavailable, all failed) falls back to `profile.lastKnownPrice` before showing "—". A small clock icon next to the price indicates the value is the last-known snapshot with a tooltip showing `fetchedAt`.
 
 ## UI / Screens
 
@@ -222,7 +228,11 @@ Extended `stockProfiles` record:
 
   // Manual-stocks fields (Phase 32e) — only set on user-tracked assets that have no API data
   isManual: bool,                                          // default false
-  manualPriceSource: 'user' | null
+  manualPriceSource: 'user' | null,
+
+  // Last-known price snapshot (Phase 33) — persisted so offline / failed-fetch screens still show a price.
+  // Updated on every successful provider price fetch; not cleared on failure.
+  lastKnownPrice: { amount: number, currency: string, fetchedAt: ISO timestamp } | null
 }
 ```
 

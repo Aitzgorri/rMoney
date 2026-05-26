@@ -22,12 +22,48 @@ Record every dividend payout the user has received on a stock, with correct mult
 
 ### Dividend records
 - [x] Stored fields on each dividend payout record: `exDividendDate`, `payoutDate`, `dividendPerShare` (before tax, in stock's currency), `shareCount` (eligible shares for this payout), `taxPercent` (snapshotted from the hierarchy at creation time), `type: 'regular' | 'special'` (default `'regular'`; user-editable on the create form), `exchangeRates` at payout date (null — deferred to Phase 10 historical-rate work).
+- [ ] Stored fields on each dividend payout record (Phase 33): `status: 'received' | 'pending-payment' | 'pending-confirmation'` (default `'received'` when payoutDate ≤ today and the global "Confirm receipt" toggle is off; `'pending-payment'` when payoutDate > today; `'pending-confirmation'` when payoutDate ≤ today and the global toggle is on). Cash impact happens only when status transitions to `'received'`.
 - [x] Derived at display / report time (never stored): `totalBeforeTax = dividendPerShare × shareCount`, `taxAmount = totalBeforeTax × taxPercent`, `netTotal = totalBeforeTax − taxAmount`, `netPerShare = netTotal / shareCount`.
 - [x] Editable fields on the dividend form: `dividendPerShare`, `taxPercent`, `taxAmount`. Tax % ↔ tax amount are bidirectionally linked in the create form (editing tax % recalculates tax amount; editing tax amount recalculates tax %; per-share/share-count changes recompute amounts while keeping tax % or tax amount as the canonical field depending on which was last edited). *(Edit form for existing records deferred — current MVP allows create and delete.)*
 - [x] **Cash landing:** on save, the net payout (`netTotal`) is credited to the investing account's cash balance matching the dividend's currency (auto-created with opening 0 if absent). A `cashMovement` of `type: 'dividend'` is written with `linkedDividendId` pointing back to this record. **No direct link to a budgeting account + envelope exists**.
 - [x] Tax amount is withheld by the broker — only the net lands in the cash balance; tax amount is recorded on the dividend for display but no separate movement is written for it.
+- [ ] **Cash landing is deferred when status ≠ 'received' (Phase 33):** when a dividend is saved with `status: 'pending-payment'` or `status: 'pending-confirmation'`, **no** `cashMovement` is written. The record exists for display/projection only. The cash credit is created when the status transitions to `'received'` — either automatically on the payoutDate boundary (pending-payment → received when the toggle is off) or on explicit user confirmation (pending-confirmation → received). Transitioning back to a non-received status (rare — e.g. user reverts confirmation) deletes the associated cashMovement.
 - [x] **Auto-fill `shareCount` from lot history (Phase 32 / item 365):** when the user enters or changes `exDividendDate` on the dividend form, the share-count field auto-populates with the total open shares for the ticker on the selected investing account as of `exDividendDate − 1` day (the day before ex-dividend, when the entitled holder of record is determined). The user can override the auto-filled value (typing into the field does not re-trigger the auto-fill, but a subsequent ex-dividend-date change does re-fill since the as-of-date computation has new input). Reason: the broker pays dividends to whoever held the shares the day before the ex-dividend date; computing this from `getOpenLots(ticker, accountId, asOfDate=exDividendDate − 1)` removes a manual lookup that is easy to get wrong. A small "auto-filled from lots on YYYY-MM-DD" hint renders below the field whenever the value comes from auto-fill; the hint disappears when the user overrides. If the ticker has no open position on `exDate − 1`, the field stays empty and a warning chip "No shares held on YYYY-MM-DD" is shown. The `getOpenLots` helper now accepts an optional `asOfDate` argument that filters every consumed transaction (buys, sells, transfers, splits) to dates ≤ `asOfDate`.
 - [x] **Cash-landing verification (Phase 32 / item 365a):** SPEC-020 §"Cash landing" already requires net dividends to be credited to the matching-currency cash balance via a `cashMovement` of `type: 'dividend'`. The 2026-05-14 user report ("dividend cash not visible in movements list") was investigated and the data path is intact end-to-end: `createDividend` writes a `cashMovement` row of `type: 'dividend'` carrying `linkedDividendId`; `getAccountCashMovements(accountId)` returns it unconditionally (no type filter); `getCurrentBalance(cashBalanceId)` sums every movement on the balance including dividends; the `MovementRow` component renders `type === 'dividend'` rows with full detail panel. The original report most likely reflected a stuck filter selection in the `HybridFilterDropdown` introduced in Phase 27c. (No automated integration test added — the codebase has no test runner; adding one solely for this verification would conflict with the project's "no over-engineering, keep dependencies minimal" rule.)
+
+### No-dividends flag *(Phase 33)*
+- [ ] **Stocks that pay no dividends opt out** of every dividend surface. `stockProfiles` gains a `paysDividends: bool | null` field (default `null` — unknown/treated as paying). When set to `false`, the stock is excluded from: Dividend page calendar + metrics tab, Stock page "Refresh dividends" button (hidden), Stock page TTM / Fwd / Div-return tiles ("—" with tooltip "this stock does not pay dividends — Edit profile to change"), forward-yield calculations everywhere, the "Add dividend" account-picker (the company simply isn't offered).
+- [ ] The flag is user-editable from: Stock page header (Edit profile dialog) and Stock inventory (Edit profile dialog). The Stock inventory shows a small ⊘ icon in the dividend-frequency column when `paysDividends === false`.
+- [ ] User dividend records that **already exist** on a stock marked `paysDividends: false` are preserved (history is never destroyed) but no further dividend updates are projected.
+- [ ] **Escape hatch — never trap the user.** When the user clicks the Stock page `+ Dividend` action on a ticker whose profile has `paysDividends === false`, instead of silently omitting it from the account-picker, render an inline correction prompt: *"{TICKER} is marked as not paying dividends. Clear flag and add anyway?"* with [Cancel] and [Clear flag and continue] buttons. The latter sets `paysDividends: null` on the profile (back to unknown) and proceeds into the normal multi-account dividend form. Same behaviour from the Dividend page's "Add dividend" entry when the user picks a flagged ticker via search.
+
+### Multi-account dividend entry *(Phase 33)*
+- [ ] **Single form, multiple records.** The "Add dividend" flow (via the Stock page header `+ Dividend` button and via the Dividend page "Add dividend" entry) opens a form that takes the dividend identity ONCE (ex-div date, payout date, per-share amount, currency, tax %, type) and lists every investing account that holds the ticker on `exDividendDate − 1`. Each account row shows the auto-filled share count (editable) and an "include" checkbox (default on). Saving creates one `dividends` record per included row, sharing the same identity fields but with per-account share counts. Each record still credits its own account's matching-currency cash balance.
+- [ ] When the user enters the dividend from a single-account context (e.g. on `InvestingAccountDetail.jsx`), the form opens in single-account mode (locked to that account), preserving the current behaviour. The multi-account flow only triggers when the entry point is stock-scoped, not account-scoped.
+- [ ] If the user un-ticks an account, that account's row is skipped and no record is created for it; if the user re-ticks, the row's share count re-fills from the lot history.
+
+### Status-model migration *(Phase 33)*
+- [ ] **One-shot migration at app boot.** Every existing `dividends` row missing the `status` field is stamped with `status: 'received'`, `source: 'user'`, `confirmedAt: createdAt`, and `cashMovementId` kept as-is (existing user records reflect already-impacted cash). Idempotent — skip rows whose `status` is already defined. Lives in `data/dividends.js` `migrateDividendStatuses()`, invoked once from `App.jsx` boot path alongside the other migrations.
+- [ ] Pre-migration backups (`.rmy` files exported under v0.32.0 or earlier) load cleanly into v0.33.0: the import path runs the same migration over the loaded data before commit, so the loaded records pick up `status: 'received'` automatically. No backup-format version bump needed for this field alone, but see SPEC-016 for the broader v2 backup discussion.
+
+### Future user-entered dividends — recalculation on holdings change *(Phase 33)*
+- [ ] **Future-dated user dividends (payoutDate > today) are saved with `status: 'pending-payment'`** and **no cash impact** until the payout date arrives. They render in the unified dividend list as part of the "future" half (above the `Today —` divider) and on the Dividend page calendar.
+- [ ] **Share count auto-recalculates** for pending-payment records when the user records a buy/sell that changes the shares held on `exDividendDate − 1`. Specifically: any pending-payment record whose `exDividendDate > today` re-derives `shareCount` from `getOpenLots(investingAccountId, ticker, asOfDate = exDividendDate − 1)` on every read. Once `exDividendDate ≤ today`, the share count is locked in (the user is entitled to the dividend on however many shares they held on the record date, even if they sold them later).
+- [ ] **Auto-promote to received on payoutDate:** when a pending-payment record's `payoutDate ≤ today` and the global "Confirm receipt" toggle is OFF, the status flips to `'received'` and the cash credit is written. When the toggle is ON, the status flips to `'pending-confirmation'` instead (no cash credit until the user confirms — see Confirmation flow below). The promotion runs at app boot and on every relevant data mutation.
+- [ ] If the user **sells all shares** in the account before `exDividendDate`, the pending-payment record's `shareCount` becomes 0; on auto-promotion it is dropped (no cashMovement written, record deleted) and a small toast notifies the user.
+
+### Confirmation flow *(Phase 33)*
+- [ ] **Global toggle** in Settings → Investments: "Confirm receipt before cash impact" (default OFF). When ON, every dividend that would otherwise transition to `'received'` is set to `'pending-confirmation'` first. When OFF, records flow straight to `'received'` with cash impact as today.
+- [ ] **Pending-confirmation queue** lives on the Dividend page as a new tab (alongside Calendar and Metrics) labelled "Pending" with a count badge. Each row shows ticker · ex-div · pay date · per-share · shares · tax · net · account · source (user / API-declared) with [Confirm] and [Edit] and [Skip / delete] actions per row. Bulk "Confirm all" available.
+- [ ] **API-declared dividends auto-create pending-confirmation records:** when the toggle is ON and an `apiDividendHistory` row reaches `payDate ≤ today` AND the user holds shares of that ticker (current open lots in any account on `exDividendDate − 1`), the system creates a pending-confirmation `dividends` record per account with auto-filled share count, default tax % from the resolution hierarchy, and `source: 'api-auto'`. The user confirms or edits it before cash credit happens. Once confirmed the apiDividendHistory row is hidden by the standard dedup rule.
+- [ ] **Auto-create dedup guard.** Before creating an `'api-auto'` pending-confirmation record for `(ticker, exDividendDate, accountId)`, the auto-promoter checks whether **any** `dividends` row already exists for that exact triple (any status, any source). If one exists, skip — the user already has a record (manual entry that beat the auto-promoter, an earlier auto-create that wasn't yet confirmed, or a backup-restored row). This prevents duplicate pending rows when the user enters the dividend manually before the auto-promoter runs.
+- [ ] **Pending-confirmation badge** in the top nav (next to the Investments dropdown) shows the count of dividends awaiting confirmation across the app. Clicking it jumps to the Dividend page Pending tab.
+
+### Duplicate dividend warning *(Phase 33)*
+- [ ] **On save**, the "Add dividend" form checks whether a `dividends` record (any status) or an `apiDividendHistory` row already exists for `(ticker, exDividendDate)` OR `(ticker, payoutDate)` (either match counts). If so, an inline warning dialog appears: "A dividend already exists for {TICKER} on this date: {summary}". Two confirm options:
+  - **Same dividend** — close the dialog without saving the new record. If the existing record differs in any field, offer to update the existing record with the user's input (showing a diff). The existing cash movement is adjusted if the per-share amount or tax changes.
+  - **Different dividend (add anyway)** — save the new record alongside the existing one. Both will appear in the list.
+- [ ] The warning is non-blocking — the user always has a way through. It catches the common "I clicked Add dividend twice" / "I forgot I already declared it" mistakes.
 
 ### Tax hierarchy
 - [x] Global default tax % at More → Settings. Applied when no other level is set.
@@ -119,14 +155,17 @@ Per-stock overrides shown on each stock's page.
   exDividendDate: ISO date,
   payoutDate: ISO date,
   dividendPerShare: number,          // before tax, in stock currency
-  shareCount: number,
+  shareCount: number,                // for pending-payment with future exDate: re-derived live from lots; for ≤today, locked
   currency: string,                  // stock's dividend currency
   taxPercent: number,                // snapshotted at creation
   type: 'regular' | 'special',      // default 'regular'; user-editable; affects forward-yield input
+  status: 'received' | 'pending-payment' | 'pending-confirmation',  // Phase 33; default 'received'
+  source: 'user' | 'api-auto',      // Phase 33; 'api-auto' = created by the toggle-on flow from apiDividendHistory
+  confirmedAt: ISO timestamp | null,// Phase 33; set when status transitions to 'received'
   exchangeRates: {                   // at payout date
     main: number, usd: number, eur: number, gbp: number, czk: number
   },
-  cashMovementId: string,            // the credit movement on the matching-currency cash balance
+  cashMovementId: string | null,     // Phase 33: null while status ≠ 'received'
   createdAt: ISO timestamp
 }
 ```
@@ -144,7 +183,8 @@ Per-stock settings (lives on the stock "profile" — separate from individual tr
                                        // default 'unknown'; API-filled on Refresh dividends;
                                        // user-editable from Edit profile (Phase 26b)
   amountEstimationRule: 'last-paid' | 'year-ago' | 'manual',  // defaults to global
-  manualEstimatedAmount: number | null // only used when rule === 'manual'
+  manualEstimatedAmount: number | null,// only used when rule === 'manual'
+  paysDividends: boolean | null        // Phase 33; null = unknown/treated as paying; false = excluded from all dividend surfaces
 }
 ```
 
@@ -155,7 +195,8 @@ settings.dividends = {
   defaultTaxPercent: number,            // global default
   perCountryTaxPercent: { [country: string]: number },
   defaultAmountEstimationRule: 'last-paid' | 'year-ago' | 'manual',
-  defaultManualEstimatedAmount: null     // unused for 'last-paid'/'year-ago'
+  defaultManualEstimatedAmount: null,    // unused for 'last-paid'/'year-ago'
+  confirmReceipt: boolean               // Phase 33; default false; when true every cash-impacting dividend goes through pending-confirmation first
 }
 ```
 

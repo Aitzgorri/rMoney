@@ -1,0 +1,320 @@
+# Release process
+
+How to cut a new GitHub release of rMoney.
+
+The process is **fully manual** right now: you build the desktop installer locally on your Windows machine and attach it to a GitHub release you create with `gh`. There is no CI build pipeline yet — the "Future: GitHub Actions on tag push" section at the bottom of this document explains how to migrate when you're ready.
+
+---
+
+## Versioning
+
+| | |
+|---|---|
+| Scheme | SemVer 0.X.Y (pre-1.0 while the app is still evolving) |
+| Tag format | `vX.Y.Z` (lowercase `v` prefix, no leading zeros) |
+| Minor bump | One per completed implementation-plan phase milestone (e.g. `v0.32.0`, `v0.33.0`) |
+| Patch bump | Bug-fix-only releases between phases (`v0.33.1`, `v0.33.2`) |
+| Major bump | Reserved for `1.0.0`, when the app is feature-complete enough for general use |
+| Pre-release flag | Every release is marked **Pre-release** on GitHub until 1.0 |
+
+Three files must carry the same version string. If they drift, the desktop installer says one thing and `package.json` says another:
+
+| File | Field |
+|---|---|
+| [`app/package.json`](app/package.json) | `"version": "0.32.0"` |
+| [`app/src-tauri/Cargo.toml`](app/src-tauri/Cargo.toml) | `version = "0.32.0"` |
+| [`app/src-tauri/tauri.conf.json`](app/src-tauri/tauri.conf.json) | `"version": "0.32.0"` |
+
+## Data compatibility
+
+The `.rmy` backup file (SPEC-016 Data Portability) carries a `version` field. The app's read-side migrations are forward-only — a newer build always loads an older backup; older builds reject newer backups with an "update the app" message.
+
+| Backup format | Written by | Readable by | Notes |
+|---|---|---|---|
+| `rmoney-data-v1` | up to v0.32.x | every version | the original format |
+| `rmoney-data-v2` | v0.33.0+ | v0.33.0+ | adds dividend `status` model, `paysDividends`, `lastKnownPrice`, `favoriteCurrencies`, `apiCacheTtl`, `maximumFee` on trading fees, etc. v1 backups loaded into v0.33.0+ run the boot-time migrations and are upgraded transparently |
+
+**Release-note checklist for data-shape changes:**
+1. Every release that changes a data shape (new field on an existing record, new collection, new settings key) bumps the backup format version per the table above.
+2. The release notes include a "Data compatibility" line stating: "Reads `rmoney-data-vN` and earlier; writes `rmoney-data-vN`."
+3. The loader must reject backups written by an unknown future version with a clear "Update the app to load this backup" message — never silently drop unknown fields.
+
+When you bump the data version, update the table above too.
+
+---
+
+## Platforms
+
+| Platform | Format | Build host needed | Status |
+|---|---|---|---|
+| Windows desktop | `.msi` + NSIS `.exe` | Windows | ✓ active — current release surface |
+| Linux desktop | `.AppImage` + `.deb` | Linux | future — needs Linux build host or GitHub Actions |
+| macOS desktop | `.dmg` | macOS | future — needs Mac (also code-signing for SmartScreen equivalent) |
+| Android mobile | `.apk` | Any (via Capacitor + Android SDK) | future — Phase 21 (mobile parity) |
+| iOS mobile | `.ipa` | macOS | out of scope (no Mac) |
+
+**Today only Windows ships.** When you add a second platform, that's the right moment to migrate to GitHub Actions — see the bottom of this document.
+
+---
+
+## Manual release checklist (Windows desktop)
+
+Run this sequence from the **project root** unless noted. It assumes you have `gh` (GitHub CLI) installed and authenticated.
+
+### Step 1 — Confirm the branch is ready
+
+```powershell
+git status                    # working tree should be clean
+git log --oneline -5          # confirm the commits you expect to ship
+git pull --ff-only            # make sure you're on the tip of main
+npm run plan:validate         # confirm no errors (warnings are OK)
+```
+
+### Step 2 — Pick the version number
+
+- Phase milestone? → bump the minor (e.g. `0.32.0 → 0.33.0`).
+- Bug-fix only since last tag? → bump the patch (e.g. `0.33.0 → 0.33.1`).
+- Write the chosen version somewhere you can copy from (used 4 times below).
+
+### Step 3 — Bump the version in all three files
+
+```powershell
+# pick ONE of these — open in editor or use sed equivalent
+code app/package.json                # change "version": "..."
+code app/src-tauri/Cargo.toml        # change version = "..."
+code app/src-tauri/tauri.conf.json   # change "version": "..."
+```
+
+Then commit:
+
+```powershell
+git add app/package.json app/src-tauri/Cargo.toml app/src-tauri/tauri.conf.json
+git commit -m "Release v0.33.0"
+git push
+```
+
+### Step 4 — Build the Windows installer
+
+```powershell
+cd app
+npm install                   # only needed if dependencies changed
+npm run tauri:build           # produces .msi and .exe in src-tauri/target/release/bundle/
+cd ..
+```
+
+Build takes ~3–5 minutes the first time, faster on incrementals. Outputs land here:
+
+```
+app/src-tauri/target/release/bundle/
+├── msi/rMoney_0.33.0_x64_en-US.msi
+└── nsis/rMoney_0.33.0_x64-setup.exe
+```
+
+> If the `target/` directory is redirected to `D:` per `app/src-tauri/.cargo/config.toml`, look on `D:\cargo-target\release\bundle\` instead.
+
+### Step 5 — Quick smoke test (recommended)
+
+Install the `.msi` you just built into a clean Windows user (or simply over your dev install), launch rMoney, and verify:
+
+- App opens to the expected screen
+- Existing localStorage data still loads
+- One end-to-end happy path (e.g. add an envelope, record a transaction)
+- The Settings → Storage tab opens (catches build-time regressions in code-split chunks)
+
+Five minutes of clicking is worth it; CI doesn't exist yet to catch shipping regressions.
+
+### Step 6 — Tag the commit
+
+```powershell
+git tag -a v0.33.0 -m "v0.33.0 — Phase 33 (Dividend-flow overhaul + UX polish)"
+git push --tags
+```
+
+### Step 7 — Draft the release notes
+
+Build the notes from spec activity since the previous tag. Sections (omit any that are empty):
+
+```markdown
+## Phase 33 — Dividend-flow overhaul + UX polish
+
+### Added
+- Pending dividend confirmation queue (Dividend page → Pending tab)
+- Multi-account dividend entry from the Stock page
+- Shared currency dropdown with favorites (managed in Settings → General)
+- Per-data-type API cache TTL settings (Settings → Investments → API call frequency)
+- "Reset API" button on every screen that reads market data
+- Open lots expand on Stock page Positions rows
+
+### Changed
+- "Rename ticker" button renamed to "Re-identify ticker"
+- Stock inventory table widens to full width with sticky-left ticker column
+- Edit profile dialog now opens the resolution flow first
+- Dividend page "Last 12-months amount" now reflects shares held on ex-div date
+- Trading fees now support an optional maximum-fee cap
+
+### Fixed
+- Future-declared dividends no longer appear twice (past + future)
+- Today-date dividend now classified as past consistently
+- Future-payout row date columns corrected (Ex-div vs Pay)
+- Small/grey text contrast pass — WCAG AA compliant
+
+### Known limitations
+- Linux/macOS desktop builds still not published
+- Mobile (Android) still deferred to Phase 21b
+
+### Data compatibility
+Reads `rmoney-data-v2` and earlier; writes `rmoney-data-v2`. v1 backups (saved by v0.32.x and earlier) load cleanly and are upgraded to v2 on save.
+
+### Install
+Download `rMoney_0.33.0_x64-setup.exe` (or the `.msi`) below. Windows SmartScreen will warn that the publisher is unknown (the binaries are not code-signed yet) — click "More info" → "Run anyway".
+```
+
+### Step 8 — Create the GitHub release
+
+```powershell
+gh release create v0.33.0 `
+  app/src-tauri/target/release/bundle/msi/rMoney_0.33.0_x64_en-US.msi `
+  app/src-tauri/target/release/bundle/nsis/rMoney_0.33.0_x64-setup.exe `
+  --title "v0.33.0 — Phase 33 (Dividend-flow overhaul)" `
+  --notes-file release-notes.md `
+  --prerelease
+```
+
+(Write the notes from Step 7 into `release-notes.md` first, or pass `--notes "…"` inline for a short release.)
+
+Drop the `--prerelease` flag only when cutting a stable `1.0.0`+ release.
+
+### Step 9 — Verify
+
+```powershell
+gh release view v0.33.0       # confirm title, notes, and attached artifacts
+```
+
+Visit https://github.com/<you>/rMoneyClaude/releases — the new release should appear at the top with the Pre-release badge.
+
+Done.
+
+---
+
+## Bug-fix release flow
+
+Same as above with two adjustments:
+
+- Bump only the patch component (`v0.33.0 → v0.33.1`).
+- In release notes, replace the "Phase 33" header with `## v0.33.1 — Bug fixes` and list only the fixes shipped since the previous tag.
+
+---
+
+## Mobile (Android) release flow — future, when Phase 21 ships
+
+The Android pipeline reuses the same React build, wrapped with Capacitor. The high-level steps will be:
+
+1. From `app/`: `npm run build` (produces the same `dist/` the Tauri build consumes).
+2. `npx cap sync android` — copies `dist/` into the Android project.
+3. `npx cap open android` — opens Android Studio.
+4. Build → Generate Signed APK / AAB. Use a debug keystore for unsigned distribution; a real keystore for Play Store distribution.
+5. Attach the `.apk` to the same GitHub release alongside the desktop installers, or cut a separate `v0.X.Y-android` tag if release cadences diverge.
+
+Detailed steps will land here when Phase 21 (items 363, 364, and the SPEC-028 items) is implemented.
+
+---
+
+## Multi-platform desktop — future
+
+Tauri can build for Linux and macOS but the build host has to match the target platform (you can't cross-compile a Mac `.dmg` from Windows). Options:
+
+- **Linux**: spin up a Linux VM, install Node + Rust + the Tauri Linux prerequisites, run `npm run tauri:build`. Output is `.AppImage` (universal) and `.deb` (Debian/Ubuntu).
+- **macOS**: same on a Mac. Without an Apple Developer ID the `.dmg` will trigger Gatekeeper warnings just like Windows SmartScreen does today.
+- **Code signing** (Windows + macOS): you can buy a code-signing certificate to eliminate the warnings; budget ~$70/year (Windows) or $99/year (Apple Developer Program). Optional — the unsigned binaries still install fine with a one-click "Run anyway".
+
+When you add a second platform, the right move is usually to migrate the build to GitHub Actions so you don't have to keep three machines around.
+
+---
+
+## Future: GitHub Actions on tag push
+
+When you're ready to automate, add a workflow that triggers on every `v*` tag push, builds the installer on each platform runner, and attaches all artifacts to the auto-created GitHub release.
+
+Outline of `.github/workflows/release.yml`:
+
+```yaml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # needed to create the GitHub release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact-glob: 'app/src-tauri/target/release/bundle/{msi,nsis}/*.{msi,exe}'
+          - os: ubuntu-latest
+            artifact-glob: 'app/src-tauri/target/release/bundle/{appimage,deb}/*.{AppImage,deb}'
+          - os: macos-latest
+            artifact-glob: 'app/src-tauri/target/release/bundle/{dmg,macos}/*.{dmg,app.tar.gz}'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Linux Tauri prerequisites
+      - if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install deps
+        working-directory: app
+        run: npm ci
+
+      - name: Tauri build
+        working-directory: app
+        run: npm run tauri:build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmoney-${{ matrix.os }}
+          path: ${{ matrix.artifact-glob }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./artifacts/**/*
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v1.') }}
+          generate_release_notes: true
+```
+
+Notes for when you migrate:
+
+- The Cargo build cache adds ~5 minutes per platform on a cold runner; add the `Swatinem/rust-cache@v2` action to halve subsequent runs.
+- Windows code signing in CI requires the `.pfx` certificate as a base64 GitHub secret and a Tauri config tweak (`tauri.conf.json` → `bundle.windows.certificateThumbprint`). Defer until you actually buy a cert.
+- macOS notarisation is a separate flow involving `xcrun notarytool` and Apple Developer credentials. Defer.
+- The `prerelease: ${{ ... }}` expression auto-flips to `false` only when tagging `v1.*` — until then every release is marked Pre-release automatically.
+
+Once the workflow is in place, the manual checklist above collapses to: bump versions, commit, tag, push tag, write the release notes in the GitHub UI when the artifacts arrive. The build no longer runs on your laptop.

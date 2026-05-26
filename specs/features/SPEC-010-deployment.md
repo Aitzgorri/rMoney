@@ -48,6 +48,11 @@ Make rMoney trivially installable for a non-technical user. The user should be a
 ### Auto-update — deferred
 - Auto-update will be addressed when a release distribution channel is chosen.
 
+### GitHub release process
+- [x] `RELEASE.md` at the repo root documents the manual release process — versioning scheme (SemVer 0.X.Y pre-1.0, one tag per phase milestone), Windows step-by-step checklist (version bump → build → smoke test → tag → notes → `gh release create --prerelease`), and an outline for the future GitHub Actions `release.yml` workflow.
+- [x] All three version files (`app/package.json`, `app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`) carry the same version string. Current: `0.32.0` (Phase 32 milestone).
+- [ ] Cut the first GitHub release `v0.32.0` against the current `main` (Phase 32 milestone). Subsequent releases follow the per-phase cadence documented in `RELEASE.md`.
+
 ## UI / Screens
 N/A — this spec is about packaging and distribution, not in-app screens.
 

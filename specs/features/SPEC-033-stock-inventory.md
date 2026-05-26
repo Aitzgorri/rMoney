@@ -60,8 +60,13 @@ Give the user a single page that lists every stock the app currently knows about
 
 ## UI / Screens
 - **Stock inventory page:** header with `Add stock` button + active/archived filter toggle. Table with sortable columns. Per-row actions in a kebab menu or as inline buttons.
-- **Edit profile dialog (shared with Stock page):** form fields name, exchange (MIC dropdown), currency (ISO list), HQ country, dividend frequency, dividend estimation rule. Ticker is read-only; rename uses the existing Phase 22 rename flow.
+- **Edit profile dialog (shared with Stock page):** form fields name, exchange (MIC dropdown), currency (ISO list), HQ country, dividend frequency, dividend estimation rule. Ticker is read-only; rename uses the existing Phase 22 rename flow. *(Phase 33: the dialog opens directly into the resolution flow — provider search results pre-loaded for the current ticker — so the primary action is "re-identify the stock". A "Switch to manual fields" button at the bottom collapses the candidate list into the free-form fields above for the cases where no provider returns the right candidate. Fields the resolution flow doesn't own — HQ country, dividend frequency, estimation rule, tax % override, paysDividends — remain editable in a "Settings" section below the resolution UI in the same dialog.)*
 - **Permanent-delete dialog:** "Type `TICKER` to confirm" input; cancel button; destructive-styled confirm button.
+
+### Inventory table layout (desktop) *(Phase 33)*
+- [ ] **Wider table on desktop.** The inventory table expands to the full available width inside the page container (currently capped narrower than the page chrome). Column widths flex to fill the row; numeric columns right-align; text columns left-align.
+- [ ] **First column (ticker) is sticky.** When horizontal scroll is still needed at small desktop widths, the ticker column stays pinned to the left so the user always knows which row's actions they're seeing.
+- [ ] **Resolve action button per row.** Every row gains an inline "🔍 Resolve" button (next to Edit / Archive / Delete) that opens the SPEC-029 resolution dialog pre-loaded with the ticker. The same dialog the Stock page's "Re-identify ticker" button uses. Replaces the need to navigate to the Stock page just to fix a mapping.
 
 ## Data
 - **Reads:** `stockProfiles`, `stockTransactions` (history count), `dividends` (history count), `portfolioAssignments` (history count), `watchlistEntries` (history count), market-data client (current price per row, lazy).

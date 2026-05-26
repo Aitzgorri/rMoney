@@ -57,6 +57,14 @@ npm run audit:pre-publish
 
 Backup files exported from the app (`.rmy`) and any CSV import files may contain personal financial data. They are listed in `.gitignore` and must never be committed. If you have a file like `Import_test.csv` at the repo root, delete it or move it to an ignored location before pushing.
 
+## Releases
+
+See [`RELEASE.md`](RELEASE.md) for the full release process. In short:
+
+- SemVer 0.X.Y while pre-1.0, one tag per phase milestone (`v0.32.0`, `v0.33.0`, …), marked Pre-release on GitHub.
+- Windows desktop (`.msi` / `.exe`) is the only published platform today; Linux / macOS / Android are future.
+- Build process is fully manual right now (`npm run tauri:build` locally + `gh release create`); a GitHub Actions migration path is documented for when a second platform is added.
+
 ## Project Structure
 
 ```

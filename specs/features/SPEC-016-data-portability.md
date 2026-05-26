@@ -1,7 +1,7 @@
 ---
 id: SPEC-016
 name: Data Portability
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
@@ -27,6 +27,12 @@ Let the user save their full app state to a single file and load it back later, 
 - [x] When a redacted backup is loaded, credentials are stripped from settings before writing (preventing `[REDACTED]` strings from landing in localStorage). A persistent notice is shown after reload: "Keys were not restored — re-enter them in Settings."
 - [x] **Persisted-history collections** (`apiDividendHistory`, and any future `apiPriceHistory`) are included in **Full backup only**; excluded from Sharable export. These collections are expensive to refetch (rate-limited APIs) and have no TTL, so they travel with the full state only.
 - [x] **Hot caches** (`rmoney_market_data_cache` — prices, forex, news, profile lookups) are excluded from **both** backup modes. They have short TTLs, rebuild automatically on next load, and contain no user-authored data.
+
+### Backup format versioning + migration *(Phase 33)*
+- [ ] **Bump format to `rmoney-data-v2`** when Phase 33 ships. v2 differs from v1 in: `dividends` rows have `status / source / confirmedAt` fields; `stockProfiles` rows have `paysDividends`, `lastKnownPrice`, plus the existing Phase 32 fields (`isManual`, `manualPriceSource`, `confirmed`, `confirmedAt`); `settings` has `favoriteCurrencies`, `apiCacheTtl`, and `dividends.confirmReceipt`; `tradingFees.exchanges[]` / `tradingFees.stocks[]` rows have an optional `maximumFee`; new collection `manualPrices` (already shipped in v0.32.0 — back-port to v1 readers).
+- [ ] **Backwards-compatible load: v1 backups must load cleanly into v0.33.0+.** The loader detects the `version` field and runs the same migrations that boot-time applies (e.g. stamp `status: 'received'` on every dividend row missing it; default `favoriteCurrencies` to `SUPPORTED_CURRENCIES`; default `apiCacheTtl` to the per-data-type defaults; default `maximumFee: null`; default `paysDividends: null`; default `lastKnownPrice: null`). After migration the loader writes the result to localStorage in v2 shape.
+- [ ] **Forward incompatibility — v2 backups loaded into v0.32.0-or-older builds are rejected** with a clear "This backup was saved by a newer version of rMoney (v0.33.0+). Update the app to load it." message. Same rejection for any unknown future version. Reason: a v0.32.0 build silently dropping unknown fields would lose the dividend status model on every backup round-trip.
+- [ ] **Future bumps follow the same shape.** When v3 lands (post-Phase 33), it bumps the version, lists the field deltas in this section, ships a loader migration from v1 + v2 + v3 → in-memory form, and rejects unknown versions with the "update the app" message. The loader migration table grows N entries per major bump.
 
 ## UI / Screens
 More menu gains two items:
@@ -122,7 +128,7 @@ File structure:
 - Merging or diffing two files. Load always replaces.
 - Cloud sync. This is local file-based only for Phase 2.
 - Encrypted exports. Full backup is plain JSON; the user secures the file themselves. (Stronghold-embedded Full backup is deferred to SPEC-031 sub-phase 24e.)
-- Migration of older file versions to a newer format. Rejecting unknown versions is acceptable for Phase 2; migrations become their own future work when format v2 exists.
+- ~~Migration of older file versions to a newer format. Rejecting unknown versions is acceptable for Phase 2; migrations become their own future work when format v2 exists.~~ *(Phase 33: v2 lands with backwards-compatible v1 load support. See "Backup format versioning + migration" above.)*
 
 ## Open Questions
 None.
