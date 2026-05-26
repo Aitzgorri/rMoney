@@ -135,11 +135,24 @@
   white-space: nowrap;
 }
 
+.thTicker {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #0f1623;
+}
+
 .tdTicker {
   padding: 9px 12px;
   border-bottom: 1px solid #1e2535;
   white-space: nowrap;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #0f1623;
 }
+
+.row:nth-child(even) .tdTicker { background: #111827; }
 
 .tdCount {
   padding: 9px 12px;

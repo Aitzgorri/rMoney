@@ -225,15 +225,15 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 405. [x] "Reset API" button at the right end of the page action row on: Investments overview, Stock page, Stock inventory, Dividend page, Investment reports, Buy-Sell planning. Spinner + completion toast
 406. [x] Settings → Storage → "API dividend history" card: per-ticker list capped at 20 rows tall, vertical scroll, sorted alphabetically by ticker
 
-**Sub-phase 33d — Re-identify button rename + Stock inventory wider table**
+**Sub-phase 33d — Re-identify button rename + Stock inventory wider table** ✓ done
 
 ### SPEC-029 Stock Profile Resolution — Phase 33 button rename
-407. [ ] Rename "Rename ticker" button → "Re-identify ticker" in TickerRenameDialog launch point on Stock page header
+407. [x] Rename "Rename ticker" button → "Re-identify ticker" in TickerRenameDialog launch point on Stock page header
 
 ### SPEC-033 Stock inventory — Phase 33 items
-408. [ ] Stock inventory table widens to full container width; ticker column sticky-left when horizontal scroll is needed
-409. [ ] Per-row "🔍 Resolve" action button opens TickerRenameDialog with the row's ticker pre-loaded
-410. [ ] Edit profile dialog opens the resolution flow first (candidates pre-loaded); "Switch to manual fields" fallback button collapses to free-form fields; HQ country / dividend frequency / estimation rule / tax % override / paysDividends remain editable in a "Settings" section of the same dialog
+408. [x] Stock inventory table widens to full container width; ticker column sticky-left when horizontal scroll is needed
+409. [x] Per-row "🔍 Resolve" action button opens TickerRenameDialog with the row's ticker pre-loaded
+410. [x] Edit profile dialog opens the resolution flow first (candidates pre-loaded); "Switch to manual fields" fallback button collapses to free-form fields; HQ country / dividend frequency / estimation rule / tax % override / paysDividends remain editable in a "Settings" section of the same dialog
 
 **Sub-phase 33e — No-dividends flag + paysDividends consumers + per-country tax**
 

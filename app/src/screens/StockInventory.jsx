@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile, setConfirmed,
   archiveStockProfile, unarchiveStockProfile, deleteStockProfile, createManualStockProfile,
-  getEffectiveHqCountry,
+  getEffectiveHqCountry, renameTicker,
 } from '../data/stockProfiles'
 import { getStockTransactionsByTicker, hasOpenLotsForTicker } from '../data/stockTransactions'
 import { getDividendsByTicker } from '../data/dividends'
@@ -10,11 +10,12 @@ import { getAllPortfolioAssignments } from '../data/portfolios'
 import { getAllWatchlistEntries, deleteWatchlistEntriesForTicker } from '../data/watchlists'
 import { deleteApiDividendHistoryForTicker } from '../data/apiDividendHistory'
 import { deleteManualPricesForTicker } from '../data/manualPrices'
-import { getLatestPrice } from '../data/marketDataClient'
+import { getLatestPrice, getMarketProfile } from '../data/marketDataClient'
 import { resetPageCaches } from '../utils/marketDataCache'
 import { fmtAmt } from '../utils/format'
 import EditProfileDialog from '../components/EditProfileDialog'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
+import TickerRenameDialog from '../components/TickerRenameDialog'
 import AddManualStockDialog from '../components/AddManualStockDialog'
 import styles from './StockInventory.module.css'
 
@@ -57,6 +58,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
   const [addInput, setAddInput] = useState('')
   const [addError, setAddError] = useState('')
   const [resolving, setResolving] = useState(null) // { ticker, direction }
+  const [renamingTicker, setRenamingTicker] = useState(null) // ticker string | null
   const [manualAddOpen, setManualAddOpen] = useState(false)
   const [resetState, setResetState] = useState('idle')
 
@@ -311,7 +313,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th} onClick={() => handleSort('ticker')}>Ticker {sortIcon('ticker')}</th>
+                <th className={`${styles.th} ${styles.thTicker}`} onClick={() => handleSort('ticker')}>Ticker {sortIcon('ticker')}</th>
                 <th className={styles.th} onClick={() => handleSort('name')}>Name {sortIcon('name')}</th>
                 <th className={styles.th} onClick={() => handleSort('stockExchange')}>Exchange {sortIcon('stockExchange')}</th>
                 <th className={styles.th} onClick={() => handleSort('currency')}>Currency {sortIcon('currency')}</th>
@@ -409,6 +411,12 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
                         title="Edit profile"
                         aria-label={`Edit profile for ${p.ticker}`}
                       >✎</button>
+                      <button
+                        className={styles.actionBtn}
+                        onClick={() => setRenamingTicker(p.ticker)}
+                        title="Re-identify ticker"
+                        aria-label={`Re-identify ${p.ticker}`}
+                      >🔍</button>
 
                       {showArchived ? (
                         <button
@@ -462,6 +470,22 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
           direction={resolving.direction}
           onConfirm={handleResolved}
           onCancel={() => setResolving(null)}
+        />
+      )}
+
+      {/* ── Re-identify ticker dialog ─────────────────────────────────────── */}
+      {renamingTicker && (
+        <TickerRenameDialog
+          oldTicker={renamingTicker}
+          onConfirm={(newTicker, resolvedFields, mode) => {
+            renameTicker(renamingTicker, newTicker, resolvedFields, mode)
+            setRenamingTicker(null)
+            getMarketProfile(newTicker, resolvedFields.stockExchange, { forceRefresh: true })
+              .then(mp => { if (mp.hqCountry) upsertStockProfile(newTicker, { hqCountry: mp.hqCountry }) })
+              .catch(() => {})
+            refresh()
+          }}
+          onCancel={() => setRenamingTicker(null)}
         />
       )}
 

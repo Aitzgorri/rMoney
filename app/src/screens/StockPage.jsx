@@ -678,9 +678,9 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         <button
           className={styles.profileBtn}
           onClick={() => setRenaming(true)}
-          title="Rename ticker"
+          title="Re-identify ticker"
         >
-          Rename ticker
+          Re-identify ticker
         </button>
         {!isManualStockProfile && (
           <button
