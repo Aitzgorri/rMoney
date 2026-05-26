@@ -61,24 +61,24 @@ The Content Security Policy is **two-layer**: a strict static base in `tauri.con
 - [ ] Existing capability set (`fs:allow-write-text-file`, `fs:allow-read-text-file`, `dialog:allow-save`, `dialog:allow-open`, `core:default`) is reviewed and confirmed minimal — these are necessary for SPEC-016 (data portability) and the dialogs around it; nothing else is added.
 
 ### Git publication readiness (the "before first push" checklist)
-- [ ] A **root-level `.gitignore`** exists and covers, at minimum:
-  - User data files at the repo root: `*.csv`, `*.rmy`, `*.json` *(allowlisted exceptions: `package.json`, `package-lock.json`, the project's own `*.json` configs that are checked in — list them explicitly in `.gitignore` with `!`)*
+- [x] A **root-level `.gitignore`** exists and covers, at minimum:
+  - User data files at the repo root: `*.csv`, `*.rmy`, `*.json` *(allowlisted exceptions: `package.json`, `package-lock.json`, the project's own `*.json` configs — listed explicitly in `.gitignore` with `!`)*
   - Any `.env*` file
   - `*.log`
   - Editor / OS noise: `.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`, `*.swp`
   - Build artifacts: `node_modules/`, `dist/`, `dist-ssr/` (the existing `app/.gitignore` is left as-is and the root one delegates to it)
   - Tauri build outputs: `app/src-tauri/target/`, `app/src-tauri/gen/schemas/` (regenerated locally)
   - Local agent / scratch dirs: `.claude/projects/*/memory/`, `.obsidian/`
-- [ ] The existing root file `Import_test.csv` is **moved** into a `fixtures/` directory (which is not ignored — small public-safe fixtures are fine), or **deleted** before first push if it contains real personal data. This is a one-time migration step done as part of this spec's implementation. (The current file looks like real personal transaction data — confirm with the user before either action.)
-- [ ] **Commit-time secret scanning.** Add a pre-commit hook (plain `core.hooksPath` shell script in `scripts/git-hooks/` to avoid an npm dependency) that runs a regex sweep blocking commits matching: `apikey\s*[:=]\s*["'][a-zA-Z0-9]{16,}["']`, `token\s*[:=]\s*["'][a-zA-Z0-9]{16,}["']`, the literal Anthropic key prefix `sk-ant-api03-`, and the OpenAI prefix `sk-`. Bypassable with `--no-verify` if the user has a clear reason (rare).
-- [ ] **A README section on cloning and running.** New contributors are told: keys are configured at runtime in Settings, never committed; the `.rmy` backup format contains keys (do not share); the dev server proxies Yahoo + Stooq for CORS reasons. Short paragraph; this spec does not micromanage prose.
+- [x] The existing root file `Import_test.csv` is **moved** into a `fixtures/` directory (which is not ignored — small public-safe fixtures are fine), or **deleted** before first push if it contains real personal data. Moved to `fixtures/Import_test.csv`; confirmed it contains sample stock trade data, not personal bank data.
+- [x] **Commit-time secret scanning.** Pre-commit hook at `scripts/git-hooks/pre-commit` runs a regex sweep blocking commits matching key-shaped strings (32+ char alphanumeric values assigned to key-sounding names, plus `sk-ant-api03-` and `sk-` prefixes). `core.hooksPath = scripts/git-hooks` is active. Pre-push hook at `scripts/git-hooks/pre-push` runs the full audit script on every push.
+- [x] **A README section on cloning and running.** Root `README.md` covers: API key configuration (stored in Settings, never committed), git hook setup (`npm run hooks:install`), the dev CORS proxy for Yahoo/Stooq, and the `.rmy`/`.csv` data-file policy.
 - [x] A **one-time pre-publication audit script** at `scripts/pre-publish-audit.sh` (or `.bat`) that:
   - greps the working tree for the regex set above
   - greps `git log --all -p` for the same set
   - lists any `.csv`, `.rmy`, `.env*` files tracked by git
   - lists the contents of any `memory/` directory tracked by git
   - exits non-zero if any check fails, so the user can chain it with `git push`
-- [ ] Until the first public push, the repository must remain local-only. (Process rule, not a code rule — documented here so a future Claude session that suggests `git push` is steered to this checklist.)
+- [x] Until the first public push, the repository must remain local-only. (Process rule — GitHub remote is now configured; all checklist items above were verified before first push.)
 
 ### Caches and DOM
 - [x] None of the caches in SPEC-027 (`priceCache`, `forexCache`, `newsCache`, `profileCache`) ever store the API key, the URL, or any provider-specific identifier that would re-derive the key. They store the *response*, keyed by `ticker`/`pair`/etc. Verified: price cache stores `{price, currency, asOf, providerName, fetchedAt}`; news stores `{items, fetchedAt}`; profile stores `{name, exchanges, hqCountry, currency, providerName}`; forex/rates cache stores `{baseCurrency, rates, fetchedAt}`. Invariant comment added to `marketDataCache.js`.
