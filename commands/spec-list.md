@@ -27,3 +27,8 @@ npm run spec:list
 | `[~]` | ready       | Agreed on, ready to implement         |
 | `[>]` | in-progress | Actively being built                  |
 | `[x]` | done        | All acceptance criteria met           |
+
+## When Claude should run this
+- At the start of any "what's next?" / "continue" question, to see the current status of every spec
+- Before deciding whether `spec:new` is needed (to confirm no existing spec covers the request)
+- Whenever the user references a spec by name and the status is unknown

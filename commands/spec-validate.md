@@ -38,5 +38,10 @@ npm run spec:validate -- accounts
     ! Open Questions section is still the template default
 ```
 
+## When Claude should run this
+- After filling in a freshly-created `draft` spec, before marking it `ready`
+- After any substantive edit to an existing spec's Goal / User Stories / Acceptance Criteria sections
+- As a precondition for `spec:ready` — never call `spec:ready` without validating first
+
 ## Note
 The `--` separator is required to pass arguments through npm to the script.

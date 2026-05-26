@@ -21,3 +21,9 @@ Shows a table of all specs with their unchecked-criteria count (from spec files)
 - After adding new acceptance criteria to any spec
 - After removing completed items from the implementation plan
 - Before starting a new phase, to confirm everything is accounted for
+
+## When Claude should run this
+- Immediately after every `spec:done` — paired, not optional
+- After editing acceptance criteria in any spec file (adding new criteria, splitting one criterion into multiple, etc.)
+- After editing `specs/implementation-plan.md` directly (e.g. when reorganising a phase)
+- Before starting a new phase or sub-phase — to confirm the plan reflects reality

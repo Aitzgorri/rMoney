@@ -30,5 +30,10 @@ npm run spec:review -- accounts
 ==============================================================
 ```
 
+## When Claude should run this
+- Before touching any spec — to see what is already checked vs. unchecked
+- Before deciding whether to run `spec:implement` (the status field tells you whether code can start)
+- When the user says "continue implementing X" so the remaining acceptance criteria are visible up-front
+
 ## Note
 The `--` separator is required to pass arguments through npm to the script.
