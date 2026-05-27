@@ -99,6 +99,15 @@ export function setDividendEstimationRule(rule) {
   setSetting('dividends', { ...existing, defaultAmountEstimationRule: rule })
 }
 
+export function getPerCountryDividendTax() {
+  return getSetting('dividends', {}).perCountryTaxPercent ?? {}
+}
+
+export function setPerCountryDividendTax(map) {
+  const existing = getSetting('dividends', {})
+  setSetting('dividends', { ...existing, perCountryTaxPercent: map })
+}
+
 // ─── AI Evaluation ───────────────────────────────────────────────────────────
 
 export function getAiConnection() {

@@ -239,18 +239,18 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 409. [x] Per-row "🔍 Resolve" action button opens TickerRenameDialog with the row's ticker pre-loaded
 410. [x] Edit profile dialog opens the resolution flow first (candidates pre-loaded); "Switch to manual fields" fallback button collapses to free-form fields; HQ country / dividend frequency / estimation rule / tax % override / paysDividends remain editable in a "Settings" section of the same dialog
 
-**Sub-phase 33e — No-dividends flag + paysDividends consumers + per-country tax**
+**Sub-phase 33e — No-dividends flag + paysDividends consumers + per-country tax** ✓ done
 
 ### SPEC-020 Dividends — Phase 33 no-dividends flag
-411. [ ] `stockProfiles.paysDividends: bool | null` with default null = unknown/treated as paying
-412. [ ] Editable from Edit profile dialog (both Stock page and Stock inventory entry points); Stock inventory shows ⊘ icon in dividend-frequency column when false
-413. [ ] Consumers honour the flag: Dividend page calendar + metrics + chart exclude the stock; Stock page hides Refresh dividends button, shows "—" + tooltip on TTM / Fwd / Div-return tiles, excludes from forward-yield calc; "Add dividend" account-picker omits the company
-413a. [ ] **paysDividends escape hatch.** When the user clicks `+ Dividend` on a flagged ticker, render an inline "clear flag and continue?" correction prompt instead of silently omitting the ticker (see SPEC-020 § No-dividends flag)
+411. [x] `stockProfiles.paysDividends: bool | null` with default null = unknown/treated as paying
+412. [x] Editable from Edit profile dialog (both Stock page and Stock inventory entry points); Stock inventory shows ⊘ icon in dividend-frequency column when false
+413. [x] Consumers honour the flag: Dividend page calendar + metrics + chart exclude the stock; Stock page hides Refresh dividends button, shows "—" + tooltip on TTM / Fwd / Div-return tiles, excludes from forward-yield calc; "Add dividend" account-picker omits the company
+413a. [x] **paysDividends escape hatch.** When the user clicks `+ Dividend` on a flagged ticker, render an inline "clear flag and continue?" correction prompt instead of silently omitting the ticker (see SPEC-020 § No-dividends flag)
 
 ### SPEC-020 Dividends — Phase 33 per-country tax (formerly item 178; unblocked by HQ country work in 33b)
-413b. [ ] Settings → Investments → "Per-country dividend tax" card lists country → tax % rows. Add / edit / remove with inline rows. Country picker shows ISO countries. Stored on `settings.dividends.perCountryTaxPercent: { [country]: number }` (the field already exists in the SPEC-020 settings shape)
-413c. [ ] Resolution order at dividend creation becomes: **payout input → stock profile override → per-country (using `hqCountryOverride ?? hqCountry`) → global default**. The country level slots between stock and global per the SPEC-020 hierarchy
-413d. [ ] Existing dividend records keep their snapshotted `taxPercent` (history is never rewritten). Only newly-created dividends consult the country level
+413b. [x] Settings → Investments → "Per-country dividend tax" card lists country → tax % rows. Add / edit / remove with inline rows. Country picker shows ISO countries. Stored on `settings.dividends.perCountryTaxPercent: { [country]: number }` (the field already exists in the SPEC-020 settings shape)
+413c. [x] Resolution order at dividend creation becomes: **payout input → stock profile override → per-country (using `hqCountryOverride ?? hqCountry`) → global default**. The country level slots between stock and global per the SPEC-020 hierarchy
+413d. [x] Existing dividend records keep their snapshotted `taxPercent` (history is never rewritten). Only newly-created dividends consult the country level
 
 **Sub-phase 33f — Dividend status model + cash-deferral + auto-promotion**
 

@@ -120,6 +120,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [actionAccountId,  setActionAccountId]  = useState(null)
   const [pickingAccount,   setPickingAccount]   = useState(null)  // null | 'buy' | 'sell' | 'dividend'
   const [actionNegConfirm, setActionNegConfirm] = useState(null)  // null | { message, onConfirm }
+  const [showNoDivPrompt,  setShowNoDivPrompt]  = useState(false)
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -127,6 +128,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const profile     = getStockProfile(norm)
   const manualPrice = getManualPrice(norm)
   const isManualStockProfile = profile?.isManual === true
+  const noDividends = profile?.paysDividends === false
   // Latest user-entered price for manual stocks (Phase 32e). Replaces the live-price line entirely.
   const latestManualStock = isManualStockProfile ? getLatestManualStockPrice(norm) : null
 
@@ -673,7 +675,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         {accounts.length > 0 && <>
           <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
           <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
-          <button className={styles.dividendBtn} onClick={() => openAction('dividend')}>+ Dividend</button>
+          <button className={styles.dividendBtn} onClick={() => {
+            if (noDividends) { setShowNoDivPrompt(true); return }
+            openAction('dividend')
+          }}>+ Dividend</button>
         </>}
         {!isManualStockProfile && (
           <button
@@ -698,7 +703,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         >
           Re-identify ticker
         </button>
-        {!isManualStockProfile && (
+        {!isManualStockProfile && !noDividends && (
           <button
             className={styles.profileBtn}
             onClick={handleRefreshDividends}
@@ -708,7 +713,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
           </button>
         )}
-        {!isManualStockProfile && isStale && (
+        {!isManualStockProfile && !noDividends && isStale && (
           <span
             className={styles.staleDot}
             title="Dividend data is missing or outdated — click Refresh dividends"
@@ -736,6 +741,19 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
         </button>
       </div>
+
+      {/* No-dividends escape hatch prompt */}
+      {showNoDivPrompt && (
+        <div className={styles.noDivPrompt}>
+          <span>{norm} is marked as not paying dividends. Clear flag and add anyway?</span>
+          <button className={styles.noDivPromptCancel} onClick={() => setShowNoDivPrompt(false)}>Cancel</button>
+          <button className={styles.noDivPromptConfirm} onClick={() => {
+            upsertStockProfile(norm, { paysDividends: null })
+            setShowNoDivPrompt(false)
+            openAction('dividend')
+          }}>Clear flag and continue</button>
+        </div>
+      )}
 
       {/* Price row */}
       <div className={styles.manualPriceRow}>
@@ -1343,12 +1361,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 </div>
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>Div return (all-time)</div>
-                  <div className={`${styles.metricValue} ${divGrossDisplay > 0 ? styles.pos : ''}`}>
-                    {divGrossDisplay > 0
-                      ? `+${fmtAmt(divGrossDisplay)} ${displayCurrency}`
-                      : <span className={styles.metricNa}>—</span>}
+                  <div className={`${styles.metricValue} ${!noDividends && divGrossDisplay > 0 ? styles.pos : ''}`}>
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : divGrossDisplay > 0
+                        ? `+${fmtAmt(divGrossDisplay)} ${displayCurrency}`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {divGrossDisplay > 0 && (
+                  {!noDividends && divGrossDisplay > 0 && (
                     <div className={styles.metricSub} style={{ color: '#475569' }}>
                       net +{fmtAmt(divNetDisplay)} {displayCurrency}
                     </div>
@@ -1356,12 +1376,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 </div>
                 <div className={styles.metricTile}>
                   <div className={styles.metricLabel}>Div return (L12M)</div>
-                  <div className={`${styles.metricValue} ${div12mGrossDisplay > 0 ? styles.pos : ''}`}>
-                    {div12mGrossDisplay > 0
-                      ? `+${fmtAmt(div12mGrossDisplay)} ${displayCurrency}`
-                      : <span className={styles.metricNa}>—</span>}
+                  <div className={`${styles.metricValue} ${!noDividends && div12mGrossDisplay > 0 ? styles.pos : ''}`}>
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : div12mGrossDisplay > 0
+                        ? `+${fmtAmt(div12mGrossDisplay)} ${displayCurrency}`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {div12mGrossDisplay > 0 && (
+                  {!noDividends && div12mGrossDisplay > 0 && (
                     <div className={styles.metricSub} style={{ color: '#475569' }}>
                       net +{fmtAmt(div12mNetDisplay)} {displayCurrency}
                     </div>
@@ -1370,52 +1392,60 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
                   <div className={styles.metricLabel}>
                     <span>TTM yield</span>
-                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-price')} title="Show calculation">ⓘ</button>
+                    {!noDividends && <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-price')} title="Show calculation">ⓘ</button>}
                   </div>
                   <div className={styles.metricValue}>
-                    {ttmYieldPctOnPrice != null
-                      ? `${ttmYieldPctOnPrice.toFixed(2)}%`
-                      : <span className={styles.metricNa}>—</span>}
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : ttmYieldPctOnPrice != null
+                        ? `${ttmYieldPctOnPrice.toFixed(2)}%`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {ttmYieldPctOnPrice != null && <div className={styles.metricSub} style={{ color: '#475569' }}>on price</div>}
+                  {!noDividends && ttmYieldPctOnPrice != null && <div className={styles.metricSub} style={{ color: '#475569' }}>on price</div>}
                 </div>
                 <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
                   <div className={styles.metricLabel}>
                     <span>TTM on cost</span>
-                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-cost')} title="Show calculation">ⓘ</button>
+                    {!noDividends && <button className={styles.infoBtn} onClick={() => setYieldDetailKind('ttm-cost')} title="Show calculation">ⓘ</button>}
                   </div>
                   <div className={styles.metricValue}>
-                    {ttmYieldPctOnCost != null
-                      ? `${ttmYieldPctOnCost.toFixed(2)}%`
-                      : <span className={styles.metricNa}>—</span>}
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : ttmYieldPctOnCost != null
+                        ? `${ttmYieldPctOnCost.toFixed(2)}%`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {ttmYieldPctOnCost != null && <div className={styles.metricSub} style={{ color: '#475569' }}>yield on cost</div>}
+                  {!noDividends && ttmYieldPctOnCost != null && <div className={styles.metricSub} style={{ color: '#475569' }}>yield on cost</div>}
                 </div>
                 <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
                   <div className={styles.metricLabel}>
                     <span>Fwd yield</span>
-                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-price')} title="Show calculation">ⓘ</button>
+                    {!noDividends && <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-price')} title="Show calculation">ⓘ</button>}
                   </div>
                   <div className={styles.metricValue}>
-                    {forwardYieldPctOnPrice != null
-                      ? `${forwardYieldPctOnPrice.toFixed(2)}%`
-                      : <span className={styles.metricNa}>—</span>}
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : forwardYieldPctOnPrice != null
+                        ? `${forwardYieldPctOnPrice.toFixed(2)}%`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {forwardYieldPctOnPrice != null && effectiveFrequency !== 'unknown' && (
+                  {!noDividends && forwardYieldPctOnPrice != null && effectiveFrequency !== 'unknown' && (
                     <div className={styles.metricSub} style={{ color: '#475569' }}>on price · {effectiveFrequency}</div>
                   )}
                 </div>
                 <div className={`${styles.metricTile} ${styles.metricTileNarrow}`}>
                   <div className={styles.metricLabel}>
                     <span>Fwd on cost</span>
-                    <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-cost')} title="Show calculation">ⓘ</button>
+                    {!noDividends && <button className={styles.infoBtn} onClick={() => setYieldDetailKind('forward-cost')} title="Show calculation">ⓘ</button>}
                   </div>
                   <div className={styles.metricValue}>
-                    {forwardYieldPctOnCost != null
-                      ? `${forwardYieldPctOnCost.toFixed(2)}%`
-                      : <span className={styles.metricNa}>—</span>}
+                    {noDividends
+                      ? <span className={styles.metricNa} title="This stock does not pay dividends — Edit profile to change">—</span>
+                      : forwardYieldPctOnCost != null
+                        ? `${forwardYieldPctOnCost.toFixed(2)}%`
+                        : <span className={styles.metricNa}>—</span>}
                   </div>
-                  {forwardYieldPctOnCost != null && effectiveFrequency !== 'unknown' && (
+                  {!noDividends && forwardYieldPctOnCost != null && effectiveFrequency !== 'unknown' && (
                     <div className={styles.metricSub} style={{ color: '#475569' }}>on cost · {effectiveFrequency}</div>
                   )}
                 </div>

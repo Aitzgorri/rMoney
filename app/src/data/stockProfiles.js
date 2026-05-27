@@ -106,6 +106,14 @@ export function getDividendFrequency(ticker) {
   return getStockProfile(ticker)?.dividendFrequency ?? 'unknown'
 }
 
+// ─── paysDividends flag (Phase 33e / SPEC-020) ───────────────────────────────
+
+// Returns null (unknown/treated as paying), true, or false.
+// false = user explicitly opted this stock out of all dividend surfaces.
+export function getPaysDividends(ticker) {
+  return getStockProfile(ticker)?.paysDividends ?? null
+}
+
 // ─── Manual stocks (Phase 32e / SPEC-029) ────────────────────────────────────
 
 // Returns true when the stock is user-tracked with no provider data

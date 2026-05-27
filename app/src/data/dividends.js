@@ -15,8 +15,7 @@ export function computeDividendDerived({ dividendPerShare, shareCount, taxPercen
   return { totalBeforeTax, taxAmount, netTotal, netPerShare }
 }
 
-// Resolves tax % for a ticker using: per-stock override → global default.
-// Country-level is deferred until SPEC-027 provides HQ country lookup.
+// Resolves tax % for a ticker using: per-stock override → per-country → global default.
 export function resolveDividendTaxPercent(ticker) {
   const profiles = (() => {
     try { return JSON.parse(localStorage.getItem('rmoney_stock_profiles')) ?? [] }
@@ -26,6 +25,11 @@ export function resolveDividendTaxPercent(ticker) {
   const profile = profiles.find(p => p.ticker === t)
   if (profile?.taxPercentOverride != null) return profile.taxPercentOverride
   const divSettings = getSetting('dividends', {})
+  const country = profile?.hqCountryOverride ?? profile?.hqCountry ?? null
+  if (country) {
+    const perCountry = divSettings.perCountryTaxPercent ?? {}
+    if (perCountry[country] != null) return perCountry[country]
+  }
   return divSettings.defaultTaxPercent ?? 0
 }
 

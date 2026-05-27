@@ -317,7 +317,10 @@ export default function DividendPage() {
     return byTicker
   }, [accounts])
 
-  const heldTickers = useMemo(() => Object.keys(heldData).sort(), [heldData])
+  const heldTickers = useMemo(
+    () => Object.keys(heldData).sort().filter(t => getStockProfile(t)?.paysDividends !== false),
+    [heldData]
+  )
 
   // ── Per-ticker dividend data ──────────────────────────────────────────────
   const [dataByTicker, setDataByTicker] = useState(() => {

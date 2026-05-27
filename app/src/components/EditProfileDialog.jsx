@@ -69,6 +69,9 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
   const [frequency, setFrequency] = useState(profile?.dividendFrequency ?? 'unknown')
   const [estRule,   setEstRule]   = useState(profile?.amountEstimationRule ?? 'last-paid')
   const [manualAmt, setManualAmt] = useState(String(profile?.manualEstimatedAmount ?? ''))
+  const [paysDividendsVal, setPaysDividendsVal] = useState(
+    profile?.paysDividends === false ? 'false' : profile?.paysDividends === true ? 'true' : 'null'
+  )
 
   // Fetch candidates on mount
   useEffect(() => {
@@ -174,6 +177,7 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
       dividendFrequency:    frequency,
       amountEstimationRule: estRule,
       manualEstimatedAmount: estRule === 'manual' && manualAmt !== '' ? Number(manualAmt) : null,
+      paysDividends: paysDividendsVal === 'false' ? false : paysDividendsVal === 'true' ? true : null,
     })
   }
 
@@ -329,6 +333,18 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
               />
             </div>
           )}
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Pays dividends</label>
+            <select
+              className={styles.dialogSelect}
+              value={paysDividendsVal}
+              onChange={e => setPaysDividendsVal(e.target.value)}
+            >
+              <option value="null">Unknown</option>
+              <option value="true">Yes</option>
+              <option value="false">No — exclude from all dividend surfaces</option>
+            </select>
+          </div>
 
           <div className={styles.dialogActions}>
             <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>

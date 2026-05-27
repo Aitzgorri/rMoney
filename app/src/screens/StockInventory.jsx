@@ -366,7 +366,11 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
                       </button>
                     </td>
                     <td className={styles.td}>{getEffectiveHqCountry(p) ?? <span className={styles.missing}>—</span>}</td>
-                    <td className={styles.td}><span className={styles.freq}>{p.dividendFrequency ?? 'unknown'}</span></td>
+                    <td className={styles.td}>
+                      {p.paysDividends === false
+                        ? <span title="Does not pay dividends">⊘</span>
+                        : <span className={styles.freq}>{p.dividendFrequency ?? 'unknown'}</span>}
+                    </td>
                     {showArchived && (
                       <td className={styles.td} title={p.archivedAt ? new Date(p.archivedAt).toLocaleString() : ''}>
                         <span className={styles.archivedBadge}>Archived</span>

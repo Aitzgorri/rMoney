@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax } from '../data/settings'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
@@ -94,6 +94,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [favAddOpen, setFavAddOpen] = useState(false)
   const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
+  const [perCountryTax,       setPerCountryTaxState]       = useState(() => getPerCountryDividendTax())
+  const [countryTaxNew,       setCountryTaxNew]            = useState({ country: '', pct: '' })
   const [cacheTtl,            setCacheTtlState]            = useState(() => getApiCacheTtl())
   const [defaultCsvDateFmt, setDefaultCsvDateFmtState] = useState(() => getDefaultCsvDateFormat())
   const [templates,         setTemplates]              = useState(() => getCsvTemplates())
@@ -906,6 +908,74 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                  'a manually set amount per stock'}
               </strong> by default
             </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Per-country dividend tax</div>
+            <p className={styles.description}>
+              Override the withholding tax rate by HQ country. Applied between the per-stock override
+              and the global default when recording a dividend.
+            </p>
+            {Object.entries(perCountryTax).map(([country, pct]) => (
+              <div key={country} className={styles.field}>
+                <label className={styles.label}>{country}</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={pct}
+                  style={{ width: 80 }}
+                  onChange={e => {
+                    const updated = { ...perCountryTax, [country]: Number(e.target.value) }
+                    setPerCountryTaxState(updated)
+                    setPerCountryDividendTax(updated)
+                  }}
+                />
+                <button
+                  className={styles.btnSmDanger}
+                  onClick={() => {
+                    const { [country]: _removed, ...rest } = perCountryTax
+                    setPerCountryTaxState(rest)
+                    setPerCountryDividendTax(rest)
+                  }}
+                >×</button>
+              </div>
+            ))}
+            <div className={styles.field}>
+              <input
+                className={styles.input}
+                placeholder="Country (e.g. US)"
+                value={countryTaxNew.country}
+                onChange={e => setCountryTaxNew(prev => ({ ...prev, country: e.target.value.toUpperCase() }))}
+                style={{ width: 100 }}
+              />
+              <input
+                className={styles.input}
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                placeholder="Tax %"
+                value={countryTaxNew.pct}
+                onChange={e => setCountryTaxNew(prev => ({ ...prev, pct: e.target.value }))}
+                style={{ width: 80 }}
+              />
+              <button
+                className={styles.btnSm}
+                disabled={!countryTaxNew.country || countryTaxNew.pct === ''}
+                onClick={() => {
+                  const updated = { ...perCountryTax, [countryTaxNew.country]: Number(countryTaxNew.pct) }
+                  setPerCountryTaxState(updated)
+                  setPerCountryDividendTax(updated)
+                  setCountryTaxNew({ country: '', pct: '' })
+                }}
+              >+ Add</button>
+            </div>
+            {Object.keys(perCountryTax).length === 0 && (
+              <div className={styles.preview}>No country overrides set — new dividends use the global default</div>
+            )}
           </div>
 
           <div className={styles.card}>
