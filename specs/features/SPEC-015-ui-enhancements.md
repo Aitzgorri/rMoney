@@ -39,7 +39,7 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] **Contrast audit on every secondary-text style.** Swept all 39 CSS modules for hard-coded grey `color:` values (`#94a3b8`, `#64748b`, `#475569`).
 - [x] **Single shared "muted text" colour token.** `app/src/styles/tokens.css` defines `--text-muted: #94a3b8` (≈6.6:1) and `--text-faint: #7c8da4` (≈5.1:1) — both WCAG AA on `#0f1117`. 624 `color:` usages replaced across 38 CSS modules. `index.css` imports `tokens.css` and aliases `--text-dim` → `var(--text-muted)` for backward compatibility.
 - [x] **Small body text minimum size.** 177 sub-12 px font sizes (9 px, 10 px, 11 px) raised to 12 px across 34 CSS modules, plus one 8 px chevron in HybridFilterDropdown.
-- [ ] **Spot-check pass.** Walk every screen at default zoom and at 125 % zoom; verify the new contrast holds.
+- [x] **Spot-check pass.** Walk every screen at default zoom and at 125 % zoom; verify the new contrast holds.
 
 ## UI / Screens
 Desktop Dashboard (text sketch):

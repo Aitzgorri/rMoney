@@ -313,13 +313,13 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 445. [ ] Cash-impact and dividend-impact table alignment fix: header align matches column data align; currency code in its own narrow right-aligned column; Start always shows a value (0.00 when literal zero, never blank)
 446. [ ] Trading fees: optional `maximumFee` field per exchange and per stock; Settings UI gains "Max fee" input next to "Min fee"; validation `max >= min` when both set; `resolveTradingFee` becomes `clamp(gross × feePercent / 100, minFee, maxFee ?? Infinity)`
 
-**Sub-phase 33m — Small / muted text contrast pass** ✓ done (spot-check pending)
+**Sub-phase 33m — Small / muted text contrast pass** ✓ done
 
 ### SPEC-015 UI Enhancements — Phase 33 contrast pass
 447. [x] Define `--text-muted: #94a3b8` (≈6.6:1) and `--text-faint: #7c8da4` (≈5.1:1) in `app/src/styles/tokens.css`; both WCAG AA on `#0f1117`
 448. [x] 624 `color:` usages of `#94a3b8`, `#64748b`, `#475569` replaced across 38 CSS modules with `var(--text-muted)` / `var(--text-faint)`
 449. [x] 177 sub-12 px font sizes (9/10/11 px) raised to 12 px; one 8 px chevron also fixed
-450. [ ] Spot-check pass at 100 % and 125 % zoom on every screen
+450. [x] Spot-check pass at 100 % and 125 % zoom on every screen
 
 **Sub-phase 33o — Negative cache for failed fetches** ✓ done
 
