@@ -31,17 +31,17 @@ Let the user import CSV files of investment transactions into the app, with reus
 - [x] Commit is atomic: if any row fails to write due to a schema-level error, the whole batch rolls back and the user gets a clear error.
 
 ### Deduplication during import *(Phase 33)*
-- [ ] **Transaction de-dup by external ID OR composite key.** A buy/sell/transfer row is treated as already-imported if either:
+- [x] **Transaction de-dup by external ID OR composite key.** A buy/sell/transfer row is treated as already-imported if either:
   - `transactionExternalId` is present on the CSV row AND a `stockTransactions` row already exists with that `transactionExternalId`; OR
   - `transactionExternalId` is absent AND a `stockTransactions` row already exists with the same `(date, ticker, shares, price, type)` tuple.
-- [ ] **Dividend de-dup by composite key.** A dividend row is treated as already-imported when a `dividends` row already exists with the same `(payoutDate, ticker, shareCount, dividendPerShare, currency)` tuple. (Dividends typically have no broker-side external id; the composite key is the only way to dedup.)
-- [ ] **Duplicates are skipped, not flagged as errors.** The commit step does not write a duplicate row but reports it on the post-commit screen (see below). Each skipped row carries a reason (`'duplicate-external-id'` or `'duplicate-composite'`).
+- [x] **Dividend de-dup by composite key.** A dividend row is treated as already-imported when a `dividends` row already exists with the same `(payoutDate, ticker, shareCount, dividendPerShare, currency)` tuple. (Dividends typically have no broker-side external id; the composite key is the only way to dedup.)
+- [x] **Duplicates are skipped, not flagged as errors.** The commit step does not write a duplicate row but reports it on the post-commit screen (see below). Each skipped row carries a reason (`'duplicate-external-id'` or `'duplicate-composite'`).
 
 ### Post-commit import report *(Phase 33)*
-- [ ] **Done screen lists every row's outcome.** After commit, the report shows a table with one row per parsed CSV line plus columns: line number, date, ticker, type, shares/qty, status (`imported` / `skipped — duplicate` / `skipped — error`), and a reason cell. Sorted by line number ascending.
-- [ ] **Filter pill above the report** with options: `All` / `Imported only` / `Not imported only` / `Errors only` (defaults to `All`). Selection is local to the screen (not persisted). A row count summary next to the filter.
-- [ ] **Per-row action affordances.** Skipped rows with a `'skipped — error'` reason carry an "Edit row" button that pops a small inline form so the user can fix the parse error (e.g. corrupted date) and queue the row for re-commit. Skipped duplicates carry a "View existing record" link that navigates to the relevant detail (Transactions / Dividends filtered to that row).
-- [ ] **Existing "needs confirmation" card stays.** The Phase 32 "needs confirmation" card (below) still renders below the report when any imported ticker lacks confirmation.
+- [x] **Done screen lists every row's outcome.** After commit, the report shows a table with one row per parsed CSV line plus columns: line number, description, status (`imported` / `duplicate` / `error` / `skipped`), and a reason cell. Sorted by line number ascending.
+- [x] **Filter pill above the report** with options: `All` / `Imported only` / `Not imported only` / `Errors only` (defaults to `All`). Selection is local to the screen (not persisted). A row count summary in each pill.
+- [x] **Per-row action affordances.** Skipped rows with a `'validation-error'` reason carry an "Edit row" button that expands an inline form so the user can fix the parse error (e.g. corrupted date) and retry commit for that row. Duplicate rows carry a "View existing" link that navigates to the Stock page (buy/sell) or Dividends page.
+- [x] **Existing "needs confirmation" card stays.** The Phase 32 "needs confirmation" card (below) still renders below the summary when any imported ticker lacks confirmation.
 
 ### Post-commit confirmation nudge *(Phase 32 / item 390)*
 - [x] **Stub `stockProfile` creation.** During commit, after all `createBuy` / `createSell` / `createDividend` calls succeed, the importer collects every unique ticker that appeared in the committed records and calls `upsertStockProfile(ticker, {})` for each. The upsert only creates a row if none exists (existing rows are untouched, so confirmed profiles are not flipped back). New stubs land with `confirmed: false`, `confirmedAt: null` (SPEC-033 default). This guarantees every imported ticker appears in the Stock inventory so the user can review it from one place.

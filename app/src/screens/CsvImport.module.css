@@ -361,6 +361,150 @@
   line-height: 1.5;
 }
 
+/* ── Import report (item 441) ────────────────────────────────────────────── */
+
+.reportFilterPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  background: #2d3448;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterPill:hover { color: #94a3b8; }
+
+.filterPillActive {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.reportTable {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.reportRow {
+  background: #1e2535;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.reportRow_imported  { border-color: rgba(52,211,153,0.15); }
+.reportRow_duplicate { border-color: rgba(251,191,36,0.2); background: rgba(251,191,36,0.04); }
+.reportRow_skipped   { opacity: 0.65; }
+
+.reportRowMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.reportLine {
+  color: #475569;
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: right;
+  font-family: monospace;
+  padding-top: 1px;
+}
+
+.reportRowContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reportDesc { color: #94a3b8; }
+
+.reportReason {
+  font-size: 11px;
+  color: #f87171;
+  line-height: 1.4;
+}
+
+.reportActions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.statusImported  { font-size: 11px; font-weight: 700; color: #34d399; flex-shrink: 0; padding-top: 1px; }
+.statusDuplicate { font-size: 11px; font-weight: 700; color: #fbbf24; flex-shrink: 0; padding-top: 1px; }
+.statusError     { font-size: 11px; font-weight: 700; color: #f87171; flex-shrink: 0; padding-top: 1px; }
+.statusSkipped   { font-size: 11px; font-weight: 700; color: #475569; flex-shrink: 0; padding-top: 1px; }
+
+.rowActionBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rowActionBtn:hover { background: #3d4558; color: #f1f5f9; }
+
+.reportEmpty {
+  font-size: 13px;
+  color: #475569;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+/* Inline edit form */
+
+.inlineEditForm {
+  border-top: 1px solid #2d3448;
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #131b2e;
+}
+
+.inlineEditGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inlineEditErrors {
+  font-size: 11px;
+  color: #f87171;
+  line-height: 1.5;
+}
+
+.inlineEditActions {
+  display: flex;
+  gap: 6px;
+}
+
 /* ── Action buttons ──────────────────────────────────────────────────────── */
 
 .actions {

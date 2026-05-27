@@ -50,6 +50,10 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
 
   // ── Done step ──────────────────────────────────────────────────────────────
   const [result, setResult] = useState(null)
+  const [reportFilter, setReportFilter] = useState('all')
+  const [editingRow, setEditingRow] = useState(null)  // rowResult being inline-edited
+  const [editValues, setEditValues] = useState({})
+  const [editErrors, setEditErrors] = useState([])
 
   // ── File reading ───────────────────────────────────────────────────────────
   function doParse(text, delim) {
@@ -170,36 +174,68 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
 
   // ── Commit ─────────────────────────────────────────────────────────────────
   function commit() {
-    const toImport = validated.filter(r => !skipped.has(r.rowIndex) && r.errors.length === 0)
+    const existingExtIds    = collectExternalIds(accountId)
+    const existingTxnKeys   = collectTransactionCompositeKeys(accountId)
+    const existingDivKeys   = collectDividendCompositeKeys(accountId)
 
-    // Collect existing external IDs to detect duplicates
-    const existingExtIds = collectExternalIds(accountId)
+    const rowResults = []
+    const committed  = []
 
-    const committed = []
-    let dupCount = 0
-    let errCount = 0
+    for (const row of validated) {
+      const p        = row.parsed
+      const hasErrs  = row.errors.length > 0
+      const isSkipped = skipped.has(row.rowIndex)
 
-    for (const row of toImport) {
-      const p = row.parsed
-      const extId = p.transactionExternalId
-      if (extId && existingExtIds.has(extId)) { dupCount++; continue }
+      if (hasErrs) {
+        rowResults.push({ rowIndex: row.rowIndex, status: 'skipped', reasonCode: 'validation-error', reason: row.errors.join(' · '), parsed: p })
+        continue
+      }
+      if (isSkipped) {
+        rowResults.push({ rowIndex: row.rowIndex, status: 'skipped', reasonCode: 'user-skipped', reason: 'Skipped by user', parsed: p })
+        continue
+      }
+      if (p.type === 'transfer') {
+        rowResults.push({ rowIndex: row.rowIndex, status: 'skipped', reasonCode: 'transfer', reason: 'Transfer rows not yet supported', parsed: p })
+        continue
+      }
+
+      // Composite-key dedup (items 439–440)
+      if (p.type === 'buy' || p.type === 'sell') {
+        const extId = p.transactionExternalId
+        if (extId && existingExtIds.has(extId)) {
+          rowResults.push({ rowIndex: row.rowIndex, status: 'duplicate', reasonCode: 'duplicate-external-id', reason: 'Duplicate external ID', parsed: p })
+          continue
+        }
+        if (!extId && existingTxnKeys.has(txnCompositeKey(p))) {
+          rowResults.push({ rowIndex: row.rowIndex, status: 'duplicate', reasonCode: 'duplicate-composite', reason: 'Duplicate — matching existing transaction', parsed: p })
+          continue
+        }
+      } else if (p.type === 'dividend') {
+        if (existingDivKeys.has(divCompositeKey(p))) {
+          rowResults.push({ rowIndex: row.rowIndex, status: 'duplicate', reasonCode: 'duplicate-composite', reason: 'Duplicate — matching existing dividend', parsed: p })
+          continue
+        }
+      }
 
       try {
+        let importedId = null
         if (p.type === 'buy') {
           const rec = createBuy({
             investingAccountId: accountId,
             date: p.date, ticker: p.ticker, stockExchange: p.stockExchange,
             shares: p.shares, price: p.price, currency: p.currency,
-            fee: p.fee, transactionExternalId: extId,
+            fee: p.fee, transactionExternalId: p.transactionExternalId,
           })
+          importedId = rec.id
           committed.push({ type: 'buy', id: rec.id })
         } else if (p.type === 'sell') {
           const rec = createSell({
             investingAccountId: accountId,
             date: p.date, ticker: p.ticker, stockExchange: p.stockExchange,
             shares: p.shares, price: p.price, currency: p.currency,
-            fee: p.fee, transactionExternalId: extId,
+            fee: p.fee, transactionExternalId: p.transactionExternalId,
           })
+          importedId = rec.id
           committed.push({ type: 'sell', id: rec.id })
         } else if (p.type === 'dividend') {
           const taxPct = p.taxPercent > 0 ? p.taxPercent : resolveDividendTaxPercent(p.ticker)
@@ -210,13 +246,11 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
             dividendPerShare: p.dividendPerShare, shareCount: p.shareCount,
             taxPercent: taxPct,
           })
+          importedId = rec.id
           committed.push({ type: 'dividend', id: rec.id })
-        } else {
-          // 'transfer' — skipped in phase 2 (requires destination account)
-          dupCount++
         }
+        rowResults.push({ rowIndex: row.rowIndex, status: 'imported', reasonCode: null, reason: null, parsed: p, importedId })
       } catch (e) {
-        // Rollback: delete everything committed so far
         rollback(committed)
         setResult({ error: `Import failed on row ${row.rowIndex}: ${e.message}. No records were saved.` })
         setStep('done')
@@ -234,86 +268,358 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
         typeValueMap: tvm,
         defaultTransactionType: defaultType || null,
       })
-      if (setAsDefault) {
-        updateInvestingAccount(accountId, { defaultCsvTemplateId: newTpl.id })
-      }
+      if (setAsDefault) updateInvestingAccount(accountId, { defaultCsvTemplateId: newTpl.id })
     } else if (setAsDefault && templateId) {
       updateInvestingAccount(accountId, { defaultCsvTemplateId: templateId })
     }
 
-    // Ensure every imported ticker has a stockProfile row so it shows up in
-    // the Stock inventory and can be reviewed. Stub-only — existing profiles
-    // are left untouched (so a previously-confirmed profile stays confirmed).
-    const importedTickers = new Set()
-    for (const row of toImport) {
-      const t = row.parsed.ticker
-      if (t) importedTickers.add(String(t).trim().toUpperCase())
-    }
+    // Stub profiles for every imported ticker
+    const importedTickers = new Set(
+      rowResults.filter(r => r.status === 'imported' && r.parsed.ticker).map(r => r.parsed.ticker)
+    )
     for (const t of importedTickers) {
       if (!getStockProfile(t)) upsertStockProfile(t, {})
     }
     const needsConfirmation = [...importedTickers].filter(t => getStockProfile(t)?.confirmed !== true)
 
-    const totalSkipped = skipped.size + dupCount
-    setResult({ imported: committed.length, skipped: totalSkipped, dups: dupCount, errors: errCount, needsConfirmation })
+    setResult({ rowResults, needsConfirmation })
     setStep('done')
+  }
+
+  // ── Edit-row retry (inline fix for validation-error rows) ──────────────────
+  function handleEditRetry(rr) {
+    const v = editValues
+    const errors = []
+    const parsed = { _rowIndex: rr.rowIndex }
+
+    const type = (v.type || '').trim().toLowerCase()
+    if (!type || !['buy', 'sell', 'dividend', 'transfer'].includes(type)) {
+      errors.push('Invalid transaction type')
+    }
+    parsed.type = type
+
+    if (!v.ticker?.trim()) errors.push('Missing ticker')
+    else parsed.ticker = v.ticker.trim().toUpperCase()
+
+    if (!v.currency?.trim()) errors.push('Missing currency')
+    else parsed.currency = v.currency.trim().toUpperCase()
+
+    const isoRe = /^\d{4}-\d{2}-\d{2}$/
+
+    if (type === 'buy' || type === 'sell') {
+      if (!isoRe.test(v.date?.trim())) errors.push('Invalid date — use YYYY-MM-DD')
+      else parsed.date = v.date.trim()
+
+      const sh = parseFloat(v.shares)
+      if (!isFinite(sh) || sh <= 0) errors.push('Invalid shares (must be > 0)')
+      else parsed.shares = sh
+
+      const pr = parseFloat(v.price)
+      if (!isFinite(pr) || pr < 0) errors.push('Invalid price')
+      else parsed.price = pr
+
+      parsed.fee = parseFloat(v.fee) || 0
+      parsed.stockExchange = v.stockExchange?.trim() || null
+      parsed.transactionExternalId = v.transactionExternalId?.trim() || null
+
+    } else if (type === 'dividend') {
+      if (!isoRe.test(v.payoutDate?.trim())) errors.push('Invalid payout date — use YYYY-MM-DD')
+      else parsed.payoutDate = v.payoutDate.trim()
+      parsed.exDividendDate = isoRe.test(v.exDividendDate?.trim()) ? v.exDividendDate.trim() : parsed.payoutDate
+
+      const dps = parseFloat(v.dividendPerShare)
+      if (!isFinite(dps) || dps < 0) errors.push('Invalid dividend per share')
+      else parsed.dividendPerShare = dps
+
+      const sc = parseFloat(v.shareCount)
+      if (!isFinite(sc) || sc <= 0) errors.push('Invalid share count (must be > 0)')
+      else parsed.shareCount = sc
+
+      parsed.taxPercent = parseFloat(v.taxPercent) || 0
+      parsed.transactionExternalId = null
+    }
+
+    if (errors.length > 0) { setEditErrors(errors); return }
+
+    // Re-check dedup
+    const existingExtIds  = collectExternalIds(accountId)
+    const existingTxnKeys = collectTransactionCompositeKeys(accountId)
+    const existingDivKeys = collectDividendCompositeKeys(accountId)
+
+    let newStatus = null, newReasonCode = null, newReason = null, importedId = null
+
+    if (type === 'buy' || type === 'sell') {
+      const extId = parsed.transactionExternalId
+      if (extId && existingExtIds.has(extId)) {
+        newStatus = 'duplicate'; newReasonCode = 'duplicate-external-id'; newReason = 'Duplicate external ID'
+      } else if (!extId && existingTxnKeys.has(txnCompositeKey(parsed))) {
+        newStatus = 'duplicate'; newReasonCode = 'duplicate-composite'; newReason = 'Duplicate — matching existing transaction'
+      }
+    } else if (type === 'dividend') {
+      if (existingDivKeys.has(divCompositeKey(parsed))) {
+        newStatus = 'duplicate'; newReasonCode = 'duplicate-composite'; newReason = 'Duplicate — matching existing dividend'
+      }
+    }
+
+    if (!newStatus) {
+      try {
+        if (type === 'buy') {
+          const rec = createBuy({ investingAccountId: accountId, ...parsed })
+          importedId = rec.id
+        } else if (type === 'sell') {
+          const rec = createSell({ investingAccountId: accountId, ...parsed })
+          importedId = rec.id
+        } else if (type === 'dividend') {
+          const taxPct = parsed.taxPercent > 0 ? parsed.taxPercent : resolveDividendTaxPercent(parsed.ticker)
+          const rec = createDividend({ investingAccountId: accountId, ...parsed, taxPercent: taxPct })
+          importedId = rec.id
+        }
+        newStatus = 'imported'; newReasonCode = null; newReason = null
+        if (!getStockProfile(parsed.ticker)) upsertStockProfile(parsed.ticker, {})
+      } catch (e) {
+        setEditErrors([`Commit failed: ${e.message}`])
+        return
+      }
+    }
+
+    setResult(prev => {
+      const needsTicker = newStatus === 'imported' && parsed.ticker && getStockProfile(parsed.ticker)?.confirmed !== true
+      const prevNC = prev.needsConfirmation || []
+      const newNC = needsTicker && !prevNC.includes(parsed.ticker) ? [...prevNC, parsed.ticker] : prevNC
+      return {
+        ...prev,
+        rowResults: prev.rowResults.map(r =>
+          r.rowIndex === rr.rowIndex
+            ? { ...r, status: newStatus, reasonCode: newReasonCode, reason: newReason, parsed, importedId }
+            : r
+        ),
+        needsConfirmation: newNC,
+      }
+    })
+    setEditingRow(null)
+    setEditErrors([])
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (step === 'done') {
+    if (result.error) {
+      return (
+        <div className={styles.screen}>
+          <div className={styles.header}>
+            <button className={styles.backBtn} onClick={onBack}>←</button>
+            <h1 className={styles.title}>Import failed</h1>
+          </div>
+          <div className={styles.doneCard}>
+            <div className={`${styles.doneStat} ${styles.doneStatErr}`}>{result.error}</div>
+            <div className={styles.actions}>
+              <button className={styles.btnPrimary} onClick={onBack}>Close</button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    const { rowResults, needsConfirmation } = result
+    const importedRows    = rowResults.filter(r => r.status === 'imported')
+    const dupRows         = rowResults.filter(r => r.status === 'duplicate')
+    const errorRows       = rowResults.filter(r => r.reasonCode === 'validation-error')
+    const notImportedRows = rowResults.filter(r => r.status !== 'imported')
+
+    let displayRows = rowResults
+    if (reportFilter === 'imported')     displayRows = importedRows
+    else if (reportFilter === 'not-imported') displayRows = notImportedRows
+    else if (reportFilter === 'errors')   displayRows = errorRows
+
     return (
       <div className={styles.screen}>
         <div className={styles.header}>
           <button className={styles.backBtn} onClick={onBack}>←</button>
           <h1 className={styles.title}>Import complete</h1>
         </div>
+
+        {/* Summary + needs-confirmation card */}
         <div className={styles.doneCard}>
-          {result.error ? (
-            <>
-              <div className={styles.doneTitle}>Import failed</div>
-              <div className={`${styles.doneStat} ${styles.doneStatErr}`}>{result.error}</div>
-            </>
-          ) : (
-            <>
-              <div className={styles.doneTitle}>Done</div>
-              <div className={`${styles.doneStat} ${styles.doneStatGood}`}>
-                <strong>{result.imported}</strong> record{result.imported !== 1 ? 's' : ''} imported
+          <div className={styles.doneTitle}>Done</div>
+          <div className={`${styles.doneStat} ${styles.doneStatGood}`}>
+            <strong>{importedRows.length}</strong> record{importedRows.length !== 1 ? 's' : ''} imported
+          </div>
+          {dupRows.length > 0 && (
+            <div className={`${styles.doneStat} ${styles.doneStatWarn}`}>
+              <strong>{dupRows.length}</strong> duplicate{dupRows.length !== 1 ? 's' : ''} skipped
+            </div>
+          )}
+          {errorRows.length > 0 && (
+            <div className={`${styles.doneStat} ${styles.doneStatErr}`}>
+              <strong>{errorRows.length}</strong> row{errorRows.length !== 1 ? 's' : ''} with errors skipped
+            </div>
+          )}
+          {needsConfirmation?.length > 0 && (
+            <div className={styles.needsConfirmCard}>
+              <div className={styles.needsConfirmTitle}>
+                {needsConfirmation.length} ticker{needsConfirmation.length !== 1 ? 's' : ''} need{needsConfirmation.length === 1 ? 's' : ''} confirmation
               </div>
-              {result.dups > 0 && (
-                <div className={`${styles.doneStat} ${styles.doneStatWarn}`}>
-                  <strong>{result.dups}</strong> duplicate{result.dups !== 1 ? 's' : ''} skipped (matching external ID)
-                </div>
-              )}
-              {result.skipped - result.dups > 0 && (
-                <div className={`${styles.doneStat} ${styles.doneStatWarn}`}>
-                  <strong>{result.skipped - result.dups}</strong> row{result.skipped - result.dups !== 1 ? 's' : ''} skipped
-                </div>
-              )}
-              {result.needsConfirmation?.length > 0 && (
-                <div className={styles.needsConfirmCard}>
-                  <div className={styles.needsConfirmTitle}>
-                    {result.needsConfirmation.length} ticker{result.needsConfirmation.length !== 1 ? 's' : ''} need{result.needsConfirmation.length === 1 ? 's' : ''} confirmation
-                  </div>
-                  <div className={styles.needsConfirmList}>
-                    {renderTickerList(result.needsConfirmation)}
-                  </div>
-                  <div className={styles.needsConfirmNote}>
-                    These tickers were imported without a confirmed mapping to a real security.
-                    Confirm each one to be sure it points to the company you intended.
-                  </div>
-                  <button
-                    className={styles.btnSecondary}
-                    onClick={() => onNavigate?.('stock-inventory', { confirmFilter: 'unconfirmed' })}
-                  >
-                    Review in Stock inventory
-                  </button>
-                </div>
-              )}
-            </>
+              <div className={styles.needsConfirmList}>{renderTickerList(needsConfirmation)}</div>
+              <div className={styles.needsConfirmNote}>
+                These tickers were imported without a confirmed mapping to a real security.
+                Confirm each one to be sure it points to the company you intended.
+              </div>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => onNavigate?.('stock-inventory', { confirmFilter: 'unconfirmed' })}
+              >
+                Review in Stock inventory
+              </button>
+            </div>
           )}
           <div className={styles.actions}>
             <button className={styles.btnPrimary} onClick={onBack}>Close</button>
+          </div>
+        </div>
+
+        {/* Per-row report (item 441) */}
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Import report</div>
+
+          {/* Filter pills */}
+          <div className={styles.reportFilterPills}>
+            {[
+              ['all',          `All (${rowResults.length})`],
+              ['imported',     `Imported (${importedRows.length})`],
+              ['not-imported', `Not imported (${notImportedRows.length})`],
+              ['errors',       `Errors (${errorRows.length})`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                className={`${styles.filterPill} ${reportFilter === key ? styles.filterPillActive : ''}`}
+                onClick={() => setReportFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Report rows */}
+          <div className={styles.reportTable}>
+            {displayRows.length === 0 && (
+              <div className={styles.reportEmpty}>No rows match this filter.</div>
+            )}
+            {displayRows.map(rr => {
+              const isEditing = editingRow?.rowIndex === rr.rowIndex
+              const type = rr.parsed?.type
+              return (
+                <div key={rr.rowIndex} className={`${styles.reportRow} ${styles['reportRow_' + rr.status]}`}>
+                  <div className={styles.reportRowMain}>
+                    <span className={styles.reportLine}>{rr.rowIndex}</span>
+                    <div className={styles.reportRowContent}>
+                      <div className={styles.reportDesc}>{describeRow(rr.parsed)}</div>
+                      {rr.status !== 'imported' && rr.reason && (
+                        <div className={styles.reportReason}>{rr.reason}</div>
+                      )}
+                    </div>
+                    <span className={reportStatusClass(rr, styles)}>{reportStatusLabel(rr)}</span>
+                    <span className={styles.reportActions}>
+                      {rr.reasonCode === 'validation-error' && (
+                        <button
+                          className={styles.rowActionBtn}
+                          onClick={() => {
+                            if (isEditing) { setEditingRow(null); setEditErrors([]) }
+                            else { setEditingRow(rr); setEditValues(buildEditValues(rr.parsed)); setEditErrors([]) }
+                          }}
+                        >
+                          {isEditing ? 'Cancel' : 'Edit row'}
+                        </button>
+                      )}
+                      {rr.status === 'duplicate' && (
+                        <button
+                          className={styles.rowActionBtn}
+                          onClick={() => {
+                            if (type === 'dividend') onNavigate?.('dividends')
+                            else onNavigate?.('stock', { ticker: rr.parsed.ticker })
+                          }}
+                        >
+                          View existing
+                        </button>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Inline edit form */}
+                  {isEditing && (
+                    <div className={styles.inlineEditForm}>
+                      <div className={styles.inlineEditGrid}>
+                        <div className={styles.editField}>
+                          <label className={styles.label}>Type</label>
+                          <select className={styles.select} value={editValues.type ?? ''} onChange={e => setEditValues(p => ({ ...p, type: e.target.value }))}>
+                            <option value="">— select —</option>
+                            {['buy','sell','dividend','transfer'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div className={styles.editField}>
+                          <label className={styles.label}>Ticker</label>
+                          <input className={styles.input} value={editValues.ticker ?? ''} onChange={e => setEditValues(p => ({ ...p, ticker: e.target.value }))} />
+                        </div>
+                        <div className={styles.editField}>
+                          <label className={styles.label}>Currency</label>
+                          <input className={styles.input} value={editValues.currency ?? ''} onChange={e => setEditValues(p => ({ ...p, currency: e.target.value }))} />
+                        </div>
+                        {(editValues.type === 'buy' || editValues.type === 'sell') && (<>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Date (YYYY-MM-DD)</label>
+                            <input className={styles.input} value={editValues.date ?? ''} onChange={e => setEditValues(p => ({ ...p, date: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Shares</label>
+                            <input className={styles.input} type="number" value={editValues.shares ?? ''} onChange={e => setEditValues(p => ({ ...p, shares: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Price</label>
+                            <input className={styles.input} type="number" value={editValues.price ?? ''} onChange={e => setEditValues(p => ({ ...p, price: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Fee</label>
+                            <input className={styles.input} type="number" value={editValues.fee ?? ''} onChange={e => setEditValues(p => ({ ...p, fee: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Exchange (optional)</label>
+                            <input className={styles.input} value={editValues.stockExchange ?? ''} onChange={e => setEditValues(p => ({ ...p, stockExchange: e.target.value }))} />
+                          </div>
+                        </>)}
+                        {editValues.type === 'dividend' && (<>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Payout date (YYYY-MM-DD)</label>
+                            <input className={styles.input} value={editValues.payoutDate ?? ''} onChange={e => setEditValues(p => ({ ...p, payoutDate: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Ex-div date (YYYY-MM-DD)</label>
+                            <input className={styles.input} value={editValues.exDividendDate ?? ''} onChange={e => setEditValues(p => ({ ...p, exDividendDate: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Dividend per share</label>
+                            <input className={styles.input} type="number" value={editValues.dividendPerShare ?? ''} onChange={e => setEditValues(p => ({ ...p, dividendPerShare: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Share count</label>
+                            <input className={styles.input} type="number" value={editValues.shareCount ?? ''} onChange={e => setEditValues(p => ({ ...p, shareCount: e.target.value }))} />
+                          </div>
+                          <div className={styles.editField}>
+                            <label className={styles.label}>Tax %</label>
+                            <input className={styles.input} type="number" value={editValues.taxPercent ?? ''} onChange={e => setEditValues(p => ({ ...p, taxPercent: e.target.value }))} />
+                          </div>
+                        </>)}
+                      </div>
+                      {editErrors.length > 0 && (
+                        <div className={styles.inlineEditErrors}>{editErrors.join(' · ')}</div>
+                      )}
+                      <div className={styles.inlineEditActions}>
+                        <button className={styles.btnPrimary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => handleEditRetry(rr)}>Retry</button>
+                        <button className={styles.btnSecondary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => { setEditingRow(null); setEditErrors([]) }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -668,7 +974,16 @@ function guessMatch(lower, field) {
   return synonyms[field]?.some(s => lower.includes(s)) ?? false
 }
 
-// Collect all existing transactionExternalId values for dedup
+// ─── Dedup helpers ────────────────────────────────────────────────────────────
+
+function txnCompositeKey(p) {
+  return `${p.date}|${String(p.ticker || '').toUpperCase()}|${Number(p.shares).toFixed(6)}|${Number(p.price).toFixed(8)}|${p.type}`
+}
+
+function divCompositeKey(p) {
+  return `${p.payoutDate}|${String(p.ticker || '').toUpperCase()}|${Number(p.shareCount).toFixed(6)}|${Number(p.dividendPerShare).toFixed(8)}|${String(p.currency || '').toUpperCase()}`
+}
+
 function collectExternalIds(investingAccountId) {
   const ids = new Set()
   try {
@@ -680,6 +995,68 @@ function collectExternalIds(investingAccountId) {
         .forEach(d => ids.add(d.transactionExternalId))
   } catch {}
   return ids
+}
+
+function collectTransactionCompositeKeys(investingAccountId) {
+  const keys = new Set()
+  try {
+    const txns = JSON.parse(localStorage.getItem('rmoney_stock_transactions')) ?? []
+    txns
+      .filter(t => t.investingAccountId === investingAccountId && (t.type === 'buy' || t.type === 'sell'))
+      .forEach(t => keys.add(
+        `${t.date}|${String(t.ticker || '').toUpperCase()}|${Number(t.shares).toFixed(6)}|${Number(t.price).toFixed(8)}|${t.type}`
+      ))
+  } catch {}
+  return keys
+}
+
+function collectDividendCompositeKeys(investingAccountId) {
+  const keys = new Set()
+  try {
+    const divs = JSON.parse(localStorage.getItem('rmoney_dividends')) ?? []
+    divs
+      .filter(d => d.investingAccountId === investingAccountId)
+      .forEach(d => keys.add(
+        `${d.payoutDate}|${String(d.ticker || '').toUpperCase()}|${Number(d.shareCount).toFixed(6)}|${Number(d.dividendPerShare).toFixed(8)}|${String(d.currency || '').toUpperCase()}`
+      ))
+  } catch {}
+  return keys
+}
+
+// ─── Report helpers ───────────────────────────────────────────────────────────
+
+function reportStatusLabel(rr) {
+  if (rr.status === 'imported') return 'Imported'
+  if (rr.status === 'duplicate') return rr.reasonCode === 'duplicate-external-id' ? 'Dup (ID)' : 'Duplicate'
+  if (rr.reasonCode === 'validation-error') return 'Error'
+  if (rr.reasonCode === 'user-skipped') return 'Skipped'
+  if (rr.reasonCode === 'transfer') return 'Transfer'
+  return 'Skipped'
+}
+
+function reportStatusClass(rr, styles) {
+  if (rr.status === 'imported') return styles.statusImported
+  if (rr.status === 'duplicate') return styles.statusDuplicate
+  if (rr.reasonCode === 'validation-error') return styles.statusError
+  return styles.statusSkipped
+}
+
+function buildEditValues(parsed) {
+  const v = {}
+  if (parsed?.type)          v.type          = parsed.type
+  if (parsed?.ticker)        v.ticker        = parsed.ticker
+  if (parsed?.currency)      v.currency      = parsed.currency
+  if (parsed?.date)          v.date          = parsed.date
+  if (parsed?.shares != null) v.shares       = String(parsed.shares)
+  if (parsed?.price  != null) v.price        = String(parsed.price)
+  if (parsed?.fee    != null) v.fee          = String(parsed.fee)
+  if (parsed?.payoutDate)    v.payoutDate    = parsed.payoutDate
+  if (parsed?.exDividendDate) v.exDividendDate = parsed.exDividendDate
+  if (parsed?.dividendPerShare != null) v.dividendPerShare = String(parsed.dividendPerShare)
+  if (parsed?.shareCount != null)       v.shareCount       = String(parsed.shareCount)
+  if (parsed?.taxPercent != null)       v.taxPercent       = String(parsed.taxPercent)
+  if (parsed?.stockExchange)  v.stockExchange  = parsed.stockExchange
+  return v
 }
 
 // Attempt rollback: delete stock transactions and dividends by ID

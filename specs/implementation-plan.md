@@ -158,7 +158,7 @@ Ships fixes and infrastructure quickly. Users notice the bug fixes and the small
 - **33c** Configurable cache TTLs + offline fallback + per-page Reset API
 - **33d** Re-identify button rename + Stock inventory wider table + Edit profile re-resolve
 - **33i** Stock page dividend list bug fixes + delete + lots expand
-- **33k** CSV import composite-key dedup + post-commit report
+- **33k** ✓ CSV import composite-key dedup + post-commit report
 - **33m** Small / muted text contrast pass
 - **33o** Negative cache for failed fetches (extends 33c)
 - **21a** Android build pipeline (items 363, 364, 364a, 364b)
@@ -297,12 +297,12 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 437. [ ] Payout chart: per-bar tooltip with Paid / To be paid breakdown (past = paid only, future = to-be-paid only, current bucket = both); respects gross / net toggle
 438. [ ] Payout chart "Grouped by period" toggle: one cluster per quarter / month / week label, one bar per year inside each cluster; dashed-fill for "to be paid" portion preserved; disabled for year bucket
 
-**Sub-phase 33k — CSV import composite-key dedup + post-commit report**
+**Sub-phase 33k — CSV import composite-key dedup + post-commit report** ✓ done
 
 ### SPEC-025 Investment CSV Import — Phase 33 items
-439. [ ] Transaction dedup by external ID when present, else composite `(date, ticker, shares, price, type)`
-440. [ ] Dividend dedup by composite `(payoutDate, ticker, shareCount, dividendPerShare, currency)`
-441. [ ] Done-screen report: one row per parsed CSV line with status + reason; filter pill `All / Imported only / Not imported only / Errors only`; per-row "Edit row" (for errors, re-commit) / "View existing record" (for duplicates)
+439. [x] Transaction dedup by external ID when present, else composite `(date, ticker, shares, price, type)`
+440. [x] Dividend dedup by composite `(payoutDate, ticker, shareCount, dividendPerShare, currency)`
+441. [x] Done-screen report: one row per parsed CSV line with status + reason; filter pill `All / Imported only / Not imported only / Errors only`; per-row "Edit row" (for errors, re-commit) / "View existing record" (for duplicates)
 
 **Sub-phase 33l — Buy-Sell planning refresh + disregard cash + overspend + max fee**
 
