@@ -42,6 +42,13 @@
   gap: 6px;
 }
 
+.fieldRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
 .label {
   font-size: 12px;
   font-weight: 600;
@@ -165,6 +172,37 @@
 }
 
 .btnSmDanger:hover { background: rgba(248,113,113,0.1); }
+
+.tipAbove {
+  position: relative;
+  display: inline-block;
+}
+.tipAbove::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-bottom: 6px;
+  transform: translateX(-50%);
+  background: #1e2d4a;
+  color: #f1f5f9;
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #4a5f80;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+.tipAbove:hover::after { opacity: 1; }
+
+.tipAboveLeft::after {
+  left: 0;
+  transform: none;
+}
 
 .inlineDialog {
   background: #0f1520;

@@ -938,8 +938,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               and the global default when recording a dividend.
             </p>
             {Object.entries(perCountryTax).map(([country, pct]) => (
-              <div key={country} className={styles.field}>
-                <label className={styles.label}>{country}</label>
+              <div key={country} className={styles.fieldRow}>
+                <span className={styles.label} style={{ width: 60 }}>{country}</span>
                 <input
                   className={styles.input}
                   type="number"
@@ -955,7 +955,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   }}
                 />
                 <button
-                  className={styles.btnSmDanger}
+                  className={`${styles.btnSmDanger} ${styles.tipAbove}`}
+                  data-tip="Remove override"
                   onClick={() => {
                     const { [country]: _removed, ...rest } = perCountryTax
                     setPerCountryTaxState(rest)
@@ -964,14 +965,16 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 >×</button>
               </div>
             ))}
-            <div className={styles.field}>
-              <input
-                className={styles.input}
-                placeholder="Country (e.g. US)"
-                value={countryTaxNew.country}
-                onChange={e => setCountryTaxNew(prev => ({ ...prev, country: e.target.value.toUpperCase() }))}
-                style={{ width: 100 }}
-              />
+            <div className={styles.fieldRow}>
+              <span className={`${styles.tipAbove} ${styles.tipAboveLeft}`} data-tip="2-letter country code (e.g. US, GB, DE)">
+                <input
+                  className={styles.input}
+                  placeholder="Country (e.g. US)"
+                  value={countryTaxNew.country}
+                  onChange={e => setCountryTaxNew(prev => ({ ...prev, country: e.target.value.toUpperCase() }))}
+                  style={{ width: 100 }}
+                />
+              </span>
               <input
                 className={styles.input}
                 type="number"
