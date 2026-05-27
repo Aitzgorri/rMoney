@@ -9,6 +9,7 @@ import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
 import { migrateFavoriteCurrencies } from './data/settings'
+import { migrateDividendStatuses, promoteDividends } from './data/dividends'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -50,6 +51,7 @@ export default function App() {
   const [loadDialog, setLoadDialog] = useState(null)    // { filename, exportedAt, data } or null
   const [loadError, setLoadError] = useState(null)      // error string or null
   const [keysNotRestored, setKeysNotRestored] = useState(false)
+  const [droppedDividends, setDroppedDividends] = useState([])
 
   useEffect(() => {
     // Determine vault startup path
@@ -68,6 +70,9 @@ export default function App() {
     checkAndGeneratePending()
     migrateConfirmedField()
     migrateFavoriteCurrencies()
+    migrateDividendStatuses()
+    const { dropped } = promoteDividends()
+    if (dropped.length > 0) setDroppedDividends(dropped)
     if (sessionStorage.getItem('rmoney_keys_not_restored')) {
       sessionStorage.removeItem('rmoney_keys_not_restored')
       setKeysNotRestored(true)
@@ -184,6 +189,17 @@ export default function App() {
             Keys were not restored from this backup. Re-enter them in Settings → Market data and Settings → AI.
           </span>
           <button className={styles.saveBannerClose} onClick={() => setKeysNotRestored(false)}>✕</button>
+        </div>
+      )}
+
+      {droppedDividends.length > 0 && (
+        <div className={styles.keysNotRestored}>
+          <span>
+            {droppedDividends.length === 1
+              ? `1 pending dividend for ${droppedDividends[0].ticker} was removed — no shares held on the ex-dividend date.`
+              : `${droppedDividends.length} pending dividends were removed — no shares held on their ex-dividend dates (${[...new Set(droppedDividends.map(d => d.ticker))].join(', ')}).`}
+          </span>
+          <button className={styles.saveBannerClose} onClick={() => setDroppedDividends([])}>✕</button>
         </div>
       )}
 

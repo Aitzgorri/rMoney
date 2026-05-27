@@ -252,14 +252,14 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 413c. [x] Resolution order at dividend creation becomes: **payout input → stock profile override → per-country (using `hqCountryOverride ?? hqCountry`) → global default**. The country level slots between stock and global per the SPEC-020 hierarchy
 413d. [x] Existing dividend records keep their snapshotted `taxPercent` (history is never rewritten). Only newly-created dividends consult the country level
 
-**Sub-phase 33f — Dividend status model + cash-deferral + auto-promotion**
+**Sub-phase 33f — Dividend status model + cash-deferral + auto-promotion** ✓ done
 
 ### SPEC-020 Dividends — Phase 33 status model
-414. [ ] `dividends.status: 'received' | 'pending-payment' | 'pending-confirmation'`; `source: 'user' | 'api-auto'`; `confirmedAt: ISO | null`; `cashMovementId` becomes nullable
-415. [ ] `createDividend` sets status based on: payoutDate vs today + `settings.dividends.confirmReceipt` toggle. No cashMovement written for non-`'received'` states
-416. [ ] Auto-promote pending-payment → received (or pending-confirmation when toggle ON) on app boot and after relevant data mutations; auto-write cashMovement on promotion
-417. [ ] Auto-recalculate share count from lots for pending-payment records with `exDividendDate > today`; once `exDate ≤ today` lock the share count
-418. [ ] Pending-payment record with shares = 0 is dropped on promotion (toast notification)
+414. [x] `dividends.status: 'received' | 'pending-payment' | 'pending-confirmation'`; `source: 'user' | 'api-auto'`; `confirmedAt: ISO | null`; `cashMovementId` becomes nullable
+415. [x] `createDividend` sets status based on: payoutDate vs today + `settings.dividends.confirmReceipt` toggle. No cashMovement written for non-`'received'` states
+416. [x] Auto-promote pending-payment → received (or pending-confirmation when toggle ON) on app boot and after relevant data mutations; auto-write cashMovement on promotion
+417. [x] Auto-recalculate share count from lots for pending-payment records with `exDividendDate > today`; once `exDate ≤ today` lock the share count (recalc happens during `promoteDividends()` on the final promotion pass)
+418. [x] Pending-payment record with shares = 0 is dropped on promotion (dismissable banner in App.jsx)
 
 **Sub-phase 33g — Confirmation flow + Pending tab**
 

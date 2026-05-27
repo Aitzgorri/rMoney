@@ -1,5 +1,6 @@
 import { getCashBalanceByCurrency, createCashBalance, addCashMovement } from './investingAccounts'
 import { getSetting } from './settings'
+import { getOpenLots } from './stockTransactions'
 
 const KEY = 'rmoney_dividends'
 const KEY_MOVEMENTS = 'rmoney_cash_movements'
@@ -51,12 +52,34 @@ export function getDividend(id) {
   return load().find(d => d.id === id) ?? null
 }
 
+// ─── Status helpers ──────────────────────────────────────────────────────────
+
+function writeCashMovement(dividend) {
+  const { netTotal } = computeDividendDerived(dividend)
+  let balance = getCashBalanceByCurrency(dividend.investingAccountId, dividend.currency)
+  if (!balance) balance = createCashBalance({ investingAccountId: dividend.investingAccountId, currency: dividend.currency, openingBalance: 0 })
+  return addCashMovement({
+    type: 'dividend',
+    date: dividend.payoutDate,
+    cashBalanceId: balance.id,
+    amount: netTotal,
+    linkedDividendId: dividend.id,
+  })
+}
+
+// ─── createDividend ──────────────────────────────────────────────────────────
+
 export function createDividend({ investingAccountId, ticker, currency, exDividendDate, payoutDate, dividendPerShare, shareCount, taxPercent, type }) {
-  const { netTotal } = computeDividendDerived({ dividendPerShare, shareCount, taxPercent })
+  const today = new Date().toISOString().slice(0, 10)
+  const confirmReceipt = getSetting('dividends', {}).confirmReceipt ?? false
 
-  let balance = getCashBalanceByCurrency(investingAccountId, currency)
-  if (!balance) balance = createCashBalance({ investingAccountId, currency, openingBalance: 0 })
+  const status = payoutDate > today
+    ? 'pending-payment'
+    : confirmReceipt
+      ? 'pending-confirmation'
+      : 'received'
 
+  const now = new Date().toISOString()
   const dividend = {
     id: crypto.randomUUID(),
     investingAccountId,
@@ -68,24 +91,26 @@ export function createDividend({ investingAccountId, ticker, currency, exDividen
     shareCount: Number(shareCount),
     taxPercent: Number(taxPercent),
     type: type === 'special' ? 'special' : 'regular',
+    status,
+    source: 'user',
+    confirmedAt: status === 'received' ? now : null,
     exchangeRates: null,
     cashMovementId: null,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   }
   save([...load(), dividend])
 
-  const movement = addCashMovement({
-    type: 'dividend',
-    date: payoutDate,
-    cashBalanceId: balance.id,
-    amount: netTotal,
-    linkedDividendId: dividend.id,
-  })
+  if (status === 'received') {
+    const movement = writeCashMovement(dividend)
+    const withMovement = { ...dividend, cashMovementId: movement.id }
+    save(load().map(d => d.id === dividend.id ? withMovement : d))
+    return withMovement
+  }
 
-  const withMovement = { ...dividend, cashMovementId: movement.id }
-  save(load().map(d => d.id === dividend.id ? withMovement : d))
-  return withMovement
+  return dividend
 }
+
+// ─── updateDividend ──────────────────────────────────────────────────────────
 
 export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
   const list = load()
@@ -112,7 +137,9 @@ export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
   return updated
 }
 
-// Removes both the dividend record and its linked cash movement.
+// ─── deleteDividend ──────────────────────────────────────────────────────────
+
+// Removes both the dividend record and its linked cash movement (if any).
 export function deleteDividend(id) {
   const dividend = load().find(d => d.id === id)
   if (!dividend) return
@@ -125,6 +152,111 @@ export function deleteDividend(id) {
     } catch {}
   }
   save(load().filter(d => d.id !== id))
+}
+
+// ─── confirmDividend ─────────────────────────────────────────────────────────
+
+// Transitions a 'pending-confirmation' record to 'received', writes the cash
+// movement, and returns the updated record. No-op for already-received records.
+export function confirmDividend(id) {
+  const list = load()
+  const dividend = list.find(d => d.id === id)
+  if (!dividend || dividend.status === 'received') return dividend ?? null
+
+  const now = new Date().toISOString()
+  const movement = writeCashMovement(dividend)
+  const updated = {
+    ...dividend,
+    status: 'received',
+    confirmedAt: now,
+    cashMovementId: movement.id,
+  }
+  save(list.map(d => d.id === id ? updated : d))
+  return updated
+}
+
+// ─── migrateDividendStatuses ─────────────────────────────────────────────────
+
+// One-shot boot migration: stamps every dividend row that predates the status
+// model with status: 'received', source: 'user', confirmedAt: createdAt.
+// Idempotent — rows that already carry a status field are left untouched.
+const MIGRATION_KEY = 'rmoney_dividends_status_migrated_v1'
+export function migrateDividendStatuses() {
+  if (localStorage.getItem(MIGRATION_KEY) === '1') return
+  const list = load()
+  const migrated = list.map(d => {
+    if (d.status !== undefined) return d
+    return {
+      ...d,
+      status: 'received',
+      source: 'user',
+      confirmedAt: d.createdAt ?? new Date().toISOString(),
+    }
+  })
+  save(migrated)
+  localStorage.setItem(MIGRATION_KEY, '1')
+}
+
+// ─── promoteDividends ────────────────────────────────────────────────────────
+
+// Auto-promote pending-payment records whose payoutDate ≤ today.
+// Steps per record:
+//   1. Recalculate shareCount from open lots at exDividendDate − 1 (the point
+//      of record — the user was entitled to the dividend based on what they
+//      held the day before ex-div).
+//   2. If recalculated shareCount === 0 → delete the record (the user held no
+//      shares on record date). Add a summary to the returned `dropped` array.
+//   3. Otherwise → transition to 'received' (or 'pending-confirmation' if the
+//      global confirmReceipt toggle is ON), writing a cashMovement only for
+//      'received' transitions.
+//
+// Returns { dropped: [{ ticker, exDividendDate, payoutDate, investingAccountId }] }
+export function promoteDividends() {
+  const today = new Date().toISOString().slice(0, 10)
+  const confirmReceipt = getSetting('dividends', {}).confirmReceipt ?? false
+  const list = load()
+  const dropped = []
+
+  let changed = false
+  const updated = list.map(d => {
+    if (d.status !== 'pending-payment') return d
+    if (d.payoutDate > today) return d
+
+    // Recalculate shareCount from lots at exDividendDate − 1
+    const exDate = new Date(d.exDividendDate)
+    exDate.setDate(exDate.getDate() - 1)
+    const asOf = exDate.toISOString().slice(0, 10)
+    const lots = getOpenLots(d.investingAccountId, d.ticker, asOf)
+    const recalcShares = lots.reduce((s, l) => s + l.remainingShares, 0)
+
+    changed = true
+
+    if (recalcShares === 0) {
+      dropped.push({ ticker: d.ticker, exDividendDate: d.exDividendDate, payoutDate: d.payoutDate, investingAccountId: d.investingAccountId })
+      return null // mark for removal
+    }
+
+    const now = new Date().toISOString()
+    const nextStatus = confirmReceipt ? 'pending-confirmation' : 'received'
+    return {
+      ...d,
+      shareCount: recalcShares,
+      status: nextStatus,
+      confirmedAt: nextStatus === 'received' ? now : null,
+    }
+  }).filter(Boolean)
+
+  if (!changed) return { dropped }
+
+  // Write cash movements for newly-received records (those whose cashMovementId is still null)
+  const withMovements = updated.map(d => {
+    if (d.status !== 'received' || d.cashMovementId) return d
+    const movement = writeCashMovement(d)
+    return { ...d, cashMovementId: movement.id }
+  })
+
+  save(withMovements)
+  return { dropped }
 }
 
 export function hasDividendActivity(investingAccountId) {

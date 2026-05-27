@@ -108,6 +108,15 @@ export function setPerCountryDividendTax(map) {
   setSetting('dividends', { ...existing, perCountryTaxPercent: map })
 }
 
+export function getConfirmReceipt() {
+  return getSetting('dividends', {}).confirmReceipt ?? false
+}
+
+export function setConfirmReceipt(value) {
+  const existing = getSetting('dividends', {})
+  setSetting('dividends', { ...existing, confirmReceipt: !!value })
+}
+
 // ─── AI Evaluation ───────────────────────────────────────────────────────────
 
 export function getAiConnection() {
