@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -27,12 +27,12 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .description {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
   line-height: 1.5;
 }
 
@@ -43,11 +43,11 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .input {
@@ -67,7 +67,7 @@
 
 .preview {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 8px 12px;
   background: rgba(59,130,246,0.08);
   border-radius: 8px;
@@ -110,8 +110,8 @@
 }
 
 .templateUsers {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .renameInput {
@@ -126,7 +126,7 @@
   border: none;
   border-radius: 6px;
   padding: 5px 10px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -141,7 +141,7 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -149,7 +149,7 @@
   flex-shrink: 0;
 }
 
-.btnSmSec:hover { border-color: #475569; color: #94a3b8; }
+.btnSmSec:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .btnSmDanger {
   background: none;
@@ -178,7 +178,7 @@
 
 .dialogMsg {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -199,7 +199,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -241,7 +241,7 @@
   background: none;
   border: none;
   padding: 10px 18px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -249,7 +249,7 @@
   margin-bottom: -1px;
 }
 
-.tab:hover { color: #94a3b8; }
+.tab:hover { color: var(--text-muted); }
 
 .tabActive {
   color: #f1f5f9;
@@ -299,7 +299,7 @@
 
 .promptPreview {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -354,9 +354,9 @@
 }
 
 .storageSectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 4px 0 6px;
@@ -396,13 +396,13 @@
 .storageCount {
   flex: 1;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   min-width: 0;
 }
 
 .storageBytes {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   min-width: 55px;
   text-align: right;
   flex-shrink: 0;
@@ -410,7 +410,7 @@
 
 .storageEmptyRow {
   font-size: 13px;
-  color: #475569;
+  color: var(--text-faint);
   padding: 8px 4px;
   font-style: italic;
 }
@@ -426,11 +426,11 @@
 }
 
 .feeSectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .feeList {
@@ -466,12 +466,12 @@
 }
 
 .feeRowSub {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .feeBadge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #93c5fd;
   background: rgba(59,130,246,0.12);
@@ -515,11 +515,11 @@
 }
 
 .feeFieldLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 /* ─── Market data providers ──────────────────────────────────────────────── */
@@ -554,7 +554,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
@@ -575,7 +575,7 @@
 
 .oauthStatus {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   flex: 1;
 }
 
@@ -598,7 +598,7 @@
 
 .providerDeferred {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-faint);
   font-style: italic;
   margin: 2px 0 0;
   line-height: 1.5;
@@ -631,13 +631,13 @@
 
 .debugTime     { color: #334155; white-space: nowrap; flex-shrink: 0; }
 .debugCall     { color: #93c5fd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.debugProvider { color: #94a3b8; }
-.debugLatency  { color: #475569; }
+.debugProvider { color: var(--text-muted); }
+.debugLatency  { color: var(--text-faint); }
 .debugOk       { color: #4ade80; }
 .debugError    { color: #f87171; }
 
 .debugEmpty {
-  color: #475569;
+  color: var(--text-faint);
   font-style: italic;
   margin: 0;
 }
@@ -670,7 +670,7 @@
 }
 
 .dragHandle {
-  color: #475569;
+  color: var(--text-faint);
   cursor: grab;
   font-size: 14px;
   flex-shrink: 0;
@@ -686,14 +686,14 @@
 
 .favName {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
   flex: 1;
 }
 
 .favRemoveBtn {
   background: none;
   border: none;
-  color: #475569;
+  color: var(--text-faint);
   cursor: pointer;
   font-size: 16px;
   padding: 0 2px;
@@ -785,5 +785,5 @@
 }
 
 .suggName {
-  color: #64748b;
+  color: var(--text-faint);
 }

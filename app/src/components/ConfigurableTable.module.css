@@ -1,4 +1,4 @@
-.root {
+﻿.root {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -22,14 +22,14 @@
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   cursor: pointer;
   padding: 3px 8px;
   transition: color 0.15s, border-color 0.15s;
 }
 .pickerBtn:hover,
-.fullscreenBtn:hover { color: #94a3b8; border-color: #3d4558; }
+.fullscreenBtn:hover { color: var(--text-muted); border-color: #3d4558; }
 
 /* ── Column picker panel ──────────────────────────────────────────────────── */
 
@@ -50,11 +50,11 @@
 }
 
 .pickerTitle {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--text-faint);
   padding: 0 12px 6px;
 }
 
@@ -65,7 +65,7 @@
   padding: 5px 12px;
   cursor: grab;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   transition: background 0.1s;
 }
 .pickerItem:hover { background: #263045; }
@@ -121,8 +121,8 @@
 
 .th {
   background: #1a2030;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -134,11 +134,11 @@
   z-index: 1;
 }
 .th.sortable { cursor: pointer; user-select: none; }
-.th.sortable:hover { color: #94a3b8; }
+.th.sortable:hover { color: var(--text-muted); }
 .th.sorted { color: #93c5fd; }
 
 .sortIcon {
-  font-size: 9px;
+  font-size: 12px;
   opacity: 0.6;
 }
 
@@ -156,7 +156,7 @@
 .empty {
   padding: 20px;
   text-align: center;
-  color: #475569;
+  color: var(--text-faint);
   font-size: 13px;
 }
 

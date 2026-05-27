@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -27,7 +27,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 /* ── Comparison controls ─────────────────────────────────────────────────────── */
@@ -44,7 +44,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-faint);
   min-width: 60px;
 }
 
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
@@ -116,13 +116,13 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.periodBtn:hover { color: #94a3b8; }
+.periodBtn:hover { color: var(--text-muted); }
 
 .periodBtnActive {
   background: rgba(59,130,246,0.15);
@@ -148,7 +148,7 @@
   justify-content: center;
   height: 200px;
   font-size: 13px;
-  color: #475569;
+  color: var(--text-faint);
   background: #0f172a;
   border-radius: 8px;
   border: 1px solid #1e293b;
@@ -166,7 +166,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .legendDotBlue {
@@ -187,7 +187,7 @@
 
 .legendMissing {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-style: italic;
 }
 
@@ -212,11 +212,11 @@
 }
 
 .statsHeaderCell {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #475569;
+  color: var(--text-faint);
   text-align: right;
 }
 
@@ -251,7 +251,7 @@
 
 .statsValueCell {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-align: right;
   white-space: nowrap;
 }
@@ -261,7 +261,7 @@
 
 .currencyNote {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-faint);
   font-style: italic;
   padding: 2px 0;
 }
@@ -306,16 +306,16 @@
 }
 
 .benchmarkTicker {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .curatedBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #475569;
+  color: var(--text-faint);
   background: #1e293b;
   border-radius: 4px;
   padding: 2px 6px;
@@ -379,7 +379,7 @@
   border: none;
   border-radius: 6px;
   padding: 5px 10px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -394,7 +394,7 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -402,7 +402,7 @@
   flex-shrink: 0;
 }
 
-.btnSmSec:hover { border-color: #475569; color: #94a3b8; }
+.btnSmSec:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .btnSmDanger {
   background: none;

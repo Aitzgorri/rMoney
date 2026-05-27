@@ -1,4 +1,4 @@
-.header {
+﻿.header {
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
@@ -62,7 +62,7 @@
   height: 16px;
   background: #ef4444;
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   border-radius: 8px;
   padding: 0 4px;

@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,8 +12,8 @@
   --bg-surface: #161b27;
   --border:     #2d3448;
   --text:       #e2e8f0;
-  --text-muted: #64748b;
-  --text-dim:   #94a3b8;
+  /* --text-muted and --text-faint are defined in styles/tokens.css */
+  --text-dim:   var(--text-muted);
   --green:      #34d399;
   --red:        #f87171;
   --blue:       #3b82f6;

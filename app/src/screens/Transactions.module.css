@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -26,7 +26,7 @@
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 16px;
   width: 36px;
   height: 36px;
@@ -97,11 +97,11 @@
 }
 
 .filterGroupLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .filterRowPair {
@@ -123,8 +123,8 @@
 }
 
 .filterDateHint {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   padding-left: 2px;
 }
 
@@ -132,7 +132,7 @@
   background: none;
   border: 1px solid #2d3448;
   border-radius: 8px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
@@ -161,12 +161,12 @@
 .txSummaryExpense { color: #f87171; font-weight: 600; }
 
 .txSummaryMain {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   text-align: center;
   padding: 24px 0;
@@ -223,7 +223,7 @@
 
 .rowDate {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
@@ -245,12 +245,12 @@
 
 .rowMeta {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .rowNote {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -267,13 +267,13 @@
 }
 
 .rowCurrency {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .runningBal {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -302,7 +302,7 @@
 }
 
 .dialog h3 { font-size: 16px; color: #f1f5f9; }
-.dialog p  { font-size: 14px; color: #94a3b8; }
+.dialog p  { font-size: 14px; color: var(--text-muted); }
 
 .dialogActions {
   display: flex;
@@ -316,7 +316,7 @@
   border: none;
   border-radius: 10px;
   padding: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -345,7 +345,7 @@
   border: 1px solid #2d3448;
   border-radius: 8px;
   padding: 6px 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.1s;
@@ -373,7 +373,7 @@
   left: auto;
   background: #0f1520;
   color: #f1f5f9;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: 6px;
@@ -427,10 +427,10 @@
   gap: 8px;
 }
 
-.payeeTotalLabel { color: #64748b; }
+.payeeTotalLabel { color: var(--text-faint); }
 .payeeTotalPositive { color: #4ade80; font-variant-numeric: tabular-nums; }
 .payeeTotalNegative { color: #f87171; font-variant-numeric: tabular-nums; }
-.payeeTxCount { font-size: 12px; color: #475569; }
+.payeeTxCount { font-size: 12px; color: var(--text-faint); }
 
 /* Desktop sidebar + list layout */
 @media (min-width: 1024px) {

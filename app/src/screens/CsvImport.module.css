@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -16,7 +16,7 @@
 .backBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -30,9 +30,9 @@
 .title { font-size: 20px; font-weight: 700; color: #f1f5f9; }
 
 .stepLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
@@ -52,7 +52,7 @@
 .cardTitle {
   font-size: 13px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -74,7 +74,7 @@
 .label {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -118,7 +118,7 @@
   border: 1px dashed #475569;
   border-radius: 8px;
   padding: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   text-align: center;
@@ -153,9 +153,9 @@
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 0 4px 4px;
@@ -170,7 +170,7 @@
 
 .colName {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,9 +190,9 @@
 }
 
 .typeMapTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -205,19 +205,19 @@
 }
 
 .typeMapValue {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-family: monospace;
   min-width: 80px;
   flex-shrink: 0;
 }
 
-.typeMapArrow { color: #475569; flex-shrink: 0; }
+.typeMapArrow { color: var(--text-faint); flex-shrink: 0; }
 
 /* ── Preview ─────────────────────────────────────────────────────────────── */
 
 .previewSummary {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 4px 0;
 }
 
@@ -249,7 +249,7 @@
 .previewRowSkip  { opacity: 0.4; }
 
 .previewRowNum {
-  color: #475569;
+  color: var(--text-faint);
   flex-shrink: 0;
   min-width: 26px;
   text-align: right;
@@ -261,11 +261,11 @@
 .previewRowDesc {
   flex: 1;
   min-width: 0;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .previewRowErrors {
-  font-size: 11px;
+  font-size: 12px;
   color: #f87171;
   margin-top: 2px;
 }
@@ -282,15 +282,15 @@
 .skipBtn {
   background: none;
   border: none;
-  color: #475569;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
   flex-shrink: 0;
 }
 
-.skipBtn:hover { color: #94a3b8; }
+.skipBtn:hover { color: var(--text-muted); }
 
 /* ── Save-as-template ────────────────────────────────────────────────────── */
 
@@ -303,7 +303,7 @@
 
 .saveTemplateLabel {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -325,7 +325,7 @@
 
 .doneTitle { font-size: 16px; font-weight: 700; color: #f1f5f9; }
 
-.doneStat { font-size: 14px; color: #94a3b8; }
+.doneStat { font-size: 14px; color: var(--text-muted); }
 .doneStatGood strong { color: #34d399; }
 .doneStatWarn strong { color: #fbbf24; }
 .doneStatErr  strong { color: #f87171; }
@@ -357,7 +357,7 @@
 
 .needsConfirmNote {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -376,12 +376,12 @@
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: pointer;
   white-space: nowrap;
 }
 
-.filterPill:hover { color: #94a3b8; }
+.filterPill:hover { color: var(--text-muted); }
 
 .filterPillActive {
   background: #1e3a5f;
@@ -417,7 +417,7 @@
 }
 
 .reportLine {
-  color: #475569;
+  color: var(--text-faint);
   flex-shrink: 0;
   min-width: 26px;
   text-align: right;
@@ -433,10 +433,10 @@
   gap: 2px;
 }
 
-.reportDesc { color: #94a3b8; }
+.reportDesc { color: var(--text-muted); }
 
 .reportReason {
-  font-size: 11px;
+  font-size: 12px;
   color: #f87171;
   line-height: 1.4;
 }
@@ -447,18 +447,18 @@
   gap: 4px;
 }
 
-.statusImported  { font-size: 11px; font-weight: 700; color: #34d399; flex-shrink: 0; padding-top: 1px; }
-.statusDuplicate { font-size: 11px; font-weight: 700; color: #fbbf24; flex-shrink: 0; padding-top: 1px; }
-.statusError     { font-size: 11px; font-weight: 700; color: #f87171; flex-shrink: 0; padding-top: 1px; }
-.statusSkipped   { font-size: 11px; font-weight: 700; color: #475569; flex-shrink: 0; padding-top: 1px; }
+.statusImported  { font-size: 12px; font-weight: 700; color: #34d399; flex-shrink: 0; padding-top: 1px; }
+.statusDuplicate { font-size: 12px; font-weight: 700; color: #fbbf24; flex-shrink: 0; padding-top: 1px; }
+.statusError     { font-size: 12px; font-weight: 700; color: #f87171; flex-shrink: 0; padding-top: 1px; }
+.statusSkipped   { font-size: 12px; font-weight: 700; color: var(--text-faint); flex-shrink: 0; padding-top: 1px; }
 
 .rowActionBtn {
   background: #2d3448;
   border: none;
   border-radius: 4px;
   padding: 2px 8px;
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -466,7 +466,7 @@
 
 .reportEmpty {
   font-size: 13px;
-  color: #475569;
+  color: var(--text-faint);
   padding: 12px 10px;
   text-align: center;
 }
@@ -495,7 +495,7 @@
 }
 
 .inlineEditErrors {
-  font-size: 11px;
+  font-size: 12px;
   color: #f87171;
   line-height: 1.5;
 }
@@ -526,14 +526,14 @@
 }
 
 .btnPrimary:hover { background: #2563eb; }
-.btnPrimary:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+.btnPrimary:disabled { background: #2d3448; color: var(--text-faint); cursor: not-allowed; }
 
 .btnSecondary {
   background: #2d3448;
   border: none;
   border-radius: 10px;
   padding: 10px 20px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -543,7 +543,7 @@
 
 .infoMsg {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
   padding: 4px 0;
 }
 

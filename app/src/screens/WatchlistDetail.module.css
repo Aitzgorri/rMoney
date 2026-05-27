@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -17,7 +17,7 @@
 .backBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 22px;
   cursor: pointer;
   padding: 2px 8px;
@@ -105,7 +105,7 @@
 }
 
 .bannerLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #fbbf24;
@@ -170,7 +170,7 @@
 }
 
 .empty {
-  color: #475569;
+  color: var(--text-faint);
   font-size: 14px;
   padding: 8px 0;
 }
@@ -218,7 +218,7 @@
 
 .stockName {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -226,22 +226,22 @@
 }
 
 .exchange {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
 .price {
   font-size: 13px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--text-faint);
   flex-shrink: 0;
   margin-left: auto;
 }
 
 .alertSummary {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
   max-width: 180px;
   overflow: hidden;
@@ -261,8 +261,8 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 3px 9px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -272,7 +272,7 @@
 .removeBtn {
   background: none;
   border: none;
-  color: #475569;
+  color: var(--text-faint);
   font-size: 14px;
   cursor: pointer;
   padding: 2px 6px;
@@ -312,14 +312,14 @@
 
 .alertLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   flex: 1;
 }
 
 .alertStatus {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -327,7 +327,7 @@
 .alertDeleteBtn {
   background: none;
   border: none;
-  color: #475569;
+  color: var(--text-faint);
   font-size: 12px;
   cursor: pointer;
   padding: 1px 5px;
@@ -352,7 +352,7 @@
 .alertFormTitle {
   font-size: 12px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -366,7 +366,7 @@
 
 .alertFormLabel {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -387,7 +387,7 @@
 
 .alertCurrency {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .alertFormActions {
@@ -417,13 +417,13 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.cancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .deleteBtn {
   background: #ef4444;
@@ -443,20 +443,20 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 4px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.actionBtn:hover { border-color: #475569; color: #94a3b8; }
+.actionBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .actionBtnDanger {
   background: none;
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 4px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -469,8 +469,8 @@
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 3px 8px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -482,8 +482,8 @@
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 3px 8px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }

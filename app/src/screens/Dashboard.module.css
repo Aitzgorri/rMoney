@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -20,7 +20,7 @@
 
 .periodLabel {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -43,7 +43,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .seeAll {
@@ -57,11 +57,11 @@
 
 .periodSmall {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
 }
 
@@ -81,7 +81,7 @@
 .totalLabel {
   font-size: 13px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .divider {
@@ -142,7 +142,7 @@
 }
 
 .summaryLabel {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -168,13 +168,13 @@
 }
 
 .upcomingDate {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   white-space: nowrap;
 }
 
 .upcomingTypeIncome {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -186,7 +186,7 @@
 }
 
 .upcomingTypeExpense {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -236,7 +236,7 @@
 }
 
 .widgetLabel {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -271,7 +271,7 @@
 
 .widgetError {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 /* Widget editing */
@@ -293,7 +293,7 @@
   background: #2d3448;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   width: 28px;
   height: 28px;
   cursor: pointer;
@@ -324,14 +324,14 @@
   background: none;
   border: 1px dashed #2d3448;
   border-radius: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   padding: 12px;
   cursor: pointer;
   text-align: center;
 }
 
-.addWidgetBtn:hover { color: #94a3b8; border-color: #3d4558; }
+.addWidgetBtn:hover { color: var(--text-muted); border-color: #3d4558; }
 
 .addWidgetForm {
   background: #1e2535;
@@ -364,7 +364,7 @@
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -423,7 +423,7 @@
 
 .ratesTimestamp {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .ratesError {
@@ -468,7 +468,7 @@
 }
 
 .approxHint {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   font-weight: 400;
 }

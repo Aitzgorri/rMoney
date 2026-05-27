@@ -1,4 +1,4 @@
-.form {
+﻿.form {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -39,11 +39,11 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .required {
@@ -79,7 +79,7 @@
   text-align: center;
   cursor: pointer;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -109,7 +109,7 @@
   border: 1px solid #2d3448;
   border-radius: 12px;
   padding: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -135,7 +135,7 @@
   border: 1px solid #94a3b8;
   border-radius: 12px;
   padding: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

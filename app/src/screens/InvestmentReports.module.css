@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -29,7 +29,7 @@
 
 .presetLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -77,7 +77,7 @@
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   background: #0f1626;
   border: 1px solid #2d3448;
   border-radius: 20px;
@@ -100,8 +100,8 @@
 }
 
 .placeholder {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .groupingRow {
@@ -114,7 +114,7 @@
 .groupLabel {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -124,7 +124,7 @@
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -144,13 +144,13 @@
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: pointer;
   margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 }
 
-.tab:hover { color: #94a3b8; }
+.tab:hover { color: var(--text-muted); }
 
 .tabActive {
   color: #4A9DEC;
@@ -177,10 +177,10 @@
 }
 
 .summaryLabel {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-faint);
   font-weight: 600;
 }
 
@@ -193,7 +193,7 @@
 
 .loadingNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-style: italic;
 }
 
@@ -230,7 +230,7 @@
 
 .tablePositionCount {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .columnPicker {
@@ -245,7 +245,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-faint);
   margin-bottom: 10px;
 }
 
@@ -260,7 +260,7 @@
   align-items: flex-start;
   gap: 7px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px 0;
 }
@@ -277,8 +277,8 @@
 }
 
 .columnPickerHint {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   font-weight: 400;
   line-height: 1.3;
 }
@@ -304,11 +304,11 @@
 .th {
   padding: 9px 12px;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-faint);
   background: #1a2030;
   border-bottom: 1px solid #2d3448;
 }
@@ -372,12 +372,12 @@
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
-.viewBtn:hover { background: #1a2030; color: #94a3b8; }
+.viewBtn:hover { background: #1a2030; color: var(--text-muted); }
 
 .viewBtnActive {
   background: #1a2e55;
@@ -392,7 +392,7 @@
 
 .scopeLabel {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-weight: 600;
 }
 
@@ -455,7 +455,7 @@
 
 .countryNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-style: italic;
   margin: 0;
 }
@@ -496,7 +496,7 @@
 
 .legendLabel {
   flex: 1;
-  color: #94a3b8;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -514,12 +514,12 @@
 
 .pos  { color: #10B981; }
 .neg  { color: #EF4444; }
-.na   { color: #475569; }
-.naLink { color: #4A9DEC; cursor: pointer; font-size: 11px; }
+.na   { color: var(--text-faint); }
+.naLink { color: #4A9DEC; cursor: pointer; font-size: 12px; }
 .warn { color: #F59E0B; }
 
 .returnPct {
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.8;
 }
 
@@ -667,7 +667,7 @@
   background: #1a2030;
   border: 1px solid #2d3448;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 8px 16px;
   cursor: pointer;
@@ -706,7 +706,7 @@
   background: none;
   border: 1px solid #2d3448;
   border-radius: 4px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 1px 6px;
   cursor: pointer;
@@ -715,7 +715,7 @@
 .btnXs:hover { background: #1a2030; }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   font-style: italic;
   padding: 16px 0;
@@ -776,7 +776,7 @@
 
 .pieTileSubtitle {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .pieTileActions {
@@ -806,7 +806,7 @@
 
 .formLabel {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   min-width: 140px;
 }
 
@@ -845,7 +845,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 

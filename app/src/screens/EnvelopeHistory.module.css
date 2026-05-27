@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -24,7 +24,7 @@
 .closeBtn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 16px;
   cursor: pointer;
   padding: 0 4px;
@@ -50,7 +50,7 @@
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 16px;
   width: 36px;
   height: 36px;
@@ -78,7 +78,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .balanceValue {
@@ -88,7 +88,7 @@
 
 .positive { color: #34d399; }
 .negative { color: #f87171; }
-.neutral  { color: #94a3b8; }
+.neutral  { color: var(--text-muted); }
 
 .searchInput {
   width: 100%;
@@ -140,7 +140,7 @@
 }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   text-align: center;
   padding: 24px 0;
@@ -192,7 +192,7 @@
   gap: 8px;
 }
 
-.rowDate   { font-size: 12px; color: #64748b; flex-shrink: 0; }
+.rowDate   { font-size: 12px; color: var(--text-faint); flex-shrink: 0; }
 .rowPayee  { font-size: 14px; font-weight: 600; color: #f1f5f9; }
 
 .rowBottom {
@@ -202,11 +202,11 @@
   flex-wrap: wrap;
 }
 
-.rowMeta { font-size: 12px; color: #64748b; }
-.rowNote { font-size: 12px; color: #94a3b8; font-style: italic; }
+.rowMeta { font-size: 12px; color: var(--text-faint); }
+.rowNote { font-size: 12px; color: var(--text-muted); font-style: italic; }
 .rowEnvelope {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: var(--text-muted);
   background: #2d3448;
   border-radius: 4px;
   padding: 1px 5px;
@@ -220,7 +220,7 @@
 }
 
 .rowAmount   { font-size: 15px; font-weight: 700; }
-.runningBal  { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.runningBal  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
 .overlay {
   position: fixed;
@@ -246,7 +246,7 @@
 }
 
 .dialog h3 { font-size: 16px; color: #f1f5f9; }
-.dialog p  { font-size: 14px; color: #94a3b8; }
+.dialog p  { font-size: 14px; color: var(--text-muted); }
 
 .dialogActions { display: flex; gap: 10px; margin-top: 4px; }
 
@@ -256,7 +256,7 @@
   border: none;
   border-radius: 10px;
   padding: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -293,11 +293,11 @@
 }
 
 .sectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .addScheduledBtn {
@@ -315,7 +315,7 @@
 
 .scheduledEmpty {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-faint);
   margin: 0;
 }
 
@@ -343,12 +343,12 @@
 
 .scheduledMeta {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .scheduledEdit {
   font-size: 18px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 /* ── Projection ──────────────────────────────────────── */
@@ -376,8 +376,8 @@
 }
 
 .projectionLabel {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .projectionAmount {

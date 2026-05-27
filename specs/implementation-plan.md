@@ -159,8 +159,8 @@ Ships fixes and infrastructure quickly. Users notice the bug fixes and the small
 - **33d** Re-identify button rename + Stock inventory wider table + Edit profile re-resolve
 - **33i** Stock page dividend list bug fixes + delete + lots expand
 - **33k** ✓ CSV import composite-key dedup + post-commit report
-- **33m** Small / muted text contrast pass
-- **33o** Negative cache for failed fetches (extends 33c)
+- **33m** ✓ Small / muted text contrast pass
+- **33o** ✓ Negative cache for failed fetches (extends 33c)
 - **21a** Android build pipeline (items 363, 364, 364a, 364b)
 
 ### v0.34.0 — Dividend overhaul
@@ -313,23 +313,23 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 445. [ ] Cash-impact and dividend-impact table alignment fix: header align matches column data align; currency code in its own narrow right-aligned column; Start always shows a value (0.00 when literal zero, never blank)
 446. [ ] Trading fees: optional `maximumFee` field per exchange and per stock; Settings UI gains "Max fee" input next to "Min fee"; validation `max >= min` when both set; `resolveTradingFee` becomes `clamp(gross × feePercent / 100, minFee, maxFee ?? Infinity)`
 
-**Sub-phase 33m — Small / muted text contrast pass**
+**Sub-phase 33m — Small / muted text contrast pass** ✓ done (spot-check pending)
 
 ### SPEC-015 UI Enhancements — Phase 33 contrast pass
-447. [ ] Define `--text-muted` and `--text-faint` CSS custom properties in `app/src/styles/tokens.css` (new file); pick values that meet WCAG AA on the existing dark background
-448. [ ] Replace every hard-coded grey colour used in small text across all CSS modules with one of the two tokens
-449. [ ] Raise any sub-12 px text to ≥ 12 px
+447. [x] Define `--text-muted: #94a3b8` (≈6.6:1) and `--text-faint: #7c8da4` (≈5.1:1) in `app/src/styles/tokens.css`; both WCAG AA on `#0f1117`
+448. [x] 624 `color:` usages of `#94a3b8`, `#64748b`, `#475569` replaced across 38 CSS modules with `var(--text-muted)` / `var(--text-faint)`
+449. [x] 177 sub-12 px font sizes (9/10/11 px) raised to 12 px; one 8 px chevron also fixed
 450. [ ] Spot-check pass at 100 % and 125 % zoom on every screen
 
-**Sub-phase 33o — Negative cache for failed fetches**
+**Sub-phase 33o — Negative cache for failed fetches** ✓ done
 
 ### SPEC-027 Market Data Integration — Phase 33 negative cache
-455. [ ] `settings.apiCacheTtl.failureCooldownMin` (default 15) added; surfaced as a new row in Settings → Investments → "API call frequency" card with hint explaining the cooldown after a full-chain failure
-456. [ ] `cooldowns: { prices, news, intraday }` bucket added to `rmoney_market_data_cache`; entries store `{ failedAt }` only (timestamp, no error text / URL / credential material per SPEC-031)
-457. [ ] `marketDataClient.getLatestPrice` / `getNews` / `getIntradaySeries` / `getHistoricalSeries`: on full-chain failure write a cooldown marker for the `(category, ticker, exchange)` key; on success clear it. The `historical` category covers every `(period, resolution)` combination for that `(ticker, exchange)` so one chart-range failure suppresses all chart ranges until the cooldown elapses
-458. [ ] Reads consult the cooldown after the success-cache miss and before `dedup`/`callChain`: if cooling down, fall through to stale-cache → `lastKnownPrice` → reject with `unavailable (cooldown)`; never enter the provider chain
-459. [ ] `resetPageCaches(pageId)` clears cooldown entries for the page's data deps; `clearAllMarketCaches` clears all cooldowns; `clearCacheForTicker(t)` clears cooldowns for that ticker; `forceRefresh: true` bypasses the cooldown for one call without clearing it
-460. [ ] Cooldown short-circuits emit a `logCall` entry with `outcome: 'cooldown-skip'` so the debug panel shows why a ticker didn't refetch; `getCacheStats()` includes a `cooldownEntries` total
+455. [x] `settings.apiCacheTtl.failureCooldownMin` (default 15) added; surfaced as a new row in Settings → Investments → "API call frequency" card with hint explaining the cooldown after a full-chain failure
+456. [x] `cooldowns: { prices, news, intraday }` bucket added to `rmoney_market_data_cache`; entries store `{ failedAt }` only (timestamp, no error text / URL / credential material per SPEC-031)
+457. [x] `marketDataClient.getLatestPrice` / `getNews` / `getIntradaySeries` / `getHistoricalSeries`: on full-chain failure write a cooldown marker for the `(category, ticker, exchange)` key; on success clear it. The `historical` category covers every `(period, resolution)` combination for that `(ticker, exchange)` so one chart-range failure suppresses all chart ranges until the cooldown elapses
+458. [x] Reads consult the cooldown after the success-cache miss and before `dedup`/`callChain`: if cooling down, fall through to stale-cache → `lastKnownPrice` → reject with `unavailable (cooldown)`; never enter the provider chain
+459. [x] `resetPageCaches(pageId)` clears cooldown entries for the page's data deps; `clearAllMarketCaches` clears all cooldowns; `clearCacheForTicker(t)` clears cooldowns for that ticker; `forceRefresh: true` bypasses the cooldown for one call without clearing it
+460. [x] Cooldown short-circuits emit a `logCall` entry with `outcome: 'cooldown-skip'` so the debug panel shows why a ticker didn't refetch; `getCacheStats()` includes a `cooldownEntries` total
 
 **Sub-phase 33n — Backup format versioning + v1 → v2 migration** *(lands with v0.34.0 since it depends on the dividend status model)*
 

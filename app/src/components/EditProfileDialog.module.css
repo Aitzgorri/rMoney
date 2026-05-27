@@ -1,4 +1,4 @@
-.dialogBackdrop {
+﻿.dialogBackdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
@@ -28,7 +28,7 @@
 
 .dialogNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   margin: 0 0 16px;
 }
 
@@ -49,11 +49,11 @@
 
 .dialogLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
-.dialogHint { font-size: 11px; color: #64748b; margin: 4px 0 0; }
+.dialogHint { font-size: 12px; color: var(--text-faint); margin: 4px 0 0; }
 
 .dialogInput {
   background: #1e2535;
@@ -94,12 +94,12 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 7px 16px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
 }
 
-.dialogCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.dialogCancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .dialogSaveBtn {
   background: #3b82f6;
@@ -113,14 +113,14 @@
 }
 
 .dialogSaveBtn:hover { background: #2563eb; }
-.dialogSaveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+.dialogSaveBtn:disabled { background: #2d3448; color: var(--text-faint); cursor: not-allowed; }
 
 /* ── Section headings ────────────────────────────────────────────────────── */
 
 .sectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 8px;
@@ -152,7 +152,7 @@
 
 .loadingText {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .candidateList {
@@ -172,7 +172,7 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   border: 1px solid transparent;
 }
 
@@ -187,8 +187,8 @@
 .radio { accent-color: #3b82f6; flex-shrink: 0; }
 
 .candidateSource {
-  font-size: 10px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   min-width: 60px;
 }
 
@@ -200,14 +200,14 @@
 }
 
 .candidateMeta {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   min-width: 40px;
 }
 
 .candidatePrice {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   min-width: 60px;
   text-align: right;
 }

@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -73,14 +73,14 @@
   border: 1px solid #2d3448;
   border-radius: 8px;
   padding: 7px 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-.cancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.cancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 /* ── List grid ──────────────────────────────────────────────────────────────── */
 
@@ -91,7 +91,7 @@
 }
 
 .empty {
-  color: #475569;
+  color: var(--text-faint);
   font-size: 14px;
   padding: 12px 0;
 }
@@ -132,20 +132,20 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 4px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.actionBtn:hover { border-color: #475569; color: #94a3b8; }
+.actionBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .actionBtnDanger {
   background: none;
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 4px 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -170,7 +170,7 @@
 
 .deleteMsg {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   flex: 1;
 }
 

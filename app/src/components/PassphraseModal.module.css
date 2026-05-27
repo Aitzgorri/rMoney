@@ -1,4 +1,4 @@
-.backdrop {
+﻿.backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
@@ -30,7 +30,7 @@
 
 .description {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   line-height: 1.6;
   margin: 0;
 }
@@ -55,7 +55,7 @@
 .label {
   font-size: 13px;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .inputRow {
@@ -84,7 +84,7 @@
   background: #2d3448;
   border: 1px solid #3d4d6a;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 8px 12px;
   cursor: pointer;
@@ -168,7 +168,7 @@
 .forgotLink {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
@@ -178,12 +178,12 @@
 }
 
 .forgotLink:hover {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .hint {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-faint);
   margin: 0;
   line-height: 1.5;
 }

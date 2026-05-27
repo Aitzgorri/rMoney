@@ -1,4 +1,4 @@
-.form {
+﻿.form {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -41,7 +41,7 @@
   font-weight: 600;
   cursor: pointer;
   background: #1e2535;
-  color: #64748b;
+  color: var(--text-faint);
   transition: all 0.15s;
 }
 
@@ -62,11 +62,11 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .input {
@@ -80,7 +80,7 @@
 }
 
 .input:focus { outline: none; border-color: #3b82f6; }
-.input[readonly] { color: #64748b; }
+.input[readonly] { color: var(--text-faint); }
 
 .suggestions {
   position: absolute;
@@ -111,7 +111,7 @@
 
 .rateInfo {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   padding: 4px 4px 0;
 }
 
@@ -120,7 +120,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -157,7 +157,7 @@
 
 .radioHint {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .actions {
@@ -172,7 +172,7 @@
   border: 1px solid #2d3448;
   border-radius: 12px;
   padding: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -208,7 +208,7 @@
 
 .linkedNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   text-align: center;
   padding: 8px 4px 0;
   margin: 0;

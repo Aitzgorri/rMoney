@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -39,7 +39,7 @@
 
 .resetBtn {
   background: transparent;
-  color: #64748b;
+  color: var(--text-faint);
   border: 1px solid #2d3448;
   border-radius: 8px;
   padding: 5px 10px;
@@ -48,11 +48,11 @@
   cursor: pointer;
 }
 
-.resetBtn:hover { border-color: #3d4558; color: #94a3b8; }
+.resetBtn:hover { border-color: #3d4558; color: var(--text-muted); }
 .resetBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   text-align: center;
   padding: 24px 0;
@@ -108,7 +108,7 @@
 
 .cardInstitution {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .cardRight {
@@ -138,7 +138,7 @@
   background: #2d3448;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   width: 26px;
   height: 26px;
@@ -170,9 +170,9 @@
 }
 
 .cardSectionLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   min-width: 58px;
@@ -181,7 +181,7 @@
 
 .cardPositionCount {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .cardBalances {
@@ -196,7 +196,7 @@
   padding: 3px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .negativePill {
@@ -206,7 +206,7 @@
 
 .cardNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   margin: 0;
 }
 
@@ -232,7 +232,7 @@
 .formLabel {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -260,7 +260,7 @@
   border: none;
   border-radius: 10px;
   padding: 10px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -281,7 +281,7 @@
 }
 
 .saveBtn:hover { background: #2563eb; }
-.saveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+.saveBtn:disabled { background: #2d3448; color: var(--text-faint); cursor: not-allowed; }
 
 .deleteBtn {
   flex: 1;
@@ -321,7 +321,7 @@
 }
 
 .dialog h3 { font-size: 16px; color: #f1f5f9; margin: 0; }
-.dialog p  { font-size: 14px; color: #94a3b8; margin: 0; }
+.dialog p  { font-size: 14px; color: var(--text-muted); margin: 0; }
 
 .dialogActions {
   display: flex;
@@ -330,7 +330,7 @@
 }
 
 .selectHint {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   text-align: center;
   padding: 64px 24px;

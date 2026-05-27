@@ -1,4 +1,4 @@
-.nav {
+﻿.nav {
   position: fixed;
   bottom: 0;
   left: 50%;
@@ -19,7 +19,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #64748b;
+  color: var(--text-faint);
   background: none;
   border: none;
   cursor: pointer;
@@ -29,7 +29,7 @@
 }
 
 .tab:hover {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .tab.active {
@@ -42,7 +42,7 @@
 }
 
 .label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -131,7 +131,7 @@
   height: 14px;
   background: #ef4444;
   color: white;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   border-radius: 7px;
   padding: 0 3px;

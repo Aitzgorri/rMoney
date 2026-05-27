@@ -1,4 +1,4 @@
-/* ── Screen shell ─────────────────────────────────────────────────────────── */
+﻿/* ── Screen shell ─────────────────────────────────────────────────────────── */
 
 .screen {
   display: flex;
@@ -18,7 +18,7 @@
 .backBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -37,14 +37,14 @@
 
 .headerName {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-left: 6px;
   font-weight: 400;
 }
 
 .headerCurrency {
   font-size: 14px;
-  color: #64748b;
+  color: var(--text-faint);
   margin-left: 4px;
 }
 
@@ -53,15 +53,15 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 3px 10px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   margin-left: auto;
   flex-shrink: 0;
 }
 
-.profileBtn:hover { border-color: #475569; color: #94a3b8; }
+.profileBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 /* ── Action buttons (+ Buy / + Sell / + Dividend) ──────────────────────────── */
 
@@ -146,7 +146,7 @@
   text-align: left;
 }
 
-.accountPickerBtn:hover { background: #2d3448; border-color: #475569; }
+.accountPickerBtn:hover { background: #2d3448; border-color: var(--text-faint); }
 
 .accountPickerName {
   font-size: 14px;
@@ -156,7 +156,7 @@
 
 .accountPickerInst {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .accountPickerCancel {
@@ -164,13 +164,13 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 6px 14px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
   align-self: flex-end;
 }
 
-.accountPickerCancel:hover { border-color: #475569; color: #94a3b8; }
+.accountPickerCancel:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 /* ── Negative-balance confirm dialog ──────────────────────────────────────── */
 
@@ -187,7 +187,7 @@
 }
 
 .negConfirmTitle { font-size: 15px; font-weight: 700; color: #f1f5f9; margin: 0; }
-.negConfirmMsg   { font-size: 13px; color: #94a3b8; margin: 0; }
+.negConfirmMsg   { font-size: 13px; color: var(--text-muted); margin: 0; }
 
 .negConfirmActions {
   display: flex;
@@ -201,12 +201,12 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 6px 14px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
 }
 
-.negCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.negCancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .negProceedBtn {
   background: #7f1d1d;
@@ -223,13 +223,13 @@
 
 .staleDot {
   color: #f59e0b;
-  font-size: 10px;
+  font-size: 12px;
   flex-shrink: 0;
   cursor: default;
 }
 
 .divRefreshError {
-  font-size: 11px;
+  font-size: 12px;
   color: #f87171;
   flex-shrink: 0;
 }
@@ -287,9 +287,9 @@
 }
 
 .sectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -306,8 +306,8 @@
   border: none;
   border-radius: 6px;
   padding: 4px 10px;
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -335,7 +335,7 @@
 
 .splitLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   min-width: 110px;
 }
 
@@ -362,12 +362,12 @@
 
 .splitSep {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .splitHint {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   margin: 0;
   font-style: italic;
 }
@@ -389,13 +389,13 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.splitCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.splitCancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .splitApplyBtn {
   background: #3b82f6;
@@ -426,7 +426,7 @@
 .posAccountName {
   flex: 1;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -434,7 +434,7 @@
 }
 
 .posShares { font-size: 13px; color: #f1f5f9; font-weight: 500; flex-shrink: 0; }
-.posAvg    { font-size: 12px; color: #64748b; flex-shrink: 0; }
+.posAvg    { font-size: 12px; color: var(--text-faint); flex-shrink: 0; }
 .posTotal  { font-size: 13px; color: #34d399; font-weight: 500; flex-shrink: 0; }
 
 .positionSubtotal { background: #263045; margin-top: 2px; border-top: 1px solid #334155; }
@@ -462,8 +462,8 @@
 .positionRowExpandable:hover { background: #243050; }
 
 .posExpandChevron {
-  font-size: 10px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
   width: 12px;
 }
@@ -490,7 +490,7 @@
 }
 
 .posLotHeader {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -506,17 +506,17 @@
   padding-top: 3px;
 }
 
-.posLotSummary .posLotDate { color: #64748b; font-weight: 600; }
-.posLotSummary .posLotShares { color: #94a3b8; font-weight: 600; }
-.posLotSummary .posLotCost { color: #94a3b8; font-weight: 600; }
+.posLotSummary .posLotDate { color: var(--text-faint); font-weight: 600; }
+.posLotSummary .posLotShares { color: var(--text-muted); font-weight: 600; }
+.posLotSummary .posLotCost { color: var(--text-muted); font-weight: 600; }
 .posLotSummary .posLotTotal { color: #34d399; font-weight: 600; }
 
-.posLotDate   { width: 90px;  flex-shrink: 0; font-size: 12px; color: #64748b; }
-.posLotDays   { width: 55px;  flex-shrink: 0; font-size: 12px; color: #475569; text-align: right; }
-.posLotShares { width: 72px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
-.posLotPrice  { width: 78px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
-.posLotFee    { width: 58px;  flex-shrink: 0; font-size: 12px; color: #475569; text-align: right; }
-.posLotCost   { width: 78px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
+.posLotDate   { width: 90px;  flex-shrink: 0; font-size: 12px; color: var(--text-faint); }
+.posLotDays   { width: 55px;  flex-shrink: 0; font-size: 12px; color: var(--text-faint); text-align: right; }
+.posLotShares { width: 72px;  flex-shrink: 0; font-size: 12px; color: var(--text-muted); text-align: right; }
+.posLotPrice  { width: 78px;  flex-shrink: 0; font-size: 12px; color: var(--text-muted); text-align: right; }
+.posLotFee    { width: 58px;  flex-shrink: 0; font-size: 12px; color: var(--text-faint); text-align: right; }
+.posLotCost   { width: 78px;  flex-shrink: 0; font-size: 12px; color: var(--text-muted); text-align: right; }
 .posLotTotal  { width: 105px; flex-shrink: 0; font-size: 12px; color: #34d399; text-align: right; }
 
 /* ── Transactions ────────────────────────────────────────────────────────── */
@@ -532,7 +532,7 @@
   border: none;
   border-radius: 20px;
   padding: 5px 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -553,10 +553,10 @@
   border-radius: 8px;
 }
 
-.txDate    { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
+.txDate    { font-size: 12px; color: var(--text-faint); flex-shrink: 0; min-width: 82px; }
 
 .txBadge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 10px;
@@ -577,14 +577,14 @@
 .txAmountNegative { color: #f87171; }
 
 .txMainCcy {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
 .txAccount {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
   min-width: 70px;
   text-align: right;
@@ -607,12 +607,12 @@
   border-radius: 8px;
 }
 
-.divDate  { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
-.divDesc  { flex: 1; font-size: 13px; color: #94a3b8; }
+.divDate  { font-size: 12px; color: var(--text-faint); flex-shrink: 0; min-width: 82px; }
+.divDesc  { flex: 1; font-size: 13px; color: var(--text-muted); }
 .divNet   { font-size: 13px; font-weight: 500; color: #fbbf24; flex-shrink: 0; }
 
 .divSpecialBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
@@ -624,12 +624,12 @@
 .divRowApi { opacity: 0.6; }
 
 .divApiLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
   background: rgba(100, 116, 139, 0.2);
-  color: #64748b;
+  color: var(--text-faint);
   flex-shrink: 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -637,14 +637,14 @@
 
 .divLoadMore {
   text-align: center;
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   padding: 6px 0 2px;
 }
 
 .divAccount {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
   max-width: 120px;
   overflow: hidden;
@@ -658,8 +658,8 @@
   border: 1px solid #2d3448;
   border-radius: 4px;
   padding: 1px 6px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -671,8 +671,8 @@
   border: 1px solid #2d3448;
   border-radius: 4px;
   padding: 1px 6px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -682,7 +682,7 @@
 /* ── Dividend projections ────────────────────────────────────────────────── */
 
 .projSubLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -697,14 +697,14 @@
   flex-wrap: wrap;
 }
 
-.projCadence { font-size: 11px; color: #475569; }
+.projCadence { font-size: 12px; color: var(--text-faint); }
 
 .projRuleSelect {
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 2px 8px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
   margin-left: auto;
@@ -732,12 +732,12 @@
   border-radius: 8px;
 }
 
-.projDate { font-size: 12px; color: #64748b; flex-shrink: 0; min-width: 82px; }
-.projDesc { flex: 1; font-size: 13px; color: #64748b; }
-.projNet  { font-size: 13px; font-weight: 500; color: #475569; flex-shrink: 0; }
+.projDate { font-size: 12px; color: var(--text-faint); flex-shrink: 0; min-width: 82px; }
+.projDesc { flex: 1; font-size: 13px; color: var(--text-faint); }
+.projNet  { font-size: 13px; font-weight: 500; color: var(--text-faint); flex-shrink: 0; }
 
 .projBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 8px;
@@ -746,13 +746,13 @@
   flex-shrink: 0;
 }
 
-.projBadgeEstimation { background: rgba(71, 85, 105, 0.3); color: #64748b; }
+.projBadgeEstimation { background: rgba(71, 85, 105, 0.3); color: var(--text-faint); }
 .projBadgeAmountEst  { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
 .projBadgeDeclared   { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
 
 .projNeedMore {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-faint);
   font-style: italic;
   margin: 0;
 }
@@ -765,8 +765,8 @@
 
 /* Small pay-date label inside future payout rows */
 .projPayDate {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
@@ -776,8 +776,8 @@
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 2px 8px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
@@ -808,7 +808,7 @@
   border-radius: 5px;
   padding: 2px 10px;
   color: #22c55e;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
@@ -823,8 +823,8 @@
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 2px 10px;
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -847,11 +847,11 @@
 
 .divColPickerTitle {
   padding: 2px 12px 6px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-faint);
   border-bottom: 1px solid #2d3448;
   margin-bottom: 4px;
 }
@@ -878,7 +878,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -910,7 +910,7 @@
 
 .divTodayDivider {
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -924,7 +924,7 @@
 /* Generic single-line cell: each column sets its minWidth inline */
 .divCell {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-flex;
@@ -943,9 +943,9 @@
 }
 
 .divTypeRegular {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -956,27 +956,27 @@
 
 /* Source chips */
 .sourceChipUser {
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   padding: 1px 6px; border-radius: 4px;
-  background: rgba(100, 116, 139, 0.15); color: #94a3b8;
+  background: rgba(100, 116, 139, 0.15); color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .sourceChipApi {
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   padding: 1px 6px; border-radius: 4px;
-  background: rgba(100, 116, 139, 0.2); color: #64748b;
+  background: rgba(100, 116, 139, 0.2); color: var(--text-faint);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .sourceChipDeclared {
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   padding: 1px 6px; border-radius: 4px;
   background: rgba(34, 197, 94, 0.15); color: #22c55e;
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .sourceChipEstimated {
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   padding: 1px 6px; border-radius: 4px;
-  background: rgba(71, 85, 105, 0.3); color: #64748b;
+  background: rgba(71, 85, 105, 0.3); color: var(--text-faint);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 
@@ -995,9 +995,9 @@
   border-radius: 8px;
 }
 
-.portfolioPath   { flex: 1; font-size: 13px; color: #94a3b8; }
-.portfolioShare  { font-size: 12px; color: #94a3b8; flex-shrink: 0; }
-.portfolioTarget { font-size: 12px; color: #64748b; flex-shrink: 0; }
+.portfolioPath   { flex: 1; font-size: 13px; color: var(--text-muted); }
+.portfolioShare  { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+.portfolioTarget { font-size: 12px; color: var(--text-faint); flex-shrink: 0; }
 
 /* ── Returns metrics ─────────────────────────────────────────────────────── */
 
@@ -1024,11 +1024,11 @@
 }
 
 .metricLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #64748b;
+  color: var(--text-faint);
   margin-bottom: 5px;
   display: flex;
   justify-content: center;
@@ -1039,7 +1039,7 @@
 .infoBtn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: pointer;
   padding: 0;
   font-size: 12px;
@@ -1063,14 +1063,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.metricNa { color: #475569; font-weight: 400; }
+.metricNa { color: var(--text-faint); font-weight: 400; }
 
 .pos { color: #22c55e; }
 .neg { color: #ef4444; }
 
 /* ── Empty ───────────────────────────────────────────────────────────────── */
 
-.empty { color: #475569; font-size: 13px; padding: 8px 0; }
+.empty { color: var(--text-faint); font-size: 13px; padding: 8px 0; }
 
 /* ── Manual price ────────────────────────────────────────────────────────── */
 
@@ -1085,22 +1085,22 @@
   flex-wrap: wrap;
 }
 
-.manualPriceLabel { color: #64748b; }
+.manualPriceLabel { color: var(--text-faint); }
 .manualPriceValue { color: #e2e8f0; font-weight: 600; }
-.priceSource      { color: #475569; font-size: 11px; }
-.priceLoading     { color: #475569; font-style: italic; }
-.priceUnavailable { color: #475569; }
+.priceSource      { color: var(--text-faint); font-size: 12px; }
+.priceLoading     { color: var(--text-faint); font-style: italic; }
+.priceUnavailable { color: var(--text-faint); }
 
 .manualPriceBtn {
   background: none;
   border: 1px solid #334155;
   border-radius: 5px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 3px 8px;
   cursor: pointer;
 }
-.manualPriceBtn:hover { border-color: #475569; color: #cbd5e1; }
+.manualPriceBtn:hover { border-color: var(--text-faint); color: #cbd5e1; }
 
 .manualPriceClearBtn {
   background: none;
@@ -1159,12 +1159,12 @@
   background: none;
   border: 1px solid #334155;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 5px 10px;
   cursor: pointer;
 }
-.manualPriceCancelBtn:hover { border-color: #475569; }
+.manualPriceCancelBtn:hover { border-color: var(--text-faint); }
 
 /* ── Manual stock (Phase 32e) ──────────────────────────────────────────────── */
 
@@ -1173,7 +1173,7 @@
   color: #fdba74;
   border: 1px solid #7c2d12;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.3px;
   padding: 2px 7px;
@@ -1197,7 +1197,7 @@
 }
 
 .manualStockHistoryDate {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-family: monospace;
   min-width: 90px;
 }
@@ -1220,15 +1220,15 @@
   border: 1px solid #2d3448;
   border-radius: 5px;
   padding: 3px 8px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.chartPeriodBtn:hover { border-color: #475569; color: #94a3b8; }
+.chartPeriodBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 .chartPeriodBtn:disabled { opacity: 0.35; cursor: not-allowed; }
-.chartPeriodBtn:disabled:hover { border-color: #2d3448; color: #64748b; }
+.chartPeriodBtn:disabled:hover { border-color: #2d3448; color: var(--text-faint); }
 
 .chartPeriodBtnActive {
   background: #2d3448;
@@ -1254,7 +1254,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #475569;
+  color: var(--text-faint);
   font-size: 13px;
   font-style: italic;
   background: #0f172a;
@@ -1293,8 +1293,8 @@
   gap: 8px;
 }
 
-.newsSource { font-size: 11px; color: #475569; }
-.newsDate   { font-size: 11px; color: #334155; }
+.newsSource { font-size: 12px; color: var(--text-faint); }
+.newsDate   { font-size: 12px; color: #334155; }
 
 /* ── Edit button on split tx rows ───────────────────────────────────────── */
 
@@ -1303,8 +1303,8 @@
   border: 1px solid #2d3448;
   border-radius: 4px;
   padding: 1px 6px;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -1343,7 +1343,7 @@
 
 .dialogNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   margin: 0 0 16px;
 }
 
@@ -1364,7 +1364,7 @@
 
 .dialogLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -1420,12 +1420,12 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 7px 16px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
 }
 
-.dialogCancelBtn:hover { border-color: #475569; color: #94a3b8; }
+.dialogCancelBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .dialogSaveBtn {
   background: #3b82f6;
@@ -1439,7 +1439,7 @@
 }
 
 .dialogSaveBtn:hover { background: #2563eb; }
-.dialogSaveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+.dialogSaveBtn:disabled { background: #2d3448; color: var(--text-faint); cursor: not-allowed; }
 
 .dialogDangerBtn {
   background: #dc2626;
@@ -1460,7 +1460,7 @@
 
 .dialogFormula {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin: 0 0 12px;
   padding: 8px 10px;
   background: #0f172a;
@@ -1487,10 +1487,10 @@
 
 .yieldTable th {
   text-align: left;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-faint);
   letter-spacing: 0.05em;
   padding: 6px 10px;
   background: #131c2e;
@@ -1516,7 +1516,7 @@
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   background: rgba(251, 191, 36, 0.15);

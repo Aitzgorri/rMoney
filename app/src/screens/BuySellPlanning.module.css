@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   padding: 20px 24px;
   max-width: 1400px;
 }
@@ -27,7 +27,7 @@
 .scenarioLabel {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -50,7 +50,7 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 5px 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
 }
@@ -64,7 +64,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-left: 6px;
   cursor: pointer;
   user-select: none;
@@ -97,7 +97,7 @@
 .overviewCardTitle {
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin: 0 0 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -112,8 +112,8 @@
 
 .balancesTable th, .impactTable th {
   text-align: left;
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   font-weight: 600;
   padding: 4px 6px;
   border-bottom: 1px solid #1e2535;
@@ -126,7 +126,7 @@
 
 .tdRight { text-align: right; font-variant-numeric: tabular-nums; }
 
-.cellMuted { color: #64748b; font-size: 12px; }
+.cellMuted { color: var(--text-faint); font-size: 12px; }
 
 .cellInputSm {
   width: 90px;
@@ -192,8 +192,8 @@
 .tickerLink:hover { text-decoration: underline; }
 
 .subLine {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .adjPriceCell {
@@ -214,7 +214,7 @@
   border-radius: 4px;
   padding: 2px 4px;
   color: #cbd5e1;
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
 }
 
@@ -235,8 +235,8 @@
 .revertBtn {
   background: none;
   border: 1px solid transparent;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   padding: 1px 4px;
 }
@@ -251,7 +251,7 @@
 
 .lotPickerHint {
   font-size: 13px;
-  color: #475569;
+  color: var(--text-faint);
   cursor: help;
 }
 
@@ -271,7 +271,7 @@
 }
 
 .emptyHint {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   margin: 0;
   max-width: 460px;
@@ -315,13 +315,13 @@
 .addBtn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .tableEmpty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   margin: 8px 0 0;
 }
 
 .scaffoldNote {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-style: italic;
   margin: 12px 0 0;
@@ -340,7 +340,7 @@
 .th {
   text-align: left;
   padding: 8px 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   border-bottom: 1px solid #2d3448;
@@ -393,8 +393,8 @@
 .cellInput:focus { border-color: #3b82f6; }
 
 .maxHint {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
   margin-left: 8px;
 }
 
@@ -416,7 +416,7 @@
   border: 1px solid transparent;
   border-radius: 4px;
   padding: 2px 7px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
 }
@@ -461,7 +461,7 @@
 .modalClose {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 16px;
   cursor: pointer;
 }
@@ -501,12 +501,12 @@
   border: 1px solid #2d3448;
   border-radius: 6px;
   padding: 7px 16px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
 }
 
-.modalCancel:hover { border-color: #475569; color: #94a3b8; }
+.modalCancel:hover { border-color: var(--text-faint); color: var(--text-muted); }
 
 .modalPrimary {
   background: #1e4080;
@@ -546,7 +546,7 @@
 }
 
 .pickerEmpty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   text-align: center;
   padding: 24px 12px;
@@ -586,13 +586,13 @@
 }
 
 .pickerShares {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .pickerExtra {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
 }
 
@@ -641,7 +641,7 @@
 
 .execLabel {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -673,7 +673,7 @@
 .execLotToggle {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -681,7 +681,7 @@
   padding: 2px 0;
 }
 
-.execLotToggle:hover { color: #94a3b8; }
+.execLotToggle:hover { color: var(--text-muted); }
 
 .execLotList {
   display: flex;
@@ -702,7 +702,7 @@
 
 .execLotMeta {
   flex: 1;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .execLotInput {
@@ -718,8 +718,8 @@
 }
 
 .execLotMaxHint {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   white-space: nowrap;
 }
 
@@ -731,7 +731,7 @@
 
 .execBalPreview {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 6px 10px;
   background: #0f1623;
   border: 1px solid #1e2535;

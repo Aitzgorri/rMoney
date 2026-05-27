@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   display: flex;
   flex-direction: column;
   min-height: 100%;
@@ -56,7 +56,7 @@
 }
 
 .summaryEmpty {
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .summaryGroup {
@@ -73,7 +73,7 @@
 }
 
 .summaryLabel {
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .summaryValue {
@@ -106,7 +106,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .addBtn {
@@ -120,7 +120,7 @@
 }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   padding: 8px 0;
 }
@@ -161,8 +161,8 @@
 }
 
 .incomeFreq {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .incomeRight {
@@ -200,11 +200,11 @@
   align-items: center;
   padding: 8px 8px;
   border-bottom: 1px solid #2d3448;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .expenseHeaderName { /* name cell — takes flex */ }
@@ -232,7 +232,7 @@
 .expandBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
   padding: 0 2px;
@@ -259,16 +259,16 @@
 
 .pctCell {
   text-align: right;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   padding-right: 2px;
   white-space: nowrap;
 }
 
 .amountCell {
   text-align: right;
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
   padding-right: 2px;
   white-space: nowrap;
 }
@@ -285,7 +285,7 @@
 .rowBtn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
   padding: 2px 4px;
@@ -324,7 +324,7 @@
   background: none;
   border: none;
   color: #f59e0b;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 3px;
   border-radius: 4px;
@@ -337,7 +337,7 @@
 .resetBtn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   cursor: pointer;
   padding: 2px 3px;
@@ -357,7 +357,7 @@
   background: none;
   border: 1px dashed #2d3448;
   border-radius: 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   padding: 10px;
   cursor: pointer;
@@ -365,7 +365,7 @@
   text-align: center;
 }
 
-.addTransferBtn:hover { color: #94a3b8; border-color: #3d4558; }
+.addTransferBtn:hover { color: var(--text-muted); border-color: #3d4558; }
 
 /* ── Action bar ────────────────────────────────────────────────────────────── */
 
@@ -384,7 +384,7 @@
   border: none;
   border-radius: 10px;
   padding: 10px 16px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -465,7 +465,7 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -528,9 +528,9 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   flex: 1;
@@ -580,7 +580,7 @@
   border: none;
   border-radius: 8px;
   padding: 9px 16px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -619,7 +619,7 @@
 .dialogSubtitle {
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 6px;

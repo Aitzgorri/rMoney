@@ -35,11 +35,11 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] On mobile, the same screens continue to use the current dedicated-route pattern (e.g. `/transactions/new`) — the inline component is bypassed.
 - [x] The switch between inline (desktop) and dedicated route (mobile) is driven by viewport width; no separate user setting.
 
-### Small / muted text contrast pass *(Phase 33)*
-- [ ] **Contrast audit on every secondary-text style.** Sweep the app's CSS modules for muted colours (typical pattern: `color: #94a3b8 / #64748b / similar greys on dark backgrounds`) used in small text (≤ 13 px) — table sublines, hint text, "(N held > 365 days)" affixes, tooltip captions, source labels in the dividend list, currency-rate suffixes, "Refreshing…" status, etc. Raise contrast so every small muted text passes WCAG AA against its background (4.5:1 for ≤ 14 px regular weight, 3:1 for ≤ 14 px bold or ≥ 18 px regular).
-- [ ] **Single shared "muted text" colour token.** Introduce two CSS custom properties: `--text-muted` (medium-contrast — for sublines and hints) and `--text-faint` (lower-contrast — for purely decorative captions). Both pass AA. Every CSS module replaces hard-coded greys with the appropriate token; no inline `color` overrides.
-- [ ] **Small body text minimum size.** Raise any text smaller than 12 px to at least 12 px. Sub-12 px is unreadable on high-DPI displays and is a habitual source of "I can't see this" complaints.
-- [ ] **Spot-check pass.** Walk every screen at default zoom and at 125 % zoom; verify the new contrast holds. Document the chosen `--text-muted` / `--text-faint` values in `app/src/styles/tokens.css` (create the file if it doesn't exist) so any future spec can refer back.
+### Small / muted text contrast pass *(Phase 33)* ✓ done
+- [x] **Contrast audit on every secondary-text style.** Swept all 39 CSS modules for hard-coded grey `color:` values (`#94a3b8`, `#64748b`, `#475569`).
+- [x] **Single shared "muted text" colour token.** `app/src/styles/tokens.css` defines `--text-muted: #94a3b8` (≈6.6:1) and `--text-faint: #7c8da4` (≈5.1:1) — both WCAG AA on `#0f1117`. 624 `color:` usages replaced across 38 CSS modules. `index.css` imports `tokens.css` and aliases `--text-dim` → `var(--text-muted)` for backward compatibility.
+- [x] **Small body text minimum size.** 177 sub-12 px font sizes (9 px, 10 px, 11 px) raised to 12 px across 34 CSS modules, plus one 8 px chevron in HybridFilterDropdown.
+- [ ] **Spot-check pass.** Walk every screen at default zoom and at 125 % zoom; verify the new contrast holds.
 
 ## UI / Screens
 Desktop Dashboard (text sketch):

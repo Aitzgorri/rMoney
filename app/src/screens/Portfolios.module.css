@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,7 @@
 .backBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -52,7 +52,7 @@
 .newBtn:hover { background: #2563eb; }
 
 .empty {
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 14px;
   text-align: center;
   padding: 24px 0;
@@ -101,7 +101,7 @@
 .nodeDragging { opacity: 0.4; }
 
 .dragHandle {
-  color: #475569;
+  color: var(--text-faint);
   font-size: 14px;
   cursor: grab;
   padding: 2px 3px;
@@ -110,7 +110,7 @@
   line-height: 1;
 }
 
-.dragHandle:hover { color: #94a3b8; background: #2d3448; }
+.dragHandle:hover { color: var(--text-muted); background: #2d3448; }
 .dragHandle:active { cursor: grabbing; }
 
 .nodeName {
@@ -126,7 +126,7 @@
 
 .nodeTarget {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   flex-shrink: 0;
   min-width: 36px;
   text-align: right;
@@ -149,8 +149,8 @@
   background: #2d3448;
   border: none;
   border-radius: 5px;
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
   padding: 3px 6px;
   cursor: pointer;
   white-space: nowrap;
@@ -164,7 +164,7 @@
   background: #2d3448;
   border: none;
   border-radius: 4px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   width: 20px;
   height: 20px;
@@ -176,7 +176,7 @@
   line-height: 1;
 }
 
-.moveBtn:hover { color: #94a3b8; background: #3d4558; }
+.moveBtn:hover { color: var(--text-muted); background: #3d4558; }
 .moveBtn:disabled { opacity: 0.25; cursor: not-allowed; }
 
 /* ── Assignment row ─────────────────────────────────────────────────────────── */
@@ -192,21 +192,21 @@
 .assignRow:hover { background: #1e2535; }
 
 .assignBullet {
-  color: #475569;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   flex-shrink: 0;
 }
 
 .assignTicker {
   font-size: 13px;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--text-muted);
   min-width: 56px;
 }
 
 .assignTarget {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   flex: 1;
 }
 
@@ -219,7 +219,7 @@
 /* ── Warning line ─────────────────────────────────────────────────────────── */
 
 .warningLine {
-  font-size: 11px;
+  font-size: 12px;
   color: #fbbf24;
   padding: 2px 8px;
 }
@@ -266,7 +266,7 @@
 
 .inlinePctLabel {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
@@ -283,13 +283,13 @@
 }
 
 .inlineConfirm:hover { background: #2563eb; }
-.inlineConfirm:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+.inlineConfirm:disabled { background: #2d3448; color: var(--text-faint); cursor: not-allowed; }
 
 .inlineCancel {
   background: #2d3448;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 5px 10px;
   cursor: pointer;
@@ -299,7 +299,7 @@
 .inlineCancel:hover { background: #3d4558; }
 
 .inlineError {
-  font-size: 11px;
+  font-size: 12px;
   color: #f87171;
   flex-shrink: 0;
 }
@@ -330,7 +330,7 @@
 }
 
 .dialog h3 { font-size: 16px; color: #f1f5f9; margin: 0; }
-.dialog p  { font-size: 14px; color: #94a3b8; margin: 0; }
+.dialog p  { font-size: 14px; color: var(--text-muted); margin: 0; }
 
 .dialogList {
   list-style: none;
@@ -343,16 +343,16 @@
 
 .dialogList li {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding-left: 14px;
   position: relative;
 }
 
-.dialogList li::before { content: '•'; position: absolute; left: 0; color: #475569; }
+.dialogList li::before { content: '•'; position: absolute; left: 0; color: var(--text-faint); }
 
 .dialogNote {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .dialogActions {
@@ -367,7 +367,7 @@
   border: none;
   border-radius: 10px;
   padding: 10px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

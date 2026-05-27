@@ -1,4 +1,4 @@
-/* ── Page shell ──────────────────────────────────────────────────────────── */
+﻿/* ── Page shell ──────────────────────────────────────────────────────────── */
 
 .page {
   padding: 16px;
@@ -11,7 +11,7 @@
 .emptyPage {
   padding: 48px 24px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .emptyTitle {
@@ -23,7 +23,7 @@
 
 .emptyMsg {
   font-size: 14px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
@@ -55,12 +55,12 @@
 
 .scopeLabel {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .lastRefresh {
-  font-size: 11px;
-  color: #475569;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 .headerRight {
@@ -112,7 +112,7 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 500;
   padding: 6px 18px;
@@ -160,7 +160,7 @@
   background: transparent;
   border: none;
   border-radius: 5px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 5px 12px;
   cursor: pointer;
@@ -184,7 +184,7 @@
   background: #161f2e;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 16px;
   width: 30px;
   height: 30px;
@@ -200,7 +200,7 @@
   background: #161f2e;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
@@ -230,8 +230,8 @@
 
 .weekdayHeader {
   background: #1e2535;
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   padding: 6px 0;
@@ -262,7 +262,7 @@
 
 .dayNum {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-faint);
   font-weight: 500;
 }
 
@@ -299,7 +299,7 @@
 .dotBlue.dotDashed   { border-color: #4A9DEC; }
 
 .dotTicker {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   color: #cbd5e1;
   min-width: 28px;
@@ -307,8 +307,8 @@
 }
 
 .dotNum {
-  font-size: 9px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   cursor: default;
   white-space: nowrap;
@@ -322,7 +322,7 @@
   background: none;
   border: none;
   color: #4A9DEC;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
@@ -352,7 +352,7 @@
   right: 8px;
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 16px;
   cursor: pointer;
   line-height: 1;
@@ -373,7 +373,7 @@
 }
 
 .popupName {
-  color: #94a3b8;
+  color: var(--text-muted);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -381,19 +381,19 @@
 }
 
 .popupKind {
-  color: #64748b;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 12px;
 }
 
 .popupAmt {
   color: #10B981;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .popupState {
-  font-size: 10px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
 /* ── Calendar table (31c) ─────────────────────────────────────────────────── */
@@ -432,7 +432,7 @@
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
   border-bottom: 1px solid #2d3448;
   white-space: nowrap;
 }
@@ -457,29 +457,29 @@
 
 .emptyCell {
   text-align: center;
-  color: #475569;
+  color: var(--text-faint);
   padding: 24px !important;
 }
 
 .stateEstimated {
-  color: #64748b;
+  color: var(--text-faint);
   font-style: italic;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .stateDeclared {
   color: #10B981;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .typeRegular {
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .typeSpecial {
   color: #f59e0b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -489,7 +489,7 @@
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 7px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 8px 16px;
   cursor: pointer;
@@ -543,7 +543,7 @@
   background: #161f2e;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
@@ -562,7 +562,7 @@
   background: transparent;
   border: 1px dashed #2d3448;
   border-radius: 6px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
@@ -584,8 +584,8 @@
 }
 
 .ctrlLabel {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: var(--text-faint);
   white-space: nowrap;
 }
 
@@ -622,7 +622,7 @@
   background: none;
   border: 1px dashed #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 4px 8px;
   cursor: pointer;
@@ -643,7 +643,7 @@
 .btnSmDanger:hover { background: #2d1515; }
 
 .chartEmpty {
-  color: #475569;
+  color: var(--text-faint);
   font-size: 13px;
   text-align: center;
   padding: 32px;
@@ -661,7 +661,7 @@
   gap: 16px;
   padding-left: 56px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .legendItem {
@@ -719,7 +719,7 @@
 
 .sortableHeader:hover { color: #4A9DEC; }
 
-.sortArrow { color: #4A9DEC; font-size: 10px; }
+.sortArrow { color: #4A9DEC; font-size: 12px; }
 
 .metricsTableWrap {
   overflow-x: auto;
@@ -733,7 +733,7 @@
 
 .subRowLabel {
   padding-left: 24px !important;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -746,7 +746,7 @@
 .expandBtn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 12px;
   cursor: pointer;
   padding: 0 4px;
@@ -762,7 +762,7 @@
   background: #161f2e;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   padding: 5px 12px;
   cursor: pointer;
@@ -801,7 +801,7 @@
   background: #161f2e;
   border: 1px solid #2d3448;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;

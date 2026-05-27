@@ -1,4 +1,4 @@
-.screen {
+﻿.screen {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,7 @@
   background: #1e2535;
   border: 1px solid #2d3448;
   border-radius: 20px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   padding: 8px 14px;
@@ -53,9 +53,9 @@
 }
 
 .builtInBadge {
-  font-size: 10px;
+  font-size: 12px;
   background: #2d3448;
-  color: #64748b;
+  color: var(--text-faint);
   border-radius: 6px;
   padding: 2px 6px;
 }
@@ -91,8 +91,8 @@
 .collapseBtn {
   background: none;
   border: none;
-  color: #64748b;
-  font-size: 10px;
+  color: var(--text-faint);
+  font-size: 12px;
   cursor: pointer;
   width: 16px;
   padding: 0;
@@ -122,7 +122,7 @@
 }
 
 .ownBalance {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   opacity: 0.6;
 }
@@ -140,7 +140,7 @@
   background: #2d3448;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   width: 24px;
   height: 24px;
@@ -197,7 +197,7 @@
   background: #2d3448;
   border: none;
   border-radius: 6px;
-  color: #94a3b8;
+  color: var(--text-muted);
   width: 28px;
   height: 28px;
   cursor: pointer;
@@ -208,7 +208,7 @@
   background: none;
   border: 1px dashed #2d3448;
   border-radius: 10px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   padding: 10px;
   cursor: pointer;
@@ -217,7 +217,7 @@
   text-align: left;
 }
 
-.addRoot:hover { color: #94a3b8; border-color: #3d4558; }
+.addRoot:hover { color: var(--text-muted); border-color: #3d4558; }
 
 .grandTotal {
   display: flex;
@@ -230,7 +230,7 @@
 }
 
 .grandTotalLabel {
-  color: #64748b;
+  color: var(--text-faint);
 }
 
 .grandTotalValue {
@@ -242,7 +242,7 @@
   background: none;
   border: 1px dashed #2d3448;
   border-radius: 12px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 13px;
   padding: 10px;
   cursor: pointer;
@@ -250,7 +250,7 @@
   margin-top: 4px;
 }
 
-.archivedToggle:hover { color: #94a3b8; border-color: #3d4558; }
+.archivedToggle:hover { color: var(--text-muted); border-color: #3d4558; }
 
 /* Delete dialog */
 .overlay {
@@ -277,7 +277,7 @@
 }
 
 .dialog h3 { font-size: 16px; color: #f1f5f9; }
-.dialog p  { font-size: 14px; color: #94a3b8; }
+.dialog p  { font-size: 14px; color: var(--text-muted); }
 
 .deleteList {
   list-style: none;
@@ -289,7 +289,7 @@
 
 .deleteList li {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding-left: 12px;
 }
 
@@ -309,7 +309,7 @@
   border: none;
   border-radius: 10px;
   padding: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -341,7 +341,7 @@
 
 .archiveConfirmBtn:disabled {
   background: #2d3448;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: not-allowed;
 }
 
@@ -435,7 +435,7 @@
   }
 
   .selectHint {
-    color: #64748b;
+    color: var(--text-faint);
     font-size: 14px;
     text-align: center;
     padding: 64px 24px;
