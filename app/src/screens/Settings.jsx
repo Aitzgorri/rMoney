@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt } from '../data/settings'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
@@ -96,6 +96,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
   const [perCountryTax,       setPerCountryTaxState]       = useState(() => getPerCountryDividendTax())
   const [countryTaxNew,       setCountryTaxNew]            = useState({ country: '', pct: '' })
+  const [confirmReceipt,      setConfirmReceiptState]      = useState(() => getConfirmReceipt())
   const [cacheTtl,            setCacheTtlState]            = useState(() => getApiCacheTtl())
   const [defaultCsvDateFmt, setDefaultCsvDateFmtState] = useState(() => getDefaultCsvDateFormat())
   const [templates,         setTemplates]              = useState(() => getCsvTemplates())
@@ -907,6 +908,26 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                  dividendEstRule === 'year-ago'  ? 'same-period previous year' :
                  'a manually set amount per stock'}
               </strong> by default
+            </div>
+            <div className={styles.pillToggleRow}>
+              <label className={styles.pillToggle}>
+                <input
+                  type="checkbox"
+                  checked={confirmReceipt}
+                  onChange={e => {
+                    setConfirmReceiptState(e.target.checked)
+                    setConfirmReceipt(e.target.checked)
+                  }}
+                />
+                <span className={styles.pillTrack}>
+                  <span className={styles.pillThumb} />
+                </span>
+              </label>
+              <span className={confirmReceipt ? styles.pillStateOn : styles.pillStateOff}>
+                {confirmReceipt
+                  ? 'Confirmation will be requested before cash balance updates'
+                  : 'No confirmation needed — cash updates automatically on payout date'}
+              </span>
             </div>
           </div>
 
