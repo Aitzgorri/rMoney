@@ -1,11 +1,14 @@
 // Unified HTTP transport for market data providers.
 //
 // Providers that don't set Access-Control-Allow-Origin (Yahoo Finance, Stooq)
-// can't be called via plain fetch() from a browser context. Two bypass paths:
+// can't be called via plain fetch() from a browser context. Three bypass paths:
 //   • Vite dev server: /__yfproxy and /__stooq paths are rewritten to the real
 //     host by vite.config.js server.proxy (no CORS restriction in Node proxy).
 //   • Tauri production: @tauri-apps/plugin-http makes native HTTP requests that
 //     bypass WebView CORS entirely; allowed by the http capability.
+//   • Capacitor (Android): CapacitorHttp.enabled = true in capacitor.config.json
+//     intercepts fetch() via the bridge, routing cross-origin requests through
+//     Android's native HTTP stack. No proxy prefix needed — use the real URL.
 //
 // Providers with Access-Control-Allow-Origin: * (Polygon/Massive, Twelve Data,
 // Alpha Vantage, Finnhub) use plain fetch() and don't need requiresProxy.
@@ -19,6 +22,10 @@ const DEV_PROXY = {
 
 function isTauri() {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
+
+function isCapacitor() {
+  return typeof window !== 'undefined' && !!window.Capacitor
 }
 
 function toDevProxyUrl(url) {
@@ -40,6 +47,11 @@ export async function marketDataFetch(url, options = {}, { requiresProxy = false
     // @vite-ignore tells Vite not to analyse this import (it only works at Tauri runtime)
     const { fetch: tauriFetch } = await import(/* @vite-ignore */ '@tauri-apps/plugin-http')
     return tauriFetch(url, options)
+  }
+
+  if (isCapacitor()) {
+    // CapacitorHttp.enabled intercepts fetch() natively — use the real URL directly.
+    return fetch(url, options)
   }
 
   // Vite dev: rewrite URL through configured server proxy

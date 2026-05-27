@@ -41,9 +41,19 @@ Make rMoney trivially installable for a non-technical user. The user should be a
 - [x] Closing the window quits the app
 - [x] `.rmy` backup files are associated with the app: Windows Explorer shows "rMoney Data" in the Type column and opens the file with rMoney. File icon uses the app icon (green "r" circle). A dedicated document-style icon (`icons/rmy-file.ico`) has been designed and is ready for use once Tauri adds per-file-type icon support to its config schema.
 
-### Mobile (Capacitor) — phase 2
+### Mobile (Capacitor) — Phase 21a
 - [ ] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
-- [ ] App data persists locally on the device
+- [ ] App data persists locally on the device (localStorage in WebView is automatically persistent; confirmation pass)
+- [ ] Production `.apk` built via `cd app && npm run android:sync && cd android && gradlew.bat assembleDebug`; output attached to GitHub release alongside the Windows `.msi` per RELEASE.md mobile flow
+- [ ] Re-verified on Android: dev-mode banner shows; Stronghold fallback uses `rmoney_dev_secrets` localStorage; market-data CORS works via CapacitorHttp native transport; backup save/load works via `@capacitor/filesystem` + `<input type="file">`
+
+**Code shipped (Phase 21a):**
+- `app/capacitor.config.json` — Capacitor project config; `CapacitorHttp.enabled: true` routes cross-origin `fetch()` natively, bypassing WebView CORS for Yahoo Finance and Stooq
+- `@capacitor/core`, `@capacitor/android`, `@capacitor/filesystem` added to dependencies; `@capacitor/cli` to devDependencies
+- `src/utils/marketDataFetch.js` — `isCapacitor()` branch uses direct `fetch()` (CapacitorHttp intercepts it natively)
+- `src/data/portability.js` — Tauri imports made dynamic (`@vite-ignore`); Capacitor path uses `@capacitor/filesystem` for save, `<input type="file">` for load; browser blob-download fallback added
+- `app/package.json` — `android:sync` and `android:open` convenience scripts added
+- `RELEASE.md` — full Android release checklist added
 
 ### Auto-update — deferred
 - Auto-update will be addressed when a release distribution channel is chosen.

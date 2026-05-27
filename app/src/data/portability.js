@@ -1,5 +1,4 @@
-import { save, open } from '@tauri-apps/plugin-dialog'
-import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs'
+const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 
 const VERSION = 'rmoney-data-v1'
 
@@ -139,33 +138,75 @@ function stripCredentials(settings) {
   return s
 }
 
-// Opens a native Save As dialog. Returns the saved filename, or null if cancelled.
+// Saves data to a file. Returns the saved filename, or null if cancelled.
+// • Tauri: native Save-As dialog → writeTextFile
+// • Capacitor: @capacitor/filesystem → Documents directory (app-scoped external storage)
+// • Browser fallback: blob download via <a> element
 export async function saveDataFile(data) {
+  const json = JSON.stringify(data, null, 2)
   const date = new Date().toISOString().slice(0, 10)
-  const path = await save({
-    defaultPath: `rmoney-backup-${date}.rmy`,
-    filters: [{ name: 'rMoney Backup', extensions: ['rmy'] }],
-  })
-  if (!path) return null
-  await writeTextFile(path, JSON.stringify(data, null, 2))
-  // Return just the filename portion for the banner
-  return path.split(/[\\/]/).pop()
+  const defaultName = `rmoney-backup-${date}.rmy`
+
+  if (IS_TAURI) {
+    const { save } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog')
+    const { writeTextFile } = await import(/* @vite-ignore */ '@tauri-apps/plugin-fs')
+    const path = await save({
+      defaultPath: defaultName,
+      filters: [{ name: 'rMoney Backup', extensions: ['rmy'] }],
+    })
+    if (!path) return null
+    await writeTextFile(path, json)
+    return path.split(/[\\/]/).pop()
+  }
+
+  if (typeof window !== 'undefined' && window.Capacitor) {
+    const { Filesystem, Directory, Encoding } = await import(/* @vite-ignore */ '@capacitor/filesystem')
+    await Filesystem.writeFile({
+      path: defaultName,
+      data: json,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    })
+    return defaultName
+  }
+
+  // Browser fallback: trigger a download
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = defaultName
+  a.click()
+  URL.revokeObjectURL(url)
+  return defaultName
 }
 
-// Opens a native Open dialog, reads the file, and validates it.
-// Returns { data, filename, exportedAt } on success, or { error } on failure, or null if cancelled.
+// Reads and validates a backup file. Returns { data, filename, exportedAt }, { error }, or null (cancelled).
+// • Tauri: native Open dialog → readTextFile
+// • Capacitor + browser: <input type="file"> picker → FileReader
 export async function openDataFile() {
-  const path = await open({
-    filters: [{ name: 'rMoney Backup', extensions: ['rmy', 'json'] }],
-    multiple: false,
-  })
-  if (!path) return null
+  let text, filename
 
-  let text
-  try {
-    text = await readTextFile(path)
-  } catch {
-    return { error: 'Could not read the file.' }
+  if (IS_TAURI) {
+    const { open } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog')
+    const { readTextFile } = await import(/* @vite-ignore */ '@tauri-apps/plugin-fs')
+    const path = await open({
+      filters: [{ name: 'rMoney Backup', extensions: ['rmy', 'json'] }],
+      multiple: false,
+    })
+    if (!path) return null
+    try {
+      text = await readTextFile(path)
+    } catch {
+      return { error: 'Could not read the file.' }
+    }
+    filename = path.split(/[\\/]/).pop()
+  } else {
+    const picked = await pickFileViaInput()
+    if (!picked) return null
+    if (picked.error) return picked
+    text = picked.text
+    filename = picked.filename
   }
 
   let parsed
@@ -181,8 +222,27 @@ export async function openDataFile() {
   const exportedAt = new Date(parsed.exportedAt).toLocaleString(
     undefined, { dateStyle: 'medium', timeStyle: 'short' }
   )
-  const filename = path.split(/[\\/]/).pop()
   return { data: parsed, filename, exportedAt }
+}
+
+function pickFileViaInput() {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.rmy,.json'
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) { resolve(null); return }
+      try {
+        const text = await file.text()
+        resolve({ text, filename: file.name })
+      } catch {
+        resolve({ error: 'Could not read the file.' })
+      }
+    }
+    input.oncancel = () => resolve(null)
+    input.click()
+  })
 }
 
 // Returns { ok: true } or { ok: false, error: string }

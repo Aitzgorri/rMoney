@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 33 ready, split into v0.33.0 and v0.34.0.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (Sub-phase 21a pulled forward), and **v0.34.0** ships the dividend-status model and all its consumers. Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
+**Current phase: Phase 33 active, v0.33.0 code-complete.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (Sub-phase 21a code-complete — pending user verification on device), and **v0.34.0** ships the dividend-status model and all its consumers. Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
 
 ---
 
@@ -27,7 +27,7 @@
 | 18 — CSV import | ✓ done | |
 | 19 — AI integration | ✓ done | |
 | 20 — Future asset classes | placeholders | See SPEC-035 roadmap |
-| **21a — Android build pipeline** | **scheduled with v0.33.0 / v0.34.0** | Closes the "single-file install on mobile" goal |
+| **21a — Android build pipeline** | **code-complete (verify on device)** | Closes the "single-file install on mobile" goal |
 | 21b — Mobile Investments parity | deferred (after 21a) | Six SPEC-028 items |
 | 22 — Stock profile resolution | ✓ done | |
 | 23 — Watchlists & alerts | ✓ done | |
@@ -124,12 +124,13 @@ Tiered so the next pass can pick from the top without re-deriving the chain. Ite
 > - **21a (Android build pipeline)** — pulled forward to land alongside the Phase 33 release line. Once items 363 + 364 + 364a ship the user can install rMoney on Android via a `.apk`, even if the Investments deep-dive views are still mobile-light.
 > - **21b (Investments parity)** — full mobile rewrite of the Investments-side screens. Stays deferred until 21a is shipped and the user has used the Android app long enough to confirm what's actually missing.
 
-### Phase 21a — Android build pipeline (target: v0.33.0 / v0.34.0 release line)
+### Phase 21a — Android build pipeline ✓ code-complete
 ### SPEC-010 Deployment — mobile (Capacitor) prerequisites
+> Code shipped. Remaining items require building + running on a real Android device.
 363. [ ] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
-364. [ ] App data persists locally on the device (localStorage in WebView is automatically persistent; this item is the confirmation pass)
-364a. [ ] Production `.apk` build produced by `cd app && npm run build && npx cap sync android && ./gradlew assembleDebug`; output attached to GitHub release alongside the Windows `.msi` per `RELEASE.md` mobile flow
-364b. [ ] Re-verify on Android: dev-mode banner, Stronghold fallback (`secrets.js` uses `rmoney_dev_secrets` localStorage path on Capacitor since Tauri-Stronghold doesn't run there), market-data CORS transport (Capacitor allows direct fetch to Yahoo / Stooq without the Tauri HTTP plugin), backup save/load via the `@capacitor/filesystem` plugin
+364. [ ] App data persists locally on the device (localStorage in WebView is automatically persistent; confirmation pass on device)
+364a. [ ] Production `.apk` built via `npm run android:sync` then `.\gradlew.bat assembleDebug` in `android/`; attached to GitHub release per RELEASE.md
+364b. [ ] Re-verify on Android: dev-mode banner shows; market-data CORS works (CapacitorHttp); backup save writes to Documents dir; backup load via file picker works
 
 ### Phase 21b — Mobile Investments parity (deferred until 21a ships)
 ### SPEC-028 Mobile Investments Parity
@@ -183,7 +184,7 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out of this list. Only future work is shown.
 
 ### To close v0.33.0
-1. **21a** (Android build pipeline) — no dependencies; closes the release.
+**21a** ✓ code-complete — run `npx cap add android` in `app/`, build the APK, and tick the four SPEC-010 criteria to close the release.
 
 ### To ship v0.34.0
 2. **33e** (paysDividends flag + per-country tax) — fully unblocked: depends on 33d (done) + 33b (done). Can start in parallel with the dividend-status branch below.

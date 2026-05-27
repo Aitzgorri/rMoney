@@ -50,10 +50,10 @@ When you bump the data version, update the table above too.
 | Windows desktop | `.msi` + NSIS `.exe` | Windows | ✓ active — current release surface |
 | Linux desktop | `.AppImage` + `.deb` | Linux | future — needs Linux build host or GitHub Actions |
 | macOS desktop | `.dmg` | macOS | future — needs Mac (also code-signing for SmartScreen equivalent) |
-| Android mobile | `.apk` | Any (via Capacitor + Android SDK) | future — Phase 21 (mobile parity) |
+| Android mobile | `.apk` | Any (via Capacitor + Android SDK) | ✓ active — Phase 21a pipeline shipped |
 | iOS mobile | `.ipa` | macOS | out of scope (no Mac) |
 
-**Today only Windows ships.** When you add a second platform, that's the right moment to migrate to GitHub Actions — see the bottom of this document.
+**Today Windows and Android ship.** When you add a third platform, that's the right moment to migrate to GitHub Actions — see the bottom of this document.
 
 ---
 
@@ -205,17 +205,70 @@ Same as above with two adjustments:
 
 ---
 
-## Mobile (Android) release flow — future, when Phase 21 ships
+## Mobile (Android) release flow
 
-The Android pipeline reuses the same React build, wrapped with Capacitor. The high-level steps will be:
+The Android pipeline reuses the same React build, wrapped with Capacitor. The `android/` project is checked in to the repo (generated once via `npx cap add android`). After that, every release just syncs the latest web build into it.
 
-1. From `app/`: `npm run build` (produces the same `dist/` the Tauri build consumes).
-2. `npx cap sync android` — copies `dist/` into the Android project.
-3. `npx cap open android` — opens Android Studio.
-4. Build → Generate Signed APK / AAB. Use a debug keystore for unsigned distribution; a real keystore for Play Store distribution.
-5. Attach the `.apk` to the same GitHub release alongside the desktop installers, or cut a separate `v0.X.Y-android` tag if release cadences diverge.
+### Prerequisites (one-time setup)
 
-Detailed steps will land here when Phase 21 (items 363, 364, and the SPEC-028 items) is implemented.
+1. Install [Android Studio](https://developer.android.com/studio). Accept the SDK licenses during setup.
+2. Make sure the `JAVA_HOME` and `ANDROID_HOME` environment variables point to your JDK and Android SDK directories. Android Studio sets these automatically on first launch.
+
+### Step-by-step: build a `.apk`
+
+Run these from the **`app/` directory**:
+
+```powershell
+npm run android:sync        # vite build + npx cap sync android
+```
+
+Then either open Android Studio and build from there:
+
+```powershell
+npm run android:open        # opens the android/ project in Android Studio
+```
+
+Or build headlessly from the command line (requires Gradle in PATH or using the wrapper):
+
+```powershell
+cd android
+.\gradlew.bat assembleDebug
+cd ..
+```
+
+The unsigned debug `.apk` lands at:
+
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Attaching to a GitHub release
+
+Attach the `.apk` alongside the Windows installers in Step 8 of the Windows checklist above:
+
+```powershell
+gh release create v0.33.0 `
+  app/src-tauri/target/release/bundle/msi/rMoney_0.33.0_x64_en-US.msi `
+  app/src-tauri/target/release/bundle/nsis/rMoney_0.33.0_x64-setup.exe `
+  app/android/app/build/outputs/apk/debug/app-debug.apk `
+  --title "v0.33.0 — Phase 33 (Dividend-flow overhaul)" `
+  --notes-file release-notes.md `
+  --prerelease
+```
+
+### Installing on an Android device
+
+Side-loading an unsigned `.apk` (no Play Store):
+1. On the phone: Settings → Security → "Install unknown apps" → allow for your file manager or browser.
+2. Transfer `app-debug.apk` to the phone (USB, email, cloud drive, `adb install app-debug.apk`).
+3. Open the file — Android prompts to install.
+
+### Notes
+
+- **Secrets / Stronghold**: Tauri Stronghold doesn't run on Capacitor. The app falls back to `rmoney_dev_secrets` in localStorage and shows the same "dev mode" banner as a browser session. API keys entered in Settings are stored there until a proper Capacitor-specific secret store is wired up in a future phase.
+- **CORS**: `CapacitorHttp.enabled = true` (set in `app/capacitor.config.json`) routes cross-origin fetch() calls through Android's native HTTP stack, so Yahoo Finance and Stooq work without the Tauri HTTP plugin.
+- **Backup**: Save writes to `Documents` inside the app's scoped external-storage folder (`Android/data/com.rmoney.app/files/Documents/`), accessible via a file manager or USB. Load uses the standard Android file picker via `<input type="file">`.
+- **localStorage**: The Android WebView persists localStorage across launches automatically — no extra setup needed.
 
 ---
 

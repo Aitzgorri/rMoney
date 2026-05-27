@@ -9,6 +9,7 @@
 !app/package-lock.json
 !app/src-tauri/tauri.conf.json
 !app/src-tauri/capabilities/*.json
+!app/capacitor.config.json
 !.claude/settings.local.json
 
 # ── Secrets and environment variables ─────────────────────────────────────────

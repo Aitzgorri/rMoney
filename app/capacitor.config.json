@@ -1,0 +1,10 @@
+{
+  "appId": "com.rmoney.app",
+  "appName": "rMoney",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
