@@ -14,13 +14,13 @@
 |---|---|---|
 | 1 — MVP core data entry | ✓ done | |
 | 7 — Desktop deployment (Tauri) | ✓ done | Mobile + auto-update deferred |
-| 8 — Desktop UI enhancements | mostly done | Item 131 (Stock page desktop layout) deferred to Phase 14 |
+| 8 — Desktop UI enhancements | ✓ done | |
 | 9 — Data portability | ✓ done | |
 | 10 — App-wide currency conversion | ✓ done | |
 | 11 — Investments foundation (accounts + market data) | mostly done | Pending items below |
 | 12 — Stock transactions | mostly done | Pending items below |
-| 13 — Dividends MVP | partial | Per-country tax deferred (needs SPEC-027 item 157) |
-| 14 — Stock page | mostly done | Stock-exchange selector + projections deferred |
+| 13 — Dividends MVP | partial | Per-country tax now scheduled in Sub-phase 33e (v0.34.0) |
+| 14 — Stock page | mostly done | Stock-exchange selector deferred (item 185) |
 | 15 — Portfolios | ✓ done | |
 | 16 — Benchmarks | ✓ done | |
 | 17 — Investment reports | ✓ done | |
@@ -59,45 +59,47 @@
 
 ## Pending items from earlier phases
 
-### SPEC-015 UI Enhancements (Phase 8 leftover)
-131. [ ] Stock page (SPEC-021): price chart + metadata in one row, transactions + dividends below — deferred to Phase 14
+> **Cleanup pass 2026-05-27:** items 131 (Stock page layout), 152c (auto-create cash balance), and 442 (Buy-Sell Reset button) were verified shipped and removed. Item 178 (per-country tax) is no longer duplicated here — it lives in Sub-phase 33e as items 413b–d.
+
+### Recommended order (logical / technical dependencies)
+
+Tiered so the next pass can pick from the top without re-deriving the chain. Items keep their original numbers + spec grouping below so `plan:validate` stays in sync.
+
+1. **Tier 1 — Adapters** (157f Finnhub, 157g Stooq). Independent of each other. Unblocks Tier 4 splits notification + Tier 5 IBKR OAuth.
+2. **Tier 2 — Cross-currency model overhaul** (152j-full, 152m-full, 159b, 164, 288). One cohesive block; all replace the single `exchangeRate` field with the "bundle a companion currency-exchange" model. Splitting them risks two half-models living in parallel.
+3. **Tier 3 — Transaction-edit correctness + safety** (291 fee-currency invariant, 165 retroactive cost-basis, 286 transfer edit form). Independent small items.
+4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 1; 185 stock-exchange selector).
+5. **Tier 5 — Security follow-ups** (241a Full Backup passphrase — bundle with Sub-phase 33n; 237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — needs IBKR adapter).
+6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
 
 ### SPEC-018 Investing Accounts (Phase 11 leftovers)
-152. [ ] Optional reference to default CSV import template on investing account
-152c. [ ] Auto-create a cash balance when a buy/sell/dividend needs a currency not yet in the account
-152j-full. [ ] Cross-currency deposit full model: land amount in a matching-currency cash balance (auto-created if needed), then bundle an auto-exchange to the destination currency — replaces the current single rate-field approach
-152m-full. [ ] Cross-currency withdrawal full model handled symmetrically
+152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
+152j-full. [ ] Cross-currency deposit full model: land amount in a matching-currency cash balance (auto-created if needed), then bundle an auto-exchange to the destination currency — replaces the current single rate-field approach.
+152m-full. [ ] Cross-currency withdrawal full model handled symmetrically.
+
+### SPEC-019 Stock Transactions (Phase 12 + Phase 26 leftovers)
+159b. [ ] Cross-currency source on buy triggers a companion `currency-exchange` record (deferred from Phase 12e — `triggeredByStockTransactionId` field exists but is never populated).
+164. [ ] Proceeds destination cash balance selector on Sell form — currently always uses the matching-currency balance.
+165. [ ] Retroactive cost-basis recalculation on buy edits — `updateBuy()` currently rewrites fields without recomputing lots.
+170. [ ] API-detected splits presented as a pending notification (requires at least one adapter that surfaces corporate actions — Tier 1).
+286. [ ] Edit form for transfer between investing accounts — `updateTransfer()` data function is implemented; UI edit form deferred.
+288. [ ] Edit form for currency-exchange triggered-by-buy — completes the deferred triggered-by-buy edit path (item 172e); relies on 159b being wired first.
+291. [ ] Fee-currency invariant: buy and sell forms validate `feeCurrency === tradeCurrency` and block save with an inline error. `legacyFeeMismatch: true` flag tags pre-existing buy/sell records where the invariant didn't hold (UI shows a warning chip).
+
+### SPEC-021 Stock Page (Phase 14 leftover)
+185. [ ] Stock-exchange selector — profile exchange is currently shown as text; clicking through exchanges (same stock on a different exchange) is desired. Today this requires the Re-identify dialog.
 
 ### SPEC-027 Market Data Integration (Phase 11 + Phase 24 leftovers)
 157f. [ ] **Finnhub adapter** — `getLatestPrice`, `getStockProfile`, `getNews`, `getDividends`, `getForex`. Auth via `?token=`. News is the strongest reason to keep Finnhub in the chain.
 157g. [ ] **Stooq adapter** — `getLatestPrice` + `getHistoricalSeries` only. Dividends / news / profile / corporate-actions throw `'not supported'` so the chain falls through.
 
-> *Item 157 (HQ country lookup) has been promoted into Phase 33 — see Sub-phase 33b** below — because the per-country dividend tax (SPEC-020 item 178) and the Reports regional breakdowns both depend on it, and SPEC-029 lastKnownPrice work in 33b touches the same `getStockProfile` code path.*
-
-### SPEC-020 Dividends (Phase 13 leftover) — newly unblocked by Phase 33 promotion of item 157
-178. [ ] Per-country tax %; country = HQ country of the stock by default, manually overridable per stock. **Promoted into Phase 33** (see Sub-phase 33e** below) now that the HQ country lookup is part of the same release.
-
-### SPEC-019 Stock Transactions (Phase 12 leftovers)
-159b. [ ] Cross-currency source triggers a companion `currency-exchange` record (deferred from Phase 12e — only the standalone exchange path is wired; the buy-triggered path still pends)
-164. [ ] Proceeds destination cash balance selector on Sell form — currently always uses the matching-currency balance
-165. [ ] Retroactive cost-basis recalculation on buy edits
-170. [ ] API-detected splits presented as a pending notification (requires SPEC-027)
-
-### SPEC-021 Stock Page (Phase 14 leftover)
-185. [ ] Stock-exchange selector — profile exchange is currently shown as text; per the project goal, clicking through exchanges (showing the same stock on a different exchange) is desired. Today this requires the Re-identify dialog.
-
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
-237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin
-241a. [ ] Full Backup mode prompts for the master passphrase before producing the file; embeds the Stronghold vault bytes base64-encoded under `_strongholdVault`
-255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}`
-
-### SPEC-019 Stock Transactions (Phase 26 leftovers)
-286. [ ] Edit form for transfer between investing accounts — `updateTransfer()` data function is implemented; UI edit form deferred
-288. [ ] Edit form for currency-exchange triggered-by-buy — completes the deferred triggered-by-buy edit path (item 172e)
-291. [ ] Fee-currency invariant: buy and sell forms validate `feeCurrency === tradeCurrency` and block save with an inline error. `legacyFeeMismatch: true` flag tags pre-existing buy/sell records where the invariant didn't hold (UI shows a warning chip)
+237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin.
+241a. [ ] Full Backup mode prompts for the master passphrase before producing the file; embeds the Stronghold vault bytes base64-encoded under `_strongholdVault`. **Bundle with Sub-phase 33n** (backup v2) — both touch `portability.js`.
+255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}` — gated on the IBKR adapter actually being built (currently a stub).
 
 ### SPEC-034 Buy-Sell Planning (Phase 32 leftover)
-382. [ ] Standalone sell-row lot-picker button (stores lot selections back to the planned row without executing) — the lot picker IS available inside the Execute modal; this is the standalone polish version
+382. [ ] Standalone sell-row lot-picker button (stores lot selections back to the planned row without executing) — the lot picker IS available inside the Execute modal; this is the standalone polish version.
 
 ---
 
@@ -153,15 +155,15 @@ To avoid one large `v0.33.0` slip, Phase 33 is split into two releases:
 ### v0.33.0 — Foundation + bug fixes + Android pipeline
 Ships fixes and infrastructure quickly. Users notice the bug fixes and the small UX upgrades immediately; the Android build pipeline closes the "single-file install on mobile" goal.
 
-- **33a** Shared CurrencyDropdown
-- **33b** lastKnownPrice persistence + HQ country verification
-- **33c** Configurable cache TTLs + offline fallback + per-page Reset API
-- **33d** Re-identify button rename + Stock inventory wider table + Edit profile re-resolve
-- **33i** Stock page dividend list bug fixes + delete + lots expand
+- **33a** ✓ Shared CurrencyDropdown
+- **33b** ✓ lastKnownPrice persistence + HQ country verification
+- **33c** ✓ Configurable cache TTLs + offline fallback + per-page Reset API
+- **33d** ✓ Re-identify button rename + Stock inventory wider table + Edit profile re-resolve
+- **33i** ✓ Stock page dividend list bug fixes + delete + lots expand
 - **33k** ✓ CSV import composite-key dedup + post-commit report
 - **33m** ✓ Small / muted text contrast pass
 - **33o** ✓ Negative cache for failed fetches (extends 33c)
-- **21a** Android build pipeline (items 363, 364, 364a, 364b)
+- **21a** Android build pipeline (items 363, 364, 364a, 364b) — only outstanding work for v0.33.0
 
 ### v0.34.0 — Dividend overhaul
 The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
@@ -176,22 +178,21 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 
 **Why this split:** every v0.33.0 item is either a foundation utility (consumed but not extended by v0.34.0), an isolated bug fix, or the Android pipeline (which has no dependency on the dividend rework). v0.34.0 is the dividend-status story, end to end. No item changes meaning across the boundary.
 
-## Dependency order within Phase 33 (verified)
+## Remaining order within Phase 33 (post-2026-05-27 verification)
 
-1. **33a** (CurrencyDropdown) — independent; wide-touching refactor; do alone to avoid merge churn.
-2. **33b** (lastKnownPrice + HQ country verification) — small data-model + provider hook + read-site fallback; consumed by 33d Edit profile re-resolve AND by 33e per-country tax.
-3. **33c** (Cache TTL + Offline + Reset API) — settings shape + helper; consumed by 33l Buy-Sell planning refresh button.
-4. **33d** (Re-identify button + Stock inventory wider table + Edit profile re-resolve) — depends on 33b.
-5. **33e** (paysDividends flag + per-country tax) — depends on 33d Edit profile dialog hosting the field, and on 33b HQ country verification.
-6. **33f** (Dividend status model) — foundation for 33g, 33h, 33i, 33j.
-7. **33g** (Confirmation flow + Pending tab) — depends on 33f.
-8. **33h** (Multi-account dividend entry + duplicate warning) — depends on 33f.
-9. **33i** (Stock page dividend list bug fixes + delete + lots expand) — depends on 33f.
-10. **33j** (Dividend page calendar + metrics + chart) — depends on 33f.
-11. **33k** (CSV dedup + report) — independent; do anytime.
-12. **33l** (Buy-Sell planning enhancements) — depends on 33c.
-13. **33m** (Contrast pass) — last; touches many CSS modules and could conflict with concurrent UI work.
-14. **33o** (Negative cache for failed fetches) — depends on 33c; reuses the same settings shape and `rmoney_market_data_cache` localStorage key.
+Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out of this list. Only future work is shown.
+
+### To close v0.33.0
+1. **21a** (Android build pipeline) — no dependencies; closes the release.
+
+### To ship v0.34.0
+2. **33e** (paysDividends flag + per-country tax) — fully unblocked: depends on 33d (done) + 33b (done). Can start in parallel with the dividend-status branch below.
+3. **33f** (Dividend status model) — foundation for 33g, 33h, 33j. Land before any of them.
+4. **33g** (Confirmation flow + Pending tab) — depends on 33f.
+5. **33h** (Multi-account dividend entry + duplicate warning) — depends on 33f.
+6. **33j** (Dividend page calendar + metrics + chart rework) — depends on 33f. 33g/33h/33j can run in parallel once 33f is in.
+7. **33l** (Buy-Sell planning: disregard cash + overspend + max fee) — independent; 33c (done) was its only dependency.
+8. **33n** (Backup format v2 + v1→v2 migration) — last; encodes every new field added by 33e–33h. Bundle SPEC-031 item 241a (Full Backup passphrase prompt) into the same release since both touch `portability.js`.
 
 ---
 
@@ -304,10 +305,11 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 440. [x] Dividend dedup by composite `(payoutDate, ticker, shareCount, dividendPerShare, currency)`
 441. [x] Done-screen report: one row per parsed CSV line with status + reason; filter pill `All / Imported only / Not imported only / Errors only`; per-row "Edit row" (for errors, re-commit) / "View existing record" (for duplicates)
 
-**Sub-phase 33l — Buy-Sell planning refresh + disregard cash + overspend + max fee**
+**Sub-phase 33l — Buy-Sell planning disregard cash + overspend + max fee**
+
+> The page-header Reset API button (originally item 442) already ships via Sub-phase 33c item 405; removed from this list on 2026-05-27.
 
 ### SPEC-034 Buy-Sell Planning — Phase 33 items
-442. [ ] Page-header "Refresh data" button (Phase 33c reset-API integration point for this page)
 443. [ ] "Disregard cash balance" toggle in Overview block; cash-impact table Start column = 0 per currency; cash-balances panel muted; `scenario.ignoreActualBalances` persisted per scenario
 444. [ ] Cash-impact table new "Overspend" column right of End; per-currency shortfall (absolute value); red tint when > 0; "—" when 0
 445. [ ] Cash-impact and dividend-impact table alignment fix: header align matches column data align; currency code in its own narrow right-aligned column; Start always shows a value (0.00 when literal zero, never blank)

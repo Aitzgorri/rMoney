@@ -49,7 +49,7 @@ for (const line of planLines) {
     currentSpec = null;
   }
   // Count unchecked items under current spec
-  if (currentSpec && /^\d+\.\s*\[ \]/.test(line)) {
+  if (currentSpec && /^\d+[a-z\-]*\.\s*\[ \]/.test(line)) {
     planItems[currentSpec]++;
   }
 }
@@ -150,7 +150,7 @@ function countPlanItemsForSpec(specId) {
     } else if (/^##[^#]/.test(line)) {
       active = false;
     }
-    if (active && /^\d+\.\s*\[ \]/.test(line)) {
+    if (active && /^\d+[a-z\-]*\.\s*\[ \]/.test(line)) {
       count++;
     }
   }
