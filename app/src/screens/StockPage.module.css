@@ -450,6 +450,75 @@
   white-space: nowrap;
 }
 
+/* ── Position expandable lots (item 432) ────────────────────────────────── */
+
+.positionEntry { display: flex; flex-direction: column; }
+
+.positionRowExpandable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.positionRowExpandable:hover { background: #243050; }
+
+.posExpandChevron {
+  font-size: 10px;
+  color: #475569;
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.posLotWrap {
+  background: #141b29;
+  border-radius: 0 0 8px 8px;
+  overflow-x: auto;
+  padding: 4px 10px 8px;
+}
+
+.posLotTable {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: max-content;
+}
+
+.posLotRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 2px;
+}
+
+.posLotHeader {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #334155;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #1e2535;
+  margin-bottom: 1px;
+}
+
+.posLotSummary {
+  border-top: 1px solid #1e2535;
+  margin-top: 1px;
+  padding-top: 3px;
+}
+
+.posLotSummary .posLotDate { color: #64748b; font-weight: 600; }
+.posLotSummary .posLotShares { color: #94a3b8; font-weight: 600; }
+.posLotSummary .posLotCost { color: #94a3b8; font-weight: 600; }
+.posLotSummary .posLotTotal { color: #34d399; font-weight: 600; }
+
+.posLotDate   { width: 90px;  flex-shrink: 0; font-size: 12px; color: #64748b; }
+.posLotDays   { width: 55px;  flex-shrink: 0; font-size: 12px; color: #475569; text-align: right; }
+.posLotShares { width: 72px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
+.posLotPrice  { width: 78px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
+.posLotFee    { width: 58px;  flex-shrink: 0; font-size: 12px; color: #475569; text-align: right; }
+.posLotCost   { width: 78px;  flex-shrink: 0; font-size: 12px; color: #94a3b8; text-align: right; }
+.posLotTotal  { width: 105px; flex-shrink: 0; font-size: 12px; color: #34d399; text-align: right; }
+
 /* ── Transactions ────────────────────────────────────────────────────────── */
 
 .filterBar {
@@ -596,6 +665,19 @@
 }
 
 .divEditBtn:hover { border-color: #60a5fa; color: #93c5fd; }
+
+.divDeleteBtn {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #64748b;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.divDeleteBtn:hover { border-color: #ef4444; color: #f87171; }
 
 /* ── Dividend projections ────────────────────────────────────────────────── */
 
@@ -856,7 +938,8 @@
 }
 
 .divCellActions {
-  justify-content: flex-end;
+  justify-content: flex-start;
+  gap: 4px;
 }
 
 .divTypeRegular {
@@ -1357,6 +1440,19 @@
 
 .dialogSaveBtn:hover { background: #2563eb; }
 .dialogSaveBtn:disabled { background: #2d3448; color: #64748b; cursor: not-allowed; }
+
+.dialogDangerBtn {
+  background: #dc2626;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogDangerBtn:hover { background: #b91c1c; }
 
 /* ── Yield detail dialog (28b) ──────────────────────────────────────────── */
 

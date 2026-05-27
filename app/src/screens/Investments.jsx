@@ -108,15 +108,17 @@ export default function Investments({ onNavigate }) {
       <div className={styles.listPane}>
         <div className={styles.header}>
           <h1 className={styles.title}>Investments</h1>
-          <button className={styles.newBtn} onClick={() => setFormMode('new')}>+ New account</button>
-          <button
-            className={styles.newBtn}
-            onClick={handleResetApi}
-            disabled={resetState !== 'idle'}
-            title="Clear cached prices and forex rates so the next load fetches fresh data"
-          >
-            {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
-          </button>
+          <div className={styles.headerActions}>
+            <button
+              className={styles.resetBtn}
+              onClick={handleResetApi}
+              disabled={resetState !== 'idle'}
+              title="Clear cached prices and forex rates so the next load fetches fresh data"
+            >
+              {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
+            </button>
+            <button className={styles.newBtn} onClick={() => setFormMode('new')}>+ New account</button>
+          </div>
         </div>
 
         {formMode && (

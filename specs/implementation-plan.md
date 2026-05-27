@@ -276,16 +276,16 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 424. [ ] Account-scoped entry (from InvestingAccountDetail) preserves single-account form behaviour
 425. [ ] Duplicate-warning check on save: existing `dividends` (any status) or `apiDividendHistory` row for same `(ticker, exDividendDate)` OR `(ticker, payoutDate)` triggers the warning dialog with [Same dividend] (option to update existing) / [Different dividend (add anyway)] choices
 
-**Sub-phase 33i — Stock page dividend list bug fixes + delete + lots expand**
+**Sub-phase 33i — Stock page dividend list bug fixes + delete + lots expand** ✓ done
 
 ### SPEC-021 Stock Page — Phase 33 items
-426. [ ] Net column rendered for declared / manual / API rows using current shares (or shares on exDate − 1 once past) and resolved tax %
-427. [ ] Source column width constrained + ellipsis; action column reserved width; Edit / Delete / Declare buttons stay inside the row at desktop widths
-428. [ ] 🗑 Delete button on every user dividend row; confirmation prompt summarising per-share × shares × tax; also deletes linked cashMovement when status === 'received'
-429. [ ] Today-date dividend appears only in the past half (≤ today); future-payout date columns corrected (Ex-div from exDate, Pay from payDate)
-430. [ ] Future-dated user dividend leak fix: row never appears twice across past/future halves; classification is by payoutDate consistently
-431. [ ] Tax % input added to ConvertToDeclaredDialog and standalone Declare dialog; `apiDividendHistory` rows gain optional `taxPercent` field
-432. [ ] Positions section rows are expandable; expand reveals per-lot table (Buy date / Days remaining vs 366d / Shares / Price w/o fee / Fee per share / Cost w/ fee / Total w/ fee); weighted-avg summary row at the bottom
+426. [x] Net column rendered for declared / manual / API rows using current shares (or shares on exDate − 1 once past) and resolved tax %
+427. [x] Source column width constrained + ellipsis; action column reserved width; Edit / Delete / Declare buttons stay inside the row at desktop widths
+428. [x] 🗑 Delete button on every user dividend row; confirmation prompt summarising per-share × shares × tax; also deletes linked cashMovement when status === 'received'
+429. [x] Today-date dividend appears only in the past half (≤ today); future-payout date columns corrected (Ex-div from exDate, Pay from payDate)
+430. [x] Future-dated user dividend leak fix: row never appears twice across past/future halves; classification is by payoutDate consistently
+431. [x] Tax % input added to ConvertToDeclaredDialog and standalone Declare dialog; `apiDividendHistory` rows gain optional `taxPercent` field
+432. [x] Positions section rows are expandable; expand reveals per-lot table (Buy date / Days remaining vs 366d / Shares / Price w/o fee / Fee per share / Cost w/ fee / Total w/ fee); weighted-avg summary row at the bottom
 
 **Sub-phase 33j — Dividend page calendar actions + metrics rewrite + chart enhancements**
 
