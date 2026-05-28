@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getTriggeredAlertCount } from '../data/watchlists'
+import { getPendingConfirmationCount } from '../data/dividends'
 import styles from './BottomNav.module.css'
 
 const INVESTMENTS_IDS = new Set(['investments', 'portfolios', 'watchlists', 'benchmarks', 'reports', 'dividends', 'planning-trades', 'stock', 'csv-import'])
@@ -37,7 +38,8 @@ const moreItems = [
 export default function BottomNav({ activeTab, onTabChange, onAction }) {
   const [moreOpen,    setMoreOpen]    = useState(false)
   const [investOpen,  setInvestOpen]  = useState(false)
-  const alertBadge = getTriggeredAlertCount()
+  const alertBadge      = getTriggeredAlertCount()
+  const pendingDivBadge = getPendingConfirmationCount()
 
   function handleMoreSelect(item) {
     setMoreOpen(false)
@@ -88,6 +90,14 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 <span>{item.label}</span>
                 {item.id === 'watchlists' && alertBadge > 0 && (
                   <span className={styles.badge}>{alertBadge}</span>
+                )}
+                {item.id === 'dividends' && pendingDivBadge > 0 && (
+                  <span
+                    className={styles.badge}
+                    title={`${pendingDivBadge} dividend${pendingDivBadge !== 1 ? 's' : ''} awaiting confirmation`}
+                  >
+                    {pendingDivBadge}
+                  </span>
                 )}
               </button>
             ))}

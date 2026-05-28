@@ -1,4 +1,5 @@
 import { getTriggeredAlertCount } from '../data/watchlists'
+import { getPendingConfirmationCount } from '../data/dividends'
 import styles from './TopNav.module.css'
 
 const INVESTMENTS_TABS = [
@@ -37,9 +38,10 @@ const MORE_ACTION_TABS = [
 const MORE_NAV_IDS = new Set(MORE_NAV_TABS.map(t => t.id))
 
 export default function TopNav({ activeTab, onTabChange, onAction }) {
-  const moreActive   = MORE_NAV_IDS.has(activeTab)
-  const investActive = INVESTMENTS_IDS.has(activeTab)
-  const alertBadge   = getTriggeredAlertCount()
+  const moreActive        = MORE_NAV_IDS.has(activeTab)
+  const investActive      = INVESTMENTS_IDS.has(activeTab)
+  const alertBadge        = getTriggeredAlertCount()
+  const pendingDivBadge   = getPendingConfirmationCount()
 
   return (
     <header className={styles.header}>
@@ -63,6 +65,15 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
           >
             Investments
             {alertBadge > 0 && <span className={styles.badge}>{alertBadge}</span>}
+            {pendingDivBadge > 0 && (
+              <span
+                className={styles.badge}
+                title={`${pendingDivBadge} dividend${pendingDivBadge !== 1 ? 's' : ''} awaiting confirmation`}
+                onClick={e => { e.stopPropagation(); onTabChange('dividends', { initialTab: 'pending' }) }}
+              >
+                {pendingDivBadge}
+              </span>
+            )}
           </button>
 
           <button
