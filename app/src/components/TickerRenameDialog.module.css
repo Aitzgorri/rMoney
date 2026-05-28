@@ -236,7 +236,10 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   min-width: 64px;
+  max-width: 90px;
   flex-shrink: 0;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .candidateName {
