@@ -3,14 +3,15 @@ import BottomNav from './components/BottomNav'
 import TopNav from './components/TopNav'
 import PassphraseSetup from './components/PassphraseSetup'
 import PassphraseUnlock from './components/PassphraseUnlock'
-import { vaultExists } from './utils/secrets'
+import { vaultExists, readVaultBytes, writeVaultBytes } from './utils/secrets'
+import FullBackupPassphrasePrompt from './components/FullBackupPassphrasePrompt'
 import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
 import { migrateFavoriteCurrencies } from './data/settings'
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
-import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData } from './data/portability'
+import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
 import AddTransaction from './screens/AddTransaction'
@@ -48,6 +49,7 @@ export default function App() {
   const [saveBanner, setSaveBanner] = useState(null)    // { filename, redacted } or null
   const [saveDialog, setSaveDialog] = useState(false)
   const [saveMode, setSaveMode] = useState('sharable')  // 'sharable' | 'full'
+  const [awaitingPassphrase, setAwaitingPassphrase] = useState(false)  // Full Backup vault embed step
   const [loadDialog, setLoadDialog] = useState(null)    // { filename, exportedAt, data } or null
   const [loadError, setLoadError] = useState(null)      // error string or null
   const [keysNotRestored, setKeysNotRestored] = useState(false)
@@ -105,8 +107,34 @@ export default function App() {
   }
 
   async function handleSave() {
+    // Full Backup with a real vault → require passphrase confirmation before
+    // embedding the encrypted snapshot (SPEC-031 § 241a).
+    if (saveMode === 'full' && IS_TAURI && vaultExists()) {
+      setSaveDialog(false)
+      setAwaitingPassphrase(true)
+      return
+    }
     setSaveDialog(false)
-    const raw = exportAppData({ mode: saveMode })
+    await writeBackupFile(null)
+  }
+
+  // Continuation after the passphrase prompt verifies. Reads the vault bytes
+  // and embeds them in the Full Backup payload. Called only when verifyPassphrase
+  // already succeeded, so readVaultBytes will resolve to the on-disk snapshot.
+  async function handlePassphraseConfirmed() {
+    setAwaitingPassphrase(false)
+    try {
+      const vaultBytes = await readVaultBytes()
+      await writeBackupFile(vaultBytes)
+    } catch (err) {
+      setLoadError('Backup save failed: ' + (err.message || 'Unknown error'))
+    }
+  }
+
+  // Shared writer: builds the payload (with optional vault embed), redacts if
+  // sharable, then hands off to saveDataFile.
+  async function writeBackupFile(strongholdVault) {
+    const raw = exportAppData({ mode: saveMode, strongholdVault })
     const data = saveMode === 'sharable' ? redactExportData(raw) : raw
     try {
       const filename = await saveDataFile(data)
@@ -116,11 +144,23 @@ export default function App() {
     }
   }
 
-  function handleLoadConfirm() {
-    if (loadDialog.data._redacted) {
+  async function handleLoadConfirm() {
+    const data = loadDialog.data
+    if (data._redacted) {
       sessionStorage.setItem('rmoney_keys_not_restored', '1')
     }
-    importAppData(loadDialog.data)
+    // Restore the embedded Stronghold vault (Full Backup on Tauri only). After
+    // reload, the existing unlock flow will prompt the user for the master
+    // passphrase associated with the restored vault.
+    if (IS_TAURI && typeof data._strongholdVault === 'string') {
+      try {
+        await writeVaultBytes(base64ToBytes(data._strongholdVault))
+      } catch (err) {
+        setLoadError('Vault restore failed: ' + (err.message || 'Unknown error'))
+        return
+      }
+    }
+    importAppData(data)
     setLoadDialog(null)
     window.location.reload()
   }
@@ -220,6 +260,13 @@ export default function App() {
       </main>
 
       {!isDesktop && <BottomNav activeTab={activeTab} onTabChange={navigate} onAction={handleAction} />}
+
+      {awaitingPassphrase && (
+        <FullBackupPassphrasePrompt
+          onConfirm={handlePassphraseConfirmed}
+          onCancel={() => setAwaitingPassphrase(false)}
+        />
+      )}
 
       {saveDialog && (
         <div className={styles.dialogBackdrop}>

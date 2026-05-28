@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 33 active, v0.33.0 verified on device.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (Sub-phase 21a verified on device 2026-05-28 — ready to tag), and **v0.34.0** ships the dividend-status model and all its consumers. Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
+**Current phase: Phase 33 code-complete, v0.33.0 verified on device, v0.34.0 awaiting round-trip backup test.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (verified 2026-05-28 — ready to tag), and **v0.34.0** ships the dividend-status model + backup v2 + Stronghold vault embed (code-complete 2026-05-28 — pending round-trip backup test on the real app, then ready to tag). Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
 
 ---
 
@@ -40,7 +40,7 @@
 | 31 — Dividend page (NEW SPEC-032) | ✓ done | |
 | 32 — Buy-Sell planning + UX gap closure (NEW SPEC-034) | ✓ done | Item 382 (standalone lot-picker button) deferred polish |
 | **33 — Foundation + bug fixes + Android pipeline (v0.33.0)** | ✓ done | 33a–d, 33i, 33k, 33m, 33o, 21a all verified — ready to tag |
-| **33 — Dividend overhaul (v0.34.0)** | **planned** | 33e, 33f, 33g, 33h ✓, 33j ✓, 33l — depends on v0.33.0 foundation |
+| **33 — Dividend overhaul (v0.34.0)** | **code-complete (round-trip verify on real app)** | 33e ✓, 33f ✓, 33g ✓, 33h ✓, 33j ✓, 33l ✓, 33n ✓ (incl. SPEC-031 § 241a) |
 
 ---
 
@@ -69,7 +69,7 @@ Tiered so the next pass can pick from the top without re-deriving the chain. Ite
 2. **Tier 2 — Cross-currency model overhaul** (152j-full, 152m-full, 159b, 164, 288). One cohesive block; all replace the single `exchangeRate` field with the "bundle a companion currency-exchange" model. Splitting them risks two half-models living in parallel.
 3. **Tier 3 — Transaction-edit correctness + safety** (291 fee-currency invariant, 165 retroactive cost-basis, 286 transfer edit form). Independent small items.
 4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 1; 185 stock-exchange selector).
-5. **Tier 5 — Security follow-ups** (241a Full Backup passphrase — bundle with Sub-phase 33n; 237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — needs IBKR adapter).
+5. **Tier 5 — Security follow-ups** (237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — needs IBKR adapter). *(241a shipped with Sub-phase 33n.)*
 6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
 
 ### SPEC-010 Deployment (release management)
@@ -98,7 +98,7 @@ Tiered so the next pass can pick from the top without re-deriving the chain. Ite
 
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
 237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin.
-241a. [ ] Full Backup mode prompts for the master passphrase before producing the file; embeds the Stronghold vault bytes base64-encoded under `_strongholdVault`. **Bundle with Sub-phase 33n** (backup v2) — both touch `portability.js`.
+~~241a.~~ ✓ shipped in Sub-phase 33n — see the 33n block below.
 255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}` — gated on the IBKR adapter actually being built (currently a stub).
 
 ### SPEC-034 Buy-Sell Planning (Phase 32 leftover)
@@ -171,13 +171,13 @@ Ships fixes and infrastructure quickly. Users notice the bug fixes and the small
 ### v0.34.0 — Dividend overhaul
 The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 
-- **33e** No-dividends flag + paysDividends consumers + per-country tax
-- **33f** Dividend status model + cash-deferral + auto-promotion
-- **33g** Confirmation flow + Pending tab
-- **33h** Multi-account dividend entry + duplicate warning
-- **33j** Dividend page calendar / metrics / chart rework
-- **33l** Buy-Sell planning enhancements (refresh, disregard cash, overspend, max fee)
-- **33n** Backup format v2 + v1 → v2 migration (loaders accept v1 backups)
+- **33e** ✓ No-dividends flag + paysDividends consumers + per-country tax
+- **33f** ✓ Dividend status model + cash-deferral + auto-promotion
+- **33g** ✓ Confirmation flow + Pending tab
+- **33h** ✓ Multi-account dividend entry + duplicate warning
+- **33j** ✓ Dividend page calendar / metrics / chart rework
+- **33l** ✓ Buy-Sell planning enhancements (refresh, disregard cash, overspend, max fee)
+- **33n** ✓ Backup format v2 + v1 → v2 migration + Stronghold vault embed (SPEC-031 § 241a)
 
 **Why this split:** every v0.33.0 item is either a foundation utility (consumed but not extended by v0.34.0), an isolated bug fix, or the Android pipeline (which has no dependency on the dividend rework). v0.34.0 is the dividend-status story, end to end. No item changes meaning across the boundary.
 
@@ -189,13 +189,7 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 **21a** ✓ verified on device 2026-05-28 — APK built, installed, and all four SPEC-010 criteria ticked. Ready to tag `v0.33.0` per RELEASE.md.
 
 ### To ship v0.34.0
-2. **33e** (paysDividends flag + per-country tax) — fully unblocked: depends on 33d (done) + 33b (done). Can start in parallel with the dividend-status branch below.
-3. **33f** (Dividend status model) — foundation for 33g, 33h, 33j. Land before any of them.
-4. **33g** (Confirmation flow + Pending tab) — depends on 33f.
-5. **33h** (Multi-account dividend entry + duplicate warning) — depends on 33f.
-6. **33j** ✓ done (Dividend page calendar + metrics + chart rework)
-7. **33l** ✓ done (Buy-Sell planning: disregard cash + overspend + max fee)
-8. **33n** (Backup format v2 + v1→v2 migration) — last; encodes every new field added by 33e–33h. Bundle SPEC-031 item 241a (Full Backup passphrase prompt) into the same release since both touch `portability.js`.
+All sub-phases are code-complete. Remaining: run the 33n round-trip backup test on the real app (item 454 in SPEC-016), then tag `v0.34.0` per RELEASE.md.
 
 ---
 
@@ -334,13 +328,16 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 459. [x] `resetPageCaches(pageId)` clears cooldown entries for the page's data deps; `clearAllMarketCaches` clears all cooldowns; `clearCacheForTicker(t)` clears cooldowns for that ticker; `forceRefresh: true` bypasses the cooldown for one call without clearing it
 460. [x] Cooldown short-circuits emit a `logCall` entry with `outcome: 'cooldown-skip'` so the debug panel shows why a ticker didn't refetch; `getCacheStats()` includes a `cooldownEntries` total
 
-**Sub-phase 33n — Backup format versioning + v1 → v2 migration** *(lands with v0.34.0 since it depends on the dividend status model)*
+**Sub-phase 33n — Backup format versioning + v1 → v2 migration + Stronghold vault embed** *(lands with v0.34.0 since it depends on the dividend status model)*
 
 ### SPEC-016 Data Portability — Phase 33 items
-451. [ ] Bump the exported `version` string to `rmoney-data-v2` and document the v1 → v2 deltas in the SPEC-016 "Backup format versioning + migration" block
-452. [ ] Loader detects `version` field and runs the same boot-time migrations on the imported payload (status stamping, default `favoriteCurrencies` / `apiCacheTtl` / `maximumFee` / `paysDividends` / `lastKnownPrice`) before writing to localStorage in v2 shape
-453. [ ] v2 backups loaded into v0.32.0 or older builds are rejected with "This backup was saved by a newer version of rMoney (v0.33.0+). Update the app to load it." Reject unknown future versions the same way
-454. [ ] Round-trip test pass: export v0.32.0 backup → load into v0.34.0 build → verify no data loss and that every Phase 33 field is populated with its default value
+451. [x] Bump the exported `version` string to `rmoney-data-v2` and document the v1 → v2 deltas in the SPEC-016 "Backup format versioning + migration" block
+452. [x] Loader accepts both `rmoney-data-v1` and `rmoney-data-v2` via `ACCEPTED_VERSIONS`; `migrateBackup(parsed)` applies pure `migrateDividendsArrayToV2` / `migrateStockProfilesArrayToV2` / `migrateSettingsObjectToV2` transforms to the in-memory payload before `importAppData` writes v2-shape data. Other deltas (`paysDividends`, `lastKnownPrice`, `apiCacheTtl`, `maximumFee`, `dividends.confirmReceipt`) are handled by existing read-time defaults.
+453. [x] `validateImportData` rejects unknown versions with a clear error. For `rmoney-data-vN` where `N > current`: "This backup was saved by a newer version of rMoney. Update the app to load it." For totally unknown version strings: `Unknown file version "<v>"`.
+454. [ ] Round-trip test pass: export v1 backup (existing user data on v0.32.0) → load into v0.33.0+ → verify dividends gain `status='received'`, stockProfiles gain `confirmed`, settings gain `favoriteCurrencies`. **Pending user verification on the real app.**
+
+### SPEC-031 Security and secrets — item 241a (bundled with 33n)
+241a. [x] Full Backup mode prompts for the master passphrase via `FullBackupPassphrasePrompt`; `verifyPassphrase()` re-loads Stronghold against the existing vault file; `readVaultBytes()` returns the encrypted snapshot bytes; payload embeds them under `_strongholdVault` (base64). On restore, `writeVaultBytes()` writes the snapshot to the destination's appData vault path and sets `rmoney_vault_created`; the existing unlock screen prompts for the backup's master passphrase after reload. Tauri capabilities extended with binary fs ops (`fs:allow-read-file`, `fs:allow-write-file`, `fs:allow-exists`, `fs:allow-mkdir`) scoped to `$APPDATA/vault.hold` and `$APPDATA`.
 
 ---
 

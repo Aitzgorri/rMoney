@@ -8,7 +8,7 @@
 
 import { Stronghold } from '@tauri-apps/plugin-stronghold'
 import { appDataDir, join } from '@tauri-apps/api/path'
-import { remove } from '@tauri-apps/plugin-fs'
+import { remove, readFile, writeFile, mkdir, exists } from '@tauri-apps/plugin-fs'
 
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 const DEV_KEY = 'rmoney_dev_secrets'
@@ -93,6 +93,56 @@ export async function deleteSecret(key) {
   if (!_store) throw new Error('Vault is not open')
   await _store.remove(key)
   await _stronghold.save()
+}
+
+// ─── Full Backup vault embed (SPEC-031 item 241a / Sub-phase 33n) ───────────
+
+// Verify the passphrase by attempting a fresh Stronghold load. Returns true if
+// the load succeeds, false otherwise. Does NOT mutate module state — the
+// verification handle is discarded; the existing `_stronghold` keeps serving
+// secret reads/writes for the rest of the session.
+export async function verifyPassphrase(passphrase) {
+  if (!IS_TAURI) return true   // dev mode: no real vault, treat as valid
+  if (!passphrase) return false
+  try {
+    const path = await getVaultPath()
+    await Stronghold.load(path, passphrase)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Returns the encrypted vault snapshot as a Uint8Array, or null if no vault
+// exists. The bytes are the on-disk Stronghold file as-is — already encrypted
+// with the master passphrase, safe to embed in a backup without the passphrase.
+export async function readVaultBytes() {
+  if (!IS_TAURI) return null
+  if (!vaultExists()) return null
+  // Make sure the in-memory vault is flushed to disk before we read it.
+  if (_stronghold) {
+    try { await _stronghold.save() } catch { /* best effort */ }
+  }
+  const path = await getVaultPath()
+  if (!(await exists(path))) return null
+  return await readFile(path)
+}
+
+// Writes vault snapshot bytes to the vault file path and marks the vault as
+// existing. Used by Full Backup restore. The caller is responsible for
+// triggering an app reload so the unlock flow picks up the new vault.
+export async function writeVaultBytes(bytes) {
+  if (!IS_TAURI) return
+  const dir = await appDataDir()
+  if (!(await exists(dir))) {
+    await mkdir(dir, { recursive: true })
+  }
+  const path = await getVaultPath()
+  await writeFile(path, bytes)
+  // Drop any open handle so the restored vault is loaded fresh on next unlock.
+  _stronghold = null
+  _store = null
+  localStorage.setItem(VAULT_CREATED_FLAG, '1')
 }
 
 // One-time migration (item 250): move any raw API keys from localStorage settings

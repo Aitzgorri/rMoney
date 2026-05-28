@@ -1,6 +1,18 @@
+import { migrateDividendsArrayToV2 } from './dividends'
+import { migrateStockProfilesArrayToV2 } from './stockProfiles'
+import { migrateSettingsObjectToV2 } from './settings'
+
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 
-const VERSION = 'rmoney-data-v1'
+// Current backup format. Bumped to v2 in Phase 33 / Sub-phase 33n when the
+// dividend status model + paysDividends + lastKnownPrice + favoriteCurrencies
+// + apiCacheTtl + maximumFee fields landed. See SPEC-016 § "Backup format
+// versioning + migration" for the v1→v2 delta list.
+const VERSION = 'rmoney-data-v2'
+
+// Versions the loader can ingest. Newer code accepts older backups (v1) and
+// migrates them in-memory before writing v2-shape data to localStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2']
 
 const KEYS = {
   accounts:           'rmoney_accounts',
@@ -52,10 +64,31 @@ function readObj(key) {
   try { return JSON.parse(localStorage.getItem(key)) ?? {} } catch { return {} }
 }
 
+// Encodes a Uint8Array as a base64 string.
+function bytesToBase64(bytes) {
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
+// Decodes a base64 string back to Uint8Array.
+export function base64ToBytes(b64) {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 // mode: 'sharable' (default) — excludes persisted-history collections (apiDividendHistory).
 //        'full'              — includes persisted-history collections; use for full restore.
+//                              When `strongholdVault` is provided (Tauri builds with a
+//                              vault), the encrypted snapshot bytes are embedded
+//                              base64-encoded under `_strongholdVault` per SPEC-031 § 241a.
 // Neither mode includes hot caches (rmoney_market_data_cache, rmoney_market_data_log).
-export function exportAppData({ mode = 'sharable' } = {}) {
+export function exportAppData({ mode = 'sharable', strongholdVault = null } = {}) {
   const base = {
     version: VERSION,
     exportedAt: new Date().toISOString(),
@@ -96,6 +129,9 @@ export function exportAppData({ mode = 'sharable' } = {}) {
   }
   if (mode === 'full') {
     base.apiDividendHistory = readList(KEYS.apiDividendHistory)
+    if (strongholdVault instanceof Uint8Array && strongholdVault.length > 0) {
+      base._strongholdVault = bytesToBase64(strongholdVault)
+    }
   }
   return base
 }
@@ -106,6 +142,10 @@ const REDACTED = '[REDACTED]'
 export function redactExportData(data) {
   const out = JSON.parse(JSON.stringify(data))
   out._redacted = true
+  // Defense in depth: sharable mode should never carry the Stronghold vault.
+  // exportAppData only sets it for mode='full', but strip again here so a caller
+  // that hand-constructs a payload can't accidentally leak it.
+  delete out._strongholdVault
   const s = out.settings
   if (!s) return out
   if (s.aiConnection?.apiKey) s.aiConnection.apiKey = REDACTED
@@ -266,8 +306,18 @@ function pickFileViaInput() {
 export function validateImportData(parsed) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
     return { ok: false, error: 'File is not a valid JSON object.' }
-  if (parsed.version !== VERSION)
-    return { ok: false, error: `Unknown file version "${parsed.version}". Expected "${VERSION}".` }
+  if (!parsed.version || typeof parsed.version !== 'string')
+    return { ok: false, error: 'File is missing the version field.' }
+  if (!ACCEPTED_VERSIONS.includes(parsed.version)) {
+    // Distinguish future versions (rmoney-data-vN with N higher than current)
+    // from totally unknown strings so the user gets actionable advice.
+    const m = parsed.version.match(/^rmoney-data-v(\d+)$/)
+    const currentN = Number(VERSION.match(/^rmoney-data-v(\d+)$/)[1])
+    if (m && Number(m[1]) > currentN) {
+      return { ok: false, error: 'This backup was saved by a newer version of rMoney. Update the app to load it.' }
+    }
+    return { ok: false, error: `Unknown file version "${parsed.version}".` }
+  }
   if (!parsed.exportedAt)
     return { ok: false, error: 'File is missing the exportedAt timestamp.' }
   for (const key of ['accounts', 'transactions', 'categories', 'envelopes', 'settings']) {
@@ -277,7 +327,28 @@ export function validateImportData(parsed) {
   return { ok: true }
 }
 
+// Apply v1→v2 transforms to an in-memory backup payload before it's written
+// to localStorage. The boot-time migrations (migrateDividendStatuses,
+// migrateConfirmedField, migrateFavoriteCurrencies) would otherwise refuse to
+// re-run on top of imported v1 data because their per-key flags are already
+// set on the destination install. Applying the same pure transforms here
+// guarantees that localStorage ends up in v2 shape regardless of source.
+export function migrateBackup(parsed) {
+  if (parsed.version === VERSION) return parsed
+  if (parsed.version === 'rmoney-data-v1') {
+    return {
+      ...parsed,
+      version: VERSION,
+      dividends:     migrateDividendsArrayToV2(parsed.dividends     ?? []),
+      stockProfiles: migrateStockProfilesArrayToV2(parsed.stockProfiles ?? []),
+      settings:      migrateSettingsObjectToV2(parsed.settings       ?? {}),
+    }
+  }
+  return parsed
+}
+
 export function importAppData(data) {
+  data = migrateBackup(data)
   function write(key, value) { localStorage.setItem(key, JSON.stringify(value)) }
 
   write(KEYS.accounts,           data.accounts           ?? [])

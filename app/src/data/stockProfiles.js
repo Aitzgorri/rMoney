@@ -61,22 +61,26 @@ export function setConfirmed(ticker, confirmed) {
   })
 }
 
-// One-shot migration: stamps every existing profile that lacks the `confirmed`
-// field. Profiles with a resolved `name` are treated as already-confirmed
+// Pure transform — stamps the v1→v2 `confirmed`/`confirmedAt` fields on legacy
+// profile rows. Used by both the boot-time wrapper below AND the v1→v2 backup
+// loader. Profiles with a resolved `name` are treated as already-confirmed
 // (they reached the registry via the resolution dialog historically); profiles
-// without a name are unconfirmed. Idempotent — rows that already have the
-// field are left untouched.
-const MIGRATION_KEY = 'rmoney_stock_profiles_confirmed_migrated_v1'
-export function migrateConfirmedField() {
-  if (localStorage.getItem(MIGRATION_KEY) === '1') return
-  const list = load()
+// without a name are unconfirmed.
+export function migrateStockProfilesArrayToV2(list) {
   const now = new Date().toISOString()
-  const migrated = list.map(p => {
+  return list.map(p => {
     if (p.confirmed !== undefined) return p
     if (p.name) return { ...p, confirmed: true, confirmedAt: now }
     return { ...p, confirmed: false, confirmedAt: null }
   })
-  save(migrated)
+}
+
+// One-shot migration: stamps every existing profile that lacks the `confirmed`
+// field. Idempotent — rows that already have the field are left untouched.
+const MIGRATION_KEY = 'rmoney_stock_profiles_confirmed_migrated_v1'
+export function migrateConfirmedField() {
+  if (localStorage.getItem(MIGRATION_KEY) === '1') return
+  save(migrateStockProfilesArrayToV2(load()))
   localStorage.setItem(MIGRATION_KEY, '1')
 }
 

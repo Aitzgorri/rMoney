@@ -61,11 +61,18 @@ export function setFavoriteCurrencies(codes) {
   setSetting('favoriteCurrencies', codes)
 }
 
+// Pure transform — seeds `favoriteCurrencies` on a settings object that lacks
+// it. Used by both the boot-time wrapper below AND the v1→v2 backup loader.
+export function migrateSettingsObjectToV2(settings) {
+  if (Array.isArray(settings?.favoriteCurrencies)) return settings
+  return { ...(settings ?? {}), favoriteCurrencies: [...SUPPORTED_CURRENCIES] }
+}
+
 // One-shot boot migration: seed favoriteCurrencies when the setting is absent.
 export function migrateFavoriteCurrencies() {
   const raw = load()
   if (!Array.isArray(raw.favoriteCurrencies)) {
-    save({ ...raw, favoriteCurrencies: [...SUPPORTED_CURRENCIES] })
+    save(migrateSettingsObjectToV2(raw))
   }
 }
 

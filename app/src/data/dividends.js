@@ -178,14 +178,10 @@ export function confirmDividend(id) {
 
 // ─── migrateDividendStatuses ─────────────────────────────────────────────────
 
-// One-shot boot migration: stamps every dividend row that predates the status
-// model with status: 'received', source: 'user', confirmedAt: createdAt.
-// Idempotent — rows that already carry a status field are left untouched.
-const MIGRATION_KEY = 'rmoney_dividends_status_migrated_v1'
-export function migrateDividendStatuses() {
-  if (localStorage.getItem(MIGRATION_KEY) === '1') return
-  const list = load()
-  const migrated = list.map(d => {
+// Pure transform — stamps the v1→v2 status model on legacy dividend rows.
+// Used by both the boot-time wrapper below AND the v1→v2 backup loader.
+export function migrateDividendsArrayToV2(list) {
+  return list.map(d => {
     if (d.status !== undefined) return d
     return {
       ...d,
@@ -194,7 +190,15 @@ export function migrateDividendStatuses() {
       confirmedAt: d.createdAt ?? new Date().toISOString(),
     }
   })
-  save(migrated)
+}
+
+// One-shot boot migration: stamps every dividend row that predates the status
+// model with status: 'received', source: 'user', confirmedAt: createdAt.
+// Idempotent — rows that already carry a status field are left untouched.
+const MIGRATION_KEY = 'rmoney_dividends_status_migrated_v1'
+export function migrateDividendStatuses() {
+  if (localStorage.getItem(MIGRATION_KEY) === '1') return
+  save(migrateDividendsArrayToV2(load()))
   localStorage.setItem(MIGRATION_KEY, '1')
 }
 

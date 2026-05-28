@@ -9,6 +9,17 @@
     "dialog:allow-open",
     "fs:allow-write-text-file",
     "fs:allow-read-text-file",
-    "fs:allow-remove"
+    "fs:allow-write-file",
+    "fs:allow-read-file",
+    "fs:allow-remove",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/vault.hold" },
+        { "path": "$APPDATA" }
+      ]
+    }
   ]
 }
