@@ -6,7 +6,7 @@ import {
   addSellRow, addBuyRow, updateSellRow, updateBuyRow, removeSellRow, removeBuyRow,
   getLastBuyAccountId,
   setCashTopUp, setFxOverride, setDisplayedCurrencies, setRemoveExecutedRows,
-  markRowExecuted,
+  setIgnoreActualBalances, markRowExecuted,
 } from '../data/tradingScenarios'
 import { getInvestingAccounts, getCashBalances, getCurrentBalance, getCashBalanceByCurrency } from '../data/investingAccounts'
 import { getActiveStockProfiles, getStockProfile } from '../data/stockProfiles'
@@ -103,6 +103,32 @@ export default function BuySellPlanning({ onNavigate }) {
         .catch(() => setLivePrices(prev => ({ ...prev, [t]: null })))
     }
   }, [tickersInScenario]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Backfill row.currency from the stock profile when older rows were saved
+  // before the profile carried a currency. Pure local lookup — no API. Without
+  // this, simulateCashImpact() routes the row to mainCurrency, hiding it from
+  // the user's USD/GBP/etc view.
+  useEffect(() => {
+    if (!active) return
+    let touched = false
+    for (const row of active.sellRows) {
+      if (row.currency) continue
+      const profile = getStockProfile(row.ticker)
+      if (profile?.currency) {
+        updateSellRow(active.id, row.id, { currency: profile.currency })
+        touched = true
+      }
+    }
+    for (const row of active.buyRows) {
+      if (row.currency) continue
+      const profile = getStockProfile(row.ticker)
+      if (profile?.currency) {
+        updateBuyRow(active.id, row.id, { currency: profile.currency })
+        touched = true
+      }
+    }
+    if (touched) refresh()
+  }, [active])
 
   // ── Open-lots map: { [accountId]: { [ticker]: { totalShares, ltShares } } } ─
   const openLotsMap = useMemo(() => {
@@ -397,6 +423,12 @@ export default function BuySellPlanning({ onNavigate }) {
     refresh()
   }
 
+  function handleToggleIgnoreActualBalances() {
+    if (!active) return
+    setIgnoreActualBalances(active.id, !active.ignoreActualBalances)
+    refresh()
+  }
+
   function handleSetTopUp(currency, value) {
     if (!active) return
     setCashTopUp(active.id, currency, value)
@@ -532,6 +564,7 @@ export default function BuySellPlanning({ onNavigate }) {
             cashImpact={cashImpact}
             sellAggregates={sellAggregates}
             buyAggregates={buyAggregates}
+            onToggleIgnoreActualBalances={handleToggleIgnoreActualBalances}
           />
 
           <section className={styles.section}>
@@ -676,7 +709,9 @@ function OverviewBlock({
   distinctTradeCurrencies, displayedCurrencies, onToggleDisplayed,
   fxRatesEffective, onSetTopUp, onSetFxOverride,
   cashImpact, sellAggregates, buyAggregates,
+  onToggleIgnoreActualBalances,
 }) {
+  const ignoreBalances = !!scenario.ignoreActualBalances
   // FX rates panel — pair every distinct trade currency with main
   const fxPairs = useMemo(() => {
     const out = []
@@ -705,11 +740,24 @@ function OverviewBlock({
     <section className={styles.overview}>
       <div className={styles.overviewGrid}>
         <div className={styles.overviewCard}>
-          <h3 className={styles.overviewCardTitle}>Cash balances + planning top-up</h3>
+          <div className={styles.overviewCardTitleRow}>
+            <h3 className={styles.overviewCardTitle}>Cash balances + planning top-up</h3>
+            <label className={styles.scenarioToggle} title="When on, actual cash balances are ignored and only top-up amounts are used as cash sources.">
+              <input
+                type="checkbox"
+                checked={ignoreBalances}
+                onChange={onToggleIgnoreActualBalances}
+              />
+              Disregard cash
+            </label>
+          </div>
+          {ignoreBalances && (
+            <p className={styles.ignoredLabel}>(actual balances ignored in this scenario)</p>
+          )}
           <table className={styles.balancesTable}>
             <thead>
               <tr>
-                <th>Currency</th>
+                <th></th>
                 <th className={styles.tdRight}>Current</th>
                 <th className={styles.tdRight}>+ Top up</th>
               </tr>
@@ -720,8 +768,8 @@ function OverviewBlock({
               )}
               {Object.keys(balancesByCurrency).sort().map(ccy => (
                 <tr key={ccy}>
-                  <td>{ccy}</td>
-                  <td className={styles.tdRight}>{fmtNum(balancesByCurrency[ccy])}</td>
+                  <td className={styles.ccyCol}>{ccy}</td>
+                  <td className={`${styles.tdRight} ${ignoreBalances ? styles.balanceStruck : ''}`}>{fmtNum(balancesByCurrency[ccy])}</td>
                   <td className={styles.tdRight}>
                     <input
                       className={styles.cellInputSm}
@@ -799,7 +847,7 @@ function OverviewBlock({
         <table className={styles.impactTable}>
           <thead>
             <tr>
-              <th>Currency</th>
+              <th className={styles.ccyCol}></th>
               <th className={styles.tdRight}>Start</th>
               <th className={styles.tdRight}>Top up</th>
               <th className={styles.tdRight}>Sells</th>
@@ -807,15 +855,17 @@ function OverviewBlock({
               <th className={styles.tdRight}>Transfer in</th>
               <th className={styles.tdRight}>Transfer out</th>
               <th className={styles.tdRight}>End</th>
+              <th className={styles.tdRight}>Overspend</th>
             </tr>
           </thead>
           <tbody>
             {displayedCurrencies.map(ccy => {
               const row = cashImpact.perCurrency[ccy] ?? { start: 0, topUp: 0, sells: 0, buys: 0, transferIn: 0, transferOut: 0, end: 0 }
+              const overspend = cashImpact.shortfall[ccy] ?? 0
               const negative = row.end < 0
               return (
                 <tr key={ccy}>
-                  <td>{ccy}</td>
+                  <td className={styles.ccyCol}>{ccy}</td>
                   <td className={styles.tdRight}>{fmtNum(row.start)}</td>
                   <td className={styles.tdRight}>{row.topUp ? fmtSigned(row.topUp) : '—'}</td>
                   <td className={styles.tdRight}>{row.sells ? fmtSigned(row.sells) : '—'}</td>
@@ -825,16 +875,14 @@ function OverviewBlock({
                   <td className={`${styles.tdRight} ${negative ? styles.negative : styles.positive}`}>
                     <strong>{fmtNum(row.end)}</strong>
                   </td>
+                  <td className={`${styles.tdRight} ${overspend > 0.01 ? styles.overspendCell : ''}`}>
+                    {overspend > 0.01 ? fmtNum(overspend) : '—'}
+                  </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-        {Object.keys(cashImpact.shortfall).length > 0 && (
-          <p className={styles.shortfall}>
-            Shortfall: {Object.entries(cashImpact.shortfall).map(([c, v]) => `${c} ${fmtNum(v)}`).join(' · ')}
-          </p>
-        )}
       </div>
 
       <div className={styles.overviewCardWide}>
@@ -844,7 +892,7 @@ function OverviewBlock({
         <table className={styles.impactTable}>
           <thead>
             <tr>
-              <th></th>
+              <th className={styles.divImpactLabel}></th>
               <th className={styles.tdRight}>Avg forward yield</th>
               <th className={styles.tdRight}>Avg TTM yield</th>
               <th className={styles.tdRight}>Per-month gross ({mainCurrency})</th>
@@ -853,14 +901,14 @@ function OverviewBlock({
           </thead>
           <tbody>
             <tr>
-              <td>Sells (drag on income)</td>
+              <td className={styles.divImpactLabel}>Sells (drag on income)</td>
               <td className={styles.tdRight}>{fmtPct(sellAggregates?.avgFwdPct)}</td>
               <td className={styles.tdRight}>{fmtPct(sellAggregates?.avgTtmPct)}</td>
               <td className={styles.tdRight}>{fmtSigned(-(sellAggregates?.monthGross ?? 0))}</td>
               <td className={styles.tdRight}>{fmtSigned(-(sellAggregates?.monthNet ?? 0))}</td>
             </tr>
             <tr>
-              <td>Buys (added income)</td>
+              <td className={styles.divImpactLabel}>Buys (added income)</td>
               <td className={styles.tdRight}>{fmtPct(buyAggregates?.avgFwdPct)}</td>
               <td className={styles.tdRight}>{fmtPct(buyAggregates?.avgTtmPct)}</td>
               <td className={styles.tdRight}>{fmtSigned(buyAggregates?.monthGross ?? 0)}</td>
@@ -868,7 +916,7 @@ function OverviewBlock({
             </tr>
             {dividendDelta && (
               <tr className={styles.deltaRow}>
-                <td>Δ Difference (buys − sells)</td>
+                <td className={styles.divImpactLabel}>Δ Difference (buys − sells)</td>
                 <td className={styles.tdRight}>{fmtPct(dividendDelta.pctDelta, true)}</td>
                 <td></td>
                 <td className={`${styles.tdRight} ${dividendDelta.grossDelta < 0 ? styles.negative : styles.positive}`}>

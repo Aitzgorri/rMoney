@@ -183,7 +183,10 @@ export function resolveTradingFee(ticker, exchange, gross) {
   function computed(rule) {
     const pct = Math.max(0, Number(rule.feePercent) || 0)
     const min = Math.max(0, Number(rule.minimumFee) || 0)
-    return Math.max(min, grossN * pct / 100)
+    const max = rule.maximumFee != null && Number.isFinite(Number(rule.maximumFee))
+      ? Math.max(0, Number(rule.maximumFee))
+      : Infinity
+    return Math.min(max, Math.max(min, grossN * pct / 100))
   }
 
   if (t) {

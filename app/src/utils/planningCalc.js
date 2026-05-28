@@ -174,12 +174,15 @@ export function simulateCashImpact({
   derivedSellRows,
   derivedBuyRows,
 }) {
+  const ignoreBalances = !!scenario?.ignoreActualBalances
+  const effectiveBalances = ignoreBalances ? {} : (balancesByCurrency ?? {})
+
   // Initialise the per-currency ledger with current balances + planning top-ups
   const ledger = {}
   function ensure(ccy) {
     if (!ledger[ccy]) {
       ledger[ccy] = {
-        start: balancesByCurrency?.[ccy] ?? 0,
+        start: effectiveBalances[ccy] ?? 0,
         topUp: 0,
         sells: 0,
         buys: 0,
@@ -191,7 +194,7 @@ export function simulateCashImpact({
     return ledger[ccy]
   }
 
-  for (const ccy of Object.keys(balancesByCurrency ?? {})) ensure(ccy)
+  for (const ccy of Object.keys(effectiveBalances)) ensure(ccy)
   for (const [ccy, amount] of Object.entries(scenario.cashTopUps ?? {})) {
     const n = Number(amount)
     if (!Number.isFinite(n) || n === 0) continue

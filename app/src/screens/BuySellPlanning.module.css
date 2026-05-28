@@ -103,6 +103,28 @@
   letter-spacing: 0.04em;
 }
 
+.overviewCardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.overviewCardTitleRow .overviewCardTitle { margin-bottom: 0; }
+
+.ignoredLabel {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: 0 0 8px;
+  font-style: italic;
+}
+
+.balanceStruck {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+}
+
 .balancesTable, .impactTable {
   width: 100%;
   border-collapse: collapse;
@@ -170,10 +192,23 @@
 .deltaRow { background: rgba(96, 165, 250, 0.06); }
 .deltaRow td { border-top: 1px solid #2d3448; }
 
-.shortfall {
-  margin: 8px 0 0;
-  color: #fca5a5;
+.ccyCol {
+  width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  padding-right: 10px !important;
   font-size: 12px;
+  font-weight: 600;
+}
+
+.overspendCell {
+  color: #fca5a5;
+  background: rgba(252, 165, 165, 0.07);
+}
+
+.divImpactLabel {
+  min-width: 180px;
 }
 
 /* ── Table cell helpers ──────────────────────────────────────────────────── */

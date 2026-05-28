@@ -360,7 +360,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     setEditingFeeRow({
       kind: 'exchange',
       index: -1,
-      draft: { mic: '', currency: mainCurrency, feePercent: '', minimumFee: '' },
+      draft: { mic: '', currency: mainCurrency, feePercent: '', minimumFee: '', maximumFee: '' },
     })
   }
 
@@ -375,6 +375,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
         currency: rule.currency ?? '',
         feePercent: rule.feePercent ?? '',
         minimumFee: rule.minimumFee ?? '',
+        maximumFee: rule.maximumFee ?? '',
       },
     })
   }
@@ -384,7 +385,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     setEditingFeeRow({
       kind: 'stock',
       index: -1,
-      draft: { ticker: '', currency: mainCurrency, feePercent: '', minimumFee: '' },
+      draft: { ticker: '', currency: mainCurrency, feePercent: '', minimumFee: '', maximumFee: '' },
     })
   }
 
@@ -399,6 +400,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
         currency: rule.currency ?? '',
         feePercent: rule.feePercent ?? '',
         minimumFee: rule.minimumFee ?? '',
+        maximumFee: rule.maximumFee ?? '',
       },
     })
   }
@@ -462,6 +464,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     }
     const feePercent = Number(draft.feePercent)
     const minimumFee = Number(draft.minimumFee)
+    const maximumFeeRaw = draft.maximumFee !== '' && draft.maximumFee != null ? Number(draft.maximumFee) : null
     if (!Number.isFinite(feePercent) || feePercent < 0) {
       setFeeRowError('Fee % must be 0 or more')
       return
@@ -470,11 +473,19 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
       setFeeRowError('Minimum fee must be 0 or more')
       return
     }
+    if (maximumFeeRaw != null && (!Number.isFinite(maximumFeeRaw) || maximumFeeRaw < 0)) {
+      setFeeRowError('Maximum fee must be 0 or more')
+      return
+    }
+    if (maximumFeeRaw != null && maximumFeeRaw < minimumFee) {
+      setFeeRowError('Maximum fee must be ≥ minimum fee')
+      return
+    }
 
     const list = kind === 'exchange' ? [...tradingFees.exchanges] : [...tradingFees.stocks]
     const newRule = kind === 'exchange'
-      ? { mic: identifier, currency: draft.currency, feePercent, minimumFee }
-      : { ticker: identifier, currency: draft.currency, feePercent, minimumFee }
+      ? { mic: identifier, currency: draft.currency, feePercent, minimumFee, maximumFee: maximumFeeRaw }
+      : { ticker: identifier, currency: draft.currency, feePercent, minimumFee, maximumFee: maximumFeeRaw }
 
     // Reject duplicates on the identifying field (except when editing the row itself)
     const dupIndex = list.findIndex((r, i) =>
@@ -591,6 +602,19 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               value={draft.minimumFee ?? ''}
               placeholder="0.00"
               onChange={e => updateFeeDraft({ minimumFee: e.target.value })}
+            />
+          </label>
+
+          <label className={styles.feeField}>
+            <span className={styles.feeFieldLabel}>Maximum fee</span>
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              step="0.01"
+              value={draft.maximumFee ?? ''}
+              placeholder="—"
+              onChange={e => updateFeeDraft({ maximumFee: e.target.value })}
             />
           </label>
         </div>
@@ -1116,8 +1140,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               Default trading fees pre-fill the Buy-Sell Planning screen and (optionally) new
               Buy / Sell entries. Resolution order: <strong>per-stock override</strong> →
               {' '}<strong>per-exchange default</strong> → no fee.
-              Computed as <code>max(minimum fee, gross × fee %)</code>, where the fee % is the
-              percent value shown below (0.10 means 0.10 % of the trade).
+              Computed as <code>clamp(gross × fee %, minimum fee, maximum fee)</code>, where the fee % is the
+              percent value shown below (0.10 means 0.10 % of the trade). Maximum fee is optional (leave blank for no cap).
             </p>
 
             {/* Per-exchange defaults */}
@@ -1146,6 +1170,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       <span className={styles.feeBadge}>{rule.currency}</span>
                       <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
                       <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      {rule.maximumFee != null && (
+                        <span className={styles.feeRowVal}>max {Number(rule.maximumFee).toFixed(2)}</span>
+                      )}
                       <button className={styles.btnSm} onClick={() => startEditExchangeFee(i)}>Edit</button>
                       <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('exchange', i)}>Delete</button>
                     </div>
@@ -1187,6 +1214,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       <span className={styles.feeBadge}>{rule.currency}</span>
                       <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
                       <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      {rule.maximumFee != null && (
+                        <span className={styles.feeRowVal}>max {Number(rule.maximumFee).toFixed(2)}</span>
+                      )}
                       <button className={styles.btnSm} onClick={() => startEditStockFee(i)}>Edit</button>
                       <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('stock', i)}>Delete</button>
                     </div>

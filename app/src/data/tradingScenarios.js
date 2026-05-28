@@ -20,6 +20,7 @@ function blankScenario(name) {
     fxOverrides: {},
     displayedCurrencies: [],
     removeExecutedRows: false,
+    ignoreActualBalances: false,
   }
 }
 
@@ -178,6 +179,10 @@ export function setDisplayedCurrencies(scenarioId, list) {
 
 export function setRemoveExecutedRows(scenarioId, value) {
   updateTradingScenario(scenarioId, { removeExecutedRows: !!value })
+}
+
+export function setIgnoreActualBalances(scenarioId, value) {
+  updateTradingScenario(scenarioId, { ignoreActualBalances: !!value })
 }
 
 // Marks a row as executed and (per scenario.removeExecutedRows) optionally

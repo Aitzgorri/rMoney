@@ -192,7 +192,7 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 4. **33g** (Confirmation flow + Pending tab) — depends on 33f.
 5. **33h** (Multi-account dividend entry + duplicate warning) — depends on 33f.
 6. **33j** ✓ done (Dividend page calendar + metrics + chart rework)
-7. **33l** (Buy-Sell planning: disregard cash + overspend + max fee) — independent; 33c (done) was its only dependency.
+7. **33l** ✓ done (Buy-Sell planning: disregard cash + overspend + max fee)
 8. **33n** (Backup format v2 + v1→v2 migration) — last; encodes every new field added by 33e–33h. Bundle SPEC-031 item 241a (Full Backup passphrase prompt) into the same release since both touch `portability.js`.
 
 ---
@@ -306,15 +306,13 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 440. [x] Dividend dedup by composite `(payoutDate, ticker, shareCount, dividendPerShare, currency)`
 441. [x] Done-screen report: one row per parsed CSV line with status + reason; filter pill `All / Imported only / Not imported only / Errors only`; per-row "Edit row" (for errors, re-commit) / "View existing record" (for duplicates)
 
-**Sub-phase 33l — Buy-Sell planning disregard cash + overspend + max fee**
-
-> The page-header Reset API button (originally item 442) already ships via Sub-phase 33c item 405; removed from this list on 2026-05-27.
+**Sub-phase 33l — Buy-Sell planning disregard cash + overspend + max fee** ✓ done
 
 ### SPEC-034 Buy-Sell Planning — Phase 33 items
-443. [ ] "Disregard cash balance" toggle in Overview block; cash-impact table Start column = 0 per currency; cash-balances panel muted; `scenario.ignoreActualBalances` persisted per scenario
-444. [ ] Cash-impact table new "Overspend" column right of End; per-currency shortfall (absolute value); red tint when > 0; "—" when 0
-445. [ ] Cash-impact and dividend-impact table alignment fix: header align matches column data align; currency code in its own narrow right-aligned column; Start always shows a value (0.00 when literal zero, never blank)
-446. [ ] Trading fees: optional `maximumFee` field per exchange and per stock; Settings UI gains "Max fee" input next to "Min fee"; validation `max >= min` when both set; `resolveTradingFee` becomes `clamp(gross × feePercent / 100, minFee, maxFee ?? Infinity)`
+443. [x] "Disregard cash balance" toggle in Overview block; cash-impact table Start column = 0 per currency; cash-balances panel muted; `scenario.ignoreActualBalances` persisted per scenario
+444. [x] Cash-impact table new "Overspend" column right of End; per-currency shortfall (absolute value); red tint when > 0; "—" when 0
+445. [x] Cash-impact and dividend-impact table alignment fix: header align matches column data align; currency code in its own narrow right-aligned column; Start always shows a value (0.00 when literal zero, never blank)
+446. [x] Trading fees: optional `maximumFee` field per exchange and per stock; Settings UI gains "Max fee" input next to "Min fee"; validation `max >= min` when both set; `resolveTradingFee` becomes `clamp(gross × feePercent / 100, minFee, maxFee ?? Infinity)`
 
 **Sub-phase 33m — Small / muted text contrast pass** ✓ done
 
