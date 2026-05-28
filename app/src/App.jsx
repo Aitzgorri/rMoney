@@ -9,7 +9,7 @@ import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
 import { migrateFavoriteCurrencies } from './data/settings'
-import { migrateDividendStatuses, promoteDividends } from './data/dividends'
+import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -73,6 +73,7 @@ export default function App() {
     migrateDividendStatuses()
     const { dropped } = promoteDividends()
     if (dropped.length > 0) setDroppedDividends(dropped)
+    autoCreatePendingFromApi()
     if (sessionStorage.getItem('rmoney_keys_not_restored')) {
       sessionStorage.removeItem('rmoney_keys_not_restored')
       setKeysNotRestored(true)
@@ -138,7 +139,7 @@ export default function App() {
       case 'watchlists':         return <Watchlists onNavigate={navigate} />
       case 'benchmarks':         return <Benchmarks />
       case 'reports':            return <InvestmentReports />
-      case 'dividends':          return <DividendPage />
+      case 'dividends':          return <DividendPage initialTab={navParams.initialTab} onNavigate={navigate} />
       case 'stock':              return <StockPage ticker={navParams.ticker} onBack={goBack} onNavigate={navigate} />
       case 'csv-import':         return <CsvImport accountId={navParams.accountId} onBack={goBack} onNavigate={navigate} />
       case 'stock-inventory':    return <StockInventory onNavigate={navigate} initialConfirmFilter={navParams.confirmFilter} />

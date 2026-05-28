@@ -13,6 +13,7 @@ export function createDividendChartPreset(fields) {
     xBucket:  fields.xBucket  ?? 'month',
     yType:    fields.yType    ?? 'gross',
     chartType: fields.chartType ?? 'bar',
+    groupedByPeriod: fields.groupedByPeriod ?? false,
     filters:  fields.filters  ?? {
       companies:   [],
       portfolioIds: [],

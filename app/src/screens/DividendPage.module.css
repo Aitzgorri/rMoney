@@ -960,3 +960,189 @@
   margin-top: 8px;
   color: #4b5563;
 }
+
+/* ── Ticker link button (calendar table + metrics row) ────────────────────── */
+
+.tickerLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #4A9DEC;
+  font-size: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.tickerLink:hover {
+  text-decoration-color: #4A9DEC;
+}
+
+/* ── Calendar actions cell ────────────────────────────────────────────────── */
+
+.calActionsCell {
+  white-space: nowrap;
+}
+
+.deleteBtn {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.deleteBtn:hover { background: #ef44441a; }
+
+/* ── Inline dialogs (EditDividendDialog + DeleteDividendConfirm) ───────────── */
+
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.dialogBox {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 480px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialogTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.dialogNote {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.dialogWarning {
+  font-size: 13px;
+  color: #f59e0b;
+  background: #1e180a;
+  border: 1px solid #78350f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.dialogField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.dialogLabel {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+.dialogInput {
+  background: #0f1626;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.dialogInput:focus {
+  outline: none;
+  border-color: #4A9DEC;
+}
+
+.dialogRow {
+  display: flex;
+  gap: 12px;
+}
+
+.dialogSelect {
+  background: #0f1626;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dialogCancelBtn {
+  background: transparent;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.dialogCancelBtn:hover { border-color: #4A9DEC; color: #e2e8f0; }
+
+.dialogSaveBtn {
+  background: #4A9DEC;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.dialogSaveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dialogSaveBtn:not(:disabled):hover { background: #3a8cdc; }
+
+/* ── Chart tooltip ────────────────────────────────────────────────────────── */
+
+.chartTooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #e2e8f0;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Disabled control ─────────────────────────────────────────────────────── */
+
+.ctrlDisabled {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}

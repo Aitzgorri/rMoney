@@ -1,10 +1,13 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { getInvestingAccounts } from '../data/investingAccounts'
-import { getPositions } from '../data/stockTransactions'
+import { getPositions, getOpenLots } from '../data/stockTransactions'
 import {
   getApiDividendHistoryForTicker, refreshApiDividendHistory, isStaleForTicker, getRefreshMeta,
 } from '../data/apiDividendHistory'
-import { getDividendsByTicker, resolveDividendTaxPercent, getPendingConfirmationDividends, confirmDividend, deleteDividend, updateDividend, computeDividendDerived } from '../data/dividends'
+import {
+  getDividends, getDividend, getDividendsByTicker, resolveDividendTaxPercent,
+  getPendingConfirmationDividends, confirmDividend, deleteDividend, updateDividend, computeDividendDerived,
+} from '../data/dividends'
 import { getStockProfile, getEffectiveHqCountry } from '../data/stockProfiles'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getLatestPrice } from '../data/marketDataClient'
@@ -30,14 +33,17 @@ const CHART_COLORS = [
 ]
 
 const METRICS_COLUMNS = [
-  { id: 'ttmYield',    label: 'TTM yield',            numeric: true },
-  { id: 'fwdYield',    label: 'Forward yield',         numeric: true },
-  { id: 'last12m',     label: 'Last 12m amount',       numeric: true },
-  { id: 'next12m',     label: 'Next 12m amount',       numeric: true },
-  { id: 'cagr3',       label: 'CAGR 3y',               numeric: true },
-  { id: 'cagr5',       label: 'CAGR 5y',               numeric: true },
-  { id: 'cagr10',      label: 'CAGR 10y',              numeric: true },
+  { id: 'ttmYield',    label: 'TTM yield',       numeric: true },
+  { id: 'fwdYield',    label: 'Forward yield',    numeric: true },
+  { id: 'last12m',     label: 'Last 12m amount',  numeric: true },
+  { id: 'next12m',     label: 'Next 12m amount',  numeric: true },
+  { id: 'cagr3',       label: 'CAGR 3y',          numeric: true },
+  { id: 'cagr5',       label: 'CAGR 5y',          numeric: true },
+  { id: 'cagr10',      label: 'CAGR 10y',         numeric: true },
 ]
+
+const PERIOD_LABELS_QUARTER = ['Q1', 'Q2', 'Q3', 'Q4']
+const PERIOD_LABELS_MONTH   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,7 +84,37 @@ function bucketKey(dateStr, xBucket) {
     const [yr, mo] = dateStr.split('-')
     return `${yr}-Q${Math.ceil(+mo / 3)}`
   }
-  return dateStr.slice(0, 4) // year
+  return dateStr.slice(0, 4)
+}
+
+// Return the last date (YYYY-MM-DD) of a bucket key
+function bucketEndDate(key, xBucket) {
+  if (xBucket === 'month') {
+    const [yr, mo] = key.split('-').map(Number)
+    const lastDay = new Date(yr, mo, 0).getDate()
+    return `${String(yr)}-${String(mo).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  }
+  if (xBucket === 'quarter') {
+    const [yr, qStr] = key.split('-Q')
+    const lastMo = +qStr * 3
+    const lastDay = new Date(+yr, lastMo, 0).getDate()
+    return `${yr}-${String(lastMo).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  }
+  if (xBucket === 'week') {
+    // Week ends 6 days after first day: approximate via bucketKey reverse
+    return key // simplified — tooltip still distinguishes past/future by key comparison
+  }
+  return `${key}-12-31`
+}
+
+// Return period label for grouped-by-period mode
+function getPeriodLabel(dateStr, xBucket) {
+  if (xBucket === 'quarter') {
+    const mo = +dateStr.slice(5, 7)
+    return `Q${Math.ceil(mo / 3)}`
+  }
+  if (xBucket === 'month') return PERIOD_LABELS_MONTH[+dateStr.slice(5, 7) - 1]
+  return null
 }
 
 function fmtPct(n) {
@@ -96,7 +132,6 @@ function fmtMC(n, mc) {
   return `${fmtAmt(n)} ${mc}`
 }
 
-// Compact number for calendar cell: e.g. 0.83, 12.34, 1.2K
 function fmtCompact(n) {
   if (n == null || !isFinite(n)) return '—'
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}K`
@@ -104,7 +139,7 @@ function fmtCompact(n) {
   return n.toFixed(4).replace(/\.?0+$/, '') || '0'
 }
 
-// Merge apiDividendHistory + user dividends for a ticker; user records win on (ticker, exDate).
+// Merge apiDividendHistory + user dividends; user records win on (ticker, exDate).
 function mergeDividendsForTicker(apiHistory, userDividends) {
   const now = today()
   const merged = new Map()
@@ -122,14 +157,16 @@ function mergeDividendsForTicker(apiHistory, userDividends) {
   for (const d of userDividends) {
     if (d.exDividendDate) {
       merged.set(d.exDividendDate, {
-        exDate:     d.exDividendDate,
-        payDate:    d.payoutDate,
-        perShare:   d.dividendPerShare,
-        currency:   d.currency,
-        type:       d.type ?? 'regular',
-        state:      (d.payoutDate ?? d.exDividendDate) < now ? 'paid' : 'declared',
-        source:     'user',
-        shareCount: d.shareCount,
+        exDate:         d.exDividendDate,
+        payDate:        d.payoutDate,
+        perShare:       d.dividendPerShare,
+        currency:       d.currency,
+        type:           d.type ?? 'regular',
+        state:          (d.payoutDate ?? d.exDividendDate) < now ? 'paid' : 'declared',
+        source:         'user',
+        shareCount:     d.shareCount,
+        dividendId:     d.id,
+        dividendStatus: d.status,
       })
     }
   }
@@ -137,7 +174,6 @@ function mergeDividendsForTicker(apiHistory, userDividends) {
 }
 
 // Compute projected future payouts from merged history (regular only).
-// Returns events with state: 'estimated'.
 function computeProjectedEvents(merged, count = 8) {
   const regular = merged.filter(r => r.type == null || r.type === 'regular')
   if (regular.length < 2) return []
@@ -157,8 +193,6 @@ function computeProjectedEvents(merged, count = 8) {
   else if (median <= 500) cadenceMonths = 12
   if (!cadenceMonths) return []
 
-  // Average ex-div → pay-date gap in days, derived from past records with both dates.
-  // Falls back to 14 days when history is sparse or inconsistent.
   const exPayGaps = regular
     .filter(r => r.exDate && r.payDate)
     .map(r => (new Date(r.payDate).getTime() - new Date(r.exDate).getTime()) / 86400000)
@@ -167,7 +201,7 @@ function computeProjectedEvents(merged, count = 8) {
     ? Math.round(exPayGaps.reduce((s, g) => s + g, 0) / exPayGaps.length)
     : 14
 
-  const lastReg  = regular[0] // most recent
+  const lastReg  = regular[0]
   const perShare = lastReg.perShare
   const currency = lastReg.currency
   const now = today()
@@ -184,8 +218,8 @@ function computeProjectedEvents(merged, count = 8) {
         payDate: base,
         perShare,
         currency,
-        type:  'regular',
-        state: 'estimated',
+        type:   'regular',
+        state:  'estimated',
         source: 'projection',
       })
     }
@@ -193,7 +227,6 @@ function computeProjectedEvents(merged, count = 8) {
   return projections
 }
 
-// Compute TTM per-share sum for a ticker from merged records (past 12 months by exDate).
 function computeTtmPerShare(merged) {
   const now = today()
   const cutoff = shiftYear(now, -1)
@@ -202,7 +235,6 @@ function computeTtmPerShare(merged) {
     .reduce((s, r) => s + (r.perShare ?? 0), 0)
 }
 
-// Compute forward per-share (annualised last regular payout × frequency).
 function computeForwardPerShare(merged, apiHistory, userDividends, profile) {
   const freq = detectEffectiveDividendFrequency(
     profile?.dividendFrequency ?? 'unknown',
@@ -231,7 +263,6 @@ function computeForwardPerShare(merged, apiHistory, userDividends, profile) {
   return { perShare: lastPerShare, multiplier: mult, annualised: lastPerShare * mult }
 }
 
-// Compute CAGR over N years from apiDividendHistory only (per-share, regular only).
 function computeCagr(apiHistory, years) {
   const now = today()
   const lastYearStart = shiftYear(now, -1)
@@ -249,15 +280,14 @@ function computeCagr(apiHistory, years) {
   return Math.pow(lastSum / histSum, 1 / years) - 1
 }
 
-// Build dividend records — one per (ticker, exDate). Each record has both ex-div and pay dates.
-// Shape: { ticker, name, exDate, payDate, perShare, currency, dividendType, state, shares, taxPct }
+// One record per (ticker, exDate). Carries dividendId/Status for user-backed rows.
 function buildDividendRecords(heldTickers, dataByTicker, heldData, taxPctByTicker) {
   const records = []
   for (const ticker of heldTickers) {
     const { merged = [], projected = [], profile } = dataByTicker[ticker] ?? {}
-    const name    = profile?.name ?? ticker
-    const shares  = heldData?.[ticker]?.shares ?? 0
-    const taxPct  = (taxPctByTicker?.[ticker] ?? 0) / 100
+    const name   = profile?.name ?? ticker
+    const shares = heldData?.[ticker]?.shares ?? 0
+    const taxPct = (taxPctByTicker?.[ticker] ?? 0) / 100
 
     for (const r of merged) {
       records.push({
@@ -267,6 +297,8 @@ function buildDividendRecords(heldTickers, dataByTicker, heldData, taxPctByTicke
         dividendType: r.type ?? 'regular',
         state: r.state ?? 'declared',
         shares, taxPct,
+        dividendId:     r.dividendId     ?? null,
+        dividendStatus: r.dividendStatus ?? null,
       })
     }
     for (const r of projected) {
@@ -277,14 +309,14 @@ function buildDividendRecords(heldTickers, dataByTicker, heldData, taxPctByTicke
         dividendType: r.type ?? 'regular',
         state: 'estimated',
         shares, taxPct,
+        dividendId:     null,
+        dividendStatus: null,
       })
     }
   }
   return records
 }
 
-// Expand records into per-date markers for the month grid.
-// Each record produces up to 2 events: one on exDate, one on payDate.
 function recordsToEvents(records) {
   const events = []
   for (const r of records) {
@@ -296,13 +328,12 @@ function recordsToEvents(records) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function DividendPage({ initialTab }) {
+export default function DividendPage({ initialTab, onNavigate }) {
   const mainCurrency = getMainCurrency()
 
-  // ── 31a: Held tickers (scope) ─────────────────────────────────────────────
-  const [accounts]     = useState(() => getInvestingAccounts())
-  const [portfolios]   = useState(() => getPortfolios())
-  const [assignments]  = useState(() => getAllPortfolioAssignments())
+  const [accounts]    = useState(() => getInvestingAccounts())
+  const [portfolios]  = useState(() => getPortfolios())
+  const [assignments] = useState(() => getAllPortfolioAssignments())
 
   const heldData = useMemo(() => {
     const byTicker = {}
@@ -318,9 +349,27 @@ export default function DividendPage({ initialTab }) {
     return byTicker
   }, [accounts])
 
+  // Tickers with pending dividends but no current open lots (expanded scope per spec 33j/436)
+  const pendingDividendTickers = useMemo(() => {
+    const pendingSet = new Set()
+    for (const acc of accounts) {
+      for (const d of getDividends(acc.id)) {
+        if (d.status === 'pending-payment' || d.status === 'pending-confirmation') {
+          pendingSet.add(d.ticker)
+        }
+      }
+    }
+    return [...pendingSet].filter(
+      t => !heldData[t] && getStockProfile(t)?.paysDividends !== false
+    )
+  }, [accounts, heldData])
+
   const heldTickers = useMemo(
-    () => Object.keys(heldData).sort().filter(t => getStockProfile(t)?.paysDividends !== false),
-    [heldData]
+    () => [
+      ...Object.keys(heldData).filter(t => getStockProfile(t)?.paysDividends !== false),
+      ...pendingDividendTickers,
+    ].sort(),
+    [heldData, pendingDividendTickers]
   )
 
   // ── Per-ticker dividend data ──────────────────────────────────────────────
@@ -346,10 +395,10 @@ export default function DividendPage({ initialTab }) {
     setDataByTicker(prev => ({ ...prev, [ticker]: { apiHistory, userDividends, profile, merged, projected } }))
   }
 
-  // ── Refresh button ────────────────────────────────────────────────────────
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshStatus, setRefreshStatus] = useState({}) // ticker → 'ok'|'error'|'loading'
-  const [resetState, setResetState] = useState('idle')
+  // ── Refresh / reset ───────────────────────────────────────────────────────
+  const [refreshing, setRefreshing]     = useState(false)
+  const [refreshStatus, setRefreshStatus] = useState({})
+  const [resetState, setResetState]     = useState('idle')
 
   function handleResetApi() {
     setResetState('running')
@@ -415,19 +464,18 @@ export default function DividendPage({ initialTab }) {
     setPendingRecords(getPendingConfirmationDividends())
   }
 
-  // ── Calendar state (31b/31c) ──────────────────────────────────────────────
+  // ── Calendar state ────────────────────────────────────────────────────────
   const [calView,   setCalView]   = useState(() => localStorage.getItem('rmoney_dividend_calendar_view')   ?? 'table')
   const [calFilter, setCalFilter] = useState(() => localStorage.getItem('rmoney_dividend_calendar_filter') ?? 'pay-only')
   const [calMonth,  setCalMonth]  = useState(() => {
-    const stored = localStorage.getItem('rmoney_dividend_calendar_month')
-    return stored ?? today().slice(0, 7)
+    return localStorage.getItem('rmoney_dividend_calendar_month') ?? today().slice(0, 7)
   })
 
-  function setCalViewP(v) { setCalView(v); localStorage.setItem('rmoney_dividend_calendar_view', v) }
+  function setCalViewP(v)   { setCalView(v);   localStorage.setItem('rmoney_dividend_calendar_view', v) }
   function setCalFilterP(v) { setCalFilter(v); localStorage.setItem('rmoney_dividend_calendar_filter', v) }
-  function setCalMonthP(v) { setCalMonth(v); localStorage.setItem('rmoney_dividend_calendar_month', v) }
+  function setCalMonthP(v)  { setCalMonth(v);  localStorage.setItem('rmoney_dividend_calendar_month', v) }
 
-  // ── Metrics state (31d/31e) ───────────────────────────────────────────────
+  // ── Metrics state ─────────────────────────────────────────────────────────
   const [metricsGrouping, setMetricsGroupingRaw] = useState(
     () => localStorage.getItem('rmoney_dividend_metrics_grouping') ?? 'company'
   )
@@ -461,16 +509,14 @@ export default function DividendPage({ initialTab }) {
     })
   }
 
-  // ── Tax percent per ticker (for net totals in calendar) ──────────────────
+  // ── Tax percent per ticker ────────────────────────────────────────────────
   const taxPctByTicker = useMemo(() => {
     const result = {}
     for (const ticker of heldTickers) result[ticker] = resolveDividendTaxPercent(ticker)
     return result
   }, [heldTickers])
 
-  // ── Calendar records + events (memoised) ─────────────────────────────────
-  // Records: one per (ticker, exDate). Used by table view.
-  // Events: each record expanded into up to 2 markers (one per date). Used by month grid.
+  // ── Calendar records + events ─────────────────────────────────────────────
   const calendarRecords = useMemo(
     () => buildDividendRecords(heldTickers, dataByTicker, heldData, taxPctByTicker),
     [heldTickers, dataByTicker, heldData, taxPctByTicker]
@@ -481,41 +527,77 @@ export default function DividendPage({ initialTab }) {
     [calendarRecords]
   )
 
-  // ── Computed metrics rows (memoised) ─────────────────────────────────────
+  // ── Metrics rows ──────────────────────────────────────────────────────────
   const metricsRows = useMemo(() => {
     if (!fxReady) return []
+    const now     = today()
+    const cut12m  = shiftYear(now, -1)
+
+    // Sum shares across all accounts for a ticker as of a date
+    function sharesAsOf(ticker, asOfDate) {
+      let total = 0
+      for (const acc of accounts) {
+        const lots = getOpenLots(acc.id, ticker, asOfDate)
+        total += lots.reduce((s, l) => s + l.remainingShares, 0)
+      }
+      return total
+    }
+
     const rows = []
     for (const ticker of heldTickers) {
       const d = dataByTicker[ticker]
       if (!d) continue
       const { apiHistory, userDividends, profile, merged } = d
-      const shares        = heldData[ticker]?.shares ?? 0
-      const currency      = heldData[ticker]?.accounts[0]?.currency ?? 'USD'
-      const latestPrice   = priceByTicker[ticker]?.price ?? null
-      const ttmPerShare   = computeTtmPerShare(merged)
-      const fwdData       = computeForwardPerShare(merged, apiHistory, userDividends, profile)
+      const shares   = heldData[ticker]?.shares ?? 0
+      const currency = heldData[ticker]?.accounts?.[0]?.currency ?? 'USD'
+      const latestPrice = priceByTicker[ticker]?.price ?? null
 
-      // amounts in main currency
-      const fxRate = latestPrice ? (convertToMain(latestPrice, currency, mainCurrency) / latestPrice) : 1
+      const ttmPerShare = computeTtmPerShare(merged)
+      const fwdData     = computeForwardPerShare(merged, apiHistory, userDividends, profile)
+
+      const fxRate = latestPrice
+        ? ((convertToMain(latestPrice, currency, mainCurrency) ?? latestPrice) / latestPrice)
+        : 1
       const marketValueMain = latestPrice ? latestPrice * shares * fxRate : null
-      const ttmYield  = latestPrice && ttmPerShare > 0 ? ttmPerShare / latestPrice : null
-      const fwdYield  = latestPrice && fwdData ? fwdData.annualised / latestPrice : null
+      const ttmYield = latestPrice && ttmPerShare > 0 ? ttmPerShare / latestPrice : null
+      const fwdYield = latestPrice && fwdData ? fwdData.annualised / latestPrice : null
 
-      // Last 12m amount: merged records in last 12m × shares → main currency
-      const now = today(); const cutoff12m = shiftYear(now, -1)
-      const last12mAmt = merged
-        .filter(r => r.exDate >= cutoff12m && r.exDate <= now)
-        .reduce((s, r) => s + (r.perShare ?? 0) * shares * fxRate, 0)
+      // Last 12m: sum of user dividends that were received in the last year
+      const last12mAmt = userDividends
+        .filter(r => r.status === 'received' && r.payoutDate >= cut12m && r.payoutDate <= now)
+        .reduce((s, r) => {
+          const { netTotal } = computeDividendDerived(r)
+          return s + (convertToMain(netTotal, r.currency, mainCurrency) ?? 0)
+        }, 0)
 
-      // Next 12m: declared future + estimated next year
-      const cutoffFuture = shiftYear(now, 1)
-      const declaredFuture = merged.filter(r => r.exDate > now && r.exDate <= cutoffFuture && r.state === 'declared')
+      // Next 12m: declared future payments using historically-correct share count
+      const cutFuture = shiftYear(now, 1)
+      const declaredFuture = merged.filter(r => {
+        const payRef = r.payDate ?? r.exDate
+        return payRef > now && payRef <= cutFuture && r.state === 'declared'
+      })
       const estimatedFuture = d.projected.filter(r => {
         const ref = r.payDate ?? r.exDate
-        return ref > now && ref <= cutoffFuture
+        return ref > now && ref <= cutFuture
       })
-      const allFuture = [...declaredFuture, ...estimatedFuture]
-      const next12mAmt = allFuture.reduce((s, r) => s + (r.perShare ?? 0) * shares * fxRate, 0)
+
+      let next12mAmt = 0
+      for (const r of declaredFuture) {
+        let sc
+        if (r.source === 'user' && r.shareCount != null) {
+          // User-entered record: shareCount is locked at ex-div date (33f spec)
+          sc = r.shareCount
+        } else if (r.exDate && r.exDate <= now) {
+          // API row with past ex-div: look up actual holdings on ex-div date
+          sc = sharesAsOf(ticker, subtractDays(r.exDate, 1))
+        } else {
+          sc = shares
+        }
+        next12mAmt += (r.perShare ?? 0) * sc * fxRate
+      }
+      for (const r of estimatedFuture) {
+        next12mAmt += (r.perShare ?? 0) * shares * fxRate
+      }
 
       rows.push({
         ticker,
@@ -535,9 +617,9 @@ export default function DividendPage({ initialTab }) {
       })
     }
     return rows
-  }, [heldTickers, dataByTicker, heldData, priceByTicker, fxReady, mainCurrency, assignments])
+  }, [heldTickers, dataByTicker, heldData, priceByTicker, fxReady, mainCurrency, assignments, accounts])
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Last refresh timestamp ────────────────────────────────────────────────
   const lastRefreshAt = heldTickers.length > 0
     ? heldTickers.map(t => getRefreshMeta(t)?.lastRefreshedAt).filter(Boolean).sort().at(-1)
     : null
@@ -555,7 +637,7 @@ export default function DividendPage({ initialTab }) {
 
   return (
     <div className={styles.page}>
-      {/* ── Page header ────────────────────────────────────────────────────── */}
+      {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className={styles.pageHeader}>
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Dividends</h1>
@@ -589,7 +671,7 @@ export default function DividendPage({ initialTab }) {
         </div>
       </div>
 
-      {/* ── Tab bar ────────────────────────────────────────────────────────── */}
+      {/* ── Tab bar ───────────────────────────────────────────────────────── */}
       <div className={styles.tabBar}>
         <button className={`${styles.tabBtn} ${activeTab === 'calendar' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('calendar')}>Calendar</button>
         <button className={`${styles.tabBtn} ${activeTab === 'metrics'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('metrics')}>Metrics</button>
@@ -599,7 +681,7 @@ export default function DividendPage({ initialTab }) {
         </button>
       </div>
 
-      {/* ── Add dividend overlay ───────────────────────────────────────────── */}
+      {/* ── Add dividend overlay ──────────────────────────────────────────── */}
       {showAddDiv && (
         <div className={styles.formOverlay}>
           <div className={styles.formOverlayInner}>
@@ -617,7 +699,7 @@ export default function DividendPage({ initialTab }) {
         </div>
       )}
 
-      {/* ── Calendar tab ───────────────────────────────────────────────────── */}
+      {/* ── Calendar tab ──────────────────────────────────────────────────── */}
       {activeTab === 'calendar' && (
         <CalendarTab
           events={calendarEvents}
@@ -629,10 +711,12 @@ export default function DividendPage({ initialTab }) {
           calMonth={calMonth}
           setCalMonth={setCalMonthP}
           dataByTicker={dataByTicker}
+          onNavigate={onNavigate}
+          onRecordChange={refreshDataForTicker}
         />
       )}
 
-      {/* ── Metrics tab ────────────────────────────────────────────────────── */}
+      {/* ── Metrics tab ───────────────────────────────────────────────────── */}
       {activeTab === 'metrics' && (
         <MetricsTab
           heldTickers={heldTickers}
@@ -648,10 +732,12 @@ export default function DividendPage({ initialTab }) {
           mainCurrency={mainCurrency}
           portfolios={portfolios}
           assignments={assignments}
+          onNavigate={onNavigate}
+          taxPctByTicker={taxPctByTicker}
         />
       )}
 
-      {/* ── Pending tab ────────────────────────────────────────────────────── */}
+      {/* ── Pending tab ───────────────────────────────────────────────────── */}
       {activeTab === 'pending' && (
         <PendingTab
           records={pendingRecords}
@@ -666,7 +752,7 @@ export default function DividendPage({ initialTab }) {
 // ─── PendingTab ───────────────────────────────────────────────────────────────
 
 function PendingTab({ records, accounts, onRefresh }) {
-  const [editId, setEditId] = useState(null)
+  const [editId, setEditId]       = useState(null)
   const [editDraft, setEditDraft] = useState({})
 
   const accountById = useMemo(() => {
@@ -675,26 +761,13 @@ function PendingTab({ records, accounts, onRefresh }) {
     return map
   }, [accounts])
 
-  function handleConfirm(id) {
-    confirmDividend(id)
-    onRefresh()
-  }
-
-  function handleConfirmAll() {
-    for (const r of records) confirmDividend(r.id)
-    onRefresh()
-  }
-
-  function handleDelete(id) {
-    deleteDividend(id)
-    onRefresh()
-  }
-
+  function handleConfirm(id) { confirmDividend(id); onRefresh() }
+  function handleConfirmAll() { for (const r of records) confirmDividend(r.id); onRefresh() }
+  function handleDelete(id)  { deleteDividend(id);  onRefresh() }
   function handleEditStart(r) {
     setEditId(r.id)
     setEditDraft({ dividendPerShare: r.dividendPerShare, taxPercent: r.taxPercent })
   }
-
   function handleEditSave(r) {
     updateDividend(r.id, { dividendPerShare: editDraft.dividendPerShare, taxPercent: editDraft.taxPercent, type: r.type })
     setEditId(null)
@@ -722,22 +795,16 @@ function PendingTab({ records, accounts, onRefresh }) {
         <table className={styles.tableEl}>
           <thead>
             <tr>
-              <th>Ticker</th>
-              <th>Account</th>
-              <th>Ex-div</th>
-              <th>Pay date</th>
-              <th className={styles.numTh}>Per share</th>
-              <th className={styles.numTh}>Shares</th>
-              <th className={styles.numTh}>Tax %</th>
-              <th className={styles.numTh}>Net total</th>
-              <th>Source</th>
-              <th></th>
+              <th>Ticker</th><th>Account</th><th>Ex-div</th><th>Pay date</th>
+              <th className={styles.numTh}>Per share</th><th className={styles.numTh}>Shares</th>
+              <th className={styles.numTh}>Tax %</th><th className={styles.numTh}>Net total</th>
+              <th>Source</th><th></th>
             </tr>
           </thead>
           <tbody>
             {records.map(r => {
               const { netTotal } = computeDividendDerived(r)
-              const acct = accountById[r.investingAccountId]
+              const acct    = accountById[r.investingAccountId]
               const isEditing = editId === r.id
               return (
                 <tr key={r.id}>
@@ -748,21 +815,15 @@ function PendingTab({ records, accounts, onRefresh }) {
                   {isEditing ? (
                     <>
                       <td className={styles.numTd}>
-                        <input
-                          type="number" step="0.0001" min="0"
-                          className={styles.editInput}
+                        <input type="number" step="0.0001" min="0" className={styles.editInput}
                           value={editDraft.dividendPerShare}
-                          onChange={e => setEditDraft(prev => ({ ...prev, dividendPerShare: e.target.value }))}
-                        />
+                          onChange={e => setEditDraft(prev => ({ ...prev, dividendPerShare: e.target.value }))} />
                       </td>
                       <td className={styles.numTd}>{r.shareCount}</td>
                       <td className={styles.numTd}>
-                        <input
-                          type="number" step="0.01" min="0" max="100"
-                          className={styles.editInput}
+                        <input type="number" step="0.01" min="0" max="100" className={styles.editInput}
                           value={editDraft.taxPercent}
-                          onChange={e => setEditDraft(prev => ({ ...prev, taxPercent: e.target.value }))}
-                        />
+                          onChange={e => setEditDraft(prev => ({ ...prev, taxPercent: e.target.value }))} />
                       </td>
                       <td className={styles.numTd}>—</td>
                     </>
@@ -788,8 +849,8 @@ function PendingTab({ records, accounts, onRefresh }) {
                     ) : (
                       <>
                         <button className={styles.confirmBtn} onClick={() => handleConfirm(r.id)}>Confirm</button>
-                        <button className={styles.editBtn} onClick={() => handleEditStart(r)}>Edit</button>
-                        <button className={styles.skipBtn} onClick={() => handleDelete(r.id)}>Delete</button>
+                        <button className={styles.editBtn}    onClick={() => handleEditStart(r)}>Edit</button>
+                        <button className={styles.skipBtn}    onClick={() => handleDelete(r.id)}>Delete</button>
                       </>
                     )}
                   </td>
@@ -808,8 +869,7 @@ function PendingTab({ records, accounts, onRefresh }) {
 function StaleIndicators({ heldTickers, refreshStatus }) {
   const stale = heldTickers.filter(t => {
     const s = refreshStatus[t]
-    if (s === 'ok') return false
-    if (s === 'loading') return false
+    if (s === 'ok' || s === 'loading') return false
     return isStaleForTicker(t)
   })
   if (!stale.length) return null
@@ -822,8 +882,8 @@ function StaleIndicators({ heldTickers, refreshStatus }) {
 
 // ─── CalendarTab ──────────────────────────────────────────────────────────────
 
-function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFilter, calMonth, setCalMonth, dataByTicker }) {
-  const [popupDay, setPopupDay] = useState(null) // YYYY-MM-DD
+function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFilter, calMonth, setCalMonth, dataByTicker, onNavigate, onRecordChange }) {
+  const [popupDay, setPopupDay] = useState(null)
 
   function prevMonth() {
     const [yr, mo] = calMonth.split('-').map(Number)
@@ -835,18 +895,14 @@ function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFi
     const d = new Date(yr, mo, 1)
     setCalMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
-  function goToday() {
-    setCalMonth(today().slice(0, 7))
-  }
+  function goToday() { setCalMonth(today().slice(0, 7)) }
 
-  // Filter events by selected month and filter mode
   const filteredEvents = useMemo(() => {
     let ev = events.filter(e => e.date.startsWith(calMonth))
     if (calFilter === 'pay-only') ev = ev.filter(e => e.kind === 'pay')
     return ev
   }, [events, calMonth, calFilter])
 
-  // Group filtered events by day
   const eventsByDay = useMemo(() => {
     const map = {}
     for (const e of filteredEvents) {
@@ -861,15 +917,11 @@ function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFi
 
   return (
     <div className={styles.calendarTab}>
-      {/* Controls row */}
       <div className={styles.calControls}>
-        {/* View toggle (31c) */}
         <div className={styles.viewToggle}>
           <button className={`${styles.viewBtn} ${calView === 'month' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('month')}>Month</button>
           <button className={`${styles.viewBtn} ${calView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('table')}>Table</button>
         </div>
-
-        {/* Month nav (31b) — only shown in month view */}
         {calView === 'month' && (
           <div className={styles.monthNav}>
             <button className={styles.navBtn} onClick={prevMonth}>‹</button>
@@ -878,8 +930,6 @@ function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFi
             <button className={styles.navBtnSm} onClick={goToday}>Today</button>
           </div>
         )}
-
-        {/* Filter toggle — only relevant for month view (which markers to render) */}
         {calView === 'month' && (
           <div className={styles.filterToggle}>
             <button className={`${styles.viewBtn} ${calFilter === 'both'     ? styles.viewBtnActive : ''}`} onClick={() => setCalFilter('both')}>Ex-div + Pay</button>
@@ -889,31 +939,27 @@ function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFi
       </div>
 
       {calView === 'month' ? (
-        <MonthGrid
-          calMonth={calMonth}
-          eventsByDay={eventsByDay}
-          popupDay={popupDay}
-          setPopupDay={setPopupDay}
-        />
+        <MonthGrid calMonth={calMonth} eventsByDay={eventsByDay} popupDay={popupDay} setPopupDay={setPopupDay} />
       ) : (
         <CalendarTable
           records={records}
           calMonth={calMonth}
+          onNavigate={onNavigate}
+          onRecordChange={onRecordChange}
         />
       )}
     </div>
   )
 }
 
-// ─── MonthGrid (31b) ──────────────────────────────────────────────────────────
+// ─── MonthGrid ────────────────────────────────────────────────────────────────
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function MonthGrid({ calMonth, eventsByDay, popupDay, setPopupDay }) {
   const [yr, mo] = calMonth.split('-').map(Number)
-  const firstDay  = new Date(yr, mo - 1, 1)
+  const firstDay    = new Date(yr, mo - 1, 1)
   const daysInMonth = new Date(yr, mo, 0).getDate()
-  // Monday-based: 0=Mon … 6=Sun
   const startOffset = (firstDay.getDay() + 6) % 7
 
   const cells = []
@@ -925,25 +971,19 @@ function MonthGrid({ calMonth, eventsByDay, popupDay, setPopupDay }) {
 
   return (
     <div className={styles.monthGrid}>
-      {/* Weekday headers */}
       {WEEKDAYS.map(w => (
         <div key={w} className={styles.weekdayHeader}>{w}</div>
       ))}
-      {/* Day cells */}
       {cells.map((dateStr, i) => {
         if (!dateStr) return <div key={`empty-${i}`} className={styles.dayCell} />
         const dayEvents = eventsByDay[dateStr] ?? []
         const isToday   = dateStr === today()
         const hasPop    = popupDay === dateStr
-
         const maxInline = 2
         const overflow  = dayEvents.length > maxInline ? dayEvents.length - maxInline : 0
 
         return (
-          <div
-            key={dateStr}
-            className={`${styles.dayCell} ${isToday ? styles.dayCellToday : ''}`}
-          >
+          <div key={dateStr} className={`${styles.dayCell} ${isToday ? styles.dayCellToday : ''}`}>
             <span className={styles.dayNum}>{+dateStr.slice(8)}</span>
             <div className={styles.dotList}>
               {dayEvents.slice(0, overflow ? maxInline : dayEvents.length).map((e, j) => {
@@ -951,9 +991,7 @@ function MonthGrid({ calMonth, eventsByDay, popupDay, setPopupDay }) {
                 const totalNet   = totalGross * (1 - (e.taxPct ?? 0))
                 return (
                   <div key={j} className={styles.dotRow}>
-                    <span
-                      className={`${styles.dot} ${e.kind === 'pay' ? styles.dotGreen : styles.dotBlue} ${e.state === 'estimated' ? styles.dotDashed : ''}`}
-                    />
+                    <span className={`${styles.dot} ${e.kind === 'pay' ? styles.dotGreen : styles.dotBlue} ${e.state === 'estimated' ? styles.dotDashed : ''}`} />
                     <span className={styles.dotTicker}>{e.ticker}</span>
                     <span className={styles.dotNum} title="Per share (gross)">{fmtCompact(e.perShare)}</span>
                     <span className={styles.dotNum} title="Total gross">{fmtCompact(totalGross)}</span>
@@ -962,17 +1000,12 @@ function MonthGrid({ calMonth, eventsByDay, popupDay, setPopupDay }) {
                 )
               })}
               {overflow > 0 && (
-                <button
-                  className={styles.overflowLink}
-                  onClick={() => setPopupDay(hasPop ? null : dateStr)}
-                >
+                <button className={styles.overflowLink} onClick={() => setPopupDay(hasPop ? null : dateStr)}>
                   +{overflow} more
                 </button>
               )}
             </div>
-            {hasPop && (
-              <DayPopup events={dayEvents} onClose={() => setPopupDay(null)} />
-            )}
+            {hasPop && <DayPopup events={dayEvents} onClose={() => setPopupDay(null)} />}
           </div>
         )
       })}
@@ -1005,13 +1038,15 @@ function DayPopup({ events, onClose }) {
   )
 }
 
-// ─── CalendarTable (31c) ──────────────────────────────────────────────────────
+// ─── CalendarTable ────────────────────────────────────────────────────────────
 
 const TABLE_CHUNK_MONTHS = 3
 
-function CalendarTable({ records, calMonth }) {
+function CalendarTable({ records, calMonth, onNavigate, onRecordChange }) {
   const [monthsShown, setMonthsShown] = useState(TABLE_CHUNK_MONTHS)
-  const [sort, setSort] = useState({ col: 'exDate', dir: 'asc' })
+  const [sort, setSort]               = useState({ col: 'exDate', dir: 'asc' })
+  const [editRecord, setEditRecord]   = useState(null)  // full dividends record
+  const [deleteRecord, setDeleteRecord] = useState(null) // full dividends record
   const loadMoreRef = useRef()
 
   useEffect(() => { setMonthsShown(TABLE_CHUNK_MONTHS) }, [calMonth])
@@ -1029,9 +1064,18 @@ function CalendarTable({ records, calMonth }) {
     setSort(prev => ({ col, dir: prev.col === col && prev.dir === 'asc' ? 'desc' : 'asc' }))
   }
 
+  function openEdit(calRow) {
+    const div = getDividend(calRow.dividendId)
+    if (div) setEditRecord(div)
+  }
+
+  function openDelete(calRow) {
+    const div = getDividend(calRow.dividendId)
+    if (div) setDeleteRecord(div)
+  }
+
   const now = today()
 
-  // Upcoming records: keep when the latest of (exDate, payDate) is still in the future.
   const tableRecords = useMemo(() => {
     return records
       .filter(r => {
@@ -1045,7 +1089,6 @@ function CalendarTable({ records, calMonth }) {
       })
   }, [records, now, sort])
 
-  // Cutoff: now + monthsShown months. Compared against exDate (the row's primary date).
   const cutoffDate = useMemo(() => {
     const [yr, mo] = now.split('-').map(Number)
     let newMo = mo - 1 + monthsShown
@@ -1073,17 +1116,25 @@ function CalendarTable({ records, calMonth }) {
             <th className={styles.numTh}>Per share</th>
             <th>Div type</th>
             <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {visibleRecords.length === 0 ? (
-            <tr><td colSpan={7} className={styles.emptyCell}>No upcoming dividends in this period</td></tr>
+            <tr><td colSpan={8} className={styles.emptyCell}>No upcoming dividends in this period</td></tr>
           ) : (
             visibleRecords.map((r, i) => (
               <tr key={i} className={r.state === 'estimated' ? styles.estimatedRow : ''}>
                 <td>{r.exDate ?? '—'}</td>
                 <td>{r.payDate ?? '—'}</td>
-                <td className={styles.tickerCell}>{r.ticker}</td>
+                <td>
+                  <button
+                    className={styles.tickerLink}
+                    onClick={() => onNavigate?.('stock', { ticker: r.ticker })}
+                  >
+                    {r.ticker}
+                  </button>
+                </td>
                 <td>{r.name}</td>
                 <td className={styles.numTd}>{r.perShare != null ? `${r.perShare.toFixed(4)} ${r.currency}` : '—'}</td>
                 <td>
@@ -1096,6 +1147,14 @@ function CalendarTable({ records, calMonth }) {
                     {r.state}
                   </span>
                 </td>
+                <td className={styles.calActionsCell}>
+                  {r.dividendId && (
+                    <>
+                      <button className={styles.editBtn} onClick={() => openEdit(r)} title="Edit">✎</button>
+                      <button className={styles.deleteBtn} onClick={() => openDelete(r)} title="Delete">🗑</button>
+                    </>
+                  )}
+                </td>
               </tr>
             ))
           )}
@@ -1107,23 +1166,124 @@ function CalendarTable({ records, calMonth }) {
           Load more months
         </button>
       )}
+
+      {editRecord && (
+        <EditDividendDialog
+          dividend={editRecord}
+          onSave={fields => {
+            updateDividend(editRecord.id, fields)
+            setEditRecord(null)
+            onRecordChange?.(editRecord.ticker)
+          }}
+          onCancel={() => setEditRecord(null)}
+        />
+      )}
+
+      {deleteRecord && (
+        <DeleteDividendConfirm
+          dividend={deleteRecord}
+          onConfirm={() => {
+            deleteDividend(deleteRecord.id)
+            setDeleteRecord(null)
+            onRecordChange?.(deleteRecord.ticker)
+          }}
+          onCancel={() => setDeleteRecord(null)}
+        />
+      )}
     </div>
   )
 }
 
-// ─── MetricsTab (31d + 31e) ───────────────────────────────────────────────────
+// ─── EditDividendDialog ───────────────────────────────────────────────────────
+
+function EditDividendDialog({ dividend, onSave, onCancel }) {
+  const [perShare, setPerShare] = useState(String(dividend.dividendPerShare ?? ''))
+  const [taxPct,   setTaxPct]   = useState(String(dividend.taxPercent ?? 0))
+  const [type,     setType]     = useState(dividend.type ?? 'regular')
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    onSave({ dividendPerShare: Number(perShare), taxPercent: Number(taxPct), type })
+  }
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>Edit dividend — {dividend.ticker}</h2>
+        <p className={styles.dialogNote}>{dividend.payoutDate} · {dividend.shareCount} shares</p>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.dialogField}>
+            <label className={styles.dialogLabel}>Per share</label>
+            <input className={styles.dialogInput} type="number" min="0" step="any"
+              value={perShare} onChange={e => setPerShare(e.target.value)} autoFocus />
+          </div>
+          <div className={styles.dialogRow}>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Tax %</label>
+              <input className={styles.dialogInput} type="number" min="0" max="100" step="any"
+                value={taxPct} onChange={e => setTaxPct(e.target.value)} />
+            </div>
+            <div className={styles.dialogField}>
+              <label className={styles.dialogLabel}>Type</label>
+              <select className={styles.dialogSelect} value={type} onChange={e => setType(e.target.value)}>
+                <option value="regular">Regular</option>
+                <option value="special">Special</option>
+              </select>
+            </div>
+          </div>
+          <div className={styles.dialogActions}>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare}>Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── DeleteDividendConfirm ────────────────────────────────────────────────────
+
+function DeleteDividendConfirm({ dividend, onConfirm, onCancel }) {
+  const { netTotal } = computeDividendDerived(dividend)
+  const isReceived = dividend.status === 'received'
+
+  return (
+    <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className={styles.dialogBox}>
+        <h2 className={styles.dialogTitle}>Delete dividend — {dividend.ticker}</h2>
+        <p className={styles.dialogNote}>
+          {dividend.exDividendDate ? `Ex-div: ${dividend.exDividendDate}` : ''}
+          {dividend.payoutDate ? ` · Pay: ${dividend.payoutDate}` : ''}
+        </p>
+        <p className={styles.dialogNote}>
+          {Number(dividend.dividendPerShare).toFixed(4)} {dividend.currency}/sh × {dividend.shareCount} shares → net {netTotal.toFixed(2)} {dividend.currency}
+        </p>
+        {isReceived && (
+          <p className={styles.dialogWarning}>
+            This dividend was already received — deleting will also remove the linked cash movement.
+          </p>
+        )}
+        <div className={styles.dialogActions}>
+          <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
+          <button type="button" className={styles.btnSmDanger} onClick={onConfirm}>Delete</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── MetricsTab ───────────────────────────────────────────────────────────────
 
 function MetricsTab({
   heldTickers, dataByTicker, heldData, metricsRows, metricsGrouping, setMetricsGrouping,
   visibleColumns, setVisibleColumns, sortByGrouping, setSortForGrouping, mainCurrency,
-  portfolios, assignments,
+  portfolios, assignments, onNavigate, taxPctByTicker,
 }) {
-  // Chart state (31d)
-  const [chartPresets,   setChartPresets]   = useState(() => getDividendChartPresets())
-  const [activePresetId, setActivePresetId] = useState(() => getDividendChartPresets()[0]?.id ?? null)
-  const [editPresetId,   setEditPresetId]   = useState(null)
+  const [chartPresets,    setChartPresets]    = useState(() => getDividendChartPresets())
+  const [activePresetId,  setActivePresetId]  = useState(() => getDividendChartPresets()[0]?.id ?? null)
+  const [editPresetId,    setEditPresetId]    = useState(null)
   const [presetNameDraft, setPresetNameDraft] = useState('')
-  const [showColPicker,  setShowColPicker]  = useState(false)
+  const [showColPicker,   setShowColPicker]   = useState(false)
 
   const activePreset = chartPresets.find(p => p.id === activePresetId) ?? null
 
@@ -1146,60 +1306,82 @@ function MetricsTab({
     setChartPresets(getDividendChartPresets())
   }
 
-  // Build chart data from held tickers + presets filters
+  // Build chart data including paid/toBePaid for tooltips and grouped-by-period data
   const chartData = useMemo(() => {
-    if (!activePreset) return { buckets: [], datasets: [] }
-    const { xBucket, yType, filters } = activePreset
+    if (!activePreset) return { buckets: [], datasets: [], grouped: null, periods: null, years: null }
+    const { xBucket, filters, groupedByPeriod } = activePreset
 
-    const now = today()
+    const now      = today()
     const yearFrom = filters.yearFrom ?? (+now.slice(0, 4) - 2)
     const yearTo   = filters.yearTo   ?? (+now.slice(0, 4))
 
-    // Collect all dividend events for held tickers (past + declared future + estimated)
-    const allEvents = [] // { date, perShare, currency, state, ticker }
-
+    const allEvents = []
     for (const ticker of heldTickers) {
       const d = dataByTicker[ticker]
       if (!d) continue
       const { merged, projected } = d
       const shares  = heldData[ticker]?.shares ?? 0
-      const currency = heldData[ticker]?.accounts[0]?.currency ?? 'USD'
-      const fxRate = 1 // simplified: amounts already in main currency would need real FX
-
-      const grossPerEvent = (r) => (r.perShare ?? 0) * shares
-      const taxPct = 0 // for gross; net would need per-record tax, simplified here
+      const taxRate = (taxPctByTicker?.[ticker] ?? 0) / 100
 
       for (const r of merged) {
         if (r.exDate < `${yearFrom}-01-01` || r.exDate > `${yearTo}-12-31`) continue
         if (filters.companies?.length && !filters.companies.includes(ticker)) continue
-        allEvents.push({ date: r.payDate ?? r.exDate, amount: grossPerEvent(r), state: r.state, ticker, currency })
+        const amount    = (r.perShare ?? 0) * shares
+        const netAmount = amount * (1 - taxRate)
+        allEvents.push({ date: r.payDate ?? r.exDate, amount, netAmount, state: r.state, ticker })
       }
       for (const r of projected) {
         const ref = r.payDate ?? r.exDate
         if (ref < `${yearFrom}-01-01` || ref > `${yearTo}-12-31`) continue
         if (filters.companies?.length && !filters.companies.includes(ticker)) continue
-        allEvents.push({ date: ref, amount: grossPerEvent(r), state: 'estimated', ticker, currency })
+        const amount    = (r.perShare ?? 0) * shares
+        const netAmount = amount * (1 - taxRate)
+        allEvents.push({ date: ref, amount, netAmount, state: 'estimated', ticker })
       }
     }
 
-    // Group by xBucket
+    // Normal bucket mode
     const bucketMap = new Map()
     for (const ev of allEvents) {
       const key = bucketKey(ev.date, xBucket)
-      if (!bucketMap.has(key)) bucketMap.set(key, { declared: 0, estimated: 0 })
-      const bucket = bucketMap.get(key)
-      if (ev.state === 'estimated') bucket.estimated += ev.amount
-      else bucket.declared += ev.amount
+      if (!bucketMap.has(key)) bucketMap.set(key, { declared: 0, estimated: 0, paid: 0, toBePaid: 0, paidNet: 0, toBePaidNet: 0 })
+      const b = bucketMap.get(key)
+      if (ev.state === 'estimated') b.estimated += ev.amount
+      else b.declared += ev.amount
+      if (ev.date <= now) { b.paid += ev.amount; b.paidNet += ev.netAmount }
+      else { b.toBePaid += ev.amount; b.toBePaidNet += ev.netAmount }
     }
-
     const buckets = [...bucketMap.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, val]) => ({ key, ...val, total: val.declared + val.estimated }))
 
-    return { buckets, datasets: [{ label: 'All holdings', color: CHART_COLORS[0] }] }
-  }, [activePreset, heldTickers, dataByTicker, heldData])
+    // Grouped-by-period mode
+    let grouped = null; let periods = null; let years = null
+    if (groupedByPeriod && (xBucket === 'month' || xBucket === 'quarter')) {
+      periods = xBucket === 'quarter' ? PERIOD_LABELS_QUARTER : PERIOD_LABELS_MONTH
+      years   = []
+      for (let y = yearFrom; y <= yearTo; y++) years.push(String(y))
+      grouped = {}
+      for (const p of periods) {
+        grouped[p] = {}
+        for (const y of years) grouped[p][y] = { declared: 0, estimated: 0, paid: 0, toBePaid: 0, paidNet: 0, toBePaidNet: 0 }
+      }
+      for (const ev of allEvents) {
+        const pl = getPeriodLabel(ev.date, xBucket)
+        const yl = ev.date.slice(0, 4)
+        if (!grouped[pl]?.[yl]) continue
+        const c = grouped[pl][yl]
+        if (ev.state === 'estimated') c.estimated += ev.amount
+        else c.declared += ev.amount
+        if (ev.date <= now) { c.paid += ev.amount; c.paidNet += ev.netAmount }
+        else { c.toBePaid += ev.amount; c.toBePaidNet += ev.netAmount }
+      }
+    }
 
-  // ── Metrics tables (31e) ───────────────────────────────────────────────────
+    return { buckets, datasets: [{ label: 'All holdings', color: CHART_COLORS[0] }], grouped, periods, years }
+  }, [activePreset, heldTickers, dataByTicker, heldData, taxPctByTicker])
+
+  // ── Metrics table ─────────────────────────────────────────────────────────
   const sort = sortByGrouping[metricsGrouping] ?? { col: 'last12m', dir: 'desc' }
 
   function handleSort(col) {
@@ -1207,76 +1389,56 @@ function MetricsTab({
     setSortForGrouping(metricsGrouping, col, dir)
   }
 
-  // Build grouped rows
   const groupedRows = useMemo(() => {
     const rows = [...metricsRows]
-    // Apply grouping key
-    const getKey = (r) => {
+    const getKey = r => {
       if (metricsGrouping === 'company')   return r.ticker
-      if (metricsGrouping === 'portfolio') {
-        const port = portfolios.find(p => p.id === r.portfolio)
-        return port?.name ?? 'Unassigned'
-      }
-      if (metricsGrouping === 'country')   return r.country ?? 'Unknown'
-      if (metricsGrouping === 'region')    return r.region   ?? 'Unknown'
+      if (metricsGrouping === 'portfolio') return portfolios.find(p => p.id === r.portfolio)?.name ?? 'Unassigned'
+      if (metricsGrouping === 'country')   return r.country   ?? 'Unknown'
+      if (metricsGrouping === 'region')    return r.region    ?? 'Unknown'
       if (metricsGrouping === 'continent') return r.continent ?? 'Unknown'
       return r.ticker
     }
-    const getLabel = (r) => metricsGrouping === 'company' ? r.name : getKey(r)
+    const getLabel = r => metricsGrouping === 'company' ? r.name : getKey(r)
 
     if (metricsGrouping === 'company') {
-      // Each row is its own group
-      const sorted = applySortToRows(rows, sort)
-      return sorted.map(r => ({
+      return applySortToRows(rows, sort).map(r => ({
         key: r.ticker, label: r.name, ticker: r.ticker,
         ttmYield: r.ttmYield, fwdYield: r.fwdYield,
         last12mAmt: r.last12mAmt, next12mAmt: r.next12mAmt,
         cagr3: r.cagr3, cagr5: r.cagr5, cagr10: r.cagr10,
-        marketValueMain: r.marketValueMain,
-        subRows: [],
+        marketValueMain: r.marketValueMain, subRows: [],
       }))
     }
 
-    // Group and aggregate
     const groups = new Map()
     for (const r of rows) {
       const key = getKey(r)
       if (!groups.has(key)) groups.set(key, { key, label: getLabel(r), rows: [] })
       groups.get(key).rows.push(r)
     }
-
     const aggGroups = [...groups.values()].map(({ key, label, rows: gRows }) => {
       const totalMV = gRows.reduce((s, r) => s + (r.marketValueMain ?? 0), 0)
-      const wmAvg = (field) => {
+      const wmAvg = field => {
         if (!totalMV) return null
-        const weighted = gRows.reduce((s, r) => s + (r[field] ?? 0) * (r.marketValueMain ?? 0), 0)
-        return weighted / totalMV
+        return gRows.reduce((s, r) => s + (r[field] ?? 0) * (r.marketValueMain ?? 0), 0) / totalMV
       }
       return {
         key, label,
-        ttmYield:  wmAvg('ttmYield'),
-        fwdYield:  wmAvg('fwdYield'),
+        ttmYield:  wmAvg('ttmYield'),  fwdYield: wmAvg('fwdYield'),
         last12mAmt: gRows.reduce((s, r) => s + (r.last12mAmt ?? 0), 0),
         next12mAmt: gRows.reduce((s, r) => s + (r.next12mAmt ?? 0), 0),
-        cagr3:  wmAvg('cagr3'),
-        cagr5:  wmAvg('cagr5'),
-        cagr10: wmAvg('cagr10'),
-        marketValueMain: totalMV,
-        subRows: gRows,
+        cagr3: wmAvg('cagr3'), cagr5: wmAvg('cagr5'), cagr10: wmAvg('cagr10'),
+        marketValueMain: totalMV, subRows: gRows,
       }
     })
-
     return applySortToRows(aggGroups, sort)
   }, [metricsRows, metricsGrouping, sort, portfolios])
 
   function applySortToRows(rows, sort) {
-    const { col, dir } = sort
-    const fieldMap = {
-      ttmYield: 'ttmYield', fwdYield: 'fwdYield',
-      last12m: 'last12mAmt', next12m: 'next12mAmt',
-      cagr3: 'cagr3', cagr5: 'cagr5', cagr10: 'cagr10',
-    }
-    const field = fieldMap[col] ?? 'last12mAmt'
+    const fieldMap = { ttmYield: 'ttmYield', fwdYield: 'fwdYield', last12m: 'last12mAmt', next12m: 'next12mAmt', cagr3: 'cagr3', cagr5: 'cagr5', cagr10: 'cagr10' }
+    const field = fieldMap[sort.col] ?? 'last12mAmt'
+    const { dir } = sort
     return [...rows].sort((a, b) => {
       const av = a[field] ?? (dir === 'asc' ? Infinity : -Infinity)
       const bv = b[field] ?? (dir === 'asc' ? Infinity : -Infinity)
@@ -1285,22 +1447,20 @@ function MetricsTab({
   }
 
   const shownColumns = METRICS_COLUMNS.filter(c => visibleColumns.includes(c.id))
+  const groupedByPeriodDisabled = activePreset?.xBucket === 'week' || activePreset?.xBucket === 'year'
 
   return (
     <div className={styles.metricsTab}>
-      {/* ── 31d: Payout chart ───────────────────────────────────────────────── */}
+      {/* ── Payout chart ────────────────────────────────────────────────── */}
       <section className={styles.chartSection}>
         <div className={styles.chartHeader}>
           <h2 className={styles.sectionTitle}>Payout chart</h2>
           <div className={styles.presetRow}>
             {chartPresets.map(p => (
-              <button
-                key={p.id}
+              <button key={p.id}
                 className={`${styles.presetBtn} ${p.id === activePresetId ? styles.presetBtnActive : ''}`}
                 onClick={() => setActivePresetId(p.id)}
-              >
-                {p.name}
-              </button>
+              >{p.name}</button>
             ))}
             <button className={styles.presetBtnAdd} onClick={handleCreatePreset}>+ New</button>
           </div>
@@ -1313,16 +1473,10 @@ function MetricsTab({
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>Name</label>
                 {editPresetId === activePresetId ? (
-                  <input
-                    className={styles.presetNameInput}
-                    value={presetNameDraft}
+                  <input className={styles.presetNameInput} value={presetNameDraft}
                     onChange={e => setPresetNameDraft(e.target.value)}
-                    onBlur={() => {
-                      updatePreset({ name: presetNameDraft || activePreset.name })
-                      setEditPresetId(null)
-                    }}
-                    autoFocus
-                  />
+                    onBlur={() => { updatePreset({ name: presetNameDraft || activePreset.name }); setEditPresetId(null) }}
+                    autoFocus />
                 ) : (
                   <button className={styles.presetNameBtn} onClick={() => { setPresetNameDraft(activePreset.name); setEditPresetId(activePresetId) }}>
                     {activePreset.name} ✎
@@ -1333,7 +1487,8 @@ function MetricsTab({
               {/* X bucket */}
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>X axis</label>
-                <select className={styles.ctrlSelect} value={activePreset.xBucket} onChange={e => updatePreset({ xBucket: e.target.value })}>
+                <select className={styles.ctrlSelect} value={activePreset.xBucket}
+                  onChange={e => updatePreset({ xBucket: e.target.value, groupedByPeriod: false })}>
                   <option value="week">Week</option>
                   <option value="month">Month</option>
                   <option value="quarter">Quarter</option>
@@ -1344,7 +1499,8 @@ function MetricsTab({
               {/* Y type */}
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>Y axis</label>
-                <select className={styles.ctrlSelect} value={activePreset.yType} onChange={e => updatePreset({ yType: e.target.value })}>
+                <select className={styles.ctrlSelect} value={activePreset.yType}
+                  onChange={e => updatePreset({ yType: e.target.value })}>
                   <option value="gross">Gross</option>
                   <option value="net">Net</option>
                 </select>
@@ -1353,36 +1509,46 @@ function MetricsTab({
               {/* Chart type */}
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>Chart</label>
-                <select className={styles.ctrlSelect} value={activePreset.chartType} onChange={e => updatePreset({ chartType: e.target.value })}>
+                <select className={styles.ctrlSelect} value={activePreset.chartType}
+                  onChange={e => updatePreset({ chartType: e.target.value })}>
                   <option value="bar">Bar</option>
                   <option value="line">Line</option>
                 </select>
               </div>
 
+              {/* Grouped by period toggle */}
+              <div className={styles.ctrlGroup}>
+                <label className={styles.ctrlLabel}>By period</label>
+                <button
+                  className={`${styles.viewBtn} ${activePreset.groupedByPeriod ? styles.viewBtnActive : ''} ${groupedByPeriodDisabled ? styles.ctrlDisabled : ''}`}
+                  onClick={() => { if (!groupedByPeriodDisabled) updatePreset({ groupedByPeriod: !activePreset.groupedByPeriod }) }}
+                  disabled={groupedByPeriodDisabled}
+                  title={groupedByPeriodDisabled ? `Not available for ${activePreset.xBucket} bucket` : 'Group bars by quarter or month, colour by year'}
+                >
+                  Grouped
+                </button>
+              </div>
+
               {/* Year range */}
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>From</label>
-                <input
-                  type="number" className={styles.ctrlYear}
+                <input type="number" className={styles.ctrlYear}
                   value={activePreset.filters.yearFrom ?? (+today().slice(0, 4) - 2)}
                   onChange={e => updatePreset({ filters: { ...activePreset.filters, yearFrom: +e.target.value } })}
-                  min={2000} max={+today().slice(0, 4) + 5}
-                />
+                  min={2000} max={+today().slice(0, 4) + 5} />
               </div>
               <div className={styles.ctrlGroup}>
                 <label className={styles.ctrlLabel}>To</label>
-                <input
-                  type="number" className={styles.ctrlYear}
+                <input type="number" className={styles.ctrlYear}
                   value={activePreset.filters.yearTo ?? +today().slice(0, 4)}
                   onChange={e => updatePreset({ filters: { ...activePreset.filters, yearTo: +e.target.value } })}
-                  min={2000} max={+today().slice(0, 4) + 5}
-                />
+                  min={2000} max={+today().slice(0, 4) + 5} />
               </div>
 
               <button className={styles.btnSmDanger} onClick={() => handleDeletePreset(activePresetId)}>Delete chart</button>
             </div>
 
-            {chartData.buckets.length === 0 ? (
+            {chartData.buckets.length === 0 && !chartData.grouped ? (
               <div className={styles.chartEmpty}>No dividend data in this range. Try refreshing dividend data first.</div>
             ) : (
               <DividendChart data={chartData} preset={activePreset} />
@@ -1395,12 +1561,11 @@ function MetricsTab({
         )}
       </section>
 
-      {/* ── 31e: Metrics tables ─────────────────────────────────────────────── */}
+      {/* ── Metrics tables ───────────────────────────────────────────────── */}
       <section className={styles.tableSection}>
         <div className={styles.tableHeader}>
           <h2 className={styles.sectionTitle}>Metrics</h2>
           <div className={styles.tableControls}>
-            {/* Group selector */}
             <select className={styles.ctrlSelect} value={metricsGrouping} onChange={e => setMetricsGrouping(e.target.value)}>
               <option value="company">By company</option>
               <option value="portfolio">By portfolio</option>
@@ -1408,26 +1573,19 @@ function MetricsTab({
               <option value="region">By region</option>
               <option value="continent">By continent</option>
             </select>
-
-            {/* Column picker */}
             <div className={styles.colPickerWrapper}>
-              <button className={styles.colPickerBtn} onClick={() => setShowColPicker(p => !p)}>
-                Columns ▾
-              </button>
+              <button className={styles.colPickerBtn} onClick={() => setShowColPicker(p => !p)}>Columns ▾</button>
               {showColPicker && (
                 <div className={styles.colPickerDropdown}>
                   {METRICS_COLUMNS.map(c => (
                     <label key={c.id} className={styles.colPickerItem}>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.includes(c.id)}
+                      <input type="checkbox" checked={visibleColumns.includes(c.id)}
                         onChange={e => {
                           const next = e.target.checked
                             ? [...visibleColumns, c.id]
                             : visibleColumns.filter(id => id !== c.id)
                           setVisibleColumns(next)
-                        }}
-                      />
+                        }} />
                       {c.label}
                     </label>
                   ))}
@@ -1444,11 +1602,7 @@ function MetricsTab({
               <tr>
                 <th>{metricsGrouping === 'company' ? 'Company' : metricsGrouping.charAt(0).toUpperCase() + metricsGrouping.slice(1)}</th>
                 {shownColumns.map(c => (
-                  <th
-                    key={c.id}
-                    className={`${styles.numTh} ${styles.sortableHeader}`}
-                    onClick={() => handleSort(c.id)}
-                  >
+                  <th key={c.id} className={`${styles.numTh} ${styles.sortableHeader}`} onClick={() => handleSort(c.id)}>
                     {c.label}
                     {sort.col === c.id && <span className={styles.sortArrow}>{sort.dir === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </th>
@@ -1460,7 +1614,7 @@ function MetricsTab({
                 <tr><td colSpan={shownColumns.length + 1} className={styles.emptyCell}>No data</td></tr>
               ) : (
                 groupedRows.map(row => (
-                  <MetricsRow key={row.key} row={row} shownColumns={shownColumns} mainCurrency={mainCurrency} metricsGrouping={metricsGrouping} />
+                  <MetricsRow key={row.key} row={row} shownColumns={shownColumns} mainCurrency={mainCurrency} metricsGrouping={metricsGrouping} onNavigate={onNavigate} />
                 ))
               )}
             </tbody>
@@ -1471,7 +1625,9 @@ function MetricsTab({
   )
 }
 
-function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping }) {
+// ─── MetricsRow ───────────────────────────────────────────────────────────────
+
+function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping, onNavigate }) {
   const [expanded, setExpanded] = useState(false)
   const isGroup = metricsGrouping !== 'company' && row.subRows?.length > 1
 
@@ -1499,7 +1655,12 @@ function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping }) {
           )}
           <span className={styles.rowLabel}>
             {metricsGrouping === 'company' ? (
-              <><strong>{row.ticker}</strong> {row.label}</>
+              <>
+                <button className={styles.tickerLink} onClick={() => onNavigate?.('stock', { ticker: row.ticker })}>
+                  <strong>{row.ticker}</strong>
+                </button>
+                {' '}{row.label}
+              </>
             ) : row.label}
           </span>
         </td>
@@ -1511,11 +1672,6 @@ function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping }) {
         <tr key={sub.ticker} className={styles.subRow}>
           <td className={styles.subRowLabel}>{sub.ticker} — {sub.name}</td>
           {shownColumns.map(c => {
-            const v = {
-              ttmYield: sub.ttmYield, fwdYield: sub.fwdYield,
-              last12m: sub.last12mAmt, next12m: sub.next12mAmt,
-              cagr3: sub.cagr3, cagr5: sub.cagr5, cagr10: sub.cagr10,
-            }
             switch (c.id) {
               case 'ttmYield':  return <td key={c.id} className={styles.numTd}>{fmtPctPos(sub.ttmYield)}</td>
               case 'fwdYield':  return <td key={c.id} className={styles.numTd}>{fmtPctPos(sub.fwdYield)}</td>
@@ -1533,15 +1689,16 @@ function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping }) {
   )
 }
 
-// ─── DividendChart (31d — custom SVG) ────────────────────────────────────────
+// ─── DividendChart ────────────────────────────────────────────────────────────
 
-const CHART_H = 200
+const CHART_H   = 200
 const CHART_PAD = { top: 16, right: 16, bottom: 40, left: 56 }
 
 function DividendChart({ data, preset }) {
-  const { buckets, datasets } = data
+  const { buckets, grouped, periods, years } = data
   const containerRef = useRef()
   const [containerW, setContainerW] = useState(600)
+  const [tooltip, setTooltip]       = useState(null) // { lines: string[], x, y }
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -1552,21 +1709,65 @@ function DividendChart({ data, preset }) {
     return () => obs.disconnect()
   }, [])
 
-  if (!buckets.length) return null
+  const isBar     = preset.chartType !== 'line'
+  const isGrouped = !!(preset.groupedByPeriod && grouped && periods && years)
+  const todayStr  = today()
 
   const chartW = containerW - CHART_PAD.left - CHART_PAD.right
   const chartH = CHART_H - CHART_PAD.top - CHART_PAD.bottom
-  const maxVal  = Math.max(...buckets.map(b => b.total), 0.01)
-  const barW    = Math.max(4, chartW / buckets.length - 2)
 
-  function xPos(i) { return (i / buckets.length) * chartW + barW / 2 }
-  function yPos(v) { return chartH - (v / maxVal) * chartH }
+  // ── Tooltip helpers ───────────────────────────────────────────────────────
+  function bucketLines(b) {
+    const end     = bucketEndDate(b.key, preset.xBucket)
+    const isPast  = end < todayStr
+    const isFuture = b.key > bucketKey(todayStr, preset.xBucket)
+    const isNet   = preset.yType === 'net'
+    const paid    = isNet ? b.paidNet    : b.paid
+    const toPay   = isNet ? b.toBePaidNet : b.toBePaid
+    if (isPast)    return [`Paid: ${fmtAmt(paid)}`]
+    if (isFuture)  return [`To be paid: ${fmtAmt(toPay)}`]
+    return [`Paid: ${fmtAmt(paid)}`, `To be paid: ${fmtAmt(toPay)}`]
+  }
 
-  const isBar = preset.chartType !== 'line'
-  const todayKey = bucketKey(today(), preset.xBucket)
+  function cellLines(period, year) {
+    const cell = grouped?.[period]?.[year]
+    if (!cell) return []
+    const xBucket = preset.xBucket
+    let startDate, endDate
+    if (xBucket === 'quarter') {
+      const qi     = PERIOD_LABELS_QUARTER.indexOf(period) + 1
+      const firstM = (qi - 1) * 3 + 1
+      const lastM  = qi * 3
+      startDate = `${year}-${String(firstM).padStart(2,'0')}-01`
+      const ld  = new Date(+year, lastM, 0).getDate()
+      endDate   = `${year}-${String(lastM).padStart(2,'0')}-${String(ld).padStart(2,'0')}`
+    } else {
+      const mi = PERIOD_LABELS_MONTH.indexOf(period) + 1
+      startDate = `${year}-${String(mi).padStart(2,'0')}-01`
+      const ld  = new Date(+year, mi, 0).getDate()
+      endDate   = `${year}-${String(mi).padStart(2,'0')}-${String(ld).padStart(2,'0')}`
+    }
+    const isPast   = endDate < todayStr
+    const isFuture = startDate > todayStr
+    const isNet    = preset.yType === 'net'
+    const paid     = isNet ? cell.paidNet    : cell.paid
+    const toPay    = isNet ? cell.toBePaidNet : cell.toBePaid
+    const header   = `${period} ${year}`
+    if (isPast)    return [header, `Paid: ${fmtAmt(paid)}`]
+    if (isFuture)  return [header, `To be paid: ${fmtAmt(toPay)}`]
+    return [header, `Paid: ${fmtAmt(paid)}`, `To be paid: ${fmtAmt(toPay)}`]
+  }
 
-  // Y-axis ticks
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({ v: maxVal * f, y: chartH * (1 - f) }))
+  function showTooltip(lines, e) {
+    const cRect = containerRef.current?.getBoundingClientRect()
+    if (!cRect) return
+    setTooltip({ lines, x: e.clientX - cRect.left, y: e.clientY - cRect.top })
+  }
+
+  // ── Y-axis ticks (shared) ─────────────────────────────────────────────────
+  function yTicks(maxVal) {
+    return [0, 0.25, 0.5, 0.75, 1].map(f => ({ v: maxVal * f, y: chartH * (1 - f) }))
+  }
 
   function fmtTick(v) {
     if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`
@@ -1574,16 +1775,110 @@ function DividendChart({ data, preset }) {
     return v.toFixed(0)
   }
 
+  function yPos(v, maxVal) { return chartH - (v / maxVal) * chartH }
+
+  const axes = (
+    <>
+      <line x1={0} y1={0} x2={0} y2={chartH} stroke="#94a3b8" strokeWidth={1} />
+      <line x1={0} y1={chartH} x2={chartW} y2={chartH} stroke="#94a3b8" strokeWidth={1} />
+    </>
+  )
+
+  // ── Grouped-by-period rendering ───────────────────────────────────────────
+  if (isGrouped) {
+    const numPeriods = periods.length
+    const numYears   = years.length
+    const clusterW   = chartW / numPeriods
+    const barW_inner = Math.max(2, (clusterW - 6) / numYears - 1)
+    const maxVal = Math.max(
+      ...Object.values(grouped).flatMap(yr => Object.values(yr)).map(c => c.declared + c.estimated),
+      0.01
+    )
+    const ticks = yTicks(maxVal)
+
+    return (
+      <div className={styles.chartWrap} ref={containerRef} style={{ position: 'relative' }}>
+        <svg width={containerW} height={CHART_H} style={{ overflow: 'visible', display: 'block' }}>
+          <g transform={`translate(${CHART_PAD.left},${CHART_PAD.top})`}>
+            {ticks.map(({ v, y }) => (
+              <g key={y}>
+                <line x1={0} y1={y} x2={chartW} y2={y} stroke="#e2e8f0" strokeWidth={1} />
+                <text x={-6} y={y + 4} textAnchor="end" fontSize={10} fill="#64748b">{fmtTick(v)}</text>
+              </g>
+            ))}
+            {periods.map((period, pi) => {
+              const clusterX = pi * clusterW
+              return years.map((year, yi) => {
+                const cell  = grouped[period]?.[year] ?? { declared: 0, estimated: 0 }
+                const total = cell.declared + cell.estimated
+                const x     = clusterX + 2 + yi * (barW_inner + 1)
+                const declH = (cell.declared / maxVal) * chartH
+                const estH  = (cell.estimated / maxVal) * chartH
+                const color = CHART_COLORS[yi % CHART_COLORS.length]
+                return (
+                  <g key={`${period}-${year}`}>
+                    {cell.declared > 0 && (
+                      <rect x={x} y={yPos(total, maxVal)} width={barW_inner} height={declH} fill={color} opacity={0.9} rx={1} />
+                    )}
+                    {cell.estimated > 0 && (
+                      <rect x={x} y={yPos(cell.estimated, maxVal)} width={barW_inner} height={estH} fill={color} opacity={0.35} rx={1}
+                        stroke={color} strokeWidth={1} strokeDasharray="3 2" />
+                    )}
+                    {total > 0 && (
+                      <rect x={x} y={yPos(total, maxVal)} width={barW_inner} height={(total / maxVal) * chartH}
+                        fill="transparent" style={{ cursor: 'default' }}
+                        onMouseEnter={e => showTooltip(cellLines(period, year), e)}
+                        onMouseLeave={() => setTooltip(null)}
+                      />
+                    )}
+                  </g>
+                )
+              })
+            })}
+            {periods.map((period, pi) => (
+              <text key={period} x={pi * clusterW + clusterW / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fill="#64748b">
+                {period}
+              </text>
+            ))}
+            {axes}
+          </g>
+        </svg>
+        {tooltip && (
+          <div className={styles.chartTooltip} style={{ left: tooltip.x + 10, top: Math.max(4, tooltip.y - 16) }}>
+            {tooltip.lines.map((l, i) => <div key={i}>{l}</div>)}
+          </div>
+        )}
+        <div className={styles.chartLegend}>
+          {years.map((year, yi) => (
+            <span key={year} className={styles.legendItem}>
+              <span className={styles.legendDot} style={{ background: CHART_COLORS[yi % CHART_COLORS.length] }} />
+              {year}
+            </span>
+          ))}
+          <span className={styles.legendItem}>
+            <span className={styles.legendDash} style={{ borderColor: '#94a3b8' }} />
+            Estimated
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Normal bucket rendering ───────────────────────────────────────────────
+  if (!buckets.length) return null
+
+  const maxVal = Math.max(...buckets.map(b => b.total), 0.01)
+  const barW   = Math.max(4, chartW / buckets.length - 2)
+  const ticks  = yTicks(maxVal)
+  const todayBucketKey = bucketKey(todayStr, preset.xBucket)
+
+  function xPos(i) { return (i / buckets.length) * chartW + barW / 2 }
+
   return (
-    <div className={styles.chartWrap} ref={containerRef}>
-      <svg
-        width={containerW}
-        height={CHART_H}
-        style={{ overflow: 'visible', display: 'block' }}
-      >
+    <div className={styles.chartWrap} ref={containerRef} style={{ position: 'relative' }}>
+      <svg width={containerW} height={CHART_H} style={{ overflow: 'visible', display: 'block' }}>
         <g transform={`translate(${CHART_PAD.left},${CHART_PAD.top})`}>
-          {/* Y grid + ticks */}
-          {yTicks.map(({ v, y }) => (
+          {ticks.map(({ v, y }) => (
             <g key={y}>
               <line x1={0} y1={y} x2={chartW} y2={y} stroke="#e2e8f0" strokeWidth={1} />
               <text x={-6} y={y + 4} textAnchor="end" fontSize={10} fill="#64748b">{fmtTick(v)}</text>
@@ -1591,49 +1886,56 @@ function DividendChart({ data, preset }) {
           ))}
 
           {isBar ? (
-            // Bar chart: declared solid, estimated striped
             buckets.map((b, i) => {
-              const x = xPos(i) - barW / 2
+              const x     = xPos(i) - barW / 2
               const declH = (b.declared / maxVal) * chartH
               const estH  = (b.estimated / maxVal) * chartH
-              const isFuture = b.key >= todayKey
+              const isFuture = b.key >= todayBucketKey
               return (
                 <g key={b.key}>
-                  {/* Declared portion */}
                   {b.declared > 0 && (
-                    <rect x={x} y={yPos(b.total)} width={barW} height={declH} fill={CHART_COLORS[0]} opacity={isFuture ? 0.6 : 1} rx={1} />
+                    <rect x={x} y={yPos(b.total, maxVal)} width={barW} height={declH} fill={CHART_COLORS[0]} opacity={isFuture ? 0.6 : 1} rx={1} />
                   )}
-                  {/* Estimated portion (on top) */}
                   {b.estimated > 0 && (
-                    <rect x={x} y={yPos(b.estimated)} width={barW} height={estH} fill={CHART_COLORS[0]} opacity={0.35} rx={1}
+                    <rect x={x} y={yPos(b.estimated, maxVal)} width={barW} height={estH} fill={CHART_COLORS[0]} opacity={0.35} rx={1}
                       stroke={CHART_COLORS[0]} strokeWidth={1} strokeDasharray="3 2" />
                   )}
+                  {/* Transparent hover target */}
+                  <rect x={x} y={yPos(b.total, maxVal)} width={barW} height={(b.total / maxVal) * chartH}
+                    fill="transparent" style={{ cursor: 'default' }}
+                    onMouseEnter={e => showTooltip(bucketLines(b), e)}
+                    onMouseLeave={() => setTooltip(null)}
+                  />
                 </g>
               )
             })
           ) : (
-            // Line chart
             <>
               <polyline
-                points={buckets.map((b, i) => `${xPos(i)},${yPos(b.declared)}`).join(' ')}
-                fill="none" stroke={CHART_COLORS[0]} strokeWidth={2}
-              />
+                points={buckets.map((b, i) => `${xPos(i)},${yPos(b.declared, maxVal)}`).join(' ')}
+                fill="none" stroke={CHART_COLORS[0]} strokeWidth={2} />
               {buckets.some(b => b.estimated > 0) && (
                 <polyline
-                  points={buckets.filter(b => b.estimated > 0).map((b, i) => `${xPos(buckets.indexOf(b))},${yPos(b.total)}`).join(' ')}
-                  fill="none" stroke={CHART_COLORS[0]} strokeWidth={2} strokeDasharray="6 3" opacity={0.6}
-                />
+                  points={buckets.filter(b => b.estimated > 0).map(b => `${xPos(buckets.indexOf(b))},${yPos(b.total, maxVal)}`).join(' ')}
+                  fill="none" stroke={CHART_COLORS[0]} strokeWidth={2} strokeDasharray="6 3" opacity={0.6} />
               )}
               {buckets.map((b, i) => (
-                <circle key={b.key} cx={xPos(i)} cy={yPos(b.total)} r={3} fill={CHART_COLORS[0]} />
+                <circle key={b.key} cx={xPos(i)} cy={yPos(b.total, maxVal)} r={5} fill="transparent"
+                  stroke={CHART_COLORS[0]} strokeWidth={0}
+                  onMouseEnter={e => showTooltip(bucketLines(b), e)}
+                  onMouseLeave={() => setTooltip(null)}
+                  style={{ cursor: 'default' }}
+                />
+              ))}
+              {buckets.map((b, i) => (
+                <circle key={`dot-${b.key}`} cx={xPos(i)} cy={yPos(b.total, maxVal)} r={3} fill={CHART_COLORS[0]} style={{ pointerEvents: 'none' }} />
               ))}
             </>
           )}
 
-          {/* X-axis labels (show every Nth label to avoid crowding) */}
           {(() => {
             const step = Math.max(1, Math.ceil(buckets.length / 10))
-            return buckets.filter((_, i) => i % step === 0 || i === buckets.length - 1).map((b, _, arr) => {
+            return buckets.filter((_, i) => i % step === 0 || i === buckets.length - 1).map(b => {
               const i = buckets.indexOf(b)
               return (
                 <text key={b.key} x={xPos(i)} y={chartH + 14} textAnchor="middle" fontSize={9} fill="#64748b">
@@ -1642,14 +1944,16 @@ function DividendChart({ data, preset }) {
               )
             })
           })()}
-
-          {/* Axes */}
-          <line x1={0} y1={0} x2={0} y2={chartH} stroke="#94a3b8" strokeWidth={1} />
-          <line x1={0} y1={chartH} x2={chartW} y2={chartH} stroke="#94a3b8" strokeWidth={1} />
+          {axes}
         </g>
       </svg>
 
-      {/* Legend */}
+      {tooltip && (
+        <div className={styles.chartTooltip} style={{ left: tooltip.x + 10, top: Math.max(4, tooltip.y - 16) }}>
+          {tooltip.lines.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
+
       <div className={styles.chartLegend}>
         <span className={styles.legendItem}>
           <span className={styles.legendDot} style={{ background: CHART_COLORS[0] }} />

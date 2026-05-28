@@ -40,7 +40,7 @@
 | 31 — Dividend page (NEW SPEC-032) | ✓ done | |
 | 32 — Buy-Sell planning + UX gap closure (NEW SPEC-034) | ✓ done | Item 382 (standalone lot-picker button) deferred polish |
 | **33 — Foundation + bug fixes + Android pipeline (v0.33.0)** | **active** | 33a–d, 33i, 33k, 33m, 21a — see breakdown below |
-| **33 — Dividend overhaul (v0.34.0)** | **planned** | 33e, 33f, 33g, 33h, 33j, 33l — depends on v0.33.0 foundation |
+| **33 — Dividend overhaul (v0.34.0)** | **planned** | 33e, 33f, 33g, 33h ✓, 33j ✓, 33l — depends on v0.33.0 foundation |
 
 ---
 
@@ -191,7 +191,7 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 3. **33f** (Dividend status model) — foundation for 33g, 33h, 33j. Land before any of them.
 4. **33g** (Confirmation flow + Pending tab) — depends on 33f.
 5. **33h** (Multi-account dividend entry + duplicate warning) — depends on 33f.
-6. **33j** (Dividend page calendar + metrics + chart rework) — depends on 33f. 33g/33h/33j can run in parallel once 33f is in.
+6. **33j** ✓ done (Dividend page calendar + metrics + chart rework)
 7. **33l** (Buy-Sell planning: disregard cash + overspend + max fee) — independent; 33c (done) was its only dependency.
 8. **33n** (Backup format v2 + v1→v2 migration) — last; encodes every new field added by 33e–33h. Bundle SPEC-031 item 241a (Full Backup passphrase prompt) into the same release since both touch `portability.js`.
 
@@ -289,15 +289,15 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 431. [x] Tax % input added to ConvertToDeclaredDialog and standalone Declare dialog; `apiDividendHistory` rows gain optional `taxPercent` field
 432. [x] Positions section rows are expandable; expand reveals per-lot table (Buy date / Days remaining vs 366d / Shares / Price w/o fee / Fee per share / Cost w/ fee / Total w/ fee); weighted-avg summary row at the bottom
 
-**Sub-phase 33j — Dividend page calendar actions + metrics rewrite + chart enhancements**
+**Sub-phase 33j — Dividend page calendar actions + metrics rewrite + chart enhancements** ✓ done
 
 ### SPEC-032 Dividend page — Phase 33 calendar / metrics / chart
-433. [ ] Calendar table: ticker column clickable to Stock page; ✎ Edit + 🗑 Delete per row backed by user `dividends` record
-434. [ ] Metrics table: company cell clickable when grouped by company
-435. [ ] Last 12-months amount metric reworked: sum of user `dividends.netTotal` (status `'received'`, payoutDate in `[today − 1y, today]`); excludes pending records and uses per-record stored shareCount (which reflects holdings on ex-div date)
-436. [ ] Next 12-months amount metric reworked: declared rows with exDate ≤ today use `getOpenLots(asOfDate = exDate − 1)`; declared rows with exDate > today use current open lots; estimated rows use current open lots; held set expanded to include tickers with pending receivables even if current open lots = 0
-437. [ ] Payout chart: per-bar tooltip with Paid / To be paid breakdown (past = paid only, future = to-be-paid only, current bucket = both); respects gross / net toggle
-438. [ ] Payout chart "Grouped by period" toggle: one cluster per quarter / month / week label, one bar per year inside each cluster; dashed-fill for "to be paid" portion preserved; disabled for year bucket
+433. [x] Calendar table: ticker column clickable to Stock page; ✎ Edit + 🗑 Delete per row backed by user `dividends` record
+434. [x] Metrics table: company cell clickable when grouped by company
+435. [x] Last 12-months amount metric reworked: sum of user `dividends.netTotal` (status `'received'`, payoutDate in `[today − 1y, today]`); excludes pending records and uses per-record stored shareCount (which reflects holdings on ex-div date)
+436. [x] Next 12-months amount metric reworked: declared rows with exDate ≤ today use `getOpenLots(asOfDate = exDate − 1)`; declared rows with exDate > today use current open lots; estimated rows use current open lots; held set expanded to include tickers with pending receivables even if current open lots = 0
+437. [x] Payout chart: per-bar tooltip with Paid / To be paid breakdown (past = paid only, future = to-be-paid only, current bucket = both); respects gross / net toggle
+438. [x] Payout chart "Grouped by period" toggle: one cluster per quarter / month / week label, one bar per year inside each cluster; dashed-fill for "to be paid" portion preserved; disabled for year bucket
 
 **Sub-phase 33k — CSV import composite-key dedup + post-commit report** ✓ done
 
