@@ -4,7 +4,7 @@ import { getPositions } from '../data/stockTransactions'
 import {
   getApiDividendHistoryForTicker, refreshApiDividendHistory, isStaleForTicker, getRefreshMeta,
 } from '../data/apiDividendHistory'
-import { getDividendsByTicker, resolveDividendTaxPercent } from '../data/dividends'
+import { getDividendsByTicker, resolveDividendTaxPercent, getPendingConfirmationDividends, confirmDividend, deleteDividend, updateDividend, computeDividendDerived } from '../data/dividends'
 import { getStockProfile, getEffectiveHqCountry } from '../data/stockProfiles'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getLatestPrice } from '../data/marketDataClient'
@@ -17,6 +17,7 @@ import {
 } from '../data/dividendChartPresets'
 import { fmtAmt } from '../utils/format'
 import { resetPageCaches } from '../utils/marketDataCache'
+import MultiAccountDividendForm from '../components/MultiAccountDividendForm'
 import styles from './DividendPage.module.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -295,7 +296,7 @@ function recordsToEvents(records) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function DividendPage() {
+export default function DividendPage({ initialTab }) {
   const mainCurrency = getMainCurrency()
 
   // ── 31a: Held tickers (scope) ─────────────────────────────────────────────
@@ -400,7 +401,19 @@ export default function DividendPage() {
   }, [heldTickers, dataByTicker])
 
   // ── Tab navigation ────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('calendar')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialTab === 'pending') return 'pending'
+    return 'calendar'
+  })
+
+  const [showAddDiv, setShowAddDiv] = useState(false)
+
+  // ── Pending-confirmation records ──────────────────────────────────────────
+  const [pendingRecords, setPendingRecords] = useState(() => getPendingConfirmationDividends())
+
+  function refreshPending() {
+    setPendingRecords(getPendingConfirmationDividends())
+  }
 
   // ── Calendar state (31b/31c) ──────────────────────────────────────────────
   const [calView,   setCalView]   = useState(() => localStorage.getItem('rmoney_dividend_calendar_view')   ?? 'table')
@@ -555,6 +568,9 @@ export default function DividendPage() {
         </div>
         <div className={styles.headerRight}>
           <StaleIndicators heldTickers={heldTickers} refreshStatus={refreshStatus} />
+          <button className={styles.addDivBtn} onClick={() => setShowAddDiv(true)}>
+            + Add dividend
+          </button>
           <button
             className={styles.refreshBtn}
             onClick={handleRefreshAll}
@@ -577,7 +593,29 @@ export default function DividendPage() {
       <div className={styles.tabBar}>
         <button className={`${styles.tabBtn} ${activeTab === 'calendar' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('calendar')}>Calendar</button>
         <button className={`${styles.tabBtn} ${activeTab === 'metrics'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('metrics')}>Metrics</button>
+        <button className={`${styles.tabBtn} ${activeTab === 'pending'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('pending')}>
+          Pending
+          {pendingRecords.length > 0 && <span className={styles.pendingBadge}>{pendingRecords.length}</span>}
+        </button>
       </div>
+
+      {/* ── Add dividend overlay ───────────────────────────────────────────── */}
+      {showAddDiv && (
+        <div className={styles.formOverlay}>
+          <div className={styles.formOverlayInner}>
+            <MultiAccountDividendForm
+              tickerLocked={false}
+              heldTickers={heldTickers}
+              onSaved={() => {
+                setShowAddDiv(false)
+                for (const t of heldTickers) refreshDataForTicker(t)
+                refreshPending()
+              }}
+              onCancel={() => setShowAddDiv(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Calendar tab ───────────────────────────────────────────────────── */}
       {activeTab === 'calendar' && (
@@ -612,6 +650,155 @@ export default function DividendPage() {
           assignments={assignments}
         />
       )}
+
+      {/* ── Pending tab ────────────────────────────────────────────────────── */}
+      {activeTab === 'pending' && (
+        <PendingTab
+          records={pendingRecords}
+          accounts={accounts}
+          onRefresh={refreshPending}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── PendingTab ───────────────────────────────────────────────────────────────
+
+function PendingTab({ records, accounts, onRefresh }) {
+  const [editId, setEditId] = useState(null)
+  const [editDraft, setEditDraft] = useState({})
+
+  const accountById = useMemo(() => {
+    const map = {}
+    for (const a of accounts) map[a.id] = a
+    return map
+  }, [accounts])
+
+  function handleConfirm(id) {
+    confirmDividend(id)
+    onRefresh()
+  }
+
+  function handleConfirmAll() {
+    for (const r of records) confirmDividend(r.id)
+    onRefresh()
+  }
+
+  function handleDelete(id) {
+    deleteDividend(id)
+    onRefresh()
+  }
+
+  function handleEditStart(r) {
+    setEditId(r.id)
+    setEditDraft({ dividendPerShare: r.dividendPerShare, taxPercent: r.taxPercent })
+  }
+
+  function handleEditSave(r) {
+    updateDividend(r.id, { dividendPerShare: editDraft.dividendPerShare, taxPercent: editDraft.taxPercent, type: r.type })
+    setEditId(null)
+    onRefresh()
+  }
+
+  if (records.length === 0) {
+    return (
+      <div className={styles.pendingEmpty}>
+        <p>No dividends awaiting confirmation.</p>
+        <p className={styles.pendingEmptyHint}>
+          Enable "Confirm receipt before cash impact" in Settings → Investments → Dividends to use this queue.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.pendingTab}>
+      <div className={styles.pendingHeader}>
+        <span>{records.length} dividend{records.length !== 1 ? 's' : ''} awaiting confirmation</span>
+        <button className={styles.confirmAllBtn} onClick={handleConfirmAll}>Confirm all</button>
+      </div>
+      <div className={styles.pendingTableWrap}>
+        <table className={styles.tableEl}>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Account</th>
+              <th>Ex-div</th>
+              <th>Pay date</th>
+              <th className={styles.numTh}>Per share</th>
+              <th className={styles.numTh}>Shares</th>
+              <th className={styles.numTh}>Tax %</th>
+              <th className={styles.numTh}>Net total</th>
+              <th>Source</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map(r => {
+              const { netTotal } = computeDividendDerived(r)
+              const acct = accountById[r.investingAccountId]
+              const isEditing = editId === r.id
+              return (
+                <tr key={r.id}>
+                  <td className={styles.tickerCell}>{r.ticker}</td>
+                  <td>{acct?.name ?? r.investingAccountId}</td>
+                  <td>{r.exDividendDate}</td>
+                  <td>{r.payoutDate}</td>
+                  {isEditing ? (
+                    <>
+                      <td className={styles.numTd}>
+                        <input
+                          type="number" step="0.0001" min="0"
+                          className={styles.editInput}
+                          value={editDraft.dividendPerShare}
+                          onChange={e => setEditDraft(prev => ({ ...prev, dividendPerShare: e.target.value }))}
+                        />
+                      </td>
+                      <td className={styles.numTd}>{r.shareCount}</td>
+                      <td className={styles.numTd}>
+                        <input
+                          type="number" step="0.01" min="0" max="100"
+                          className={styles.editInput}
+                          value={editDraft.taxPercent}
+                          onChange={e => setEditDraft(prev => ({ ...prev, taxPercent: e.target.value }))}
+                        />
+                      </td>
+                      <td className={styles.numTd}>—</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className={styles.numTd}>{r.dividendPerShare.toFixed(4)} {r.currency}</td>
+                      <td className={styles.numTd}>{r.shareCount}</td>
+                      <td className={styles.numTd}>{r.taxPercent}%</td>
+                      <td className={styles.numTd}>{netTotal.toFixed(2)} {r.currency}</td>
+                    </>
+                  )}
+                  <td>
+                    <span className={r.source === 'api-auto' ? styles.sourceApi : styles.sourceUser}>
+                      {r.source === 'api-auto' ? 'API' : 'User'}
+                    </span>
+                  </td>
+                  <td className={styles.pendingActions}>
+                    {isEditing ? (
+                      <>
+                        <button className={styles.confirmBtn} onClick={() => handleEditSave(r)}>Save</button>
+                        <button className={styles.skipBtn} onClick={() => setEditId(null)}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className={styles.confirmBtn} onClick={() => handleConfirm(r.id)}>Confirm</button>
+                        <button className={styles.editBtn} onClick={() => handleEditStart(r)}>Edit</button>
+                        <button className={styles.skipBtn} onClick={() => handleDelete(r.id)}>Delete</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

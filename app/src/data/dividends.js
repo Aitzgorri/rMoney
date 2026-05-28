@@ -1,6 +1,7 @@
-import { getCashBalanceByCurrency, createCashBalance, addCashMovement } from './investingAccounts'
+import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvestingAccounts } from './investingAccounts'
 import { getSetting } from './settings'
 import { getOpenLots } from './stockTransactions'
+import { getApiDividendHistory } from './apiDividendHistory'
 
 const KEY = 'rmoney_dividends'
 const KEY_MOVEMENTS = 'rmoney_cash_movements'
@@ -261,4 +262,80 @@ export function promoteDividends() {
 
 export function hasDividendActivity(investingAccountId) {
   return load().some(d => d.investingAccountId === investingAccountId)
+}
+
+export function getPendingConfirmationCount() {
+  return load().filter(d => d.status === 'pending-confirmation').length
+}
+
+export function getPendingConfirmationDividends() {
+  return load()
+    .filter(d => d.status === 'pending-confirmation')
+    .sort((a, b) => a.payoutDate.localeCompare(b.payoutDate) || a.ticker.localeCompare(b.ticker))
+}
+
+// Auto-create 'pending-confirmation' records from apiDividendHistory when the
+// confirmReceipt toggle is ON. Idempotent — skips (ticker, exDividendDate,
+// investingAccountId) triples that already have any dividend record.
+export function autoCreatePendingFromApi() {
+  if (!getSetting('dividends', {}).confirmReceipt) return
+
+  const today = new Date().toISOString().slice(0, 10)
+  const existing = load()
+  const existingKeys = new Set(
+    existing.map(d => `${d.ticker}|${d.exDividendDate}|${d.investingAccountId}`)
+  )
+
+  const profiles = (() => {
+    try { return JSON.parse(localStorage.getItem('rmoney_stock_profiles')) ?? [] } catch { return [] }
+  })()
+
+  const accounts = getInvestingAccounts()
+  const apiHistory = getApiDividendHistory()
+  const pastRows = apiHistory.filter(r => r.payDate && r.payDate <= today && r.perShare != null && r.currency)
+
+  const newRecords = []
+  for (const row of pastRows) {
+    const profile = profiles.find(p => p.ticker === row.ticker)
+    if (profile?.paysDividends === false) continue
+
+    for (const account of accounts) {
+      const key = `${row.ticker}|${row.exDate}|${account.id}`
+      if (existingKeys.has(key)) continue
+
+      const exDate = new Date(row.exDate)
+      exDate.setDate(exDate.getDate() - 1)
+      const asOf = exDate.toISOString().slice(0, 10)
+      const lots = getOpenLots(account.id, row.ticker, asOf)
+      const shareCount = lots.reduce((s, l) => s + l.remainingShares, 0)
+      if (shareCount === 0) continue
+
+      const taxPercent = resolveDividendTaxPercent(row.ticker)
+      const now = new Date().toISOString()
+      const record = {
+        id: crypto.randomUUID(),
+        investingAccountId: account.id,
+        ticker: row.ticker,
+        currency: row.currency,
+        exDividendDate: row.exDate,
+        payoutDate: row.payDate,
+        dividendPerShare: Number(row.perShare),
+        shareCount,
+        taxPercent,
+        type: row.type === 'special' ? 'special' : 'regular',
+        status: 'pending-confirmation',
+        source: 'api-auto',
+        confirmedAt: null,
+        exchangeRates: null,
+        cashMovementId: null,
+        createdAt: now,
+      }
+      newRecords.push(record)
+      existingKeys.add(key)
+    }
+  }
+
+  if (newRecords.length > 0) {
+    save([...existing, ...newRecords])
+  }
 }

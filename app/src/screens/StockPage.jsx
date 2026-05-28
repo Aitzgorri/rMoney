@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getStockTransactionsByTicker, getPositions, getOpenLots, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
-import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, deleteDividend, createDividend } from '../data/dividends'
+import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, deleteDividend } from '../data/dividends'
 import { getInvestingAccounts, getCashBalances, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
@@ -17,7 +17,8 @@ import { computeProjections, detectEffectiveDividendFrequency } from '../utils/d
 import { convertToMain, ensureRates, snapshotFxRates } from '../utils/currency'
 import { fmtAmt } from '../utils/format'
 import { computeXirr } from '../utils/xirr'
-import { BuyForm, SellForm, DividendForm } from './InvestingAccountDetail'
+import { BuyForm, SellForm } from './InvestingAccountDetail'
+import MultiAccountDividendForm from '../components/MultiAccountDividendForm'
 import AiChatPanel from '../components/AiChatPanel'
 import CurrencyToggle from '../components/CurrencyToggle'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -116,11 +117,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     setTimeout(() => { setResetState('idle') }, 2300)
   }
 
-  const [actionForm,       setActionForm]       = useState(null)  // null | 'buy' | 'sell' | 'dividend'
+  const [actionForm,       setActionForm]       = useState(null)  // null | 'buy' | 'sell'
   const [actionAccountId,  setActionAccountId]  = useState(null)
-  const [pickingAccount,   setPickingAccount]   = useState(null)  // null | 'buy' | 'sell' | 'dividend'
+  const [pickingAccount,   setPickingAccount]   = useState(null)  // null | 'buy' | 'sell'
   const [actionNegConfirm, setActionNegConfirm] = useState(null)  // null | { message, onConfirm }
   const [showNoDivPrompt,  setShowNoDivPrompt]  = useState(false)
+  const [showDividendForm, setShowDividendForm] = useState(false)
 
   const norm = ticker?.trim().toUpperCase() ?? ''
 
@@ -278,10 +280,6 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     closeAction()
   }
 
-  function handleActionDividend(params) {
-    createDividend(params)
-    closeAction()
-  }
 
   const stockTxns = getStockTransactionsByTicker(norm)
   const dividends = getDividendsByTicker(norm)
@@ -677,7 +675,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
           <button className={styles.dividendBtn} onClick={() => {
             if (noDividends) { setShowNoDivPrompt(true); return }
-            openAction('dividend')
+            setShowDividendForm(true)
           }}>+ Dividend</button>
         </>}
         {!isManualStockProfile && (
@@ -750,7 +748,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           <button className={styles.noDivPromptConfirm} onClick={() => {
             upsertStockProfile(norm, { paysDividends: null })
             setShowNoDivPrompt(false)
-            openAction('dividend')
+            setShowDividendForm(true)
           }}>Clear flag and continue</button>
         </div>
       )}
@@ -1096,7 +1094,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         </div>
       )}
 
-      {/* Buy / Sell / Dividend form overlay */}
+      {/* Buy / Sell form overlay */}
       {actionForm && actionAccountId && (
         <div className={styles.formOverlay}>
           <div className={styles.formOverlayInner}>
@@ -1119,16 +1117,20 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 onCancel={closeAction}
               />
             )}
-            {actionForm === 'dividend' && (
-              <DividendForm
-                accountId={actionAccountId}
-                positions={actionPositions}
-                defaultTicker={norm}
-                tickerLocked={true}
-                onSave={handleActionDividend}
-                onCancel={closeAction}
-              />
-            )}
+          </div>
+        </div>
+      )}
+
+      {/* Multi-account dividend form overlay */}
+      {showDividendForm && (
+        <div className={styles.formOverlay}>
+          <div className={styles.formOverlayInner}>
+            <MultiAccountDividendForm
+              ticker={norm}
+              tickerLocked={true}
+              onSaved={() => { setShowDividendForm(false); setDivHistoryKey(k => k + 1) }}
+              onCancel={() => setShowDividendForm(false)}
+            />
           </div>
         </div>
       )}

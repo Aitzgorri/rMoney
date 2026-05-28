@@ -80,6 +80,21 @@
   cursor: default;
 }
 
+.addDivBtn {
+  background: transparent;
+  color: #4A9DEC;
+  border: 1px solid #4A9DEC;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addDivBtn:hover {
+  background: rgba(74, 157, 236, 0.1);
+}
+
 .refreshBtn {
   background: #4A9DEC;
   color: #fff;
@@ -94,6 +109,24 @@
 .refreshBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.formOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.formOverlayInner {
+  background: var(--surface, #141824);
+  border: 1px solid #2d3748;
+  border-radius: 10px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* ── Tab bar ──────────────────────────────────────────────────────────────── */
@@ -807,4 +840,123 @@
   cursor: pointer;
   margin-top: 4px;
   align-self: flex-end;
+}
+
+/* ── Pending tab ─────────────────────────────────────────────────────────── */
+
+.pendingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.pendingTab { padding: 16px 0; }
+
+.pendingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.confirmAllBtn {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.confirmAllBtn:hover { background: #059669; }
+
+.pendingTableWrap { overflow-x: auto; }
+
+.pendingActions {
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+}
+
+.confirmBtn {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.confirmBtn:hover { background: #059669; }
+
+.editBtn {
+  background: #2d3448;
+  color: #e2e8f0;
+  border: 1px solid #3d4461;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.editBtn:hover { background: #3d4461; }
+
+.skipBtn {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.skipBtn:hover { background: #ef44441a; }
+
+.editInput {
+  width: 80px;
+  background: #161f2e;
+  border: 1px solid #3d4461;
+  border-radius: 4px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.sourceApi {
+  font-size: 11px;
+  background: #1e40af33;
+  color: #93c5fd;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.sourceUser {
+  font-size: 11px;
+  background: #16423033;
+  color: #6ee7b7;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.pendingEmpty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.pendingEmptyHint {
+  font-size: 12px;
+  margin-top: 8px;
+  color: #4b5563;
 }

@@ -1,0 +1,301 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  min-width: 480px;
+  max-width: 640px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.labelHint {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.pairRow {
+  display: flex;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.input {
+  padding: 6px 8px;
+  background: var(--input-bg, #1e2430);
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent, #4a9dec);
+}
+
+.select {
+  padding: 6px 8px;
+  background: var(--input-bg, #1e2430);
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 100%;
+}
+
+.locked {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 6px 0;
+}
+
+/* ── No-dividends escape hatch ───────────────────────────────────────────── */
+
+.noDivPrompt {
+  background: var(--surface-raised, #1a2035);
+  border: 1px solid var(--border-warn, #78350f);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.noDivActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.noDivCancel {
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.noDivClear {
+  padding: 5px 12px;
+  background: var(--accent, #4a9dec);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Account table ───────────────────────────────────────────────────────── */
+
+.accountSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.accountTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border, #2d3748);
+}
+
+.numTh {
+  text-align: right;
+}
+
+.td {
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--border-subtle, #1e2430);
+  vertical-align: middle;
+}
+
+.numTd {
+  text-align: right;
+}
+
+.rowMuted td {
+  opacity: 0.45;
+}
+
+.sharesInput {
+  width: 90px;
+  padding: 4px 6px;
+  background: var(--input-bg, #1e2430);
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+}
+
+.sharesInput:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.autoHint {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--text-faint);
+  background: var(--surface-raised, #1a2035);
+  border-radius: 3px;
+  padding: 1px 4px;
+  vertical-align: middle;
+}
+
+.noHoldings {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 4px 0 0;
+}
+
+.noAccounts {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #2d3748);
+}
+
+.cancelBtn {
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.saveBtn {
+  padding: 7px 18px;
+  background: var(--accent, #4a9dec);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Duplicate warning dialog ────────────────────────────────────────────── */
+
+.dupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.dupDialog {
+  background: var(--surface, #141824);
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+}
+
+.dupTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dupMsg {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dupList {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+.dupSource {
+  color: var(--text-faint);
+}
+
+.dupActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dupSameBtn {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border, #2d3748);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dupDiffBtn {
+  padding: 8px 14px;
+  background: var(--accent, #4a9dec);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}

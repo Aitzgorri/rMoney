@@ -261,22 +261,22 @@ Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out
 417. [x] Auto-recalculate share count from lots for pending-payment records with `exDividendDate > today`; once `exDate ≤ today` lock the share count (recalc happens during `promoteDividends()` on the final promotion pass)
 418. [x] Pending-payment record with shares = 0 is dropped on promotion (dismissable banner in App.jsx)
 
-**Sub-phase 33g — Confirmation flow + Pending tab**
+**Sub-phase 33g — Confirmation flow + Pending tab** ✓ done
 
 ### SPEC-020 Dividends — Phase 33 confirmation flow
-419. [ ] `settings.dividends.confirmReceipt: bool` (default false) — Settings → Investments toggle
-420. [ ] When toggle ON: auto-create pending-confirmation `dividends` records from `apiDividendHistory` rows reaching payDate ≤ today on tickers with held shares on `exDate − 1`; one per account; `source: 'api-auto'`; auto-filled share count + tax %
+419. [x] `settings.dividends.confirmReceipt: bool` (default false) — Settings → Investments toggle
+420. [x] When toggle ON: auto-create pending-confirmation `dividends` records from `apiDividendHistory` rows reaching payDate ≤ today on tickers with held shares on `exDate − 1`; one per account; `source: 'api-auto'`; auto-filled share count + tax %
 
 ### SPEC-032 Dividend page — Phase 33 Pending tab
-421. [ ] Dividend page new "Pending" tab — list of pending-confirmation rows with [Confirm] / [Edit] / [Skip] actions per row + "Confirm all" bulk button; count badge on the tab
-422. [ ] Top-nav badge next to Investments dropdown shows pending-confirmation count; click → Dividend page Pending tab
+421. [x] Dividend page new "Pending" tab — list of pending-confirmation rows with [Confirm] / [Edit] / [Skip] actions per row + "Confirm all" bulk button; count badge on the tab
+422. [x] Top-nav badge next to Investments dropdown shows pending-confirmation count; click → Dividend page Pending tab
 
-**Sub-phase 33h — Multi-account dividend entry + duplicate warning**
+**Sub-phase 33h — Multi-account dividend entry + duplicate warning** ✓ done
 
 ### SPEC-020 Dividends — Phase 33 multi-account + duplicate warning
-423. [ ] Stock-scoped "Add dividend" form (entry from Stock page + Dividend button, Dividend page Add dividend): identity fields once + per-account row table with auto-filled share counts + Include checkboxes
-424. [ ] Account-scoped entry (from InvestingAccountDetail) preserves single-account form behaviour
-425. [ ] Duplicate-warning check on save: existing `dividends` (any status) or `apiDividendHistory` row for same `(ticker, exDividendDate)` OR `(ticker, payoutDate)` triggers the warning dialog with [Same dividend] (option to update existing) / [Different dividend (add anyway)] choices
+423. [x] Stock-scoped "Add dividend" form (entry from Stock page + Dividend button, Dividend page Add dividend): identity fields once + per-account row table with auto-filled share counts + Include checkboxes
+424. [x] Account-scoped entry (from InvestingAccountDetail) preserves single-account form behaviour
+425. [x] Duplicate-warning check on save: existing `dividends` (any status) or `apiDividendHistory` row for same `(ticker, exDividendDate)` OR `(ticker, payoutDate)` triggers the warning dialog with [Same dividend] / [Different dividend (add anyway)] choices
 
 **Sub-phase 33i — Stock page dividend list bug fixes + delete + lots expand** ✓ done
 
