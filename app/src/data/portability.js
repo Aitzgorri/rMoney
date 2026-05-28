@@ -188,8 +188,8 @@ export async function saveDataFile(data) {
   const defaultName = `rmoney-backup-${date}.rmy`
 
   if (IS_TAURI) {
-    const { save } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog')
-    const { writeTextFile } = await import(/* @vite-ignore */ '@tauri-apps/plugin-fs')
+    const { save } = await import('@tauri-apps/plugin-dialog')
+    const { writeTextFile } = await import('@tauri-apps/plugin-fs')
     const path = await save({
       defaultPath: defaultName,
       filters: [{ name: 'rMoney Backup', extensions: ['rmy'] }],
@@ -242,8 +242,8 @@ export async function openDataFile() {
   let text, filename
 
   if (IS_TAURI) {
-    const { open } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog')
-    const { readTextFile } = await import(/* @vite-ignore */ '@tauri-apps/plugin-fs')
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const { readTextFile } = await import('@tauri-apps/plugin-fs')
     const path = await open({
       filters: [{ name: 'rMoney Backup', extensions: ['rmy', 'json'] }],
       multiple: false,

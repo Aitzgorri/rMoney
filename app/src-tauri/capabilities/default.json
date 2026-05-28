@@ -17,7 +17,11 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$APPDATA/vault.hold" },
+        { "path": "$HOME/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$APPDATA/**" },
         { "path": "$APPDATA" }
       ]
     }

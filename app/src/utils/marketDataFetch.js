@@ -43,9 +43,10 @@ export async function marketDataFetch(url, options = {}, { requiresProxy = false
   if (!requiresProxy) return fetch(url, options)
 
   if (isTauri()) {
-    // Native HTTP request — bypasses WebView CORS; requires http capability
-    // @vite-ignore tells Vite not to analyse this import (it only works at Tauri runtime)
-    const { fetch: tauriFetch } = await import(/* @vite-ignore */ '@tauri-apps/plugin-http')
+    // Native HTTP request — bypasses WebView CORS; requires http capability.
+    // Imported dynamically (no @vite-ignore) so Vite bundles the plugin into a
+    // chunk the WebView can resolve at runtime.
+    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
     return tauriFetch(url, options)
   }
 

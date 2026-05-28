@@ -5,11 +5,11 @@
   "windows": ["main"],
   "permissions": [
     {
-      "identifier": "http:allow-fetch",
+      "identifier": "http:default",
       "allow": [
-        { "url": "https://query1.finance.yahoo.com/**" },
-        { "url": "https://finance.yahoo.com/**" },
-        { "url": "https://stooq.com/**" }
+        { "url": "https://query1.finance.yahoo.com/*" },
+        { "url": "https://finance.yahoo.com/*" },
+        { "url": "https://stooq.com/*" }
       ]
     }
   ]
