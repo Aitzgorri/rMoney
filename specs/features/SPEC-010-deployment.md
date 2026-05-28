@@ -42,10 +42,16 @@ Make rMoney trivially installable for a non-technical user. The user should be a
 - [x] `.rmy` backup files are associated with the app: Windows Explorer shows "rMoney Data" in the Type column and opens the file with rMoney. File icon uses the app icon (green "r" circle). A dedicated document-style icon (`icons/rmy-file.ico`) has been designed and is ready for use once Tauri adds per-file-type icon support to its config schema.
 
 ### Mobile (Capacitor) — Phase 21a
-- [ ] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
-- [ ] App data persists locally on the device (localStorage in WebView is automatically persistent; confirmation pass)
-- [ ] Production `.apk` built via `cd app && npm run android:sync && cd android && gradlew.bat assembleDebug`; output attached to GitHub release alongside the Windows `.msi` per RELEASE.md mobile flow
-- [ ] Re-verified on Android: dev-mode banner shows; Stronghold fallback uses `rmoney_dev_secrets` localStorage; market-data CORS works via CapacitorHttp native transport; backup save/load works via `@capacitor/filesystem` + `<input type="file">`
+- [x] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
+- [x] App data persists locally on the device (localStorage in WebView is automatically persistent; verified on device 2026-05-28)
+- [x] Production `.apk` built via `cd app && npm run android:sync && cd android && gradlew.bat assembleDebug`; output attached to GitHub release alongside the Windows `.msi` per RELEASE.md mobile flow
+- [x] Re-verified on Android: dev-mode banner shows; Stronghold fallback uses `rmoney_dev_secrets` localStorage; market-data CORS works via CapacitorHttp native transport; backup save/load works via `@capacitor/filesystem` + `<input type="file">`
+
+**Verification fixes (2026-05-28):**
+- Removed `/* @vite-ignore */` from `@capacitor/filesystem` dynamic import so Vite bundles the module (it was failing to resolve at runtime).
+- Added the Web Share API as the primary Android save path so the user can pick the destination (Drive, Files, email, etc.); falls back to `Directory.Documents` if `canShare({ files })` is unsupported.
+- Added try/catch in `App.jsx#handleSave` so save errors surface as a banner instead of silently failing.
+- Changed `pickFileViaInput` to use `accept="*/*"` on Capacitor — Android's SAF picker was greying out `.rmy` files because the extension has no registered MIME type; validation after read still enforces the backup format.
 
 **Code shipped (Phase 21a):**
 - `app/capacitor.config.json` — Capacitor project config; `CapacitorHttp.enabled: true` routes cross-origin `fetch()` natively, bypassing WebView CORS for Yahoo Finance and Stooq

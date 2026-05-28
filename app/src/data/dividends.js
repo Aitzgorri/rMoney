@@ -339,3 +339,19 @@ export function autoCreatePendingFromApi() {
     save([...existing, ...newRecords])
   }
 }
+
+// Returns { userRecords, apiRecords } if a duplicate exists for this
+// (ticker, exDividendDate) or (ticker, payoutDate) pair, otherwise null.
+export function checkDuplicateDividend(ticker, exDividendDate, payoutDate) {
+  const t = ticker.toUpperCase()
+  const userRecords = load().filter(d =>
+    d.ticker === t &&
+    (d.exDividendDate === exDividendDate || d.payoutDate === payoutDate)
+  )
+  const apiRecords = getApiDividendHistory().filter(r =>
+    r.ticker === t &&
+    (r.exDate === exDividendDate || r.payDate === payoutDate)
+  )
+  if (userRecords.length === 0 && apiRecords.length === 0) return null
+  return { userRecords, apiRecords }
+}

@@ -4,7 +4,7 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Current phase: Phase 33 active, v0.33.0 code-complete.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (Sub-phase 21a code-complete — pending user verification on device), and **v0.34.0** ships the dividend-status model and all its consumers. Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
+**Current phase: Phase 33 active, v0.33.0 verified on device.** MVP, Phase 2 (8–24), Phase 3 (25–31), and Phase 4 (32) are substantially complete. Phase 33 is split into two releases: **v0.33.0** ships foundation utilities + bug fixes + the Android build pipeline (Sub-phase 21a verified on device 2026-05-28 — ready to tag), and **v0.34.0** ships the dividend-status model and all its consumers. Mobile Investments parity (21b) and future asset classes (Phase 20, sketched in SPEC-035) remain post-Phase-33.
 
 ---
 
@@ -27,7 +27,7 @@
 | 18 — CSV import | ✓ done | |
 | 19 — AI integration | ✓ done | |
 | 20 — Future asset classes | placeholders | See SPEC-035 roadmap |
-| **21a — Android build pipeline** | **code-complete (verify on device)** | Closes the "single-file install on mobile" goal |
+| **21a — Android build pipeline** | ✓ done | Verified on device 2026-05-28 |
 | 21b — Mobile Investments parity | deferred (after 21a) | Six SPEC-028 items |
 | 22 — Stock profile resolution | ✓ done | |
 | 23 — Watchlists & alerts | ✓ done | |
@@ -39,7 +39,7 @@
 | 30 — Stock inventory page (NEW SPEC-033) | ✓ done | |
 | 31 — Dividend page (NEW SPEC-032) | ✓ done | |
 | 32 — Buy-Sell planning + UX gap closure (NEW SPEC-034) | ✓ done | Item 382 (standalone lot-picker button) deferred polish |
-| **33 — Foundation + bug fixes + Android pipeline (v0.33.0)** | **active** | 33a–d, 33i, 33k, 33m, 21a — see breakdown below |
+| **33 — Foundation + bug fixes + Android pipeline (v0.33.0)** | ✓ done | 33a–d, 33i, 33k, 33m, 33o, 21a all verified — ready to tag |
 | **33 — Dividend overhaul (v0.34.0)** | **planned** | 33e, 33f, 33g, 33h ✓, 33j ✓, 33l — depends on v0.33.0 foundation |
 
 ---
@@ -71,6 +71,9 @@ Tiered so the next pass can pick from the top without re-deriving the chain. Ite
 4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 1; 185 stock-exchange selector).
 5. **Tier 5 — Security follow-ups** (241a Full Backup passphrase — bundle with Sub-phase 33n; 237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — needs IBKR adapter).
 6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
+
+### SPEC-010 Deployment (release management)
+360. [ ] Cut the first GitHub release. With v0.33.0 now verified, decide whether to retroactively tag `v0.32.0` at the Phase 32 milestone commit, or skip directly to `v0.33.0` as the first published tag. Either path satisfies the SPEC-010 acceptance criterion; document the choice in `RELEASE.md`.
 
 ### SPEC-018 Investing Accounts (Phase 11 leftovers)
 152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
@@ -124,13 +127,12 @@ Tiered so the next pass can pick from the top without re-deriving the chain. Ite
 > - **21a (Android build pipeline)** — pulled forward to land alongside the Phase 33 release line. Once items 363 + 364 + 364a ship the user can install rMoney on Android via a `.apk`, even if the Investments deep-dive views are still mobile-light.
 > - **21b (Investments parity)** — full mobile rewrite of the Investments-side screens. Stays deferred until 21a is shipped and the user has used the Android app long enough to confirm what's actually missing.
 
-### Phase 21a — Android build pipeline ✓ code-complete
+### Phase 21a — Android build pipeline ✓ done (verified on device 2026-05-28)
 ### SPEC-010 Deployment — mobile (Capacitor) prerequisites
-> Code shipped. Remaining items require building + running on a real Android device.
-363. [ ] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
-364. [ ] App data persists locally on the device (localStorage in WebView is automatically persistent; confirmation pass on device)
-364a. [ ] Production `.apk` built via `npm run android:sync` then `.\gradlew.bat assembleDebug` in `android/`; attached to GitHub release per RELEASE.md
-364b. [ ] Re-verify on Android: dev-mode banner shows; market-data CORS works (CapacitorHttp); backup save writes to Documents dir; backup load via file picker works
+363. [x] `npx cap add android` + `npx cap open android` opens Android Studio with the project ready to build
+364. [x] App data persists locally on the device (localStorage in WebView is automatically persistent; confirmed on device)
+364a. [x] Production `.apk` built via `npm run android:sync` then `.\gradlew.bat assembleDebug` in `android/`; attached to GitHub release per RELEASE.md
+364b. [x] Re-verify on Android: dev-mode banner shows; market-data CORS works (CapacitorHttp); backup save writes to Documents dir (or Web Share destination); backup load via file picker works
 
 ### Phase 21b — Mobile Investments parity (deferred until 21a ships)
 ### SPEC-028 Mobile Investments Parity
@@ -184,7 +186,7 @@ The bigger conceptual change lands as its own milestone once v0.33.0 is stable.
 Done sub-phases (33a, 33b, 33c, 33d, 33i, 33k, 33m, 33o) have been collapsed out of this list. Only future work is shown.
 
 ### To close v0.33.0
-**21a** ✓ code-complete — run `npx cap add android` in `app/`, build the APK, and tick the four SPEC-010 criteria to close the release.
+**21a** ✓ verified on device 2026-05-28 — APK built, installed, and all four SPEC-010 criteria ticked. Ready to tag `v0.33.0` per RELEASE.md.
 
 ### To ship v0.34.0
 2. **33e** (paysDividends flag + per-country tax) — fully unblocked: depends on 33d (done) + 33b (done). Can start in parallel with the dividend-status branch below.

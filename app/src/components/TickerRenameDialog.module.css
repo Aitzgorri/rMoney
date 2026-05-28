@@ -265,6 +265,35 @@
   text-align: right;
 }
 
+/* ── Mobile: source on its own row ──────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .candidateRow {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  /* Push source below the main row (radio | name | metas | price).
+     flex-basis:100% forces a full-width second row regardless of source length —
+     otherwise short sources like "FROM YAHOO" squeeze back onto row 1 and crush
+     the name column. */
+  .source {
+    order: 10;
+    flex: 0 0 100%;
+    max-width: none;
+    padding-left: calc(16px + 8px); /* indent to align under name */
+  }
+
+  .candidateMeta {
+    flex-shrink: 1;
+    min-width: 28px;
+  }
+
+  .candidatePrice {
+    min-width: 60px;
+  }
+}
+
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 
 .actions {

@@ -108,8 +108,12 @@ export default function App() {
     setSaveDialog(false)
     const raw = exportAppData({ mode: saveMode })
     const data = saveMode === 'sharable' ? redactExportData(raw) : raw
-    const filename = await saveDataFile(data)
-    if (filename) setSaveBanner({ filename, redacted: saveMode === 'sharable' })
+    try {
+      const filename = await saveDataFile(data)
+      if (filename) setSaveBanner({ filename, redacted: saveMode === 'sharable' })
+    } catch (err) {
+      setLoadError('Backup save failed: ' + (err.message || 'Unknown error'))
+    }
   }
 
   function handleLoadConfirm() {

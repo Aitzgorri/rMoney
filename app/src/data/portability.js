@@ -160,14 +160,28 @@ export async function saveDataFile(data) {
   }
 
   if (typeof window !== 'undefined' && window.Capacitor) {
-    const { Filesystem, Directory, Encoding } = await import(/* @vite-ignore */ '@capacitor/filesystem')
-    await Filesystem.writeFile({
+    // Use the Web Share API so the user can pick their destination (Drive, Files, etc.).
+    // Falls back to writing to the app-scoped Documents dir if sharing isn't available.
+    const blob = new Blob([json], { type: 'application/octet-stream' })
+    const file = new File([blob], defaultName, { type: 'application/octet-stream' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'rMoney Backup' })
+      } catch (err) {
+        if (err.name === 'AbortError') return null  // user cancelled the share sheet
+        throw err
+      }
+      return defaultName
+    }
+    // Fallback: app-scoped Documents dir (hidden on Android 11+ but always writable)
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    const result = await Filesystem.writeFile({
       path: defaultName,
       data: json,
       directory: Directory.Documents,
       encoding: Encoding.UTF8,
     })
-    return defaultName
+    return result?.uri ?? defaultName
   }
 
   // Browser fallback: trigger a download
@@ -229,7 +243,10 @@ function pickFileViaInput() {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.rmy,.json'
+    // On Android the SAF picker greys out `.rmy` files because the extension has
+    // no registered MIME type. Accept any file on Capacitor and validate after read.
+    const isCapacitor = typeof window !== 'undefined' && !!window.Capacitor
+    input.accept = isCapacitor ? '*/*' : '.rmy,.json'
     input.onchange = async (e) => {
       const file = e.target.files?.[0]
       if (!file) { resolve(null); return }
