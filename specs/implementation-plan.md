@@ -62,7 +62,7 @@
 
 Reordered after v0.34.0 to put small correctness fixes first, then the cohesive cross-currency overhaul, then capability expansion (adapters → features that need them), then security follow-ups, then polish. Items keep their original numbers + spec grouping so `plan:validate` stays in sync.
 
-1. **Tier 1 — Transaction-edit correctness + safety** (291 fee-currency invariant, 165 retroactive cost-basis, 286 transfer edit form). Three small independent items that fix real data-integrity gaps in already-shipped flows. No upstream dependencies — start here for quick wins before the larger structural work in Tier 2.
+1. **Tier 1 — Transaction-edit correctness + safety** ✓ done (291, 165, 286 all shipped in Phase 34a).
 2. **Tier 2 — Cross-currency model overhaul** (152j-full, 152m-full, 159b, 164, 288). One cohesive block; all replace the single `exchangeRate` field with the "bundle a companion currency-exchange" model. Splitting them risks two half-models living in parallel. Item 288 depends on 159b being wired first, so 288 lands last inside the block.
 3. **Tier 3 — Market data adapters** (157f Finnhub, 157g Stooq). Independent of each other and of Tiers 1–2. Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
 4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 3; 185 stock-exchange selector — independent).
@@ -77,11 +77,8 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 ### SPEC-019 Stock Transactions (Phase 12 + Phase 26 leftovers)
 159b. [ ] Cross-currency source on buy triggers a companion `currency-exchange` record (deferred from Phase 12e — `triggeredByStockTransactionId` field exists but is never populated).
 164. [ ] Proceeds destination cash balance selector on Sell form — currently always uses the matching-currency balance.
-165. [ ] Retroactive cost-basis recalculation on buy edits — `updateBuy()` currently rewrites fields without recomputing lots.
 170. [ ] API-detected splits presented as a pending notification (requires at least one adapter that surfaces corporate actions — Tier 3).
-286. [ ] Edit form for transfer between investing accounts — `updateTransfer()` data function is implemented; UI edit form deferred.
 288. [ ] Edit form for currency-exchange triggered-by-buy — completes the deferred triggered-by-buy edit path (item 172e); relies on 159b being wired first.
-291. [ ] Fee-currency invariant: buy and sell forms validate `feeCurrency === tradeCurrency` and block save with an inline error. `legacyFeeMismatch: true` flag tags pre-existing buy/sell records where the invariant didn't hold (UI shows a warning chip).
 
 ### SPEC-021 Stock Page (Phase 14 leftover)
 185. [ ] Stock-exchange selector — profile exchange is currently shown as text; clicking through exchanges (same stock on a different exchange) is desired. Today this requires the Re-identify dialog.

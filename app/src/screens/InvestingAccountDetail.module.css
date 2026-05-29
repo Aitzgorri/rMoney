@@ -983,3 +983,21 @@
 .dateTooltipWrap:focus-within::after {
   opacity: 1;
 }
+
+/* Fee-currency mismatch (item 291) */
+.formError {
+  font-size: 12px;
+  color: #f87171;
+  margin: 2px 0 6px;
+}
+
+.feeMismatchChip {
+  display: inline-block;
+  font-size: 11px;
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}

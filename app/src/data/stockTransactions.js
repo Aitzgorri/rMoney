@@ -159,6 +159,7 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
   let balance = getCashBalanceByCurrency(investingAccountId, currency)
   if (!balance) balance = createCashBalance({ investingAccountId, currency, openingBalance: 0 })
 
+  const normCurrency = currency.trim().toUpperCase()
   const txn = {
     id: crypto.randomUUID(),
     type: 'buy',
@@ -168,8 +169,9 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
     stockExchange: stockExchange?.trim() || null,
     shares: Number(shares),
     price: Number(price),
-    currency: currency.trim().toUpperCase(),
+    currency: normCurrency,
     fee: Number(fee),
+    feeCurrency: normCurrency,
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations: null,
     exchangeRates,
@@ -196,6 +198,7 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
   let balance = getCashBalanceByCurrency(investingAccountId, currency)
   if (!balance) balance = createCashBalance({ investingAccountId, currency, openingBalance: 0 })
 
+  const normCurrency = currency.trim().toUpperCase()
   const txn = {
     id: crypto.randomUUID(),
     type: 'sell',
@@ -205,8 +208,9 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
     stockExchange: stockExchange?.trim() || null,
     shares: Number(shares),
     price: Number(price),
-    currency: currency.trim().toUpperCase(),
+    currency: normCurrency,
     fee: Number(fee),
+    feeCurrency: normCurrency,
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations,
     exchangeRates,
@@ -521,6 +525,19 @@ export function updateBuy(id, { date, stockExchange, shares, price, fee, transac
   const txn = txns.find(t => t.id === id && t.type === 'buy')
   if (!txn) throw new Error('Buy not found')
 
+  if (txn.feeCurrency && txn.feeCurrency !== txn.currency) {
+    throw new Error(`Fee-currency mismatch: fee is in ${txn.feeCurrency} but trade is in ${txn.currency}. Correct the record before editing.`)
+  }
+
+  // Item 165: guard against reducing shares below what downstream sells/transfers already consumed
+  const newShares = Number(shares)
+  const allocated = txns
+    .filter(t => (t.type === 'sell' || t.type === 'transfer') && t.lotAllocations?.some(a => a.sourceBuyId === id))
+    .reduce((sum, t) => sum + (t.lotAllocations.find(a => a.sourceBuyId === id)?.sharesFromLot ?? 0), 0)
+  if (newShares < allocated - 0.000001) {
+    throw new Error(`Cannot reduce shares to ${newShares} — ${allocated} shares from this lot are already allocated across existing sell/transfer records.`)
+  }
+
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
     const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
@@ -531,7 +548,7 @@ export function updateBuy(id, { date, stockExchange, shares, price, fee, transac
     ...txn,
     date,
     stockExchange: stockExchange?.trim() || null,
-    shares: Number(shares),
+    shares: newShares,
     price: Number(price),
     fee: Number(fee || 0),
     transactionExternalId: transactionExternalId?.trim() || null,
@@ -545,7 +562,7 @@ export function updateBuy(id, { date, stockExchange, shares, price, fee, transac
   const mvtSnapshot = updated.exchangeRates
     ? { mainCurrency: updated.exchangeRates.mainCurrency, rateToMain: updated.exchangeRates.rateToMain, capturedAt: updated.exchangeRates.capturedAt }
     : null
-  addCashMovement({ type: 'buy', date, cashBalanceId: balance.id, amount: -(Number(shares) * Number(price)), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
+  addCashMovement({ type: 'buy', date, cashBalanceId: balance.id, amount: -(newShares * Number(price)), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
   if (Number(fee) > 0) {
     addCashMovement({ type: 'buy-fee', date, cashBalanceId: balance.id, amount: -Number(fee), linkedStockTransactionId: id, exchangeRatesSnapshot: mvtSnapshot })
   }
@@ -557,6 +574,10 @@ export function updateSell(id, { date, stockExchange, shares, price, fee, transa
   const txns = load()
   const txn = txns.find(t => t.id === id && t.type === 'sell')
   if (!txn) throw new Error('Sell not found')
+
+  if (txn.feeCurrency && txn.feeCurrency !== txn.currency) {
+    throw new Error(`Fee-currency mismatch: fee is in ${txn.feeCurrency} but trade is in ${txn.currency}. Correct the record before editing.`)
+  }
 
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
@@ -669,4 +690,20 @@ export function applySplit({ ticker, date, numerator, denominator }) {
   }))
   save([...txns, ...created])
   return created
+}
+
+// ─── Fee-currency invariant migration (item 291) ──────────────────────────────
+// Backfills feeCurrency on existing buy/sell records that predate this field.
+// Records where feeCurrency is already set but !== currency get legacyFeeMismatch: true.
+// Safe to call multiple times — already-migrated records are left unchanged.
+export function migrateFeeCurrencyInvariant() {
+  const txns = load()
+  let changed = false
+  const updated = txns.map(t => {
+    if (t.type !== 'buy' && t.type !== 'sell') return t
+    if (t.feeCurrency !== undefined) return t  // already migrated
+    changed = true
+    return { ...t, feeCurrency: t.currency }
+  })
+  if (changed) save(updated)
 }

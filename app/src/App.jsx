@@ -11,6 +11,7 @@ import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
 import { migrateFavoriteCurrencies } from './data/settings'
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
+import { migrateFeeCurrencyInvariant } from './data/stockTransactions'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -73,6 +74,7 @@ export default function App() {
     migrateConfirmedField()
     migrateFavoriteCurrencies()
     migrateDividendStatuses()
+    migrateFeeCurrencyInvariant()
     const { dropped } = promoteDividends()
     if (dropped.length > 0) setDroppedDividends(dropped)
     autoCreatePendingFromApi()

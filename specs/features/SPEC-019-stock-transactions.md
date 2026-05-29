@@ -33,7 +33,8 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [x] If the buy would take the matching-currency cash balance negative, the negative-balance confirmation dialog (SPEC-018) is shown before save.
 - [x] Weighted-average cost per share is recomputed for the stock+investing-account pair (display only — computed from remaining open lots).
 - [x] Edit form for buy: edits date, exchange, shares, price, fee, transaction ID; recreates cashMovements and recaptures FX snapshot when date changes. Ticker and currency are non-editable to avoid cascading cost-basis changes. *(Phase 26c)*
-- [ ] Editing a buy record retroactively updates every sell's cost-basis calculation — deferred.
+- [x] Cost basis propagates retroactively on buy edits — `getOpenLots()` is fully dynamic; editing a buy's price or fee automatically updates all downstream sell cost-basis and open-lot calculations at read time. No explicit recalculation step needed.
+- [x] Editing a buy's share count is blocked when the new value is less than shares already allocated to downstream sells and transfers — inline error message shows the allocated total. *(item 165)*
 
 ### Sell records
 - [x] Sell form fields: date, ticker (select from open positions), exchange (optional), shares, price, currency (from position), transaction ID (optional), fee — plus a collapsed "Advanced: choose lots" disclosure.
@@ -59,6 +60,7 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [x] Cost basis and original buy date of each moved lot are preserved exactly — no realization event. — `getOpenLots()` synthesizes destination-side lots from the transfer's `lotAllocations`, copying each source buy's `date`, `price`, and `currency`.
 - [x] **No cash moves with the transfer.** Cash balances are per-account and do not travel with shares. — `createTransfer()` writes only the stockTransactions record (plus the optional fee movement).
 - [x] If `fee > 0`, the fee is debited from a cash balance the user picks in the source investing account. A `cashMovement` (`type: 'transfer-fee'`) is written, linked via `linkedStockTransactionId`. — Negative-balance confirmation hook is not yet applied to transfer fees (deferred); the form lets the user pick the cash balance from a dropdown showing current balances.
+- [x] Edit form for transfer: edits date, shares (full lot picker for re-allocation with two-way binding and per-lot clamping), optional fee with cash-balance selector, and transaction ID. Destination account and ticker are non-editable. Triggered via the edit (✎) icon on a transfer-fee movement row; `updateTransfer()` data function already implemented. *(item 286)*
 
 ### Splits
 - [ ] When SPEC-027 reports a split event for a held stock, a pending notification appears: "Detected 2:1 split on AAPL effective 2026-05-01 — apply?" — *deferred (requires SPEC-027)*
@@ -75,6 +77,12 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [ ] A currency exchange that was **triggered by a buy** appears in the stock's transaction history on SPEC-021 alongside the buy. **Deferred — buy-triggered exchange flow not yet implemented.**
 - [x] A standalone currency exchange (no `triggeredByStockTransactionId`) does **not** appear in any stock's history — it lives only in the investing account's cash-balance movement list (SPEC-018).
 - [x] Editing a standalone exchange recalculates both `cashMovement` rows (date, amounts, fee). Triggered-exchange editing (linked to a buy) is deferred.
+
+### Fee-currency invariant (buy and sell)
+- [x] `createBuy()` and `createSell()` store `feeCurrency: currency` (the trade's currency) on every new record — making the assumed invariant explicit in the data model.
+- [x] A one-time data migration backfills `feeCurrency` on existing buy/sell records that lack it; any record where `feeCurrency !== currency` is tagged `legacyFeeMismatch: true` instead.
+- [x] `updateBuy()` and `updateSell()` validate `feeCurrency === currency` before saving; a mismatch throws an error surfaced as an inline message in the edit form.
+- [x] The movement list renders a warning chip on any buy/sell row tagged `legacyFeeMismatch: true`. *(item 291)*
 
 ### Retroactive recalculation (applies to all types)
 - [ ] Any edit to a buy record (price, fee, shares, date) that affects cost basis triggers recalculation of all downstream sells' realized P/L, all open-lot weighted averages, and any cached position values. Sells themselves are not edited — their cost-basis numbers are derived.
@@ -146,6 +154,8 @@ Split pending notification and transfer form: unchanged from existing draft.
   currency: string | null,                    // currency of `price`
   transactionExternalId: string | null,
   fee: number,                                // default 0
+  feeCurrency: string | null,                 // buy/sell only; must equal `currency` (invariant)
+  legacyFeeMismatch: true | undefined,        // buy/sell: set when feeCurrency !== currency at migration time
 
   // split only
   ratio: { numerator: number, denominator: number } | null,
