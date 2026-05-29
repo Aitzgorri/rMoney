@@ -20,7 +20,7 @@
 | 9 — Data portability | ✓ done | |
 | 10 — App-wide currency conversion | ✓ done | |
 | 11 — Investments foundation | mostly done | Adapters 157f / 157g pending |
-| 12 — Stock transactions | mostly done | Cross-currency model + edit correctness pending |
+| 12 — Stock transactions | mostly done | Cross-currency model shipped (35a); split notification pending (Tier 3) |
 | 13 — Dividends MVP | ✓ done | Per-country tax landed in 33e |
 | 14 — Stock page | mostly done | Exchange selector (185) pending |
 | 15 — Portfolios | ✓ done | |
@@ -63,7 +63,7 @@
 Reordered after v0.34.0 to put small correctness fixes first, then the cohesive cross-currency overhaul, then capability expansion (adapters → features that need them), then security follow-ups, then polish. Items keep their original numbers + spec grouping so `plan:validate` stays in sync.
 
 1. **Tier 1 — Transaction-edit correctness + safety** ✓ done (291, 165, 286 all shipped in Phase 34a).
-2. **Tier 2 — Cross-currency model overhaul** (152j-full, 152m-full, 159b, 164, 288). One cohesive block; all replace the single `exchangeRate` field with the "bundle a companion currency-exchange" model. Splitting them risks two half-models living in parallel. Item 288 depends on 159b being wired first, so 288 lands last inside the block.
+2. **Tier 2 — Cross-currency model overhaul** ✓ done (152j-full, 152m-full, 159b, 164, 288 all shipped in Phase 35a).
 3. **Tier 3 — Market data adapters** (157f Finnhub, 157g Stooq). Independent of each other and of Tiers 1–2. Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
 4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 3; 185 stock-exchange selector — independent).
 5. **Tier 5 — Security follow-ups** (237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — gated on the IBKR adapter actually being built).
@@ -71,14 +71,9 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 
 ### SPEC-018 Investing Accounts (Phase 11 leftovers)
 152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
-152j-full. [ ] Cross-currency deposit full model: land amount in a matching-currency cash balance (auto-created if needed), then bundle an auto-exchange to the destination currency — replaces the current single rate-field approach.
-152m-full. [ ] Cross-currency withdrawal full model handled symmetrically.
 
 ### SPEC-019 Stock Transactions (Phase 12 + Phase 26 leftovers)
-159b. [ ] Cross-currency source on buy triggers a companion `currency-exchange` record (deferred from Phase 12e — `triggeredByStockTransactionId` field exists but is never populated).
-164. [ ] Proceeds destination cash balance selector on Sell form — currently always uses the matching-currency balance.
 170. [ ] API-detected splits presented as a pending notification (requires at least one adapter that surfaces corporate actions — Tier 3).
-288. [ ] Edit form for currency-exchange triggered-by-buy — completes the deferred triggered-by-buy edit path (item 172e); relies on 159b being wired first.
 
 ### SPEC-021 Stock Page (Phase 14 leftover)
 185. [ ] Stock-exchange selector — profile exchange is currently shown as text; clicking through exchanges (same stock on a different exchange) is desired. Today this requires the Re-identify dialog.

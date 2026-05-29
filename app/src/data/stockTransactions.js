@@ -272,6 +272,20 @@ export function deleteStockTransaction(id) {
   const { canDelete, reason } = canDeleteStockTransaction(id)
   if (!canDelete) throw new Error(reason)
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
+
+  // If deleting a buy, also cascade-delete any currency-exchange triggered by it.
+  const txn = load().find(t => t.id === id)
+  if (txn?.type === 'buy') {
+    const triggeredExchange = load().find(t => t.type === 'currency-exchange' && t.triggeredByStockTransactionId === id)
+    if (triggeredExchange) {
+      try {
+        const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
+        localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== triggeredExchange.id)))
+      } catch {}
+      save(load().filter(t => t.id !== triggeredExchange.id))
+    }
+  }
+
   try {
     const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
     localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
@@ -288,6 +302,7 @@ export function createCurrencyExchange({
   exchangeRate,
   feeAmount = 0,
   feeCashBalanceId = null,
+  triggeredByStockTransactionId = null,
   exchangeRates = null,
 }) {
   const txn = {
@@ -302,7 +317,7 @@ export function createCurrencyExchange({
     exchangeRate: Number(exchangeRate),
     feeCashBalanceId: (feeCashBalanceId && Number(feeAmount) > 0) ? feeCashBalanceId : null,
     feeAmount: Number(feeAmount) > 0 ? Number(feeAmount) : null,
-    triggeredByStockTransactionId: null,
+    triggeredByStockTransactionId,
     exchangeRates,
     createdAt: new Date().toISOString(),
   }

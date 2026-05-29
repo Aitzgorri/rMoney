@@ -42,7 +42,7 @@ Introduce a top-level "Investments" section in the app, separate from the budget
 ### Cash balances (per investing account)
 - [x] An investing account owns zero or more cash balances, each tied to one ISO-4217 currency. Uniqueness: at most one cash balance per `(investingAccountId, currency)` pair.
 - [x] User can create a cash balance manually by picking a currency and an opening balance (default: 0). The opening balance is recorded as the first entry in the cash balance's movement history, labelled "Opening balance" and not linked to any budgeting transaction.
-- [ ] Cash balances are also **auto-created** when a stock transaction needs a currency that doesn't yet exist in the investing account. *(Deferred to SPEC-019/020.)*
+- [x] Cash balances are also **auto-created** when a stock transaction needs a currency that doesn't yet exist in the investing account (triggered by deposit/withdrawal full-model and by buy/sell with cross-currency source or proceeds).
 - [x] User can edit a cash balance's opening balance after creation (rare, for correcting onboarding mistakes). Changes to the opening balance flow through all derived "current balance" calculations.
 - [x] User can delete a cash balance only when it has zero activity beyond a zero opening balance.
 - [x] Current balance = opening balance + sum of all cash movements (deposits, withdrawals, exchanges, buys/sells/dividends/fees attached to this balance).
@@ -50,12 +50,12 @@ Introduce a top-level "Investments" section in the app, separate from the budget
 ### Cash movements — deposits (budgeting → cash balance)
 - [x] User can deposit money into a cash balance by choosing: source SPEC-002 budgeting account, source envelope (SPEC-004), amount, and destination cash balance (in the same investing account).
 - [x] The deposit creates a linked **expense transaction** in the selected budgeting account + envelope. It is flagged `linkedFromInvestments: true`.
-- [x] **Cross-currency deposit (simplified):** when the budgeting account's currency differs from the destination cash balance's currency, the form shows an exchange-rate field. The budgeting expense is recorded in the account's currency (`budgetingAmount`); the cash balance is credited with `budgetingAmount × rate` in its own currency. *(The full two-step model — land in a matching-currency balance then auto-exchange — is deferred.)*
+- [x] **Cross-currency deposit (full model):** when the budgeting account's currency differs from the destination cash balance's currency, the form offers two options: (A) auto-exchange — the budgeting expense lands in a matching-currency cash balance (auto-created if needed), then a `currency-exchange` stock-transaction record is created to convert to the destination balance at the user-supplied rate (with optional FX fee); (B) land in the matching-currency balance only and exchange manually later. The matching-currency balance is auto-created with opening 0 if it does not yet exist.
 
 ### Cash movements — withdrawals (cash balance → budgeting)
 - [x] User can withdraw money from a cash balance by choosing: source cash balance, destination SPEC-002 budgeting account, destination envelope, amount (in the cash balance's currency).
 - [x] The withdrawal creates a linked **income transaction** in the selected budgeting account + envelope, flagged `linkedFromInvestments: true`.
-- [x] **Cross-currency withdrawal (simplified):** when currencies differ, the form shows an exchange-rate field. The cash balance is debited by `amount`; the budgeting income is recorded as `amount × rate` in the account's currency. *(Full two-step model deferred.)*
+- [x] **Cross-currency withdrawal (full model):** when currencies differ, the form offers two options: (A) auto-exchange and withdraw — a `currency-exchange` record converts the source balance to a matching-currency balance (auto-created if needed) at the user-supplied rate, then a withdrawal is created from the matching-currency balance to the budgeting account; (B) exchange to matching-currency balance only and withdraw manually later. Symmetric with the deposit full model.
 
 ### Cash movements — standalone currency exchange
 - [x] User can exchange between two cash balances of the same investing account at any time: pick source balance, target balance, source amount, rate (user-entered), optional fee with its own currency.

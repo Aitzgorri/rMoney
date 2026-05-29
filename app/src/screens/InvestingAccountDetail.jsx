@@ -205,18 +205,104 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     }
   }
 
-  function handleDeposit(params) {
-    depositToCashBalance(params)
+  async function handleDeposit(params) {
+    if (params.crossCurrencyMode === 'auto-exchange') {
+      // Full model: land in matching-currency balance, then bundle an exchange to the target.
+      let matchingBal = getCashBalanceByCurrency(accountId, params.budgetingCurrency)
+      if (!matchingBal) matchingBal = createCashBalance({ investingAccountId: accountId, currency: params.budgetingCurrency, openingBalance: 0 })
+      depositToCashBalance({ date: params.date, cashBalanceId: matchingBal.id, amount: params.amount, budgetingAmount: params.amount, budgetingAccountId: params.budgetingAccountId, budgetingEnvelopeId: params.budgetingEnvelopeId })
+      const mainCurrency = getMainCurrency()
+      const targetBal = balanceMap[params.cashBalanceId]
+      const [srcSnap, tgtSnap] = await Promise.all([
+        snapshotFxRates(params.budgetingCurrency, params.date, mainCurrency),
+        snapshotFxRates(targetBal?.currency, params.date, mainCurrency),
+      ])
+      const exchangeRates = (srcSnap || tgtSnap) ? { mainCurrency, sourceRateToMain: srcSnap?.rateToMain ?? null, targetRateToMain: tgtSnap?.rateToMain ?? null, capturedAt: new Date().toISOString() } : null
+      createCurrencyExchange({
+        investingAccountId: accountId,
+        date: params.date,
+        sourceCashBalanceId: matchingBal.id,
+        sourceAmount: params.amount,
+        targetCashBalanceId: params.cashBalanceId,
+        exchangeRate: params.exchangeRate,
+        feeAmount: params.fxFeeAmount,
+        feeCashBalanceId: Number(params.fxFeeAmount) > 0 ? matchingBal.id : null,
+        exchangeRates,
+      })
+    } else if (params.crossCurrencyMode === 'land-in-matching') {
+      // Just deposit into the matching-currency balance; user exchanges later.
+      let matchingBal = getCashBalanceByCurrency(accountId, params.budgetingCurrency)
+      if (!matchingBal) matchingBal = createCashBalance({ investingAccountId: accountId, currency: params.budgetingCurrency, openingBalance: 0 })
+      depositToCashBalance({ date: params.date, cashBalanceId: matchingBal.id, amount: params.amount, budgetingAmount: params.amount, budgetingAccountId: params.budgetingAccountId, budgetingEnvelopeId: params.budgetingEnvelopeId })
+    } else {
+      depositToCashBalance(params)
+    }
     refresh()
     closeForm()
   }
 
-  function handleWithdraw(params) {
-    withNegCheck(params.cashBalanceId, -params.amount, () => {
-      withdrawFromCashBalance(params)
-      refresh()
-      closeForm()
-    })
+  async function handleWithdraw(params) {
+    if (params.crossCurrencyMode === 'auto-exchange') {
+      // Full model: exchange source balance → matching-currency balance, then withdraw to budgeting.
+      withNegCheck(params.cashBalanceId, -params.amount, async () => {
+        let matchingBal = getCashBalanceByCurrency(accountId, params.budgetingCurrency)
+        if (!matchingBal) matchingBal = createCashBalance({ investingAccountId: accountId, currency: params.budgetingCurrency, openingBalance: 0 })
+        const mainCurrency = getMainCurrency()
+        const sourceBal = balanceMap[params.cashBalanceId]
+        const [srcSnap, tgtSnap] = await Promise.all([
+          snapshotFxRates(sourceBal?.currency, params.date, mainCurrency),
+          snapshotFxRates(params.budgetingCurrency, params.date, mainCurrency),
+        ])
+        const exchangeRates = (srcSnap || tgtSnap) ? { mainCurrency, sourceRateToMain: srcSnap?.rateToMain ?? null, targetRateToMain: tgtSnap?.rateToMain ?? null, capturedAt: new Date().toISOString() } : null
+        const targetAmount = params.amount * params.exchangeRate
+        createCurrencyExchange({
+          investingAccountId: accountId,
+          date: params.date,
+          sourceCashBalanceId: params.cashBalanceId,
+          sourceAmount: params.amount,
+          targetCashBalanceId: matchingBal.id,
+          exchangeRate: params.exchangeRate,
+          feeAmount: params.fxFeeAmount,
+          feeCashBalanceId: Number(params.fxFeeAmount) > 0 ? params.cashBalanceId : null,
+          exchangeRates,
+        })
+        withdrawFromCashBalance({ date: params.date, cashBalanceId: matchingBal.id, amount: targetAmount, budgetingAmount: targetAmount, budgetingAccountId: params.budgetingAccountId, budgetingEnvelopeId: params.budgetingEnvelopeId })
+        refresh()
+        closeForm()
+      })
+    } else if (params.crossCurrencyMode === 'land-in-matching') {
+      // Exchange source → matching-currency balance only; user withdraws later.
+      withNegCheck(params.cashBalanceId, -params.amount, async () => {
+        let matchingBal = getCashBalanceByCurrency(accountId, params.budgetingCurrency)
+        if (!matchingBal) matchingBal = createCashBalance({ investingAccountId: accountId, currency: params.budgetingCurrency, openingBalance: 0 })
+        const mainCurrency = getMainCurrency()
+        const sourceBal = balanceMap[params.cashBalanceId]
+        const [srcSnap, tgtSnap] = await Promise.all([
+          snapshotFxRates(sourceBal?.currency, params.date, mainCurrency),
+          snapshotFxRates(params.budgetingCurrency, params.date, mainCurrency),
+        ])
+        const exchangeRates = (srcSnap || tgtSnap) ? { mainCurrency, sourceRateToMain: srcSnap?.rateToMain ?? null, targetRateToMain: tgtSnap?.rateToMain ?? null, capturedAt: new Date().toISOString() } : null
+        createCurrencyExchange({
+          investingAccountId: accountId,
+          date: params.date,
+          sourceCashBalanceId: params.cashBalanceId,
+          sourceAmount: params.amount,
+          targetCashBalanceId: matchingBal.id,
+          exchangeRate: params.exchangeRate,
+          feeAmount: params.fxFeeAmount,
+          feeCashBalanceId: Number(params.fxFeeAmount) > 0 ? params.cashBalanceId : null,
+          exchangeRates,
+        })
+        refresh()
+        closeForm()
+      })
+    } else {
+      withNegCheck(params.cashBalanceId, -params.amount, () => {
+        withdrawFromCashBalance(params)
+        refresh()
+        closeForm()
+      })
+    }
   }
 
   async function handleExchange(params) {
@@ -293,6 +379,53 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     const mainCurrency = getMainCurrency()
     const exchangeRates = await snapshotFxRates(params.currency, params.date, mainCurrency)
     const cost = Number(params.shares) * Number(params.price) + Number(params.fee || 0)
+
+    const sourceBal = params.sourceCashBalanceId ? balanceMap[params.sourceCashBalanceId] : null
+    const isCrossSource = sourceBal && sourceBal.currency !== params.currency
+
+    if (isCrossSource) {
+      // Cross-currency source: check source balance, create buy then triggered exchange.
+      const srcCurrent = getCurrentBalance(params.sourceCashBalanceId)
+      const sourceAmount = Number(params.fxSourceAmount)
+      const fxFeeAmount = Number(params.fxFeeAmount || 0)
+      const srcDelta = -(sourceAmount + fxFeeAmount)
+
+      const proceed = async () => {
+        const buy = createBuy({ ...params, investingAccountId: accountId, exchangeRates })
+        const tradeBal = getCashBalanceByCurrency(accountId, params.currency)
+        const [srcSnap, tgtSnap] = await Promise.all([
+          snapshotFxRates(sourceBal.currency, params.date, mainCurrency),
+          snapshotFxRates(params.currency, params.date, mainCurrency),
+        ])
+        const exRates = (srcSnap || tgtSnap) ? { mainCurrency, sourceRateToMain: srcSnap?.rateToMain ?? null, targetRateToMain: tgtSnap?.rateToMain ?? null, capturedAt: new Date().toISOString() } : null
+        createCurrencyExchange({
+          investingAccountId: accountId,
+          date: params.date,
+          sourceCashBalanceId: params.sourceCashBalanceId,
+          sourceAmount,
+          targetCashBalanceId: tradeBal.id,
+          exchangeRate: Number(params.fxExchangeRate),
+          feeAmount: fxFeeAmount,
+          feeCashBalanceId: fxFeeAmount > 0 ? params.sourceCashBalanceId : null,
+          triggeredByStockTransactionId: buy.id,
+          exchangeRates: exRates,
+        })
+        refresh()
+        closeForm()
+      }
+
+      if (srcCurrent + srcDelta < 0) {
+        setNegConfirm({
+          message: `This will take your ${sourceBal.currency} balance from ${fmtAmt(srcCurrent)} to ${fmtAmt(srcCurrent + srcDelta)}.`,
+          onConfirm: () => { proceed(); setNegConfirm(null) },
+        })
+      } else {
+        proceed()
+      }
+      return
+    }
+
+    // Same-currency source (existing logic).
     const existing = getCashBalanceByCurrency(accountId, params.currency)
     const currentBal = existing ? getCurrentBalance(existing.id) : 0
     const proceed = () => {
@@ -314,6 +447,34 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     const mainCurrency = getMainCurrency()
     const exchangeRates = await snapshotFxRates(params.currency, params.date, mainCurrency)
     createSell({ ...params, investingAccountId: accountId, exchangeRates })
+
+    if (params.proceedsCashBalanceId) {
+      const proceedsBal = balanceMap[params.proceedsCashBalanceId]
+      if (proceedsBal && proceedsBal.currency !== params.currency) {
+        // Sell proceeds land in trade-currency balance; then exchange to selected destination.
+        const tradeBal = getCashBalanceByCurrency(accountId, params.currency)
+        if (tradeBal) {
+          const [srcSnap, tgtSnap] = await Promise.all([
+            snapshotFxRates(params.currency, params.date, mainCurrency),
+            snapshotFxRates(proceedsBal.currency, params.date, mainCurrency),
+          ])
+          const exRates = (srcSnap || tgtSnap) ? { mainCurrency, sourceRateToMain: srcSnap?.rateToMain ?? null, targetRateToMain: tgtSnap?.rateToMain ?? null, capturedAt: new Date().toISOString() } : null
+          const netProceeds = Number(params.shares) * Number(params.price) - Number(params.fee || 0)
+          createCurrencyExchange({
+            investingAccountId: accountId,
+            date: params.date,
+            sourceCashBalanceId: tradeBal.id,
+            sourceAmount: netProceeds,
+            targetCashBalanceId: params.proceedsCashBalanceId,
+            exchangeRate: Number(params.proceedsExchangeRate),
+            feeAmount: Number(params.proceedsFxFeeAmount || 0),
+            feeCashBalanceId: Number(params.proceedsFxFeeAmount) > 0 ? tradeBal.id : null,
+            exchangeRates: exRates,
+          })
+        }
+      }
+    }
+
     refresh()
     closeForm()
     setDefaultSellTicker(null)
@@ -504,6 +665,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               <SellForm
                 accountId={accountId}
                 positions={positions}
+                balances={balances}
                 defaultTicker={defaultSellTicker}
                 onSave={handleSell}
                 onCancel={() => { closeForm(); setDefaultSellTicker(null) }}
@@ -1281,23 +1443,40 @@ function DepositForm({ balance, onSave, onCancel }) {
   const [budgetingAccountId, setBudgetingAccountId] = useState(accounts[0]?.id ?? '')
   const [budgetingEnvelopeId, setBudgetingEnvelopeId] = useState(envelopesFlat[0]?.id ?? '')
   const [amount,             setAmount]             = useState('')  // in budgeting account's currency
+  const [crossMode,          setCrossMode]          = useState('auto-exchange')  // 'auto-exchange' | 'land-in-matching'
   const [rate,               setRate]               = useState('1')
+  const [fxFee,              setFxFee]              = useState('0')
 
-  const selectedAccount  = accounts.find(a => a.id === budgetingAccountId)
-  const isCrossCurrency  = selectedAccount && selectedAccount.currency !== balance.currency
-  const cashCredited     = isCrossCurrency ? Number(amount || 0) * Number(rate || 0) : Number(amount || 0)
+  const selectedAccount = accounts.find(a => a.id === budgetingAccountId)
+  const isCrossCurrency = selectedAccount && selectedAccount.currency !== balance.currency
+  const exchangedAmount = Number(amount || 0) * Number(rate || 0)
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!amount || Number(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
-    onSave({
-      date,
-      cashBalanceId:      balance.id,
-      amount:             cashCredited,        // credited to cash balance (cash currency)
-      budgetingAmount:    Number(amount),      // deducted from budgeting account (its currency)
-      budgetingAccountId,
-      budgetingEnvelopeId,
-    })
+    if (isCrossCurrency) {
+      if (crossMode === 'auto-exchange' && Number(rate) <= 0) return
+      onSave({
+        date,
+        cashBalanceId:      balance.id,
+        amount:             Number(amount),
+        budgetingAccountId,
+        budgetingEnvelopeId,
+        crossCurrencyMode:  crossMode,
+        budgetingCurrency:  selectedAccount.currency,
+        exchangeRate:       Number(rate),
+        fxFeeAmount:        Number(fxFee || 0),
+      })
+    } else {
+      onSave({
+        date,
+        cashBalanceId:   balance.id,
+        amount:          Number(amount),
+        budgetingAmount: Number(amount),
+        budgetingAccountId,
+        budgetingEnvelopeId,
+      })
+    }
   }
 
   return (
@@ -1337,26 +1516,40 @@ function DepositForm({ balance, onSave, onCancel }) {
         />
       </div>
       {isCrossCurrency && (
-        <div className={styles.formRow}>
-          <label className={styles.formLabel}>
-            Exchange rate (1 {selectedAccount.currency} = ? {balance.currency})
+        <div className={styles.crossCurrencyBox}>
+          <p className={styles.crossCurrencyLabel}>Cross-currency detected ({selectedAccount.currency} → {balance.currency})</p>
+          <label className={styles.radioLabel}>
+            <input type="radio" name="crossMode" value="auto-exchange" checked={crossMode === 'auto-exchange'} onChange={() => setCrossMode('auto-exchange')} />
+            {' '}Auto-exchange at rate — land in {selectedAccount.currency} balance, then exchange to {balance.currency}
           </label>
-          <input
-            className={styles.formInput}
-            type="number"
-            min="0.000001"
-            step="any"
-            value={rate}
-            onChange={e => setRate(e.target.value)}
-          />
+          {crossMode === 'auto-exchange' && (
+            <>
+              <div className={styles.formRow}>
+                <label className={styles.formLabel}>Rate (1 {selectedAccount.currency} = ? {balance.currency})</label>
+                <input className={styles.formInput} type="number" min="0.000001" step="any" value={rate} onChange={e => setRate(e.target.value)} />
+              </div>
+              <div className={styles.formRow}>
+                <label className={styles.formLabel}>FX fee ({selectedAccount.currency}, optional)</label>
+                <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+              </div>
+              {exchangedAmount > 0 && (
+                <p className={styles.ratePreview}>→ {fmtAmt(exchangedAmount)} {balance.currency} credited</p>
+              )}
+            </>
+          )}
+          <label className={styles.radioLabel}>
+            <input type="radio" name="crossMode" value="land-in-matching" checked={crossMode === 'land-in-matching'} onChange={() => setCrossMode('land-in-matching')} />
+            {' '}Land in {selectedAccount.currency} balance; exchange to {balance.currency} later
+          </label>
         </div>
-      )}
-      {isCrossCurrency && cashCredited > 0 && (
-        <p className={styles.ratePreview}>→ {fmtAmt(cashCredited)} {balance.currency} credited</p>
       )}
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!amount || Number(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)}>
+        <button
+          type="submit"
+          className={styles.saveBtn}
+          disabled={!amount || Number(amount) <= 0 || (isCrossCurrency && crossMode === 'auto-exchange' && Number(rate) <= 0)}
+        >
           Deposit
         </button>
       </div>
@@ -1374,23 +1567,40 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
   const [budgetingAccountId, setBudgetingAccountId]  = useState(accounts[0]?.id ?? '')
   const [budgetingEnvelopeId, setBudgetingEnvelopeId] = useState(envelopesFlat[0]?.id ?? '')
   const [amount,             setAmount]              = useState('')  // in cash balance's currency
+  const [crossMode,          setCrossMode]           = useState('auto-exchange')  // 'auto-exchange' | 'land-in-matching'
   const [rate,               setRate]                = useState('1')
+  const [fxFee,              setFxFee]               = useState('0')
 
   const selectedAccount  = accounts.find(a => a.id === budgetingAccountId)
   const isCrossCurrency  = selectedAccount && selectedAccount.currency !== balance.currency
-  const budgetingCredited = isCrossCurrency ? Number(amount || 0) * Number(rate || 0) : Number(amount || 0)
+  const convertedAmount  = Number(amount || 0) * Number(rate || 0)  // balance.currency → budgeting currency
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!amount || Number(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
-    onSave({
-      date,
-      cashBalanceId:      balance.id,
-      amount:             Number(amount),      // deducted from cash balance (cash currency)
-      budgetingAmount:    budgetingCredited,   // credited to budgeting account (its currency)
-      budgetingAccountId,
-      budgetingEnvelopeId,
-    })
+    if (isCrossCurrency) {
+      if (Number(rate) <= 0) return
+      onSave({
+        date,
+        cashBalanceId:      balance.id,
+        amount:             Number(amount),
+        budgetingAccountId,
+        budgetingEnvelopeId,
+        crossCurrencyMode:  crossMode,
+        budgetingCurrency:  selectedAccount.currency,
+        exchangeRate:       Number(rate),
+        fxFeeAmount:        Number(fxFee || 0),
+      })
+    } else {
+      onSave({
+        date,
+        cashBalanceId:   balance.id,
+        amount:          Number(amount),
+        budgetingAmount: Number(amount),
+        budgetingAccountId,
+        budgetingEnvelopeId,
+      })
+    }
   }
 
   return (
@@ -1431,27 +1641,36 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
         />
       </div>
       {isCrossCurrency && (
-        <div className={styles.formRow}>
-          <label className={styles.formLabel}>
-            Exchange rate (1 {balance.currency} = ? {selectedAccount.currency})
+        <div className={styles.crossCurrencyBox}>
+          <p className={styles.crossCurrencyLabel}>Cross-currency detected ({balance.currency} → {selectedAccount.currency})</p>
+          <label className={styles.radioLabel}>
+            <input type="radio" name="crossWithdrawMode" value="auto-exchange" checked={crossMode === 'auto-exchange'} onChange={() => setCrossMode('auto-exchange')} />
+            {' '}Auto-exchange and withdraw — exchange {balance.currency} to {selectedAccount.currency}, then withdraw to account
           </label>
-          <input
-            className={styles.formInput}
-            type="number"
-            min="0.000001"
-            step="any"
-            value={rate}
-            onChange={e => setRate(e.target.value)}
-          />
+          <label className={styles.radioLabel}>
+            <input type="radio" name="crossWithdrawMode" value="land-in-matching" checked={crossMode === 'land-in-matching'} onChange={() => setCrossMode('land-in-matching')} />
+            {' '}Exchange to {selectedAccount.currency} balance only; I will withdraw it separately
+          </label>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Rate (1 {balance.currency} = ? {selectedAccount.currency})</label>
+            <input className={styles.formInput} type="number" min="0.000001" step="any" value={rate} onChange={e => setRate(e.target.value)} />
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>FX fee ({balance.currency}, optional)</label>
+            <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+          </div>
+          {convertedAmount > 0 && crossMode === 'auto-exchange' && (
+            <p className={styles.ratePreview}>→ {fmtAmt(convertedAmount)} {selectedAccount.currency} credited to account</p>
+          )}
+          {convertedAmount > 0 && crossMode === 'land-in-matching' && (
+            <p className={styles.ratePreview}>→ {fmtAmt(convertedAmount)} {selectedAccount.currency} to cash balance</p>
+          )}
         </div>
-      )}
-      {isCrossCurrency && budgetingCredited > 0 && (
-        <p className={styles.ratePreview}>→ {fmtAmt(budgetingCredited)} {selectedAccount?.currency} credited to account</p>
       )}
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!amount || Number(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)}>
-          Withdraw
+          {isCrossCurrency && crossMode === 'land-in-matching' ? 'Exchange' : 'Withdraw'}
         </button>
       </div>
     </form>
@@ -1500,9 +1719,18 @@ function ExchangeForm({ balances, defaultSourceId, onSave, onCancel, initial }) 
     })
   }
 
+  const triggeredBuy = initial?.triggeredByStockTransactionId
+    ? getStockTransaction(initial.triggeredByStockTransactionId)
+    : null
+
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <h3 className={styles.formTitle}>{initial ? 'Edit currency exchange' : 'Currency exchange'}</h3>
+      {triggeredBuy && (
+        <p className={styles.formSubtitle}>
+          This exchange was triggered by a buy of {triggeredBuy.ticker} on {triggeredBuy.date}. Editing the rate changes how much {sourceBal?.currency} was used to fund that buy.
+        </p>
+      )}
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Date</label>
         <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -1620,8 +1848,18 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
     return p?.name ? { name: p.name, stockExchange: p.stockExchange, currency: p.currency } : null
   })
 
-  const total = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
-  const canSave = ticker.trim() && Number(shares) > 0 && Number(price) > 0 && currency.trim()
+  const [sourceBalanceId, setSourceBalanceId] = useState(() => {
+    const matchingBal = balances.find(b => b.currency === (balances[0]?.currency ?? 'USD'))
+    return matchingBal?.id ?? balances[0]?.id ?? ''
+  })
+  const [fxRate,          setFxRate]          = useState('1')
+  const [fxFee,           setFxFee]           = useState('0')
+
+  const sourceBal     = balances.find(b => b.id === sourceBalanceId)
+  const isCrossSource = sourceBal && sourceBal.currency !== currency
+  const total         = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
+  const fxSourceAmount = isCrossSource && Number(fxRate) > 0 ? total / Number(fxRate) : 0
+  const canSave = ticker.trim() && Number(shares) > 0 && Number(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
 
   function handleTickerBlur() {
     const t = ticker.trim().toUpperCase()
@@ -1644,10 +1882,24 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
     if (candidate.currency) setCurrency(candidate.currency)
   }
 
+  // Keep sourceBalanceId in sync when currency changes.
+  function handleCurrencyChange(c) {
+    setCurrency(c)
+    const matching = balances.find(b => b.currency === c)
+    if (matching) setSourceBalanceId(matching.id)
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSave) return
-    onSave({ date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency, fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
+    onSave({
+      date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency,
+      fee: Number(fee || 0), transactionExternalId: extId.trim() || null,
+      sourceCashBalanceId: isCrossSource ? sourceBalanceId : null,
+      fxExchangeRate: isCrossSource ? Number(fxRate) : null,
+      fxSourceAmount: isCrossSource ? fxSourceAmount : null,
+      fxFeeAmount: isCrossSource ? Number(fxFee || 0) : null,
+    })
   }
 
   return (
@@ -1709,20 +1961,45 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Currency</label>
-          <CurrencyDropdown className={styles.formInput} value={currency} onChange={setCurrency} />
+          <CurrencyDropdown className={styles.formInput} value={currency} onChange={handleCurrencyChange} />
         </div>
         <div className={styles.formRow}>
-          <label className={styles.formLabel}>Fee</label>
+          <label className={styles.formLabel}>Fee ({currency})</label>
           <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
         </div>
+        {balances.length > 0 && (
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Pay from</label>
+            <select className={styles.formSelect} value={sourceBalanceId} onChange={e => setSourceBalanceId(e.target.value)}>
+              {balances.map(b => (
+                <option key={b.id} value={b.id}>{b.currency} ({fmtAmt(getCurrentBalance(b.id))} available)</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {isCrossSource && (
+          <div className={styles.crossCurrencyBox}>
+            <p className={styles.crossCurrencyLabel}>Currency exchange required — {sourceBal.currency} → {currency}</p>
+            <p className={styles.ratePreview}>Need: {fmtAmt(total)} {currency}</p>
+            <div className={styles.formRow}>
+              <label className={styles.formLabel}>Rate (1 {sourceBal.currency} = ? {currency})</label>
+              <input className={styles.formInput} type="number" min="0.000001" step="any" value={fxRate} onChange={e => setFxRate(e.target.value)} />
+            </div>
+            {fxSourceAmount > 0 && <p className={styles.ratePreview}>Source amount: {fmtAmt(fxSourceAmount)} {sourceBal.currency}</p>}
+            <div className={styles.formRow}>
+              <label className={styles.formLabel}>FX fee ({sourceBal.currency}, optional)</label>
+              <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+            </div>
+          </div>
+        )}
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Transaction ID (optional)</label>
           <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
         </div>
-        {total > 0 && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {currency}</p>}
+        {total > 0 && !isCrossSource && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {currency}</p>}
         <div className={styles.formActions}>
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!canSave}>Buy</button>
+          <button type="submit" className={styles.saveBtn} disabled={!canSave}>{isCrossSource ? 'Save buy + exchange' : 'Buy'}</button>
         </div>
       </form>
 
@@ -2002,7 +2279,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
 
 // ─── Sell form ────────────────────────────────────────────────────────────────
 
-function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, tickerLocked = false }) {
+function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, onCancel, tickerLocked = false }) {
   const [date,          setDate]          = useState(today)
   const [ticker,        setTicker]        = useState(defaultTicker ?? (positions[0]?.ticker ?? ''))
   const [stockExchange, setStockExchange] = useState('')
@@ -2016,10 +2293,16 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
   // to "lots → total" mode (shares = sum of lot inputs). Reset by closing + reopening
   // the picker.
   const [manualMode,    setManualMode]    = useState(false)
+  const [proceedsBalId, setProceedsBalId] = useState('')  // '' = matching-currency (default)
+  const [proceedsRate,  setProceedsRate]  = useState('1')
+  const [proceedsFxFee, setProceedsFxFee] = useState('0')
 
-  const selectedPos = positions.find(p => p.ticker === ticker)
-  const currency = selectedPos?.currency ?? ''
-  const openLots = ticker ? getOpenLots(accountId, ticker) : []
+  const selectedPos    = positions.find(p => p.ticker === ticker)
+  const currency       = selectedPos?.currency ?? ''
+  const openLots       = ticker ? getOpenLots(accountId, ticker) : []
+  const proceedsBal    = balances.find(b => b.id === proceedsBalId)
+  const isCrossProceeds = proceedsBal && proceedsBal.currency !== currency
+  const netProceeds    = Number(shares || 0) * Number(price || 0) - Number(fee || 0)
 
   function handleTickerChange(t) {
     setTicker(t)
@@ -2089,7 +2372,14 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
     const lotAllocations = showLots
       ? Object.entries(lotInputs).filter(([, v]) => Number(v) > 0).map(([sourceBuyId, v]) => ({ sourceBuyId, sharesFromLot: Number(v) }))
       : null
-    onSave({ date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency, fee: Number(fee || 0), transactionExternalId: extId.trim() || null, lotAllocations })
+    onSave({
+      date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares),
+      price: Number(price), currency, fee: Number(fee || 0),
+      transactionExternalId: extId.trim() || null, lotAllocations,
+      proceedsCashBalanceId: isCrossProceeds ? proceedsBalId : null,
+      proceedsExchangeRate: isCrossProceeds ? Number(proceedsRate) : null,
+      proceedsFxFeeAmount: isCrossProceeds ? Number(proceedsFxFee || 0) : null,
+    })
   }
 
   return (
@@ -2163,6 +2453,33 @@ function SellForm({ accountId, positions, defaultTicker, onSave, onCancel, ticke
               )}
             </div>
           )}
+        </div>
+      )}
+      {balances.length > 0 && (
+        <div className={styles.formRow}>
+          <label className={styles.formLabel}>Proceeds into</label>
+          <select className={styles.formSelect} value={proceedsBalId} onChange={e => setProceedsBalId(e.target.value)}>
+            <option value="">{currency} (matching trade)</option>
+            {balances.filter(b => b.currency !== currency).map(b => (
+              <option key={b.id} value={b.id}>{b.currency} (exchange after sell)</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isCrossProceeds && (
+        <div className={styles.crossCurrencyBox}>
+          <p className={styles.crossCurrencyLabel}>Exchange triggered — {currency} → {proceedsBal.currency}</p>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Rate (1 {currency} = ? {proceedsBal.currency})</label>
+            <input className={styles.formInput} type="number" min="0.000001" step="any" value={proceedsRate} onChange={e => setProceedsRate(e.target.value)} />
+          </div>
+          {netProceeds > 0 && Number(proceedsRate) > 0 && (
+            <p className={styles.ratePreview}>→ {fmtAmt(netProceeds * Number(proceedsRate))} {proceedsBal.currency} received</p>
+          )}
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>FX fee ({currency}, optional)</label>
+            <input className={styles.formInput} type="number" min="0" step="0.01" value={proceedsFxFee} onChange={e => setProceedsFxFee(e.target.value)} />
+          </div>
         </div>
       )}
       <div className={styles.formActions}>
