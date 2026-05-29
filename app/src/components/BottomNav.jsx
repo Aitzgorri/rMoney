@@ -33,6 +33,7 @@ const moreItems = [
   { id: 'settings',            label: 'Settings',            icon: '⚙️' },
   { id: 'save-to-file',        label: 'Save to file',        icon: '💾', action: 'save' },
   { id: 'load-from-file',      label: 'Load from file',      icon: '📂', action: 'load' },
+  { id: 'reset-data',          label: 'Reset data…',         icon: '🧹', action: 'reset' },
 ]
 
 export default function BottomNav({ activeTab, onTabChange, onAction }) {

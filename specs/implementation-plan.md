@@ -17,7 +17,7 @@
 | 1 — MVP core data entry | ✓ done | |
 | 7 — Desktop deployment (Tauri) | ✓ done | |
 | 8 — Desktop UI enhancements | ✓ done | |
-| 9 — Data portability | ✓ done | |
+| 9 — Data portability | ✓ done | Reset-data action added in Phase 37a |
 | 10 — App-wide currency conversion | ✓ done | |
 | 11 — Investments foundation | ✓ done | Finnhub/Stooq adapters (36a/36b) and default CSV template (36f) all shipped |
 | 12 — Stock transactions | ✓ done | Cross-currency model shipped (35a); split notification shipped (36d) |

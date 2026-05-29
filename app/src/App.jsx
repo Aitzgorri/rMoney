@@ -13,6 +13,7 @@ import { migrateFavoriteCurrencies } from './data/settings'
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
 import { migrateFeeCurrencyInvariant } from './data/stockTransactions'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
+import ResetDataDialog from './components/ResetDataDialog'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
 import AddTransaction from './screens/AddTransaction'
@@ -53,6 +54,7 @@ export default function App() {
   const [awaitingPassphrase, setAwaitingPassphrase] = useState(false)  // Full Backup vault embed step
   const [loadDialog, setLoadDialog] = useState(null)    // { filename, exportedAt, data } or null
   const [loadError, setLoadError] = useState(null)      // error string or null
+  const [resetDialog, setResetDialog] = useState(false)
   const [keysNotRestored, setKeysNotRestored] = useState(false)
   const [droppedDividends, setDroppedDividends] = useState([])
 
@@ -105,7 +107,19 @@ export default function App() {
       if (!result) return                     // user cancelled
       if (result.error) { setLoadError(result.error); return }
       setLoadDialog(result)                   // { data, filename, exportedAt }
+    } else if (action === 'reset') {
+      setResetDialog(true)
     }
+  }
+
+  // Triggered by the "Back up first…" button inside the Reset dialog.
+  // Closes the Reset dialog, opens the Save flow in Full backup mode; after the
+  // save flow completes the user can re-open Reset from the More menu with their
+  // toggles intact (we don't try to round-trip preserve state through the save flow).
+  function handleResetBackup() {
+    setResetDialog(false)
+    setSaveMode('full')
+    setSaveDialog(true)
   }
 
   async function handleSave() {
@@ -321,6 +335,13 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {resetDialog && (
+        <ResetDataDialog
+          onBackup={handleResetBackup}
+          onClose={() => setResetDialog(false)}
+        />
       )}
     </div>
   )

@@ -33,6 +33,7 @@ const MORE_NAV_TABS = [
 const MORE_ACTION_TABS = [
   { label: 'Save to file',   action: 'save' },
   { label: 'Load from file', action: 'load' },
+  { label: 'Reset data…',    action: 'reset' },
 ]
 
 const MORE_NAV_IDS = new Set(MORE_NAV_TABS.map(t => t.id))
