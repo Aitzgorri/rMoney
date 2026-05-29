@@ -25,7 +25,8 @@ import StockProfileResolutionDialog from '../components/StockProfileResolutionDi
 import TickerRenameDialog from '../components/TickerRenameDialog'
 import EditProfileDialog from '../components/EditProfileDialog'
 import CurrencyDropdown from '../components/CurrencyDropdown'
-import { resetPageCaches } from '../utils/marketDataCache'
+import ExchangeSelector from '../components/ExchangeSelector'
+import { resetPageCaches, clearCacheForTicker } from '../utils/marketDataCache'
 import styles from './StockPage.module.css'
 
 function fmtPct(n) {
@@ -660,6 +661,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     }
   }
 
+  function handleExchangeChange(newExchange, newCurrency) {
+    upsertStockProfile(norm, { stockExchange: newExchange, currency: newCurrency })
+    clearCacheForTicker(norm)
+    setProfileKey(k => k + 1)
+  }
+
   return (
     <div className={styles.screen}>
 
@@ -668,8 +675,17 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         <button className={styles.backBtn} onClick={onBack}>←</button>
         <span className={styles.headerTicker}>{norm}</span>
         {profile?.name && <span className={styles.headerName}>{profile.name}</span>}
-        {profile?.stockExchange && <span className={styles.headerCurrency}>{profile.stockExchange}</span>}
-        {currency && !profile?.stockExchange && <span className={styles.headerCurrency}>{currency}</span>}
+        {!isManualStockProfile && (
+          <ExchangeSelector
+            ticker={norm}
+            currentExchange={profile?.stockExchange ?? null}
+            currentCurrency={profile?.currency ?? currency ?? null}
+            onChange={handleExchangeChange}
+          />
+        )}
+        {isManualStockProfile && currency && (
+          <span className={styles.headerCurrency}>{currency}</span>
+        )}
         {accounts.length > 0 && <>
           <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
           <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
