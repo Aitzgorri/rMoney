@@ -33,7 +33,7 @@
 | 21b — Mobile Investments parity | deferred (after backlog) | Six SPEC-028 items |
 | 22 — Stock profile resolution | ✓ done | |
 | 23 — Watchlists & alerts | ✓ done | |
-| 24 — Security & secrets handling | mostly done | 237a + 255 pending |
+| 24 — Security & secrets handling | mostly done | 237a closed in Phase 36e; 255 still gated on IBKR adapter |
 | 25 — Investment data foundation | ✓ done | |
 | 26 — Stock lifecycle UX + transaction edits | mostly done | 4 items in backlog |
 | 27 — Investing account detail overhaul | ✓ done | |
@@ -66,14 +66,13 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 2. **Tier 2 — Cross-currency model overhaul** ✓ done (152j-full, 152m-full, 159b, 164, 288 all shipped in Phase 35a).
 3. **Tier 3 — Market data adapters** ✓ done (157f Finnhub + 157g Stooq both shipped in Phase 36). Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
 4. **Tier 4 — Splits + exchange UX** ✓ done (170 API-detected splits shipped in Phase 36d; 185 stock-exchange selector in Phase 36c).
-5. **Tier 5 — Security follow-ups** (237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — gated on the IBKR adapter actually being built).
+5. **Tier 5 — Security follow-ups** — 237a closed in Phase 36e (Settings → AI hostname allowlist; meta-CSP approach abandoned after research, see SPEC-031). 255 stays gated on the IBKR adapter being built (currently a stub) and IBKR retail OAuth shipping.
 6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
 
 ### SPEC-018 Investing Accounts (Phase 11 leftovers)
 152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
 
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
-237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin.
 255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}` — gated on the IBKR adapter actually being built (currently a stub).
 
 ### SPEC-034 Buy-Sell Planning (Phase 32 leftover)

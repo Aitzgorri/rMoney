@@ -83,6 +83,13 @@ const TABS = [
   { id: 'storage',     label: 'Storage' },
 ]
 
+// AI endpoint hostnames whitelisted by the static CSP in tauri.conf.json.
+// Adding a host here without also adding it to `connect-src` in the Tauri config
+// will silently fail at runtime — Tauri's CSP is the authoritative gate.
+// (SPEC-031 item 237a: meta-CSP injection was researched and abandoned because
+// meta-CSPs can only restrict, never expand, the static base policy.)
+const AI_HOST_ALLOWLIST = ['api.anthropic.com', 'api.openai.com']
+
 export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [activeTab, setActiveTab] = useState(initialTab && TABS.some(t => t.id === initialTab) ? initialTab : 'general')
 
@@ -263,6 +270,15 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   async function handleSaveAiConn() {
     if (!aiConn.endpointUrl.startsWith('https://')) {
       setAiUrlError('Endpoint URL must start with https://')
+      return
+    }
+    let hostname
+    try { hostname = new URL(aiConn.endpointUrl).hostname } catch {
+      setAiUrlError('Endpoint URL is not a valid URL')
+      return
+    }
+    if (!AI_HOST_ALLOWLIST.includes(hostname)) {
+      setAiUrlError(`Host "${hostname}" is not in the CSP allowlist. Supported: ${AI_HOST_ALLOWLIST.join(', ')}.`)
       return
     }
     setAiUrlError('')
