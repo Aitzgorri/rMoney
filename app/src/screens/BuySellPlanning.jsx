@@ -67,6 +67,7 @@ export default function BuySellPlanning({ onNavigate }) {
   const [buyPickerOpen,   setBuyPickerOpen]   = useState(false)
   const [sellPickerOpen,  setSellPickerOpen]  = useState(false)
   const [executeTarget,   setExecuteTarget]   = useState(null) // { side, row, derived } | null
+  const [lotPickerTarget, setLotPickerTarget] = useState(null) // sell row | null
 
   useEffect(() => { setActiveScenarioId(activeId) }, [activeId])
 
@@ -468,6 +469,7 @@ export default function BuySellPlanning({ onNavigate }) {
     onSharesChange:  handleUpdateSellShares,
     onTickerClick:   t => onNavigate?.('stock', { ticker: t }),
     onExecute:       row => handleExecute('sell', row),
+    onPickLots:      row => setLotPickerTarget(row),
   }), [active, openLotsMap, livePrices, derivedSell, fxRatesEffective, tickerYieldData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buyColumns = useMemo(() => buildBuyColumns({
@@ -696,6 +698,15 @@ export default function BuySellPlanning({ onNavigate }) {
           mainCurrency={mainCurrency}
           onClose={() => setExecuteTarget(null)}
           onDone={() => { setExecuteTarget(null); refresh() }}
+        />
+      )}
+
+      {lotPickerTarget && (
+        <LotPickerModal
+          row={lotPickerTarget}
+          activeId={active.id}
+          onClose={() => setLotPickerTarget(null)}
+          onSaved={() => { setLotPickerTarget(null); refresh() }}
         />
       )}
     </div>
@@ -939,7 +950,7 @@ function OverviewBlock({
 function buildSellColumns({
   active, accountsHolding, availableShares, longTermShares,
   livePrices, derived, fxRatesEffective, mainCurrency, tickerYieldData,
-  onUpdateRow, onRemoveRow, onAccountChange, onSharesChange, onTickerClick, onExecute,
+  onUpdateRow, onRemoveRow, onAccountChange, onSharesChange, onTickerClick, onExecute, onPickLots,
 }) {
   return [
     { id: 'include', label: '', minWidth: 28,
@@ -1054,18 +1065,25 @@ function buildSellColumns({
       render: r => fmtNum(derived[r.id]?.netOfFee) },
     { id: 'tradeMain', label: `In ${mainCurrency}`, minWidth: 100, align: 'right', defaultHidden: true,
       render: r => fmtNum(derived[r.id]?.mainCurrencyValue) },
-    { id: 'actions', label: '', minWidth: 100,
+    { id: 'actions', label: '', minWidth: 130,
       render: r => (
         <div className={styles.rowActions}>
           {r.executedAt ? (
             <span className={styles.executedBadge} title={`Executed ${r.executedAt.slice(0, 10)}`}>✓ Done</span>
           ) : (
-            <button
-              className={styles.execBtn}
-              onClick={() => onExecute(r)}
-              disabled={!derived[r.id]?.adjustedPrice}
-              title="Execute — record this as a real sell transaction"
-            >▶ Execute</button>
+            <>
+              <button
+                className={styles.lotsBtn}
+                onClick={() => onPickLots(r)}
+                title={r.lotAllocations ? 'Edit saved lot picks' : 'Choose lots to sell (saved without executing)'}
+              >{r.lotAllocations ? '● Lots' : '○ Lots'}</button>
+              <button
+                className={styles.execBtn}
+                onClick={() => onExecute(r)}
+                disabled={!derived[r.id]?.adjustedPrice}
+                title="Execute — record this as a real sell transaction"
+              >▶ Execute</button>
+            </>
           )}
           <button
             className={styles.rowDeleteBtn}
@@ -1443,11 +1461,21 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState(null)
 
-  // Lot picker (sell only)
+  // Lot picker (sell only) — pre-fill from row.lotAllocations if the user saved
+  // picks via the standalone Lot picker on the planning row.
   const openLots    = side === 'sell' ? getOpenLots(row.investingAccountId, row.ticker) : []
-  const [showLots,  setShowLots]  = useState(false)
-  const [lotInputs, setLotInputs] = useState({})
-  const [manualMode,setManualMode]= useState(false)
+  const hasSavedLots = side === 'sell' && Array.isArray(row.lotAllocations) && row.lotAllocations.length > 0
+  const [showLots,  setShowLots]  = useState(hasSavedLots)
+  const [lotInputs, setLotInputs] = useState(() => {
+    if (!hasSavedLots) return {}
+    const inputs = {}
+    for (const lot of openLots) inputs[lot.id] = '0'
+    for (const a of row.lotAllocations) {
+      if (a.sourceBuyId in inputs) inputs[a.sourceBuyId] = String(a.sharesFromLot)
+    }
+    return inputs
+  })
+  const [manualMode,setManualMode]= useState(hasSavedLots)
 
   const lotTotal = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
   const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
@@ -1633,6 +1661,113 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Lot picker modal (standalone — saves to the planned row without executing) ─
+
+function LotPickerModal({ row, activeId, onClose, onSaved }) {
+  const openLots = getOpenLots(row.investingAccountId, row.ticker)
+
+  // Pre-fill: existing saved allocations → those values; else FIFO using row.shares; else all zeros.
+  const initialInputs = (() => {
+    const inputs = {}
+    for (const lot of openLots) inputs[lot.id] = '0'
+    if (Array.isArray(row.lotAllocations) && row.lotAllocations.length > 0) {
+      for (const a of row.lotAllocations) {
+        if (a.sourceBuyId in inputs) inputs[a.sourceBuyId] = String(a.sharesFromLot)
+      }
+      return inputs
+    }
+    const n = Number(row.shares ?? 0)
+    if (n > 0 && openLots.length > 0) {
+      const { allocations } = computeFifoAllocations(openLots, n)
+      for (const a of allocations) inputs[a.sourceBuyId] = String(a.sharesFromLot)
+    }
+    return inputs
+  })()
+
+  const [lotInputs, setLotInputs] = useState(initialInputs)
+  const total = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
+
+  function handleLotChange(lotId, raw) {
+    const lot = openLots.find(l => l.id === lotId)
+    if (!lot) return
+    let clamped = raw
+    const n = Number(raw)
+    if (Number.isFinite(n) && n > lot.remainingShares) clamped = String(lot.remainingShares)
+    setLotInputs({ ...lotInputs, [lotId]: clamped })
+  }
+
+  function handleFifoFill() {
+    const inputs = {}
+    for (const lot of openLots) inputs[lot.id] = '0'
+    const n = Number(row.shares ?? 0)
+    if (n > 0) {
+      const { allocations } = computeFifoAllocations(openLots, n)
+      for (const a of allocations) inputs[a.sourceBuyId] = String(a.sharesFromLot)
+    }
+    setLotInputs(inputs)
+  }
+
+  function handleClear() {
+    const inputs = {}
+    for (const lot of openLots) inputs[lot.id] = '0'
+    setLotInputs(inputs)
+  }
+
+  function handleSave() {
+    const allocations = Object.entries(lotInputs)
+      .filter(([, v]) => Number(v) > 0)
+      .map(([sourceBuyId, v]) => ({ sourceBuyId, sharesFromLot: Number(v) }))
+    updateSellRow(activeId, row.id, {
+      lotAllocations: allocations.length > 0 ? allocations : null,
+      shares: total > 0 ? total : row.shares,
+    })
+    onSaved()
+  }
+
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Choose lots — {row.ticker}</h3>
+          <button className={styles.modalClose} onClick={onClose}>✕</button>
+        </div>
+        <div className={styles.execFormBody}>
+          {openLots.length === 0 ? (
+            <p className={styles.execFieldError}>No open lots for {row.ticker} on this account.</p>
+          ) : (
+            <>
+              <div className={styles.execLotList}>
+                {openLots.map(lot => (
+                  <div key={lot.id} className={styles.execLotRow}>
+                    <span className={styles.execLotMeta}>{lot.date} · {fmtShares(lot.remainingShares)} sh @ {fmtNum(lot.price)}</span>
+                    <input
+                      className={styles.execLotInput}
+                      type="number" min="0" max={lot.remainingShares} step="any"
+                      value={lotInputs[lot.id] ?? '0'}
+                      onChange={e => handleLotChange(lot.id, e.target.value)}
+                    />
+                    <span className={styles.execLotMaxHint}>max {fmtShares(lot.remainingShares)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.execField}>
+                <span className={styles.execLabel}>Total picked</span>
+                <span className={styles.execLocked}>{fmtShares(total)}</span>
+              </div>
+            </>
+          )}
+        </div>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.modalCancel} onClick={onClose}>Cancel</button>
+          <button type="button" className={styles.modalCancel} onClick={handleClear} disabled={openLots.length === 0}>Clear</button>
+          <button type="button" className={styles.modalCancel} onClick={handleFifoFill} disabled={openLots.length === 0 || !(Number(row.shares) > 0)}>FIFO fill</button>
+          <button type="button" className={styles.modalPrimary} onClick={handleSave} disabled={openLots.length === 0}>Save</button>
+        </div>
       </div>
     </div>
   )

@@ -64,7 +64,7 @@ Toggleable columns (default-visible unless noted):
 - [x] **Trade value (gross)** = `shares × adjustedPrice`. *(Sub-phase 32h)*
 - [x] **Trade value (net of fee)** = `shares × adjustedPrice − fee`. *(Sub-phase 32h)*
 - [x] **Trade value (main currency)** — converted via current FX. *(Sub-phase 32h, default-hidden)*
-- [ ] **Lot picker** (standalone action button on the planned sell row, storing lot selections back to the row without executing) — deferred; the lot picker IS available inside the Execute modal (see Execution below). *(Sub-phase 32k delivered lot-picker inside ExecuteModal only.)*
+- [x] **Lot picker (Phase 36g).** Standalone "○ Lots" / "● Lots" action button on each planned sell row opens a `LotPickerModal` showing open lots for that account+ticker. Pre-fills from `row.lotAllocations` if previously saved, else FIFO-fills from `row.shares`, else zeros. Buttons: Cancel / Clear / FIFO fill / Save. On Save, persists `lotAllocations` to the row via `updateSellRow` and rewrites `row.shares` to the picked total. The Execute modal then opens with `showLots = true` and the saved picks pre-filled, so the user can review and execute without re-picking. Filled-state indicator (●) on the button shows when picks are saved.
 
 ### Buy rows — fields and columns
 Always-visible columns (cannot be hidden):

@@ -19,10 +19,10 @@
 | 8 — Desktop UI enhancements | ✓ done | |
 | 9 — Data portability | ✓ done | |
 | 10 — App-wide currency conversion | ✓ done | |
-| 11 — Investments foundation | mostly done | Adapters 157f / 157g pending |
+| 11 — Investments foundation | ✓ done | Finnhub/Stooq adapters (36a/36b) and default CSV template (36f) all shipped |
 | 12 — Stock transactions | ✓ done | Cross-currency model shipped (35a); split notification shipped (36d) |
 | 13 — Dividends MVP | ✓ done | Per-country tax landed in 33e |
-| 14 — Stock page | mostly done | Exchange selector (185) pending |
+| 14 — Stock page | ✓ done | Exchange selector shipped in Phase 36c |
 | 15 — Portfolios | ✓ done | |
 | 16 — Benchmarks | ✓ done | |
 | 17 — Investment reports | ✓ done | |
@@ -40,7 +40,7 @@
 | 28 — Stock page enhancements | ✓ done | |
 | 30 — Stock inventory page | ✓ done | |
 | 31 — Dividend page | ✓ done | |
-| 32 — Buy-Sell planning + UX gap closure | ✓ done | 382 polish pending |
+| 32 — Buy-Sell planning + UX gap closure | ✓ done | Standalone lot picker shipped in Phase 36g |
 | 33 — Foundation + dividend overhaul + Android | ✓ shipped in v0.34.0 | 33a–o + 21a + production-build hotfix |
 
 ---
@@ -67,16 +67,13 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 3. **Tier 3 — Market data adapters** ✓ done (157f Finnhub + 157g Stooq both shipped in Phase 36). Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
 4. **Tier 4 — Splits + exchange UX** ✓ done (170 API-detected splits shipped in Phase 36d; 185 stock-exchange selector in Phase 36c).
 5. **Tier 5 — Security follow-ups** — 237a closed in Phase 36e (Settings → AI hostname allowlist; meta-CSP approach abandoned after research, see SPEC-031). 255 stays gated on the IBKR adapter being built (currently a stub) and IBKR retail OAuth shipping.
-6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
+6. **Tier 6 — Small UX polish** ✓ done (152 default CSV template selector shipped in Phase 36f; 382 standalone lot-picker shipped in Phase 36g).
 
-### SPEC-018 Investing Accounts (Phase 11 leftovers)
-152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
+Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items remaining below are the long-deferred IBKR OAuth slot (gated on third-party availability) and the placeholder phases (20 future asset classes, 21b mobile parity).
 
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
 255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}` — gated on the IBKR adapter actually being built (currently a stub).
 
-### SPEC-034 Buy-Sell Planning (Phase 32 leftover)
-382. [ ] Standalone sell-row lot-picker button (stores lot selections back to the planned row without executing) — the lot picker IS available inside the Execute modal; this is the standalone polish version.
 
 ---
 

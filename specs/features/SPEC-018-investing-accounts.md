@@ -36,7 +36,7 @@ Introduce a top-level "Investments" section in the app, separate from the budget
 - [x] User can create an investing account with: institution name (e.g. "Interactive Brokers", "Revolut", "XTB"), user-given account name (e.g. "IBKR Roth"), and optional note. **No currency is stored on the investing account itself** — currencies live on the cash balances.
 - [x] User can edit institution, name, note after creation without affecting cash balances or transactions.
 - [x] User can delete an investing account only when every cash balance has zero activity (only a zero opening balance is allowed). Otherwise deletion is blocked with a clear message. *(Stock-transaction and dividend checks deferred to SPEC-019/020.)*
-- [ ] Optional reference to a default CSV-import template (see SPEC-025), nullable. *(Deferred to Phase 18.)*
+- [x] **Default CSV-import template (Phase 36f).** Optional reference to a default template (see SPEC-025), nullable. The investing-account create/edit form exposes a "Default CSV template" `<select>` listing every template from `getCsvTemplates()` with a "— None —" sentinel; the chosen id is persisted to `defaultCsvTemplateId`. The CSV import screen pre-selects this template when the user starts an import for the account.
 - [x] Investing accounts do NOT appear in the SPEC-002 cash/bank account list, and SPEC-002 accounts do NOT appear in the investing-account list. They are separate collections with separate UIs.
 
 ### Cash balances (per investing account)

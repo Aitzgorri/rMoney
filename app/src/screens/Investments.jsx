@@ -18,6 +18,7 @@ import {
 import { fmtAmt } from '../utils/format'
 import { getPositions } from '../data/stockTransactions'
 import { resetPageCaches } from '../utils/marketDataCache'
+import { getCsvTemplates } from '../data/csvTemplates'
 import InvestingAccountDetail from './InvestingAccountDetail'
 import styles from './Investments.module.css'
 
@@ -252,14 +253,21 @@ function AccountForm({ initial, onSave, onCancel, styles }) {
   const [institution, setInstitution] = useState(initial?.institution ?? '')
   const [name, setName]               = useState(initial?.name ?? '')
   const [note, setNote]               = useState(initial?.note ?? '')
+  const [defaultCsvTemplateId, setDefaultCsvTemplateId] = useState(initial?.defaultCsvTemplateId ?? '')
+  const templates = getCsvTemplates()
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!institution.trim() || !name.trim()) return
     if (initial) {
-      updateInvestingAccount(initial.id, { institution: institution.trim(), name: name.trim(), note: note.trim() || null })
+      updateInvestingAccount(initial.id, {
+        institution: institution.trim(),
+        name: name.trim(),
+        note: note.trim() || null,
+        defaultCsvTemplateId: defaultCsvTemplateId || null,
+      })
     } else {
-      createInvestingAccount({ institution, name, note })
+      createInvestingAccount({ institution, name, note, defaultCsvTemplateId: defaultCsvTemplateId || null })
     }
     onSave()
   }
@@ -280,6 +288,19 @@ function AccountForm({ initial, onSave, onCancel, styles }) {
         <label className={styles.formLabel}>Note</label>
         <input className={styles.formInput} value={note} onChange={e => setNote(e.target.value)}
           placeholder="Optional" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Default CSV template</label>
+        <select
+          className={styles.formInput}
+          value={defaultCsvTemplateId}
+          onChange={e => setDefaultCsvTemplateId(e.target.value)}
+        >
+          <option value="">— None —</option>
+          {templates.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
       </div>
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>

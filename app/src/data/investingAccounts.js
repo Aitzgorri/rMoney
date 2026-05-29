@@ -20,13 +20,13 @@ export function getInvestingAccount(id) {
   return load(KEY_ACCOUNTS).find(a => a.id === id) ?? null
 }
 
-export function createInvestingAccount({ institution, name, note = null }) {
+export function createInvestingAccount({ institution, name, note = null, defaultCsvTemplateId = null }) {
   const account = {
     id: crypto.randomUUID(),
     institution: institution.trim(),
     name: name.trim(),
     note: note?.trim() || null,
-    defaultCsvTemplateId: null,
+    defaultCsvTemplateId,
     createdAt: new Date().toISOString(),
   }
   save(KEY_ACCOUNTS, [...load(KEY_ACCOUNTS), account])

@@ -647,6 +647,18 @@
 .execBtn:hover:not(:disabled) { background: #166534; }
 .execBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.lotsBtn {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 5px;
+  padding: 2px 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lotsBtn:hover { border-color: #94a3b8; color: #f1f5f9; }
+
 .executedBadge {
   font-size: 12px;
   color: #34d399;
