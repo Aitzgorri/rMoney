@@ -1388,9 +1388,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 <label className={styles.label}>API key</label>
                 {renderKeyField('finnhub')}
               </div>
-              <p className={styles.providerDeferred}>
-                Pass 2 — adapter coming soon. Save your key now; it will activate automatically.
-              </p>
+              {renderTestRow('finnhub')}
             </div>
 
             {/* Alpha Vantage */}

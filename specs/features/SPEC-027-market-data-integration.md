@@ -127,7 +127,7 @@ Most providers (Massive, Twelve Data, Finnhub, Alpha Vantage) set `Access-Contro
 - [ ] News is fetched on demand with a 15-minute TTL so rapid re-opens of the same stock page don't thrash the provider.
 
 ### HQ country lookup — verification + write-back *(Phase 33)*
-- [x] **Verification pass across every adapter.** All four implemented adapters return `hqCountry`: Yahoo Finance (`assetProfile.country`), Massive (`results.locale`), TwelveData (`country`), AlphaVantage (`Country`). IBKR, Finnhub, and Stooq do not implement `getStockProfile` (deferred — `notImplemented`). No changes needed in adapter code.
+- [x] **Verification pass across every adapter.** All four implemented adapters return `hqCountry`: Yahoo Finance (`assetProfile.country`), Massive (`results.locale`), TwelveData (`country`), AlphaVantage (`Country`). Finnhub now also implements `getStockProfile` (Phase 36a — `country` field). IBKR and Stooq remain `notImplemented`.
 - [x] **Refresh profile writes `hqCountry`.** When the user re-confirms a candidate via Refresh profile (SPEC-029) or Re-identify ticker, the resolved profile's `hqCountry` is written from whichever adapter returned it first (first-non-null wins). The existing per-stock manual override (`hqCountryOverride`) is preserved — display order is `hqCountryOverride ?? hqCountry ?? 'Global'`.
 - [x] **Consumers.** Once populated, `hqCountry` feeds: Reports regional / continent breakdowns (SPEC-024), Dividend page metrics-tab grouping (SPEC-032), and the per-country tax level of the dividend tax hierarchy (SPEC-020 item 178, also Phase 33).
 

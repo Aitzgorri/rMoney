@@ -181,7 +181,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     let cancelled = false
     setNewsStatus('loading')
     getNews(norm)
-      .then(items => { if (!cancelled) { setNews(items ?? []); setNewsStatus('idle') } })
+      .then(result => { if (!cancelled) { setNews(result?.items ?? []); setNewsStatus('idle') } })
       .catch(() => { if (!cancelled) setNewsStatus('unavailable') })
     return () => { cancelled = true }
   }, [norm])
