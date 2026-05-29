@@ -64,7 +64,7 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 
 1. **Tier 1 — Transaction-edit correctness + safety** ✓ done (291, 165, 286 all shipped in Phase 34a).
 2. **Tier 2 — Cross-currency model overhaul** ✓ done (152j-full, 152m-full, 159b, 164, 288 all shipped in Phase 35a).
-3. **Tier 3 — Market data adapters** (157f Finnhub ✓ done; 157g Stooq pending). Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
+3. **Tier 3 — Market data adapters** ✓ done (157f Finnhub + 157g Stooq both shipped in Phase 36). Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
 4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 3; 185 stock-exchange selector — independent).
 5. **Tier 5 — Security follow-ups** (237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — gated on the IBKR adapter actually being built).
 6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
@@ -77,9 +77,6 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 
 ### SPEC-021 Stock Page (Phase 14 leftover)
 185. [ ] Stock-exchange selector — profile exchange is currently shown as text; clicking through exchanges (same stock on a different exchange) is desired. Today this requires the Re-identify dialog.
-
-### SPEC-027 Market Data Integration (Phase 11 + Phase 24 leftovers)
-157g. [ ] **Stooq adapter** — `getLatestPrice` + `getHistoricalSeries` only. Dividends / news / profile / corporate-actions throw `'not supported'` so the chain falls through.
 
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
 237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin.

@@ -1425,9 +1425,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 </label>
               </div>
               <p className={styles.providerDeferred}>
-                Free, no API key required. Price data only (no dividends, news, or profiles).
-                Pass 2 — coming soon. Enabled by default for when the adapter ships.
+                Free, no API key required. EOD price data only (no dividends, news, or profiles).
               </p>
+              {renderTestRow('stooq')}
             </div>
           </div>
 

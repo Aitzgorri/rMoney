@@ -125,4 +125,12 @@ export const PROVIDER_EXCHANGE = {
     XOSL: 'OL',  XCSE: 'CO',  XASX: 'AX',  XTKS: 'T',   XTSE: 'TO',
     XHKG: 'HK',
   })[mic] ?? null,
+
+  // Stooq uses lowercase country-code suffixes, not MICs (e.g. sgro.uk, bmw.de).
+  stooq: mic => ({
+    XLON: 'uk', XFRA: 'de', XETR: 'de', XAMS: 'nl', XPAR: 'fr',
+    XSWX: 'ch', XMAD: 'es', XMIL: 'it', XBRU: 'be', XLIS: 'pt',
+    XSTO: 'se', XHEL: 'fi', XOSL: 'no', XCSE: 'dk', XASX: 'au',
+    XTKS: 'jp', XTSE: 'ca', XHKG: 'hk', XNYS: 'us', XNAS: 'us',
+  })[mic] ?? null,
 }
