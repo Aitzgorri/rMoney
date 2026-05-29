@@ -29,6 +29,7 @@ import { getPieChartPresets, getPieChartPresetsStorageBytes, deleteAllPieChartPr
 import { getDividendChartPresets, getDividendChartPresetsStorageBytes, deleteAllDividendChartPresets } from '../data/dividendChartPresets'
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
+import { getDismissedSplits, getDismissedSplitsStorageBytes, deleteAllDismissedSplits } from '../data/detectedSplits'
 import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
 import { getTradingScenariosStats, deleteAllTradingScenarios } from '../data/tradingScenarios'
 import { testProvider } from '../data/marketDataClient'
@@ -122,6 +123,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [pieChartPresetDeleteConfirm, setPieChartPresetDeleteConfirm] = useState(false)
   const [divChartPresetCount, setDivChartPresetCount] = useState(() => getDividendChartPresets().length)
   const [divChartPresetBytes, setDivChartPresetBytes] = useState(() => getDividendChartPresetsStorageBytes())
+  const [dismissedSplits,     setDismissedSplits]     = useState(() => getDismissedSplits())
+  const [dismissedSplitsBytes, setDismissedSplitsBytes] = useState(() => getDismissedSplitsStorageBytes())
+  const [dismissedSplitsConfirm, setDismissedSplitsConfirm] = useState(false)
   const [divChartPresetDeleteConfirm, setDivChartPresetDeleteConfirm] = useState(false)
   const [fxBackfilling,   setFxBackfilling]   = useState(false)
   const [fxBackfillResult, setFxBackfillResult] = useState(null)  // null | { processed, failed }
@@ -1816,6 +1820,49 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     clearApiDividendHistory()
                     setApiDivHistStats(getApiDividendHistoryStats())
                     setApiDivHistDeleteConfirm(false)
+                  }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dismissed API-detected splits */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Dismissed split notifications</div>
+            <p className={styles.description}>
+              Splits the market-data chain reported and you dismissed on the stock page.
+              Clearing this list makes those splits eligible to be re-detected on your next visit.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Dismissed</span>
+                  <span className={styles.storageCount}>
+                    {dismissedSplits.length} entr{dismissedSplits.length === 1 ? 'y' : 'ies'}
+                  </span>
+                  <span className={styles.storageBytes}>{fmtBytes(dismissedSplitsBytes)}</span>
+                  <button
+                    className={styles.btnSmDanger}
+                    disabled={dismissedSplits.length === 0}
+                    onClick={() => setDismissedSplitsConfirm(true)}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+            {dismissedSplitsConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Clear all {dismissedSplits.length} dismissed split entr{dismissedSplits.length === 1 ? 'y' : 'ies'}?
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setDismissedSplitsConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllDismissedSplits()
+                    setDismissedSplits(getDismissedSplits())
+                    setDismissedSplitsBytes(getDismissedSplitsStorageBytes())
+                    setDismissedSplitsConfirm(false)
                   }}>Clear</button>
                 </div>
               </div>

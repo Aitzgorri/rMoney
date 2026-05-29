@@ -20,7 +20,7 @@
 | 9 — Data portability | ✓ done | |
 | 10 — App-wide currency conversion | ✓ done | |
 | 11 — Investments foundation | mostly done | Adapters 157f / 157g pending |
-| 12 — Stock transactions | mostly done | Cross-currency model shipped (35a); split notification pending (Tier 3) |
+| 12 — Stock transactions | ✓ done | Cross-currency model shipped (35a); split notification shipped (36d) |
 | 13 — Dividends MVP | ✓ done | Per-country tax landed in 33e |
 | 14 — Stock page | mostly done | Exchange selector (185) pending |
 | 15 — Portfolios | ✓ done | |
@@ -65,15 +65,12 @@ Reordered after v0.34.0 to put small correctness fixes first, then the cohesive 
 1. **Tier 1 — Transaction-edit correctness + safety** ✓ done (291, 165, 286 all shipped in Phase 34a).
 2. **Tier 2 — Cross-currency model overhaul** ✓ done (152j-full, 152m-full, 159b, 164, 288 all shipped in Phase 35a).
 3. **Tier 3 — Market data adapters** ✓ done (157f Finnhub + 157g Stooq both shipped in Phase 36). Unblocks the splits notification in Tier 4. (Note: 255 IBKR OAuth in Tier 5 depends on a separate IBKR adapter that is currently a stub, not on Finnhub/Stooq.)
-4. **Tier 4 — Splits + exchange UX** (170 API-detected splits — needs Tier 3; 185 stock-exchange selector ✓ done in Phase 36c).
+4. **Tier 4 — Splits + exchange UX** ✓ done (170 API-detected splits shipped in Phase 36d; 185 stock-exchange selector in Phase 36c).
 5. **Tier 5 — Security follow-ups** (237a runtime CSP — needs Tauri HTTP plugin; 255 IBKR OAuth — gated on the IBKR adapter actually being built).
 6. **Tier 6 — Small UX polish** (152 default CSV template reference, 382 standalone lot-picker button).
 
 ### SPEC-018 Investing Accounts (Phase 11 leftovers)
 152. [ ] Optional reference to default CSV import template on investing account — `defaultCsvTemplateId` field exists on the account model; only the UI selector is missing.
-
-### SPEC-019 Stock Transactions (Phase 12 + Phase 26 leftovers)
-170. [ ] API-detected splits presented as a pending notification (requires at least one adapter that surfaces corporate actions — Tier 3).
 
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
 237a. [ ] Runtime meta-tag CSP injection — meta tags can only restrict, not expand, existing policy; custom AI host support requires Tauri HTTP plugin.

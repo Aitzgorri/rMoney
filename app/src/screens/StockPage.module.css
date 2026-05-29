@@ -267,6 +267,19 @@
 }
 .noDivPromptConfirm:hover { background: #2563eb; }
 
+.splitBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #422006;
+  border-bottom: 1px solid #78350f;
+  font-size: 13px;
+  color: #fde68a;
+}
+.splitBannerLabel { flex: 1; }
+.splitBannerError { color: #fca5a5; font-size: 12px; }
+
 /* ── Body — mobile: single column / desktop: two columns ─────────────────── */
 
 .body {

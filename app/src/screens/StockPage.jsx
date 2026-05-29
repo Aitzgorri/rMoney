@@ -27,6 +27,7 @@ import EditProfileDialog from '../components/EditProfileDialog'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import ExchangeSelector from '../components/ExchangeSelector'
 import { resetPageCaches, clearCacheForTicker } from '../utils/marketDataCache'
+import { getPendingApiSplits, dismissSplit } from '../data/detectedSplits'
 import styles from './StockPage.module.css'
 
 function fmtPct(n) {
@@ -91,6 +92,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [chartData,       setChartData]       = useState([])
   const [chartStatus,     setChartStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [intradayUnsupported, setIntradayUnsupported] = useState(null) // null=unknown | true | false
+  const [pendingSplits,   setPendingSplits]   = useState([])
   const [news,            setNews]            = useState([])
   const [newsStatus,      setNewsStatus]      = useState('idle') // 'idle' | 'loading' | 'unavailable'
   const [ratesVersion,    setRatesVersion]    = useState(0)
@@ -184,6 +186,14 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     getNews(norm)
       .then(result => { if (!cancelled) { setNews(result?.items ?? []); setNewsStatus('idle') } })
       .catch(() => { if (!cancelled) setNewsStatus('unavailable') })
+    return () => { cancelled = true }
+  }, [norm])
+
+  useEffect(() => {
+    let cancelled = false
+    getPendingApiSplits(norm)
+      .then(splits => { if (!cancelled) setPendingSplits(splits) })
+      .catch(() => { if (!cancelled) setPendingSplits([]) })
     return () => { cancelled = true }
   }, [norm])
 
@@ -667,6 +677,25 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     setProfileKey(k => k + 1)
   }
 
+  function handleApplyDetectedSplit(split) {
+    try {
+      applySplit({
+        ticker: norm,
+        date: split.date,
+        numerator: split.ratio.numerator,
+        denominator: split.ratio.denominator,
+      })
+      setPendingSplits(prev => prev.filter(s => s !== split))
+    } catch (err) {
+      setPendingSplits(prev => prev.map(s => s === split ? { ...s, error: err.message } : s))
+    }
+  }
+
+  function handleDismissDetectedSplit(split) {
+    dismissSplit({ ticker: norm, date: split.date, ratio: split.ratio })
+    setPendingSplits(prev => prev.filter(s => s !== split))
+  }
+
   return (
     <div className={styles.screen}>
 
@@ -768,6 +797,18 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           }}>Clear flag and continue</button>
         </div>
       )}
+
+      {/* API-detected splits — pending notifications */}
+      {pendingSplits.length > 0 && pendingSplits.map((s, i) => (
+        <div key={`${s.date}-${s.ratio.numerator}-${s.ratio.denominator}-${i}`} className={styles.splitBanner}>
+          <span className={styles.splitBannerLabel}>
+            Detected {s.ratio.numerator}-for-{s.ratio.denominator} split on {norm} effective {s.date} — apply?
+          </span>
+          {s.error && <span className={styles.splitBannerError}>{s.error}</span>}
+          <button className={styles.noDivPromptCancel}  onClick={() => handleDismissDetectedSplit(s)}>Dismiss</button>
+          <button className={styles.noDivPromptConfirm} onClick={() => handleApplyDetectedSplit(s)}>Apply</button>
+        </div>
+      ))}
 
       {/* Price row */}
       <div className={styles.manualPriceRow}>
