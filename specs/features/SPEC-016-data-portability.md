@@ -54,6 +54,12 @@ Beyond save/load, the user can wipe the app back to a first-install-like state w
 - [x] **Round-trip verification.** Export a backup on a v0.33.0+ build (now `rmoney-data-v2`) → load it → confirm no data loss. Export a backup on a v0.32.0 build (`rmoney-data-v1`) → load into v0.33.0+ → confirm dividends gain `status='received'`, stockProfiles gain `confirmed`, settings gain `favoriteCurrencies`. Verified on the real app 2026-05-28 before tagging v0.34.0.
 - [x] **Future bumps follow the same shape.** When v3 lands (post-Phase 33), it bumps the version, lists the field deltas in this section, adds the new version to `ACCEPTED_VERSIONS`, extends `migrateBackup` with a v2→v3 branch (and v1 chains through to v2 first), and the same forward-incompatibility message catches v3 backups loaded into v0.33.0–v0.34.x builds. *(Design rule, not implementation work — recorded here so future-you doesn't have to re-derive it.)*
 
+#### v2 → v3 bump *(v0.35.0)*
+- [x] **Bump format to `rmoney-data-v3`.** Implemented in `portability.js` (`VERSION = 'rmoney-data-v3'`, `ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3']`). v3 differs from v2 in: a new `dismissedSplits` collection (`rmoney_dismissed_splits`, Phase 36d — user-curated list of API-detected splits the user dismissed; included in both backup modes); and the stockTransactions fee-currency model (Phase 35a) — `feeCurrency` on buy/sell rows, currency-exchange linkage fields `triggeredByStockTransactionId` / `linkedStockTransactionId`, and `exchangeRatesSnapshot`.
+- [x] **Backwards-compatible load: v1/v2 backups load cleanly into v0.35.0+.** The v2→v3 delta is **purely additive**, so `migrateBackup` only relabels a v2 payload to v3 (no field transforms) — `importAppData` defaults the absent `dismissedSplits` to `[]`, and the existing item-291 boot migration backfills `feeCurrency` on the next load. v1 payloads chain through the v2 transforms and are labelled v3 directly. This deviates from the line-above design rule's anticipation of field transforms in a v2→v3 branch *because the actual delta needed none*.
+- [x] **Forward incompatibility unchanged.** A `rmoney-data-v3` backup loaded into v0.33.0–v0.34.x is rejected with "This backup was saved by a newer version of rMoney. Update the app to load it." (those builds' `ACCEPTED_VERSIONS` stop at v2).
+- [ ] **Round-trip verification (v0.35.0).** Export on v0.35.0 (`rmoney-data-v3`) → reload → confirm no data loss; export a v2 backup (v0.34.x) → load into v0.35.0 → confirm `dismissedSplits` defaults and `feeCurrency` backfills. *(To verify on the real app during the v0.35.0 smoke test before tagging.)*
+
 ## UI / Screens
 More menu gains two items:
 
@@ -99,7 +105,7 @@ File structure:
 
 ```json
 {
-  "version": "rmoney-data-v2",
+  "version": "rmoney-data-v3",
   "exportedAt": "2026-04-23T09:15:00.000Z",
   "accounts": [...],
   "transactions": [...],

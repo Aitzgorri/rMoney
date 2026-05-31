@@ -32,7 +32,8 @@ The `.rmy` backup file (SPEC-016 Data Portability) carries a `version` field. Th
 | Backup format | Written by | Readable by | Notes |
 |---|---|---|---|
 | `rmoney-data-v1` | up to v0.32.x | every version | the original format |
-| `rmoney-data-v2` | v0.33.0+ | v0.33.0+ | adds dividend `status` model, `paysDividends`, `lastKnownPrice`, `favoriteCurrencies`, `apiCacheTtl`, `maximumFee` on trading fees, etc. v1 backups loaded into v0.33.0+ run the boot-time migrations and are upgraded transparently |
+| `rmoney-data-v2` | v0.33.0 – v0.34.x | v0.33.0+ | adds dividend `status` model, `paysDividends`, `lastKnownPrice`, `favoriteCurrencies`, `apiCacheTtl`, `maximumFee` on trading fees, etc. v1 backups loaded into v0.33.0+ run the boot-time migrations and are upgraded transparently |
+| `rmoney-data-v3` | v0.35.0+ | v0.35.0+ | adds the `dismissedSplits` collection (Phase 36d) and the stockTransactions fee-currency model — `feeCurrency`, currency-exchange linkage (`triggeredByStockTransactionId`, `linkedStockTransactionId`), `exchangeRatesSnapshot` (Phase 35a). v1/v2 backups loaded into v0.35.0+ default the new collection and the item-291 boot migration backfills `feeCurrency` — upgraded transparently. **v3 backups are rejected by ≤v0.34.x** ("update the app to load it"). |
 
 **Release-note checklist for data-shape changes:**
 1. Every release that changes a data shape (new field on an existing record, new collection, new settings key) bumps the backup format version per the table above.

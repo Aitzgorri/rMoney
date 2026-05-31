@@ -8,11 +8,15 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 // dividend status model + paysDividends + lastKnownPrice + favoriteCurrencies
 // + apiCacheTtl + maximumFee fields landed. See SPEC-016 § "Backup format
 // versioning + migration" for the v1→v2 delta list.
-const VERSION = 'rmoney-data-v2'
+// v2→v3 (v0.35.0): adds the `dismissedSplits` collection (Phase 36d) and the
+// stockTransactions fee-currency model — `feeCurrency`, currency-exchange linkage
+// (`triggeredByStockTransactionId`, `linkedStockTransactionId`), and
+// `exchangeRatesSnapshot` (Phase 35a), backfilled by the item-291 boot migration.
+const VERSION = 'rmoney-data-v3'
 
-// Versions the loader can ingest. Newer code accepts older backups (v1) and
-// migrates them in-memory before writing v2-shape data to localStorage.
-const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2']
+// Versions the loader can ingest. Newer code accepts older backups (v1, v2) and
+// migrates them in-memory before writing v3-shape data to localStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3']
 
 const KEYS = {
   accounts:           'rmoney_accounts',
@@ -336,9 +340,15 @@ export function validateImportData(parsed) {
 // re-run on top of imported v1 data because their per-key flags are already
 // set on the destination install. Applying the same pure transforms here
 // guarantees that localStorage ends up in v2 shape regardless of source.
+// The v2→v3 delta (dismissedSplits collection + stockTransactions fee-currency
+// fields) is additive: importAppData defaults the new collection and the
+// item-291 boot migration backfills feeCurrency, so no explicit v2→v3 branch is
+// needed — a v2 payload is written as-is and upgraded to v3 shape on next boot.
 export function migrateBackup(parsed) {
   if (parsed.version === VERSION) return parsed
   if (parsed.version === 'rmoney-data-v1') {
+    // v1 chains through the v2 transforms; the v2→v3 delta is additive (handled
+    // below) so the payload is labelled v3 directly.
     return {
       ...parsed,
       version: VERSION,
@@ -346,6 +356,12 @@ export function migrateBackup(parsed) {
       stockProfiles: migrateStockProfilesArrayToV2(parsed.stockProfiles ?? []),
       settings:      migrateSettingsObjectToV2(parsed.settings       ?? {}),
     }
+  }
+  if (parsed.version === 'rmoney-data-v2') {
+    // v2→v3 is purely additive: importAppData defaults the new dismissedSplits
+    // collection and the item-291 boot migration backfills feeCurrency. No field
+    // transforms are needed here — just relabel so the payload is v3 shape.
+    return { ...parsed, version: VERSION }
   }
   return parsed
 }
