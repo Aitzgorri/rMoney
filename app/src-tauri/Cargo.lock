@@ -3655,7 +3655,7 @@ checksum = "3582f63211428f83597b51b2ddb88e2a91a9d52d12831f9d08f5e624e8977422"
 
 [[package]]
 name = "rmoney"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "serde",
  "serde_json",
