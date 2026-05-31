@@ -7,12 +7,38 @@
 
 /* ── Header (full-width above both columns) ──────────────────────────────── */
 
+/* Mobile-first: header stacks into an identity row + an actions row.
+   The desktop media query below collapses both into a single inline row. */
 .header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid #2d3448;
+}
+
+.headerMain {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid #2d3448;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;   /* keep Buy/Sell/Dividend/toggle/⋯ on a single row */
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Currency toggle can shrink so the ⋯ button is never pushed off-screen on
+   narrow widths; it clips gracefully rather than wrapping. */
+.toggleWrap {
+  display: inline-flex;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .backBtn {
@@ -57,22 +83,83 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  margin-left: auto;
   flex-shrink: 0;
 }
 
 .profileBtn:hover { border-color: var(--text-faint); color: var(--text-muted); }
+
+/* ── Mobile "more actions" hamburger menu ─────────────────────────────────── */
+/* On mobile the menu wrapper sits at the end of the actions row; the secondary
+   buttons drop down as an absolutely-positioned panel. On desktop (media query
+   below) the toggle is hidden and the panel flattens back into an inline row. */
+.menuWrapper {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;   /* pin ⋯ to the right edge so its dropdown opens into view */
+}
+
+.menuToggle {
+  position: relative;
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  padding: 3px 12px;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menuToggle:hover { border-color: var(--text-faint); color: var(--text-muted); }
+
+/* Stale-data dot mirrored onto the toggle so the user sees it while the menu is closed. */
+.menuToggleDot {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.menuItems {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 180px;
+  padding: 8px;
+  background: #131d2e;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.menuItems.menuOpen { display: flex; }
+
+/* Menu items render as left-aligned full-width rows inside the dropdown. */
+.menuItems .profileBtn {
+  text-align: left;
+  width: 100%;
+}
 
 /* ── Action buttons (+ Buy / + Sell / + Dividend) ──────────────────────────── */
 
 .buyBtn, .sellBtn, .dividendBtn {
   border: none;
   border-radius: 6px;
-  padding: 4px 12px;
+  padding: 4px 9px;   /* tighter on mobile to fit one row; widened on desktop */
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .buyBtn      { background: #14532d; color: #86efac; }
@@ -300,7 +387,29 @@
   overflow: hidden;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
+  /* ≥1024px: enough width for the single-row header and the two-column body.
+     Below this, the well-tested mobile layout is used (two-row header + stacked
+     body) so the left column is never crushed into a sliver. The secondary
+     actions stay behind the ⋯ menu until ~1400px (see the wide-desktop block). */
+  .header {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .headerMain {
+    flex: 1;
+  }
+
+  .headerActions {
+    gap: 8px;
+  }
+
+  .buyBtn, .sellBtn, .dividendBtn {
+    padding: 4px 12px;
+  }
+
   .body {
     flex-direction: row;
     align-items: flex-start; /* lets each column define its own height */
@@ -315,12 +424,49 @@
   .rightCol {
     position: sticky;
     top: 56px; /* sit flush below the top nav bar (56px tall) */
-    width: 760px;
+    width: 400px;
     flex-shrink: 0;
     height: calc(100svh - 56px);
     border-top: none;
     border-left: 1px solid #2d3448;
     overflow: hidden;
+  }
+}
+
+@media (min-width: 1400px) {
+  /* Wide desktop: enough room to flatten the ⋯ menu into inline buttons.
+     Below this width the hamburger menu is used (phones, tablets, small laptops)
+     so the header never overflows. */
+  .headerActions {
+    flex-wrap: nowrap;
+  }
+
+  .menuWrapper {
+    display: contents; /* let menu items participate directly in the header row */
+  }
+
+  .menuToggle,
+  .menuToggleDot {
+    display: none;
+  }
+
+  .menuItems {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .menuItems .profileBtn {
+    width: auto;
+    text-align: center;
   }
 }
 

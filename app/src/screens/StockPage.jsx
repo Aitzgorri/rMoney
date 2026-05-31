@@ -112,6 +112,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const payoutListRef = useRef(null)
   const divColPickerRef = useRef(null)
   const [resetState, setResetState] = useState('idle')
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false) // mobile "more actions" hamburger menu
+  const headerMenuRef = useRef(null)
 
   function handleResetApi() {
     setResetState('running')
@@ -213,6 +215,16 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [divColPickerOpen])
+
+  // Close the mobile header "more actions" menu on outside click
+  useEffect(() => {
+    if (!headerMenuOpen) return
+    function onMouseDown(e) {
+      if (!headerMenuRef.current?.contains(e.target)) setHeaderMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [headerMenuOpen])
 
   function toggleDivCol(id) {
     setDivHiddenCols(prev => {
@@ -699,90 +711,117 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   return (
     <div className={styles.screen}>
 
-      {/* Header — full width */}
+      {/* Header — full width. On mobile it stacks into two rows: an identity row
+          (back / ticker / name / exchange) and an actions row (Buy / Sell /
+          Dividend / currency toggle / hamburger). The secondary buttons live in
+          the hamburger menu on mobile and flatten back to inline buttons on
+          desktop via CSS — see StockPage.module.css. */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>←</button>
-        <span className={styles.headerTicker}>{norm}</span>
-        {profile?.name && <span className={styles.headerName}>{profile.name}</span>}
-        {!isManualStockProfile && (
-          <ExchangeSelector
-            ticker={norm}
-            currentExchange={profile?.stockExchange ?? null}
-            currentCurrency={profile?.currency ?? currency ?? null}
-            onChange={handleExchangeChange}
-          />
-        )}
-        {isManualStockProfile && currency && (
-          <span className={styles.headerCurrency}>{currency}</span>
-        )}
-        {accounts.length > 0 && <>
-          <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
-          <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
-          <button className={styles.dividendBtn} onClick={() => {
-            if (noDividends) { setShowNoDivPrompt(true); return }
-            setShowDividendForm(true)
-          }}>+ Dividend</button>
-        </>}
-        {!isManualStockProfile && (
-          <button
-            className={styles.profileBtn}
-            onClick={() => setResolving(true)}
-            title={profile?.name ? 'Refresh profile' : 'Resolve profile'}
-          >
-            {profile?.name ? 'Refresh profile' : 'Resolve profile'}
-          </button>
-        )}
-        <button
-          className={styles.profileBtn}
-          onClick={() => setEditingProfile(true)}
-          title="Edit profile fields manually"
-        >
-          Edit profile
-        </button>
-        <button
-          className={styles.profileBtn}
-          onClick={() => setRenaming(true)}
-          title="Re-identify ticker"
-        >
-          Re-identify ticker
-        </button>
-        {!isManualStockProfile && !noDividends && (
-          <button
-            className={styles.profileBtn}
-            onClick={handleRefreshDividends}
-            disabled={divRefreshStatus === 'loading'}
-            title="Fetch dividend history from market data providers"
-          >
-            {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
-          </button>
-        )}
-        {!isManualStockProfile && !noDividends && isStale && (
-          <span
-            className={styles.staleDot}
-            title="Dividend data is missing or outdated — click Refresh dividends"
-          >
-            ●
-          </span>
-        )}
-        {divRefreshStatus === 'failed' && (
-          <span className={styles.divRefreshError}>Refresh failed</span>
-        )}
-        {tradingCurrency && tradingCurrency !== mainCurrency && (
-          <CurrencyToggle
-            value={currencyMode}
-            onChange={handleCurrencyModeChange}
-            tradingCurrency={tradingCurrency}
-            mainCurrency={mainCurrency}
-          />
-        )}
-        <button
-          className={styles.profileBtn}
-          onClick={handleResetApi}
-          disabled={resetState !== 'idle'}
-          title="Clear cached prices and news so the next load fetches fresh data"
-        >
-          {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
-        </button>
+        <div className={styles.headerMain}>
+          <button className={styles.backBtn} onClick={onBack}>←</button>
+          <span className={styles.headerTicker}>{norm}</span>
+          {profile?.name && <span className={styles.headerName}>{profile.name}</span>}
+          {!isManualStockProfile && (
+            <ExchangeSelector
+              ticker={norm}
+              currentExchange={profile?.stockExchange ?? null}
+              currentCurrency={profile?.currency ?? currency ?? null}
+              onChange={handleExchangeChange}
+            />
+          )}
+          {isManualStockProfile && currency && (
+            <span className={styles.headerCurrency}>{currency}</span>
+          )}
+        </div>
+
+        <div className={styles.headerActions}>
+          {accounts.length > 0 && <>
+            <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
+            <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
+            <button className={styles.dividendBtn} onClick={() => {
+              if (noDividends) { setShowNoDivPrompt(true); return }
+              setShowDividendForm(true)
+            }}>+ Dividend</button>
+          </>}
+          {tradingCurrency && tradingCurrency !== mainCurrency && (
+            <span className={styles.toggleWrap}>
+              <CurrencyToggle
+                value={currencyMode}
+                onChange={handleCurrencyModeChange}
+                tradingCurrency={tradingCurrency}
+                mainCurrency={mainCurrency}
+              />
+            </span>
+          )}
+          <div className={styles.menuWrapper} ref={headerMenuRef}>
+            <button
+              className={styles.menuToggle}
+              onClick={() => setHeaderMenuOpen(o => !o)}
+              title="More actions"
+              aria-haspopup="true"
+              aria-expanded={headerMenuOpen}
+            >
+              ⋯
+              {!isManualStockProfile && !noDividends && isStale && (
+                <span className={styles.menuToggleDot} title="Dividend data is missing or outdated" />
+              )}
+            </button>
+            <div className={`${styles.menuItems} ${headerMenuOpen ? styles.menuOpen : ''}`}>
+              {!isManualStockProfile && (
+                <button
+                  className={styles.profileBtn}
+                  onClick={() => { setResolving(true); setHeaderMenuOpen(false) }}
+                  title={profile?.name ? 'Refresh profile' : 'Resolve profile'}
+                >
+                  {profile?.name ? 'Refresh profile' : 'Resolve profile'}
+                </button>
+              )}
+              <button
+                className={styles.profileBtn}
+                onClick={() => { setEditingProfile(true); setHeaderMenuOpen(false) }}
+                title="Edit profile fields manually"
+              >
+                Edit profile
+              </button>
+              <button
+                className={styles.profileBtn}
+                onClick={() => { setRenaming(true); setHeaderMenuOpen(false) }}
+                title="Re-identify ticker"
+              >
+                Re-identify ticker
+              </button>
+              {!isManualStockProfile && !noDividends && (
+                <button
+                  className={styles.profileBtn}
+                  onClick={handleRefreshDividends}
+                  disabled={divRefreshStatus === 'loading'}
+                  title="Fetch dividend history from market data providers"
+                >
+                  {divRefreshStatus === 'loading' ? 'Refreshing…' : 'Refresh dividends'}
+                  {isStale && (
+                    <span
+                      className={styles.staleDot}
+                      title="Dividend data is missing or outdated — click Refresh dividends"
+                    >
+                      ●
+                    </span>
+                  )}
+                </button>
+              )}
+              {divRefreshStatus === 'failed' && (
+                <span className={styles.divRefreshError}>Refresh failed</span>
+              )}
+              <button
+                className={styles.profileBtn}
+                onClick={handleResetApi}
+                disabled={resetState !== 'idle'}
+                title="Clear cached prices and news so the next load fetches fresh data"
+              >
+                {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* No-dividends escape hatch prompt */}

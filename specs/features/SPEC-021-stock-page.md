@@ -32,7 +32,7 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [x] Transactions list shows, for this stock across all the user's investing accounts, sorted by date: buys, sells, and dividends. A filter control lets the user show only selected types: All / Buy / Sell / Dividend. *(Transfer, Split, Exchange filters deferred to SPEC-019/027)* The list is capped at a max-height of 15 rows with standard scroll. *(Phase 28d)*
 - [x] Dividend section: past payouts from SPEC-020 records shown in a separate section; payouts with `type === 'special'` display a "Special" badge. *(Next-4 projections deferred to Phase 13c)* Past payouts table merges user `dividends` and `apiDividendHistory` records, deduped by `(ticker, exDate)` with user record taking precedence (user `type` and `perShare` win; API row hidden when both exist for the same date). API-only rows render with muted style and an "API" label. Max-height for 15 rows; scrolling down lazy-loads chronologically older year chunks (one year per chunk). *(Phase 28d)*
 - [ ] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*
-- [ ] **Right-column AI panel** is rendered always on desktop, occupying the right half of the page from below the header to the bottom of the viewport. Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Deferred to Phase 19b)*
+- [ ] **Right-column AI panel** is rendered always on desktop (`≥ 1024px`), occupying a fixed 400px-wide right column from below the header to the bottom of the viewport (see Phase 37b). Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Deferred to Phase 19b)*
 - [ ] On mobile, the AI panel stacks below the rest of the page content (single column), preserving the existing mobile flow. *(Deferred to Phase 19b — mobile parity also covered by SPEC-028)*
 - [ ] Stale price indicator / manual price override. *(Deferred to SPEC-027)*
 - [x] Positions summary across all investing accounts shown at the top of the page. Average cost shown is fee-inclusive (buy price + pro-rated buy fee per share). *(Phase 26d)*
@@ -59,6 +59,20 @@ Give the user a focused page per stock showing: latest price, a price chart over
 ### Phase 28g — Enter buy / sell / dividend from stock page
 
 - [x] **`+ Buy`, `+ Sell`, `+ Dividend` action buttons in the Stock page header (Phase 28g):** Three colour-coded buttons appear in the header whenever at least one investing account exists. `+ Buy` (green) and `+ Dividend` (blue) offer all accounts; `+ Sell` (red) offers only accounts where the stock currently has an open position (falls back to all accounts if none do). When exactly one eligible account exists the form opens directly; when two or more exist an account-picker dialog is shown first. After account selection the relevant form opens in a full-screen overlay — identical to the `InvestingAccountDetail` forms (`BuyForm`, `SellForm`, `DividendForm`), with ticker pre-filled from the current page and locked (read-only). On save the record is written and the overlay closes; `+ Buy` also shows the existing negative-balance confirmation when the resulting cash balance would go below zero.
+
+### Phase 37b — Responsive header (mobile two-row layout + hamburger menu)
+
+- [x] **Header stacks into two rows on mobile (Phase 37b):** Previously every header control lived in a single non-wrapping flex row, so on a mobile-width viewport the buttons after the stock-exchange selector overflowed past the right edge of the screen and were unreachable. The header is now **mobile-first** and splits into two rows below the desktop breakpoint (`< 1024px`):
+  - **Identity row** (`.headerMain`): back arrow `←`, ticker, company name, and the stock-exchange selector (or trading-currency label for manual stocks).
+  - **Actions row** (`.headerActions`): `+ Buy`, `+ Sell`, `+ Dividend`, the Trading ↔ Main currency toggle (when trading currency ≠ main), and a `⋯` **hamburger** button — kept on a **single non-wrapping row** (`flex-wrap: nowrap`). The `⋯` is pinned to the right edge (`margin-left: auto`) so its right-anchored dropdown opens *into* the screen; the primary buttons use tighter padding on mobile and the currency toggle is allowed to shrink so the `⋯` is never pushed off-screen or onto a second line.
+- [x] **Secondary actions collapse into a hamburger menu on mobile (Phase 37b):** The secondary/admin controls — `Refresh profile` / `Resolve profile`, `Edit profile`, `Re-identify ticker`, `Refresh dividends`, and `Reset API` — move into a dropdown anchored to the `⋯` button. Tapping `⋯` toggles the menu; tapping any item runs its action and closes the menu; clicking/tapping anywhere outside the menu collapses it (same outside-click pattern as the dividend column picker). The colour-coded primary actions (Buy/Sell/Dividend) and the currency toggle stay visible in the actions row at all times.
+- [x] **Stale-dividend indicator surfaced on the closed menu (Phase 37b):** The amber stale-data dot (shown when dividend history is missing/outdated) is mirrored as a small dot badge on the `⋯` toggle so the user still sees it while the menu is closed; the original `●` dot also renders next to the `Refresh dividends` item inside the menu. The `Refresh failed` message renders inside the menu beneath `Refresh dividends`.
+- [x] **Three-tier responsive header (Phase 37b):** The header has three layouts driven purely by CSS media queries on a single set of JSX controls (no duplicated buttons):
+  - **Phone / tablet (`< 1024px`):** two stacked rows (identity + actions); secondary actions behind the `⋯` menu.
+  - **Small/medium desktop (`1024px–1399px`):** identity and actions collapse onto **one row**, but the secondary actions **stay behind the `⋯` menu**. This avoids the overflow that occurs when the full inline button set (identity + Buy/Sell/Dividend + toggle + 5 secondary buttons) is forced into a row narrower than it needs (~1350px).
+  - **Wide desktop (`≥ 1400px`):** the `⋯` toggle (and its dot) is hidden and the menu panel flattens into inline buttons — the original rich desktop header. `.menuWrapper { display: contents }` lets the menu items rejoin the header flex row directly.
+  - The flatten breakpoint is deliberately high (1400px) because the full inline set overflows below it; tablets and smaller laptops therefore use the hamburger, guaranteeing the header never overflows at any width.
+- [x] **Two-column body breakpoint + AI column width (Phase 37b):** The desktop two-column split (stock content left, AI panel right) now activates at **`≥ 1024px`** instead of 768px, and the right (AI) column is **400px** wide (was 760px). At 768–1023px the previous breakpoint produced a crushed left column (≈8px sliver with overlapping content) because the fixed 760px right column left no room; widths below 1024px now use the single-column stacked layout (AI panel below the stock content) which never crushes. Above 1024px the narrower 400px AI column gives the left stock column the majority of the width (e.g. ~576px at 1024px). The header single-row breakpoint and the body two-column breakpoint are intentionally aligned at 1024px so narrowing the window transitions cleanly to the mobile layout in one step rather than through a broken intermediate state.
 
 ### Phase 33 — Dividend list, lots view, and bug fixes
 
@@ -100,7 +114,25 @@ Desktop layout — two-column split. Left column hosts all stock data; right col
 +--------------------------------------------------+--------------------------------+
 ```
 
-The right column has a fixed minimum width (e.g. ~360px) so the chat is comfortable; the left column expands/contracts with viewport. Mobile stacks these sections vertically (left column first, then the AI panel below); chart, metrics, and news may be collapsed behind tabs per the mobile pared-down view (see SPEC-028 for parity plan).
+The two-column split activates at **`≥ 1024px`** (Phase 37b). The right column is a **fixed 400px** wide so the chat is comfortable; the left column takes the remaining width and expands/contracts with the viewport. Below 1024px the page is a single stacked column (left column first, then the AI panel below); chart, metrics, and news may be collapsed behind tabs per the mobile pared-down view (see SPEC-028 for parity plan).
+
+Mobile header (Phase 37b) — two rows, with secondary actions behind the `⋯` menu:
+
+```
++------------------------------------------+
+| ←  AHRT  AH Realty Trust   [XNYS·USD ▼]  |   ← identity row (.headerMain)
++------------------------------------------+
+| [+ Buy] [+ Sell] [+ Dividend]  [⌄$]  [⋯] |   ← actions row (.headerActions)
++------------------------------------------+
+                                  ⋯ menu:
+                                  +------------------+
+                                  | Refresh profile  |
+                                  | Edit profile     |
+                                  | Re-identify …    |
+                                  | Refresh dividends|
+                                  | Reset API        |
+                                  +------------------+
+```
 
 ## Data
 No new persistent collections in this spec. Reads:
