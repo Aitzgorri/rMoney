@@ -366,25 +366,47 @@ export function computeDividendAggregates({ rows, derived, mainCurrency, fxRates
   let weightedTtmPct = 0
   let monthGross = 0
   let monthNet = 0
+  // Degraded-mode flags: when a row's trade currency has no FX rate to the main
+  // currency we can't convert it, so the weighting falls back to the native
+  // trade value (yield % still counts, flagged approximate) and the main-currency
+  // monthly amounts are left out (flagged incomplete). Without this a dividend-
+  // paying row in an unrated currency was silently dropped, zeroing the aggregate
+  // even though its per-row yield columns showed fine. (SPEC-034 Phase 38.)
+  let approxWeight = false
+  let amountsMissingFx = false
+  const missingFxPairs = new Set()
   for (const row of rows) {
     if (!row.included || row.executedAt) continue
     const d = derived[row.id]
     if (!d?.dividend) continue
-    // Trade-value-in-main-currency = the row's tradeValue × rateToMain
-    const tradeValMain = (side === 'sell' ? d.mainCurrencyValue : d.mainCurrencyValue) ?? 0
-    if (tradeValMain <= 0) continue
-    weightSum += tradeValMain
-    if (d.dividend.fwdPct != null) weightedFwdPct += d.dividend.fwdPct * tradeValMain
-    if (d.dividend.ttmPct != null) weightedTtmPct += d.dividend.ttmPct * tradeValMain
+    // Weight by trade-value-in-main-currency when available; otherwise fall back
+    // to the row's native trade value so the row still contributes its yield %.
+    const nativeVal = (side === 'sell' ? d.netOfFee : d.grossPlusFee) ?? 0
+    let weight = d.mainCurrencyValue
+    if (weight == null) {
+      if (nativeVal <= 0) continue
+      weight = nativeVal
+      approxWeight = true
+      if (row.currency && row.currency !== mainCurrency) missingFxPairs.add(`${row.currency}->${mainCurrency}`)
+    }
+    if (weight <= 0) continue
+    weightSum += weight
+    if (d.dividend.fwdPct != null) weightedFwdPct += d.dividend.fwdPct * weight
+    if (d.dividend.ttmPct != null) weightedTtmPct += d.dividend.ttmPct * weight
 
     const fwdMonthGrossMain = convertWithFx(d.dividend.fwdMonthGross, row.currency, mainCurrency, fxRates)
     const fwdMonthNetMain   = convertWithFx(d.dividend.fwdMonthNet,   row.currency, mainCurrency, fxRates)
     if (fwdMonthGrossMain != null) monthGross += fwdMonthGrossMain
-    if (fwdMonthNetMain   != null) monthNet   += fwdMonthNetMain
+    else if ((d.dividend.fwdMonthGross ?? 0) > 0) amountsMissingFx = true
+    if (fwdMonthNetMain != null) monthNet += fwdMonthNetMain
+    else if ((d.dividend.fwdMonthNet ?? 0) > 0) amountsMissingFx = true
   }
   const avgFwdPct = weightSum > 0 ? weightedFwdPct / weightSum : null
   const avgTtmPct = weightSum > 0 ? weightedTtmPct / weightSum : null
-  return { avgFwdPct, avgTtmPct, monthGross, monthNet, weightSum }
+  return {
+    avgFwdPct, avgTtmPct, monthGross, monthNet, weightSum,
+    approxWeight, amountsMissingFx, missingFxPairs: [...missingFxPairs],
+  }
 }
 
 // ─── Long-term hold count (sell rows) ──────────────────────────────────────

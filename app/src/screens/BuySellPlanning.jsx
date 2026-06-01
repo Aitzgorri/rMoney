@@ -745,10 +745,26 @@ function OverviewBlock({
     if (!sellAggregates || !buyAggregates) return null
     return {
       pctDelta: (buyAggregates.avgFwdPct ?? 0) - (sellAggregates.avgFwdPct ?? 0),
+      ttmDelta: (buyAggregates.avgTtmPct ?? 0) - (sellAggregates.avgTtmPct ?? 0),
       grossDelta: (buyAggregates.monthGross ?? 0) - (sellAggregates.monthGross ?? 0),
       netDelta:   (buyAggregates.monthNet   ?? 0) - (sellAggregates.monthNet   ?? 0),
     }
   }, [sellAggregates, buyAggregates])
+
+  // Footnote when a dividend-paying row's trade currency has no FX rate to the
+  // main currency: its yield % still counts (approximate weighting) but the
+  // main-currency monthly amounts can't be summed until the rate is set.
+  const dividendFxNote = useMemo(() => {
+    const pairs = [...new Set([
+      ...(sellAggregates?.missingFxPairs ?? []),
+      ...(buyAggregates?.missingFxPairs ?? []),
+    ])]
+    const approx = sellAggregates?.approxWeight || buyAggregates?.approxWeight
+    const amounts = sellAggregates?.amountsMissingFx || buyAggregates?.amountsMissingFx
+    if (!approx && !amounts) return null
+    const pairList = pairs.map(p => p.replace('->', ' → ')).join(', ')
+    return `~ Yields are weighted approximately and the ${mainCurrency} monthly amounts are partial — no FX rate for ${pairList}. Set it in the FX rates panel above (or use Refresh) to complete the totals.`
+  }, [sellAggregates, buyAggregates, mainCurrency])
 
   return (
     <section className={styles.overview}>
@@ -901,10 +917,10 @@ function OverviewBlock({
                     <strong>{fmtNum(endValue)}</strong>
                   </td>
                   <td className={`${styles.tdRight} ${overspend > 0.01 ? styles.overspendCell : ''}`}>
-                    {overspend > 0.01 ? fmtNum(overspend) : '—'}
+                    {overspend > 0.01 ? `${fmtNum(overspend)} ${ccy}` : '—'}
                   </td>
                   <td className={`${styles.tdRight} ${fxOverspend > 0.01 ? styles.overspendCell : ''}`}>
-                    {ccy === mainCurrency && fxOverspend > 0.01 ? fmtNum(fxOverspend) : '—'}
+                    {ccy === mainCurrency && fxOverspend > 0.01 ? `${fmtNum(fxOverspend)} ${mainCurrency}` : '—'}
                   </td>
                 </tr>
               )
@@ -930,23 +946,23 @@ function OverviewBlock({
           <tbody>
             <tr>
               <td className={styles.divImpactLabel}>Sells (drag on income)</td>
-              <td className={styles.tdRight}>{fmtPct(sellAggregates?.avgFwdPct)}</td>
-              <td className={styles.tdRight}>{fmtPct(sellAggregates?.avgTtmPct)}</td>
-              <td className={styles.tdRight}>{fmtSigned(-(sellAggregates?.monthGross ?? 0))}</td>
-              <td className={styles.tdRight}>{fmtSigned(-(sellAggregates?.monthNet ?? 0))}</td>
+              <td className={styles.tdRight}>{fmtPctAgg(sellAggregates, 'avgFwdPct')}</td>
+              <td className={styles.tdRight}>{fmtPctAgg(sellAggregates, 'avgTtmPct')}</td>
+              <td className={styles.tdRight} title={sellAggregates?.amountsMissingFx ? fxAmtTitle(sellAggregates) : undefined}>{fmtAmtAgg(sellAggregates, 'monthGross', -1)}</td>
+              <td className={styles.tdRight} title={sellAggregates?.amountsMissingFx ? fxAmtTitle(sellAggregates) : undefined}>{fmtAmtAgg(sellAggregates, 'monthNet', -1)}</td>
             </tr>
             <tr>
               <td className={styles.divImpactLabel}>Buys (added income)</td>
-              <td className={styles.tdRight}>{fmtPct(buyAggregates?.avgFwdPct)}</td>
-              <td className={styles.tdRight}>{fmtPct(buyAggregates?.avgTtmPct)}</td>
-              <td className={styles.tdRight}>{fmtSigned(buyAggregates?.monthGross ?? 0)}</td>
-              <td className={styles.tdRight}>{fmtSigned(buyAggregates?.monthNet ?? 0)}</td>
+              <td className={styles.tdRight}>{fmtPctAgg(buyAggregates, 'avgFwdPct')}</td>
+              <td className={styles.tdRight}>{fmtPctAgg(buyAggregates, 'avgTtmPct')}</td>
+              <td className={styles.tdRight} title={buyAggregates?.amountsMissingFx ? fxAmtTitle(buyAggregates) : undefined}>{fmtAmtAgg(buyAggregates, 'monthGross', 1)}</td>
+              <td className={styles.tdRight} title={buyAggregates?.amountsMissingFx ? fxAmtTitle(buyAggregates) : undefined}>{fmtAmtAgg(buyAggregates, 'monthNet', 1)}</td>
             </tr>
             {dividendDelta && (
               <tr className={styles.deltaRow}>
                 <td className={styles.divImpactLabel}>Δ Difference (buys − sells)</td>
-                <td className={styles.tdRight}>{fmtPct(dividendDelta.pctDelta, true)}</td>
-                <td></td>
+                <td className={styles.tdRight}>{(sellAggregates?.approxWeight || buyAggregates?.approxWeight) ? '~' : ''}{fmtPct(dividendDelta.pctDelta, true)}</td>
+                <td className={styles.tdRight}>{(sellAggregates?.approxWeight || buyAggregates?.approxWeight) ? '~' : ''}{fmtPct(dividendDelta.ttmDelta, true)}</td>
                 <td className={`${styles.tdRight} ${dividendDelta.grossDelta < 0 ? styles.negative : styles.positive}`}>
                   {fmtSigned(dividendDelta.grossDelta)}
                 </td>
@@ -957,6 +973,11 @@ function OverviewBlock({
             )}
           </tbody>
         </table>
+        {dividendFxNote && (
+          <p className={styles.cellMuted}>
+            {dividendFxNote}
+          </p>
+        )}
       </div>
     </section>
   )
@@ -1053,7 +1074,7 @@ function buildSellColumns({
           onChange={fields => onUpdateRow(r.id, fields)}
         />
       ) },
-    { id: 'fee', label: 'Fee',  minWidth: 120,
+    { id: 'fee', label: 'Fee',  minWidth: 96,
       render: r => (
         <FeeCell
           value={r.manualFeeOverride}
@@ -1180,7 +1201,7 @@ function buildBuyColumns({
           onChange={fields => onUpdateRow(r.id, fields)}
         />
       ) },
-    { id: 'fee', label: 'Fee', minWidth: 120,
+    { id: 'fee', label: 'Fee', minWidth: 96,
       render: r => (
         <FeeCell
           value={r.manualFeeOverride}
@@ -1287,7 +1308,7 @@ function FeeCell({ value, resolved, onChange, override }) {
         type="number"
         step="any"
         min="0"
-        className={styles.cellInput}
+        className={`${styles.cellInput} ${styles.feeInput}`}
         value={display}
         onChange={e => onChange(e.target.value)}
         placeholder={resolved != null ? fmtNum(resolved) : '0'}
@@ -1809,6 +1830,23 @@ function fmtSigned(n) {
   if (n == null || !Number.isFinite(n)) return '—'
   const sign = n > 0 ? '+' : ''
   return `${sign}${fmtNum(n)}`
+}
+// Aggregate yield with a "~" prefix when the weighting fell back to native trade
+// value because an FX rate to the main currency was missing (SPEC-034 Phase 38).
+function fmtPctAgg(agg, key) {
+  const v = agg?.[key]
+  if (v == null || !Number.isFinite(v)) return fmtPct(v)
+  return `${agg?.approxWeight ? '~' : ''}${fmtPct(v)}`
+}
+// Aggregate main-currency amount with a "*" marker when some rows could not be
+// converted (their contribution is omitted until the FX rate is set).
+function fmtAmtAgg(agg, key, sign = 1) {
+  const s = fmtSigned((agg?.[key] ?? 0) * sign)
+  return agg?.amountsMissingFx ? `${s} *` : s
+}
+function fxAmtTitle(agg) {
+  const pairs = (agg?.missingFxPairs ?? []).map(p => p.replace('->', ' → ')).join(', ')
+  return `Partial — excludes rows with no FX rate to the main currency${pairs ? ` (${pairs})` : ''}. Set the rate in the FX rates panel to include them.`
 }
 function fmtShares(n) {
   if (!Number.isFinite(n) || n === 0) return '0'

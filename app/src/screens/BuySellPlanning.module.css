@@ -433,6 +433,10 @@
 
 .cellInput:focus { border-color: #3b82f6; }
 
+/* Fee amounts rarely exceed ~3 decimals, so the fee input is narrower than the
+   shared cell input to keep the Fee column compact (SPEC-034 Phase 38). */
+.feeInput { width: 62px; }
+
 .maxHint {
   font-size: 12px;
   color: var(--text-faint);
