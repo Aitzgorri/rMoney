@@ -89,6 +89,10 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [x] When the Positions section has a multi-account total row (Phase 28c), expanding the subtotal row does **not** open lots — it remains a numeric summary. The user must expand each per-account row individually.
 - [x] The expanded view persists per-row in local component state only — refreshing the page collapses all rows again. The "days remaining" hint is purely informational (long-term-hold threshold) and is not driven by any tax-jurisdiction setting.
 
+### Phase 38 — Wide-screen AI column width
+
+- [ ] **AI right-column widens to ⅓ of the page on wide screens.** Phase 37b fixed the right (AI) column at **400px** for every desktop width ≥ 1024px; on wide monitors that leaves the chat cramped while the left stock column has surplus width. New rule: at the existing **wide-desktop breakpoint (`≥ 1400px`** — the same width at which the header flattens its `⋯` menu, so the whole layout shifts in one coherent step), the right column width becomes **one-third of the page width** (`33.33%` of the body / `33.33vw`) instead of fixed 400px, with the left stock column taking the remaining two-thirds. A **minimum of 400px** is kept so the column never narrows below today's width (at 1400px, ⅓ ≈ 467px — already above the floor, so the floor only matters if the breakpoint is ever lowered). Between **1024–1399px** the fixed 400px from Phase 37b is retained; **below 1024px** the single-column stacked layout (AI panel below the stock content) is unchanged. The panel *content* (chat / placeholder) remains owned by SPEC-026 — this criterion only resizes the layout slot in `StockPage.module.css` (the `.rightCol` width inside the `@media (min-width: 1400px)` block) and updates the left column to flex into the remaining width. *(Breakpoint choice = 1400px to align with the header flatten; flagged as a design decision the user can adjust.)*
+
 ## UI / Screens
 Desktop layout — two-column split. Left column hosts all stock data; right column hosts the AI panel (owned by SPEC-026):
 
@@ -114,7 +118,7 @@ Desktop layout — two-column split. Left column hosts all stock data; right col
 +--------------------------------------------------+--------------------------------+
 ```
 
-The two-column split activates at **`≥ 1024px`** (Phase 37b). The right column is a **fixed 400px** wide so the chat is comfortable; the left column takes the remaining width and expands/contracts with the viewport. Below 1024px the page is a single stacked column (left column first, then the AI panel below); chart, metrics, and news may be collapsed behind tabs per the mobile pared-down view (see SPEC-028 for parity plan).
+The two-column split activates at **`≥ 1024px`** (Phase 37b). The right column is a **fixed 400px** wide from 1024–1399px so the chat is comfortable; **at `≥ 1400px` it widens to ⅓ of the page width (Phase 38, min 400px)** and the left column takes the remaining two-thirds and expands/contracts with the viewport. Below 1024px the page is a single stacked column (left column first, then the AI panel below); chart, metrics, and news may be collapsed behind tabs per the mobile pared-down view (see SPEC-028 for parity plan).
 
 Mobile header (Phase 37b) — two rows, with secondary actions behind the `⋯` menu:
 

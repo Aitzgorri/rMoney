@@ -96,6 +96,11 @@ Record every dividend payout the user has received on a stock, with correct mult
 - [x] [+ Dividend] button in the Positions section header opens a blank dividend form.
 - [x] [Dividend] button per position row pre-fills ticker, currency, and share count from that position.
 
+### Phase 38 — June 2026 adjustments
+
+- [ ] **Auto-tag `paysDividends: true` when the API confirms a dividend cadence.** When a market-data refresh resolves a non-`'unknown'` `dividendFrequency` for a stock — i.e. `refreshApiDividendHistory` / `detectEffectiveDividendFrequency` derives a Monthly / Quarterly / Semi-annual / Annual cadence from API-fetched payouts (≥ 2 regular payouts) — the app sets `paysDividends: true` on the `stockProfile`, **but only when `paysDividends` is currently `null`** (unknown). It never overrides an explicit user `false` (the opt-out set via Edit profile always wins) and is a no-op when already `true`. Rationale: a stock the API reports paying on a regular cadence is, by definition, a dividend payer; auto-promoting it from "unknown" to "pays" means it stops being excluded from the forward-yield tiles, the Dividend page, and the Buy-Sell Planning dividend-impact table (SPEC-034) without the user having to flip the flag by hand. This is the positive-direction counterpart to the existing Phase 33 rule that `paysDividends: false` hides a stock from every dividend surface. *(Edge case kept deliberately conservative: detecting a single payout — frequency still `'unknown'` — does **not** auto-tag, matching the note's wording "if the API determines the **frequency**". A future enhancement could tag on any API-confirmed regular payout; left out of v1 to avoid false positives on one-off distributions.)*
+- [ ] **Per-country dividend-tax picker uses the shared `CountryDropdown`.** The "Per-country dividend tax" card (Settings → Investments → Dividends) replaces its free-text 2-letter country input ([Settings.jsx](../../app/src/screens/Settings.jsx)) with the shared `CountryDropdown` (defined in SPEC-017) so a country is **picked** as `DE — Germany` rather than typed. The stored map key remains the ISO 3166-1 alpha-2 code, so `settings.dividends.perCountryTaxPercent` and the resolution chain (`hqCountryOverride ?? hqCountry` → per-country → global) are unchanged. Keeps country entry consistent with the HQ-country field (SPEC-029) and removes the typo class ("UK" vs "GB", "german") that silently breaks tax resolution.
+
 ## UI / Screens
 Dividend entry form:
 
@@ -184,7 +189,8 @@ Per-stock settings (lives on the stock "profile" — separate from individual tr
                                        // user-editable from Edit profile (Phase 26b)
   amountEstimationRule: 'last-paid' | 'year-ago' | 'manual',  // defaults to global
   manualEstimatedAmount: number | null,// only used when rule === 'manual'
-  paysDividends: boolean | null        // Phase 33; null = unknown/treated as paying; false = excluded from all dividend surfaces
+  paysDividends: boolean | null        // Phase 33; null = unknown/treated as paying; false = excluded from all dividend surfaces.
+                                       // Phase 38: auto-set to true (only from null) when the API confirms a non-'unknown' dividendFrequency.
 }
 ```
 

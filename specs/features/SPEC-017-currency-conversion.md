@@ -32,6 +32,19 @@ Accounts already carry a currency field today ([SPEC-002](SPEC-002-accounts.md))
 - [x] **Main currency is always in favorites.** `handleMainCurrencyChange` in Settings auto-adds the new main currency to favorites at the top when absent.
 - [x] **Storage.** `settings.favoriteCurrencies: string[]` stored in `rmoney_settings` blob via `getFavoriteCurrencies` / `setFavoriteCurrencies` in `data/settings.js`.
 - [x] **Shared component.** `components/CurrencyDropdown.jsx` — props: `value`, `onChange`, `disabled?`, `className?`, `excludeMinorUnits?`. Reads `getFavoriteCurrencies()` and `ISO4217` from `utils/iso4217.js`. Unknown legacy values shown as a fallback option above favorites.
+
+### Reduced default favorite currencies *(Phase 38)*
+- [ ] **Default favorite-currency seed reduced to GBP / EUR / CAD / USD.** Supersedes the Phase 33 "Defaults on first run" behaviour (which seeded all 14 `SUPPORTED_CURRENCIES`). `migrateFavoriteCurrencies()` and the `migrateSettingsObjectToV2()` pure transform in `data/settings.js` now seed `['GBP', 'EUR', 'CAD', 'USD']`. `SUPPORTED_CURRENCIES` itself is **unchanged** — it stays the broader list offered in the "others" section of every `CurrencyDropdown` and in the main-currency picker; only the favorites **seed** shrinks. The migration remains seed-when-absent, so existing users who already have a `favoriteCurrencies` array keep their full list; the smaller default applies to fresh installs and to backups that predate the favorites field. The "main currency is always in favorites" rule still force-adds the user's main currency at the top, so a user whose main currency is outside the four still sees it pinned.
+
+### Shared country dropdown with favorites *(Phase 38)*
+
+SPEC-017 is the home of the app's shared **reference-data dropdowns and their favorites lists**. Phase 33 added currencies; Phase 38 adds **countries**, reusing the identical pattern so the two behave the same. (HQ country and per-country withholding tax are not currency-conversion concerns, but the favorites + shared-dropdown UX is identical, so they are documented together here rather than split across files — see the note in *Out of Scope* on a future dedicated reference-data spec if a third type appears.)
+
+- [ ] **Country reference data + shared `CountryDropdown`.** New `utils/iso3166.js` exports the ISO 3166-1 list as `{ code, name }` rows (alpha-2 code + English short name). New `components/CountryDropdown.jsx` mirrors `CurrencyDropdown` — props `value` (alpha-2 code), `onChange`, `disabled?`, `className?`. Each option label renders as `"DE — Germany"` (`{code} — {name}`). Options are **sorted by country name** (not by code). Favorites render first in user-defined order, then a non-selectable `────` divider `<option>`, then every other country sorted by name. An unknown / legacy stored value (free-text that isn't a valid alpha-2 code, e.g. a previously typed "UK") is shown as a fallback option at the top so existing data still displays and can be re-picked.
+- [ ] **Favorite countries managed in Settings → General.** A "Favorite countries" card sits directly below the "Favorite currencies" card, with the identical UX: drag-handle reorder (`@dnd-kit/core`), `code — name` rows each with an × remove button, and a searchable "Add country" input filtered from `iso3166.js` (already-favorite codes greyed out). Stored as `settings.favoriteCountries: string[]` (alpha-2 codes, user order) via `getFavoriteCountries` / `setFavoriteCountries` in `data/settings.js`.
+- [ ] **Default favorite-countries seed.** `migrateFavoriteCountries()` runs at app boot (App.jsx, alongside `migrateFavoriteCurrencies`) and seeds `settings.favoriteCountries` when absent. Default seed: **`['US', 'GB', 'DE', 'CA']`** (United States, United Kingdom, Germany, Canada) — chosen to parallel the reduced default favorite currencies (GBP→GB, EUR→DE, CAD→CA, USD→US). Seeded identically by a `migrateSettingsObjectToV2`-style pure transform for the backup loader. *(Design choice — an empty default is equally acceptable if the user prefers to build the list from scratch; flagged for confirmation.)*
+- **Consumers** (ACs live in their owning specs; the shared component is defined once here): the HQ-country field on Edit profile / Add manual stock (**SPEC-029**) and the Per-country dividend-tax picker (**SPEC-020**) both switch from free-text to `CountryDropdown`.
+
 - [x] Every account keeps its native currency (already stored, SPEC-002). No data migration needed.
 - [x] A conversion utility `convertToMain(amount, fromCurrency, atDate?)` is available app-wide. With `atDate` it uses the rate snapshotted at that date; without, it uses the current cached rate.
 - [x] Conversion layer is consumed by: Dashboard totals ✓, budget/category rollups ✓ (SPEC-011), planning-period sums ✓ (SPEC-009), Transaction list totals ✓ (SPEC-006), Envelope list totals ✓ (SPEC-007), and all Investments views (deferred to Phase 11+).
@@ -76,7 +89,8 @@ Balance: €1,245.33          (≈ 31 020 CZK)
 No new persistent collections. Adds:
 - `settings.mainCurrency` (string, ISO 4217 code)
 - `settings.currencyDisplay` (enum: `main` | `native`) — default `main`
-- `settings.favoriteCurrencies` (string[], ISO 4217 codes in user-defined order) — Phase 33; defaults to existing `SUPPORTED_CURRENCIES`; managed by `getFavoriteCurrencies` / `setFavoriteCurrencies` / `migrateFavoriteCurrencies` in `data/settings.js`
+- `settings.favoriteCurrencies` (string[], ISO 4217 codes in user-defined order) — Phase 33; **Phase 38: default seed reduced from the 14-code `SUPPORTED_CURRENCIES` to `['GBP', 'EUR', 'CAD', 'USD']`**; managed by `getFavoriteCurrencies` / `setFavoriteCurrencies` / `migrateFavoriteCurrencies` in `data/settings.js`
+- `settings.favoriteCountries` (string[], ISO 3166-1 alpha-2 codes in user-defined order) — Phase 38; default seed `['US', 'GB', 'DE', 'CA']`; managed by `getFavoriteCountries` / `setFavoriteCountries` / `migrateFavoriteCountries` in `data/settings.js`. Lives inside the existing `rmoney_settings` blob (no new Storage-tab card needed — same as `favoriteCurrencies`). **New settings key → backup-format bump (`rmoney-data-v4`) when shipped (see SPEC-016 / RELEASE.md).**
 - `cache.exchangeRates` (in-memory + persisted, keyed by `${from}_${to}`, with `rate`, `fetchedAt`) — 1-hour TTL on reads
 
 Snapshot helper stores rates on investment transactions (see SPEC-019). This spec provides the snapshotting utility; the storage shape lives on each investment record.
@@ -86,6 +100,7 @@ Snapshot helper stores rates on investment transactions (see SPEC-019). This spe
 - Historical rate charts or a "rates over time" view.
 - User-entered exchange rates as an override. Phase 2 only supports API-provided rates + manual refresh; a manual rate override could be a future enhancement.
 - Per-transaction historical rates for **non-investment** transactions. Only investment transactions snapshot rates (for the multi-currency performance metrics).
+- A separate "reference data & favorites" spec. For now currencies (Phase 33) and countries (Phase 38) share this spec because the favorites + shared-dropdown UX is identical. If a third reference-data type needs the same treatment (e.g. stock exchanges, sectors), extract the `iso*.js` data + `*Dropdown` component + favorites pattern into their own spec and cross-link back here. Tracked as a possible future refactor, not v1 work.
 
 ## Open Questions
 None.

@@ -113,6 +113,9 @@ When a company changes its ticker symbol, the user can rename the ticker from th
 - [x] **Re-resolve (Refresh profile) rewrites identity fields.** When the user re-confirms a candidate via Refresh profile, the profile's `name`, `stockExchange`, and `currency` are rewritten to the picked candidate's values and a fresh `lastKnownPrice` snapshot is taken. This makes Refresh profile authoritative for the identity quartet (name, exchange, currency, latest price). Other fields (HQ country, dividend frequency, tax %, manual price source) are preserved.
 - [x] **Offline rendering.** Every screen that calls `getLatestPrice` and gets back nothing (provider chain unavailable, all failed) falls back to `profile.lastKnownPrice` before showing "—". A small clock icon (⏱) next to the price indicates the value is the last-known snapshot with a tooltip showing `fetchedAt`.
 
+### HQ country dropdown *(Phase 38)*
+- [ ] **HQ country is a `CountryDropdown`, not a free-text input.** The HQ-country field on the Edit profile dialog ([`EditProfileDialog.jsx`](../../app/src/components/EditProfileDialog.jsx)) — and the optional HQ-country field on Add manual stock — uses the shared `CountryDropdown` (defined in SPEC-017) instead of the current free-text `<input>`. The user picks `DE — Germany`; the **stored value stays the ISO 3166-1 alpha-2 code** on `hqCountryOverride`, so the dividend-tax resolution chain (`hqCountryOverride ?? hqCountry` → per-country, SPEC-020) is unchanged. A provider-fetched `hqCountry` that isn't a clean alpha-2 code surfaces through the dropdown's legacy-fallback option (and the existing "Provider-fetched: X" hint is preserved). The user's favorite countries (SPEC-017) sit at the top of the list. Rationale: HQ country drives per-country withholding tax — a typo ("UK" instead of "GB", "german") silently breaks tax resolution; a dropdown removes that error class and matches the currency-field treatment used everywhere else.
+
 ## UI / Screens
 
 Resolution dialog — Direction A (ticker entered), with price column:
@@ -237,7 +240,8 @@ Extended `stockProfiles` record:
 
   // HQ country (Phase 33) — two fields to distinguish auto-fetched from user-overridden.
   hqCountry: string | null,         // written by Refresh profile / Re-identify ticker (provider first-non-null)
-  hqCountryOverride: string | null, // written by user via Edit profile dialog; wins over hqCountry in display
+  hqCountryOverride: string | null, // written by user via Edit profile dialog; wins over hqCountry in display.
+                                    // Phase 38: picked via the shared CountryDropdown (SPEC-017); stored as the ISO 3166-1 alpha-2 code.
   // Effective value for display: hqCountryOverride ?? hqCountry ?? 'Global'
 }
 ```
