@@ -288,7 +288,7 @@ export default function BuySellPlanning({ onNavigate }) {
 
   // ── Cash impact simulation ─────────────────────────────────────────────────
   const cashImpact = useMemo(() => {
-    if (!active) return { perCurrency: {}, shortfall: {} }
+    if (!active) return { perCurrency: {}, shortfall: {}, standaloneOverspend: {}, fxOverspendMain: 0 }
     return simulateCashImpact({
       scenario: active,
       balancesByCurrency,
@@ -312,8 +312,11 @@ export default function BuySellPlanning({ onNavigate }) {
   const displayedCurrencies = useMemo(() => {
     if (!active) return [mainCurrency]
     if (active.displayedCurrencies?.length) return active.displayedCurrencies
-    return [...new Set([...distinctTradeCurrencies, mainCurrency])]
-  }, [active, distinctTradeCurrencies, mainCurrency])
+    // Default: trade currencies + every held-balance currency + main, so a
+    // currency the user holds cash in (but isn't trading) still appears in the
+    // cash-impact table — it participates in the FX cascade.
+    return [...new Set([...distinctTradeCurrencies, ...Object.keys(balancesByCurrency), mainCurrency])]
+  }, [active, distinctTradeCurrencies, balancesByCurrency, mainCurrency])
 
   // ── Aggregate dividend metrics ─────────────────────────────────────────────
   const sellAggregates = useMemo(
@@ -734,8 +737,8 @@ function OverviewBlock({
   }, [distinctTradeCurrencies, mainCurrency])
 
   const allCurrenciesForPicker = useMemo(() => {
-    return [...new Set([...distinctTradeCurrencies, mainCurrency])]
-  }, [distinctTradeCurrencies, mainCurrency])
+    return [...new Set([...distinctTradeCurrencies, ...Object.keys(balancesByCurrency), mainCurrency])]
+  }, [distinctTradeCurrencies, balancesByCurrency, mainCurrency])
 
   // Dividend delta (buys − sells), in main currency
   const dividendDelta = useMemo(() => {
@@ -866,14 +869,25 @@ function OverviewBlock({
               <th className={styles.tdRight}>Transfer in</th>
               <th className={styles.tdRight}>Transfer out</th>
               <th className={styles.tdRight}>End</th>
-              <th className={styles.tdRight}>Overspend</th>
+              <th
+                className={styles.tdRight}
+                title="This currency's own orders versus its own cash (start + top-up + sells), ignoring any cross-currency FX funding."
+              >Overspend (own cash)</th>
+              <th
+                className={styles.tdRight}
+                title={`Residual that no balance could fund after the FX cascade (trade currency → ${mainCurrency} → others), shown converted to ${mainCurrency}.`}
+              >Overspend (after FX, {mainCurrency})</th>
             </tr>
           </thead>
           <tbody>
             {displayedCurrencies.map(ccy => {
               const row = cashImpact.perCurrency[ccy] ?? { start: 0, topUp: 0, sells: 0, buys: 0, transferIn: 0, transferOut: 0, end: 0 }
-              const overspend = cashImpact.shortfall[ccy] ?? 0
-              const negative = row.end < 0
+              const overspend = cashImpact.standaloneOverspend[ccy] ?? 0
+              const fxOverspend = ccy === mainCurrency ? (cashImpact.fxOverspendMain ?? 0) : 0
+              // Snap sub-cent floating-point noise to 0 so a balance that nets
+              // to exactly zero never renders as a red "-0.00".
+              const endValue = Math.abs(row.end) < 0.005 ? 0 : row.end
+              const negative = endValue < 0
               return (
                 <tr key={ccy}>
                   <td className={styles.ccyCol}>{ccy}</td>
@@ -884,10 +898,13 @@ function OverviewBlock({
                   <td className={styles.tdRight}>{row.transferIn ? fmtSigned(row.transferIn) : '—'}</td>
                   <td className={styles.tdRight}>{row.transferOut ? fmtSigned(-row.transferOut) : '—'}</td>
                   <td className={`${styles.tdRight} ${negative ? styles.negative : styles.positive}`}>
-                    <strong>{fmtNum(row.end)}</strong>
+                    <strong>{fmtNum(endValue)}</strong>
                   </td>
                   <td className={`${styles.tdRight} ${overspend > 0.01 ? styles.overspendCell : ''}`}>
                     {overspend > 0.01 ? fmtNum(overspend) : '—'}
+                  </td>
+                  <td className={`${styles.tdRight} ${fxOverspend > 0.01 ? styles.overspendCell : ''}`}>
+                    {ccy === mainCurrency && fxOverspend > 0.01 ? fmtNum(fxOverspend) : '—'}
                   </td>
                 </tr>
               )

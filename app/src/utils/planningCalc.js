@@ -177,6 +177,28 @@ export function simulateCashImpact({
   const ignoreBalances = !!scenario?.ignoreActualBalances
   const effectiveBalances = ignoreBalances ? {} : (balancesByCurrency ?? {})
 
+  // FX resolution that triangulates through the main currency when no direct or
+  // inverse pair exists. The FX panel only stores main↔foreign pairs, so a
+  // cross pair such as GBP→USD is otherwise missing and the cascade silently
+  // skips that balance. Routing GBP→EUR→USD lets the cascade tap every balance.
+  // (SPEC-034 Phase 38 overspend fix.)
+  function fxRate(from, to) {
+    const direct = lookupFxRate(from, to, fxRates)
+    if (direct != null) return direct
+    if (mainCurrency && from !== mainCurrency && to !== mainCurrency) {
+      const a = lookupFxRate(from, mainCurrency, fxRates)
+      const b = lookupFxRate(mainCurrency, to, fxRates)
+      if (a != null && b != null) return a * b
+    }
+    return null
+  }
+  function fxConvert(amount, from, to) {
+    if (amount == null || !Number.isFinite(amount)) return null
+    if (!from || !to || from === to) return amount
+    const r = fxRate(from, to)
+    return r == null ? null : amount * r
+  }
+
   // Initialise the per-currency ledger with current balances + planning top-ups
   const ledger = {}
   function ensure(ccy) {
@@ -221,8 +243,13 @@ export function simulateCashImpact({
   }
 
   const shortfall = {}
+  // Buys priced in each currency, before any FX funding — drives the
+  // standalone (own-cash) overspend column.
+  const nativeBuys = {}
 
-  // Apply buys (debits, with FX cascade if the trade-currency balance is insufficient)
+  // Collect the pending buy orders once so we can run the priority cascade as
+  // GLOBAL passes instead of finishing one buy before starting the next.
+  const orders = []
   for (const row of scenario.buyRows ?? []) {
     if (!row.included || row.executedAt) continue
     const d = derivedBuyRows?.[row.id]
@@ -230,61 +257,69 @@ export function simulateCashImpact({
     if (need == null || need <= 0) continue
     const ccy = row.currency || mainCurrency
     const l = ensure(ccy)
+    nativeBuys[ccy] = (nativeBuys[ccy] ?? 0) + need
+    orders.push({ ccy, l, remaining: need })
+  }
 
-    let remaining = need
+  // The cascade runs in priority order ACROSS ALL BUYS, not per-buy. If a buy
+  // borrowed its main-currency FX leg before another buy in that same currency
+  // had claimed its own cash, growing the native buy would wrongly grow the
+  // borrowed leg instead of shrinking it. Three global passes fix that:
+  //   Pass 1 — every buy debits its own trade-currency cash.
+  //   Pass 2 — leftover shortfalls borrow the main currency (FX leg).
+  //   Pass 3 — leftover shortfalls borrow any other balance, largest first.
 
-    // Priority 1: same trade currency
-    const sameAvail = availableInCurrency(ccy)
-    const sameTake = Math.min(remaining, Math.max(0, sameAvail))
-    l.buys += sameTake
-    remaining -= sameTake
+  // Pass 1: same trade currency
+  for (const o of orders) {
+    const sameAvail = availableInCurrency(o.ccy)
+    const take = Math.min(o.remaining, Math.max(0, sameAvail))
+    o.l.buys += take
+    o.remaining -= take
+  }
 
-    // Priority 2: main currency (with FX leg)
-    if (remaining > 0 && mainCurrency && ccy !== mainCurrency) {
-      const mainAvailNative = availableInCurrency(mainCurrency)
-      if (mainAvailNative > 0) {
-        // Convert what we still need (trade-ccy) to main-ccy
-        const fxFromMain = lookupFxRate(mainCurrency, ccy, fxRates)
-        if (fxFromMain && fxFromMain > 0) {
-          const tradeFromOneMain = fxFromMain
-          const mainNeeded = remaining / tradeFromOneMain
-          const mainSpend = Math.min(mainNeeded, mainAvailNative)
-          const mainL = ensure(mainCurrency)
-          mainL.transferOut += mainSpend
-          const tradeIn = mainSpend * tradeFromOneMain
-          l.transferIn += tradeIn
-          l.buys += tradeIn
-          remaining -= tradeIn
-        }
-      }
+  // Pass 2: main currency (with FX leg)
+  for (const o of orders) {
+    if (o.remaining <= 0 || !mainCurrency || o.ccy === mainCurrency) continue
+    const mainAvailNative = availableInCurrency(mainCurrency)
+    if (mainAvailNative <= 0) continue
+    const fxFromMain = fxRate(mainCurrency, o.ccy)
+    if (!fxFromMain || fxFromMain <= 0) continue
+    const mainNeeded = o.remaining / fxFromMain
+    const mainSpend = Math.min(mainNeeded, mainAvailNative)
+    const mainL = ensure(mainCurrency)
+    mainL.transferOut += mainSpend
+    const tradeIn = mainSpend * fxFromMain
+    o.l.transferIn += tradeIn
+    o.l.buys += tradeIn
+    o.remaining -= tradeIn
+  }
+
+  // Pass 3: other balances, descending by trade-ccy value
+  for (const o of orders) {
+    if (o.remaining <= 0) continue
+    const candidates = Object.keys(ledger)
+      .filter(c => c !== o.ccy && c !== mainCurrency)
+      .map(c => ({ ccy: c, avail: availableInCurrency(c) }))
+      .filter(x => x.avail > 0)
+      .map(x => ({ ...x, valueInTrade: fxConvert(x.avail, x.ccy, o.ccy) ?? 0 }))
+      .sort((a, b) => b.valueInTrade - a.valueInTrade)
+    for (const c of candidates) {
+      if (o.remaining <= 0) break
+      const fxOtherToTrade = fxRate(c.ccy, o.ccy)
+      if (!fxOtherToTrade || fxOtherToTrade <= 0) continue
+      const otherNeeded = o.remaining / fxOtherToTrade
+      const otherSpend = Math.min(otherNeeded, c.avail)
+      const otherL = ensure(c.ccy)
+      otherL.transferOut += otherSpend
+      const tradeIn = otherSpend * fxOtherToTrade
+      o.l.transferIn += tradeIn
+      o.l.buys += tradeIn
+      o.remaining -= tradeIn
     }
+  }
 
-    // Priority 3: other balances, descending by trade-ccy value
-    if (remaining > 0) {
-      const candidates = Object.keys(ledger)
-        .filter(c => c !== ccy && c !== mainCurrency)
-        .map(c => ({ ccy: c, avail: availableInCurrency(c) }))
-        .filter(x => x.avail > 0)
-        .map(x => ({ ...x, valueInTrade: convertWithFx(x.avail, x.ccy, ccy, fxRates) ?? 0 }))
-        .sort((a, b) => b.valueInTrade - a.valueInTrade)
-      for (const c of candidates) {
-        if (remaining <= 0) break
-        const fxOtherToTrade = lookupFxRate(c.ccy, ccy, fxRates)
-        if (!fxOtherToTrade || fxOtherToTrade <= 0) continue
-        const otherNeeded = remaining / fxOtherToTrade
-        const otherSpend = Math.min(otherNeeded, c.avail)
-        const otherL = ensure(c.ccy)
-        otherL.transferOut += otherSpend
-        const tradeIn = otherSpend * fxOtherToTrade
-        l.transferIn += tradeIn
-        l.buys += tradeIn
-        remaining -= tradeIn
-      }
-    }
-
-    if (remaining > 0.01) {
-      shortfall[ccy] = (shortfall[ccy] ?? 0) + remaining
-    }
+  for (const o of orders) {
+    if (o.remaining > 0.01) shortfall[o.ccy] = (shortfall[o.ccy] ?? 0) + o.remaining
   }
 
   // Finalise `end` per currency
@@ -293,7 +328,30 @@ export function simulateCashImpact({
     l.end = l.start + l.topUp + l.sells + l.transferIn - l.buys - l.transferOut
   }
 
-  return { perCurrency: ledger, shortfall }
+  // Standalone (own-cash) overspend: per currency, that currency's own buys
+  // versus its own cash (start + top-up + sells), with NO cross-currency
+  // funding. This is the intuitive "did this currency's orders fit its cash"
+  // check and is independent of the FX cascade.
+  const standaloneOverspend = {}
+  for (const ccy of Object.keys(ledger)) {
+    const l = ledger[ccy]
+    const ownAvail = l.start + l.topUp + l.sells
+    const over = (nativeBuys[ccy] ?? 0) - ownAvail
+    if (over > 0.01) standaloneOverspend[ccy] = over
+  }
+
+  // FX-funded overspend: the residual the cascade could not fund from ANY
+  // balance, consolidated into the main currency. Because the triangulated
+  // cascade can reach every balance, a residual only survives once all
+  // balances are exhausted — so a single main-currency figure is the right
+  // representation.
+  let fxOverspendMain = 0
+  for (const [ccy, amt] of Object.entries(shortfall)) {
+    const inMain = fxConvert(amt, ccy, mainCurrency)
+    fxOverspendMain += inMain != null ? inMain : amt
+  }
+
+  return { perCurrency: ledger, shortfall, standaloneOverspend, fxOverspendMain }
 }
 
 // ─── Aggregate dividend metrics ─────────────────────────────────────────────
