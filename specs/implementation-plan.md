@@ -4,9 +4,9 @@
 > When an item is fully implemented, **remove it** from this file.
 > Items are grouped by spec but ordered by cross-spec dependencies and shared-code opportunities.
 
-**Last shipped: v0.35.0** — bundles Phase 34a (transaction-edit correctness), Phase 35a (cross-currency fee model), Phase 36a–g (Finnhub/Stooq adapters, API-detected splits, stock-exchange selector, default CSV template, standalone lot picker), and Phase 37a–b (selective Reset data action + responsive stock-page header). Backup format advanced to `rmoney-data-v3`. The earlier v0.34.0 (2026-05-28) bundled Phase 33 (a–o) + Phase 21a (Android pipeline). Full sub-phase breakdown lives in `RELEASE.md` and the git history; line-by-line acceptance criteria are removed from this plan once a release is closed.
+**Last shipped: v0.36.0** — bundles Phase 38 (June 2026 adjustments): the 430–439 review batch (SPEC-020 dividend tweaks, SPEC-034 cash-impact header alignment, SPEC-017 currency conversion, SPEC-029 ticker resolution, SPEC-021 responsive polish) plus the same-day Buy-Sell Planning cash-impact follow-up (FX triangulation, two-column overspend, global-pass cascade ordering, held-balance currency display, End sub-cent snap). Backup format advanced to `rmoney-data-v4` (`settings.favoriteCountries`). The earlier v0.35.0 bundled Phase 34a (transaction-edit correctness), Phase 35a (cross-currency fee model), Phase 36a–g (Finnhub/Stooq adapters, API-detected splits, stock-exchange selector, default CSV template, standalone lot picker), and Phase 37a–b — backup `rmoney-data-v3`. Full sub-phase breakdown lives in `RELEASE.md` and the git history; line-by-line acceptance criteria are removed from this plan once a release is closed.
 
-**Next up:** **Phase 38 — June 2026 adjustments** (the section below), targeting **v0.36.0**. Mobile Investments parity (Phase 21b) and future asset classes (Phase 20, sketched in SPEC-035) remain the larger phases beyond it.
+**Next up:** Mobile Investments parity (Phase 21b) and future asset classes (Phase 20, sketched in SPEC-035) remain the larger phases beyond v0.36.0.
 
 ---
 
@@ -46,7 +46,7 @@
 | 35 — Tier 2 cross-currency fee model | ✓ shipped in v0.35.0 | 35a; backup format → rmoney-data-v3 |
 | 36 — Tier 3/4/6 adapters + splits + exchange + polish | ✓ shipped in v0.35.0 | Finnhub/Stooq, API splits (36d), exchange selector (36c), CSV template (36f), lot picker (36g) |
 | 37 — Selective reset + responsive header | ✓ shipped in v0.35.0 | 37a Reset data (SPEC-016), 37b responsive Stock page (SPEC-021) |
-| 38 — June 2026 adjustments | ✓ implemented | awaiting v0.36.0 release (backup → rmoney-data-v4) |
+| 38 — June 2026 adjustments | ✓ shipped in v0.36.0 | 430–439 batch + Buy-Sell cash-impact follow-up; backup → rmoney-data-v4 |
 
 ---
 
@@ -82,7 +82,7 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 ---
 
-## Phase 38 — June 2026 adjustments (implemented — awaiting v0.36.0 release)
+## Phase 38 — June 2026 adjustments (shipped in v0.36.0)
 
 > Batch from the **01 June 2026** review notes — **implemented 2026-06-01; app compiles clean**. All ten items (430–439) are built; per-item acceptance criteria now live (checked) in their specs: SPEC-020 (430, 431), SPEC-034 (432, 433), SPEC-017 (434–437), SPEC-029 (438), SPEC-021 (439). The numbered work items were removed from this list per the "remove implemented items" rule; this stub remains only to carry the release obligation below.
 >

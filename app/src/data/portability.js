@@ -12,11 +12,14 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 // stockTransactions fee-currency model — `feeCurrency`, currency-exchange linkage
 // (`triggeredByStockTransactionId`, `linkedStockTransactionId`), and
 // `exchangeRatesSnapshot` (Phase 35a), backfilled by the item-291 boot migration.
-const VERSION = 'rmoney-data-v3'
+// v3→v4 (v0.36.0): adds the `settings.favoriteCountries` key (Phase 38 item 435).
+// The key rides inside the existing `rmoney_settings` blob, so the delta is
+// purely additive — older backups load and default the key on first use.
+const VERSION = 'rmoney-data-v4'
 
-// Versions the loader can ingest. Newer code accepts older backups (v1, v2) and
-// migrates them in-memory before writing v3-shape data to localStorage.
-const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3']
+// Versions the loader can ingest. Newer code accepts older backups (v1, v2, v3)
+// and migrates them in-memory before writing v4-shape data to localStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4']
 
 const KEYS = {
   accounts:           'rmoney_accounts',
@@ -357,10 +360,12 @@ export function migrateBackup(parsed) {
       settings:      migrateSettingsObjectToV2(parsed.settings       ?? {}),
     }
   }
-  if (parsed.version === 'rmoney-data-v2') {
-    // v2→v3 is purely additive: importAppData defaults the new dismissedSplits
-    // collection and the item-291 boot migration backfills feeCurrency. No field
-    // transforms are needed here — just relabel so the payload is v3 shape.
+  if (parsed.version === 'rmoney-data-v2' || parsed.version === 'rmoney-data-v3') {
+    // v2→v3 (dismissedSplits + stockTransactions fee-currency fields) and
+    // v3→v4 (settings.favoriteCountries) are both purely additive: importAppData
+    // defaults the new collection, the item-291 boot migration backfills
+    // feeCurrency, and favoriteCountries defaults on first use. No field
+    // transforms are needed here — just relabel so the payload is v4 shape.
     return { ...parsed, version: VERSION }
   }
   return parsed
