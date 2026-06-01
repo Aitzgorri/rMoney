@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getStockProfile } from '../data/stockProfiles'
 import CurrencyDropdown from './CurrencyDropdown'
+import CountryDropdown from './CountryDropdown'
 import styles from './AddManualStockDialog.module.css'
 
 // Manual-stock creation form (Phase 32e / SPEC-029).
@@ -83,11 +84,10 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
 
         <div className={styles.field}>
           <label className={styles.label}>HQ country (optional)</label>
-          <input
+          <CountryDropdown
             className={styles.input}
             value={hqCountry}
-            onChange={e => setHqCountry(e.target.value)}
-            placeholder="e.g. US"
+            onChange={setHqCountry}
           />
         </div>
 

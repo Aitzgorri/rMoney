@@ -437,6 +437,17 @@
   /* Wide desktop: enough room to flatten the ⋯ menu into inline buttons.
      Below this width the hamburger menu is used (phones, tablets, small laptops)
      so the header never overflows. */
+
+  /* Phase 38 (SPEC-021 item 439): widen the AI column from the fixed 400px
+     (set in the ≥1024px block) to one-third of the page width on wide monitors,
+     with a 400px floor. The left stock column (flex: 1) takes the remaining
+     two-thirds. At 1400px, 33.333% ≈ 467px, so the floor only binds if this
+     breakpoint is ever lowered. */
+  .rightCol {
+    width: 33.333%;
+    min-width: 400px;
+  }
+
   .headerActions {
     flex-wrap: nowrap;
   }

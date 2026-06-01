@@ -8,8 +8,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt, getFavoriteCountries, setFavoriteCountries } from '../data/settings'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
+import { ISO3166, ISO3166_MAP } from '../utils/iso3166'
+import CountryDropdown from '../components/CountryDropdown'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
 import { getSecret, setSecret, deleteSecret } from '../utils/secrets'
@@ -70,6 +72,31 @@ function FavCurrencyRow({ code, name, isMain, onRemove }) {
   )
 }
 
+function FavCountryRow({ code, name, onRemove }) {
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: code })
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: code })
+
+  return (
+    <div
+      ref={node => { setDragRef(node); setDropRef(node) }}
+      className={[
+        styles.favRow,
+        isDragging ? styles.dragging : '',
+        isOver && !isDragging ? styles.dragOver : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <span className={styles.dragHandle} {...listeners} {...attributes}>⠿</span>
+      <span className={styles.favCode}>{code}</span>
+      <span className={styles.favName}>{name}</span>
+      <button
+        className={styles.favRemoveBtn}
+        title={`Remove ${code}`}
+        onClick={onRemove}
+      >×</button>
+    </div>
+  )
+}
+
 function fmtLogTime(iso) {
   if (!iso) return ''
   return iso.replace('T', ' ').slice(0, 19)
@@ -100,6 +127,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [favCurrencies, setFavCurrenciesState] = useState(() => getFavoriteCurrencies())
   const [favAddQuery, setFavAddQuery] = useState('')
   const [favAddOpen, setFavAddOpen] = useState(false)
+  const [favCountries, setFavCountriesState] = useState(() => getFavoriteCountries())
+  const [favCountryAddQuery, setFavCountryAddQuery] = useState('')
+  const [favCountryAddOpen, setFavCountryAddOpen] = useState(false)
   const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
   const [perCountryTax,       setPerCountryTaxState]       = useState(() => getPerCountryDividendTax())
@@ -242,6 +272,32 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     setFavoriteCurrencies(next)
     setFavAddQuery('')
     setFavAddOpen(false)
+  }
+
+  function handleFavCountryReorder({ active, over }) {
+    if (!over || active.id === over.id) return
+    const from = favCountries.indexOf(active.id)
+    const to   = favCountries.indexOf(over.id)
+    if (from === -1 || to === -1) return
+    const next = [...favCountries]
+    next.splice(to, 0, next.splice(from, 1)[0])
+    setFavCountriesState(next)
+    setFavoriteCountries(next)
+  }
+
+  function handleFavCountryRemove(code) {
+    const next = favCountries.filter(c => c !== code)
+    setFavCountriesState(next)
+    setFavoriteCountries(next)
+  }
+
+  function handleFavCountryAdd(code) {
+    if (!code || favCountries.includes(code)) return
+    const next = [...favCountries, code]
+    setFavCountriesState(next)
+    setFavoriteCountries(next)
+    setFavCountryAddQuery('')
+    setFavCountryAddOpen(false)
   }
 
   const favSensors = useSensors(
@@ -885,6 +941,55 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
           </div>
 
           <div className={styles.card}>
+            <div className={styles.cardTitle}>Favorite countries</div>
+            <p className={styles.description}>
+              These appear at the top of every country picker (HQ country, per-country tax). Drag to reorder.
+            </p>
+            <DndContext sensors={favSensors} onDragEnd={handleFavCountryReorder}>
+              <div className={styles.favList}>
+                {favCountries.map(code => (
+                  <FavCountryRow
+                    key={code}
+                    code={code}
+                    name={ISO3166_MAP[code] ?? ''}
+                    onRemove={() => handleFavCountryRemove(code)}
+                  />
+                ))}
+              </div>
+            </DndContext>
+            <div className={styles.addCurrencyRow}>
+              <input
+                className={styles.addCurrencyInput}
+                placeholder="Search country to add…"
+                value={favCountryAddQuery}
+                onChange={e => { setFavCountryAddQuery(e.target.value); setFavCountryAddOpen(true) }}
+                onFocus={() => setFavCountryAddOpen(true)}
+                onBlur={() => setTimeout(() => setFavCountryAddOpen(false), 150)}
+              />
+            </div>
+            {favCountryAddOpen && favCountryAddQuery.length > 0 && (() => {
+              const q = favCountryAddQuery.toLowerCase()
+              const matches = ISO3166.filter(c =>
+                c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+              ).slice(0, 12)
+              return matches.length > 0 ? (
+                <div className={styles.addCurrencySuggestions}>
+                  {matches.map(c => (
+                    <div
+                      key={c.code}
+                      className={`${styles.addCurrencySuggestion}${favCountries.includes(c.code) ? ` ${styles.alreadyFav}` : ''}`}
+                      onMouseDown={() => handleFavCountryAdd(c.code)}
+                    >
+                      <span className={styles.suggCode}>{c.code}</span>
+                      <span className={styles.suggName}>{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null
+            })()}
+          </div>
+
+          <div className={styles.card}>
             <div className={styles.cardTitle}>Category Budgets</div>
             <p className={styles.description}>
               How full a budget needs to be before it turns amber — a warning that you're close to the limit.
@@ -983,7 +1088,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             </p>
             {Object.entries(perCountryTax).map(([country, pct]) => (
               <div key={country} className={styles.fieldRow}>
-                <span className={styles.label} style={{ width: 60 }}>{country}</span>
+                <span className={styles.label} style={{ width: 150 }} title={ISO3166_MAP[country] ?? country}>
+                  {ISO3166_MAP[country] ? `${country} — ${ISO3166_MAP[country]}` : country}
+                </span>
                 <input
                   className={styles.input}
                   type="number"
@@ -1010,15 +1117,13 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               </div>
             ))}
             <div className={styles.fieldRow}>
-              <span className={`${styles.tipAbove} ${styles.tipAboveLeft}`} data-tip="2-letter country code (e.g. US, GB, DE)">
-                <input
-                  className={styles.input}
-                  placeholder="Country (e.g. US)"
-                  value={countryTaxNew.country}
-                  onChange={e => setCountryTaxNew(prev => ({ ...prev, country: e.target.value.toUpperCase() }))}
-                  style={{ width: 100 }}
-                />
-              </span>
+              <CountryDropdown
+                value={countryTaxNew.country}
+                onChange={code => setCountryTaxNew(prev => ({ ...prev, country: code }))}
+                className={styles.input}
+                style={{ width: 160 }}
+                placeholder="Country…"
+              />
               <input
                 className={styles.input}
                 type="number"

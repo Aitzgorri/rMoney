@@ -1,4 +1,4 @@
-import { inferLocaleCurrency, SUPPORTED_CURRENCIES } from '../utils/currency'
+import { inferLocaleCurrency } from '../utils/currency'
 
 const KEY = 'rmoney_settings'
 
@@ -51,27 +51,60 @@ export function setCurrencyDisplay(mode) {
   setSetting('currencyDisplay', mode)
 }
 
+// Default favorites seeds (Phase 38). The favorites lists start small and the
+// user grows them; the full ISO lists remain available in the "others" section
+// of every dropdown. `SUPPORTED_CURRENCIES` (utils/currency) is unchanged — only
+// the favorites *seed* shrank from 14 codes to these four.
+export const DEFAULT_FAVORITE_CURRENCIES = ['GBP', 'EUR', 'CAD', 'USD']
+export const DEFAULT_FAVORITE_COUNTRIES  = ['US', 'GB', 'DE', 'CA']
+
 // Ordered list of ISO 4217 codes the user considers "favorites".
 // Shown at the top of every CurrencyDropdown, in user-defined order.
 export function getFavoriteCurrencies() {
-  return getSetting('favoriteCurrencies', null) ?? [...SUPPORTED_CURRENCIES]
+  return getSetting('favoriteCurrencies', null) ?? [...DEFAULT_FAVORITE_CURRENCIES]
 }
 
 export function setFavoriteCurrencies(codes) {
   setSetting('favoriteCurrencies', codes)
 }
 
-// Pure transform — seeds `favoriteCurrencies` on a settings object that lacks
-// it. Used by both the boot-time wrapper below AND the v1→v2 backup loader.
+// Ordered list of ISO 3166-1 alpha-2 codes the user considers "favorites".
+// Shown at the top of every CountryDropdown, in user-defined order (Phase 38).
+export function getFavoriteCountries() {
+  return getSetting('favoriteCountries', null) ?? [...DEFAULT_FAVORITE_COUNTRIES]
+}
+
+export function setFavoriteCountries(codes) {
+  setSetting('favoriteCountries', codes)
+}
+
+// Pure transform — seeds `favoriteCurrencies` and `favoriteCountries` on a
+// settings object that lacks either. Used by both the boot-time wrappers below
+// AND the backup loader. Each field is seeded independently so an object that
+// already has one still picks up the other.
 export function migrateSettingsObjectToV2(settings) {
-  if (Array.isArray(settings?.favoriteCurrencies)) return settings
-  return { ...(settings ?? {}), favoriteCurrencies: [...SUPPORTED_CURRENCIES] }
+  let next = settings ?? {}
+  if (!Array.isArray(next.favoriteCurrencies)) {
+    next = { ...next, favoriteCurrencies: [...DEFAULT_FAVORITE_CURRENCIES] }
+  }
+  if (!Array.isArray(next.favoriteCountries)) {
+    next = { ...next, favoriteCountries: [...DEFAULT_FAVORITE_COUNTRIES] }
+  }
+  return next
 }
 
 // One-shot boot migration: seed favoriteCurrencies when the setting is absent.
 export function migrateFavoriteCurrencies() {
   const raw = load()
   if (!Array.isArray(raw.favoriteCurrencies)) {
+    save(migrateSettingsObjectToV2(raw))
+  }
+}
+
+// One-shot boot migration: seed favoriteCountries when the setting is absent (Phase 38).
+export function migrateFavoriteCountries() {
+  const raw = load()
+  if (!Array.isArray(raw.favoriteCountries)) {
     save(migrateSettingsObjectToV2(raw))
   }
 }

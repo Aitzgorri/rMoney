@@ -5,6 +5,7 @@ import { getSecret } from '../utils/secrets'
 import { searchSymbols, getLatestPrice, getMarketProfile } from '../data/marketDataClient'
 import { fmtAmt } from '../utils/format'
 import CurrencyDropdown from './CurrencyDropdown'
+import CountryDropdown from './CountryDropdown'
 import styles from './EditProfileDialog.module.css'
 
 const PROMPT_A = (ticker) =>
@@ -289,11 +290,10 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
 
           <div className={styles.dialogField}>
             <label className={styles.dialogLabel}>HQ country</label>
-            <input
+            <CountryDropdown
               className={styles.dialogInput}
               value={hqCountryOverride}
-              onChange={e => setHqCountryOverride(e.target.value)}
-              placeholder="US"
+              onChange={setHqCountryOverride}
             />
             {fetchedHqCountry && profile?.hqCountryOverride && fetchedHqCountry !== profile.hqCountryOverride && (
               <p className={styles.dialogHint}>Provider-fetched: <strong>{fetchedHqCountry}</strong></p>

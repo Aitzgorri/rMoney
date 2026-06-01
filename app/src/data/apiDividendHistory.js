@@ -179,7 +179,17 @@ export async function refreshApiDividendHistory(ticker, exchange) {
       if (d.frequency) freqCounts[d.frequency] = (freqCounts[d.frequency] ?? 0) + 1
     }
     const topFreq = Object.entries(freqCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-    if (topFreq) upsertStockProfile(t, { dividendFrequency: topFreq })
+    if (topFreq) {
+      const updates = { dividendFrequency: topFreq }
+      // Phase 38 (SPEC-020 item 430): a confirmed cadence implies the stock pays
+      // dividends. Auto-tag paysDividends only from null/unknown — never override
+      // a user's explicit `false`, and no-op when already true.
+      if (topFreq !== 'unknown') {
+        const prof = getStockProfile(t)
+        if (prof?.paysDividends == null) updates.paysDividends = true
+      }
+      upsertStockProfile(t, updates)
+    }
 
     setRefreshMeta(t, { lastRefreshedAt: fetchedAt, failed: false, exchange: exchange ?? null })
   } catch (err) {

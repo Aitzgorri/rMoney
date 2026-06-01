@@ -9,7 +9,7 @@ import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
 import { checkAndGeneratePending } from './data/bills'
 import { migrateConfirmedField } from './data/stockProfiles'
-import { migrateFavoriteCurrencies } from './data/settings'
+import { migrateFavoriteCurrencies, migrateFavoriteCountries } from './data/settings'
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
 import { migrateFeeCurrencyInvariant } from './data/stockTransactions'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
@@ -75,6 +75,7 @@ export default function App() {
     checkAndGeneratePending()
     migrateConfirmedField()
     migrateFavoriteCurrencies()
+    migrateFavoriteCountries()
     migrateDividendStatuses()
     migrateFeeCurrencyInvariant()
     const { dropped } = promoteDividends()

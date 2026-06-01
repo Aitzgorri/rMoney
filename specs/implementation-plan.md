@@ -46,7 +46,7 @@
 | 35 — Tier 2 cross-currency fee model | ✓ shipped in v0.35.0 | 35a; backup format → rmoney-data-v3 |
 | 36 — Tier 3/4/6 adapters + splits + exchange + polish | ✓ shipped in v0.35.0 | Finnhub/Stooq, API splits (36d), exchange selector (36c), CSV template (36f), lot picker (36g) |
 | 37 — Selective reset + responsive header | ✓ shipped in v0.35.0 | 37a Reset data (SPEC-016), 37b responsive Stock page (SPEC-021) |
-| 38 — June 2026 adjustments | in progress | this batch — targets v0.36.0 |
+| 38 — June 2026 adjustments | ✓ implemented | awaiting v0.36.0 release (backup → rmoney-data-v4) |
 
 ---
 
@@ -82,33 +82,13 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 ---
 
-## Phase 38 — June 2026 adjustments (cross-spec)
+## Phase 38 — June 2026 adjustments (implemented — awaiting v0.36.0 release)
 
-> Batch from the **01 June 2026** review notes. Small, mostly independent adjustments across dividends, buy-sell planning, settings, and the stock page, plus one CSS bug fix. Targets the **v0.36.0** milestone.
+> Batch from the **01 June 2026** review notes — **implemented 2026-06-01; app compiles clean**. All ten items (430–439) are built; per-item acceptance criteria now live (checked) in their specs: SPEC-020 (430, 431), SPEC-034 (432, 433), SPEC-017 (434–437), SPEC-029 (438), SPEC-021 (439). The numbered work items were removed from this list per the "remove implemented items" rule; this stub remains only to carry the release obligation below.
 >
-> **Suggested build order:** 434 → 435 → 436 (the shared `CountryDropdown` + favorites must exist before its consumers) → 438 → 431; then the independent items 430, 432, 433, 437, 439 in any order. 432 (CSS one-liner) and 437 (seed change) are the cheapest.
+> **Release obligation (v0.36.0):** item 435 added a new settings key (`settings.favoriteCountries`) — a data-shape change. When v0.36.0 is cut, bump the backup format to **`rmoney-data-v4`** and update the RELEASE.md *Data compatibility* table. The key rides inside the existing `rmoney_settings` blob, so **no new Settings → Storage card** is required (same as `favoriteCurrencies`).
 >
-> **Versioning note:** item 435 adds a new settings key (`settings.favoriteCountries`) — a data-shape change. Bump the backup format to **`rmoney-data-v4`** and update the RELEASE.md *Data compatibility* table when v0.36.0 is cut. The new key lives inside the existing `rmoney_settings` blob, so **no new Settings → Storage card** is required (same as `favoriteCurrencies`).
-
-### SPEC-020 Dividends
-430. [ ] Auto-tag `paysDividends: true` when the API confirms a non-`unknown` `dividendFrequency` (≥2 regular payouts); only from `null`, never overrides a user `false`, no-op when already `true`.
-431. [ ] Per-country dividend-tax picker (Settings) uses the shared `CountryDropdown` — stored map key stays the alpha-2 code.
-
-### SPEC-034 Buy-Sell Planning
-432. [ ] Cash-impact / dividend-impact header alignment **CSS bug fix** — `.impactTable th.tdRight { text-align: right }` (or drop the blanket `th { text-align: left }`) so numeric headers right-align over their values. The Phase 33l criterion already requires this; CSS specificity defeated it.
-433. [ ] `simulateCashImpact()` — sells unwind buy-driven FX legs first (repay the borrowed currency, largest leg first), remainder to the sell's trade currency, so the cascade minimises **net** FX legs across the scenario.
-
-### SPEC-017 Currency Conversion
-434. [ ] `utils/iso3166.js` + shared `components/CountryDropdown.jsx` (`DE — Germany` labels, sorted by name, favorites-on-top + divider, legacy-value fallback option).
-435. [ ] Favorite countries managed in Settings → General (card below favorite currencies); `settings.favoriteCountries: string[]` + `getFavoriteCountries` / `setFavoriteCountries`.
-436. [ ] `migrateFavoriteCountries()` boot seed — default `['US','GB','DE','CA']`.
-437. [ ] Reduce default favorite-currency seed to `['GBP','EUR','CAD','USD']` (supersedes the 14-code Phase 33 seed; `SUPPORTED_CURRENCIES` unchanged).
-
-### SPEC-029 Stock Profile Resolution
-438. [ ] HQ-country field (Edit profile + Add manual stock) uses the shared `CountryDropdown` instead of free text; stored value stays the alpha-2 code.
-
-### SPEC-021 Stock Page
-439. [ ] AI right-column widens to ⅓ of the page width at `≥ 1400px` (min 400px); fixed 400px at 1024–1399px; single-column below 1024px unchanged. *(SPEC-021's other 4 unchecked items are deferred elsewhere — news/stale-price to SPEC-027, AI-panel desktop/mobile to Phase 19b/21b.)*
+> **Note on item 433:** no code change was needed — the existing sells-before-buys cascade in `simulateCashImpact()` already nets sell proceeds against buy FX legs (verified against the worked example: GBP £0 + EUR €1000, buy £500, sell £400 → GBP £0, EUR out only €117.65).
 
 ---
 

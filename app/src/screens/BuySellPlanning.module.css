@@ -148,6 +148,12 @@
 
 .tdRight { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* Phase 38 (SPEC-034 item 432): numeric header cells tagged .tdRight must
+   right-align over their values. The base `.impactTable th { text-align: left }`
+   rule above (specificity 0,1,1) otherwise beats the bare `.tdRight` class
+   (0,1,0), leaving the column headers left-aligned while values render right. */
+.balancesTable th.tdRight, .impactTable th.tdRight { text-align: right; }
+
 .cellMuted { color: var(--text-faint); font-size: 12px; }
 
 .cellInputSm {
