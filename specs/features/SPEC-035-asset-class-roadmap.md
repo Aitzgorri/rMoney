@@ -25,7 +25,7 @@ This spec is a **draft index**, not buildable. It is a parking lot for design qu
 
 Recommended sequence based on (a) similarity to the stock model — leveraging the most existing infrastructure, (b) likely user demand for a personal-finance app, and (c) data-source feasibility on the existing market data chain:
 
-1. **Crypto** — closest to stocks (price series, lots, no dividend complexity). Reuses cashMovements, FX snapshotting, configurable column table. Wallet addresses replace stock exchanges; otherwise the transaction shapes map cleanly.
+1. **Crypto** — closest to stocks (price series, lots, no dividend complexity). Reuses cashMovements, FX snapshotting, configurable column table. Wallet addresses replace stock exchanges; otherwise the transaction shapes map cleanly. **→ Graduated to [SPEC-036](SPEC-036-crypto-holdings.md) (`ready`).**
 2. **Bonds** — adds coupon (=~ dividend) + maturity + accrued interest. Reuses the dividend infrastructure once the v0.34.0 status model lands. Coupon dates fit the same Dividend page calendar.
 3. **Precious metals (storage)** — physical inventory model: quantity, weight unit, purity, optional storage cost. No yield. Simplest to implement but lowest priority because it's a small slice of typical portfolios.
 4. **Precious metals (lease)** — adds counterparty, lease rate, payout cadence, principal return date. Effectively a niche fixed-income product; depends on bonds being modelled first to share the cadence machinery.
@@ -33,21 +33,9 @@ Recommended sequence based on (a) similarity to the stock model — leveraging t
 
 ---
 
-## Crypto
+## Crypto → graduated to [SPEC-036 Crypto holdings](SPEC-036-crypto-holdings.md) (`ready`, 2026-06-02)
 
-**Scope:** spot holdings on user-managed or custodial wallets. Lots, cost basis, FIFO/LIFO sell selection, multi-currency.
-
-**Open questions:**
-- Wallet model: does an "investing account" become a wallet (one-to-one), or do wallets sit under an investing account (multi-wallet brokers like Coinbase)?
-- On-chain transfers between user-owned wallets: like SPEC-019 transfer between investing accounts (cost basis preserved, no realisation), or like a withdrawal + deposit?
-- Staking rewards: dividend-shaped income with no payout date concept (continuous accrual)?
-- Cost basis on swaps (e.g. BTC → ETH): treat as sell-of-A + buy-of-B at the swap-rate spot, or model as a fifth stockTransactions-style type?
-- Stablecoins: treat as a cash balance (USDC = USD-pegged) or as a separate ticker?
-- Price source: CoinGecko free API is the obvious candidate; would need a SPEC-027 adapter slot.
-
-**Dependencies:** SPEC-027 (new adapter for a crypto price provider), SPEC-018 (extend cashMovements if staking rewards land in stablecoin), SPEC-029 (resolution flow for ticker → coin disambiguation).
-
-**Suggested first spec:** **SPEC-036 Crypto holdings** — covers spot buy/sell/transfer/swap + lots, leaves staking rewards + on-chain transfer attribution out of scope for v1.
+Spot buy/sell/swap/transfer + lots, reusing the stock model. All six design questions resolved there (D1–D6): wallet = attribute (not an entity); swap and wallet-transfer are dedicated transaction types; stablecoins are regular priced coins; pricing via a new CoinGecko adapter; crypto shares `rmoney_stock_transactions` with an `assetClass` tag. Staking rewards + on-chain fee attribution are out of scope for v1.
 
 ---
 

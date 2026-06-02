@@ -6,7 +6,7 @@
 
 **Last shipped: v0.36.0** — bundles Phase 38 (June 2026 adjustments): the 430–439 review batch (SPEC-020 dividend tweaks, SPEC-034 cash-impact header alignment, SPEC-017 currency conversion, SPEC-029 ticker resolution, SPEC-021 responsive polish) plus the same-day Buy-Sell Planning cash-impact follow-up (FX triangulation, two-column overspend, global-pass cascade ordering, held-balance currency display, End sub-cent snap). Backup format advanced to `rmoney-data-v4` (`settings.favoriteCountries`). The earlier v0.35.0 bundled Phase 34a (transaction-edit correctness), Phase 35a (cross-currency fee model), Phase 36a–g (Finnhub/Stooq adapters, API-detected splits, stock-exchange selector, default CSV template, standalone lot picker), and Phase 37a–b — backup `rmoney-data-v3`. Full sub-phase breakdown lives in `RELEASE.md` and the git history; line-by-line acceptance criteria are removed from this plan once a release is closed.
 
-**Next up:** Mobile Investments parity (Phase 21b) and future asset classes (Phase 20, sketched in SPEC-035) remain the larger phases beyond v0.36.0.
+**Next up:** Phase 20 future asset classes — **Crypto is now spec'd ([SPEC-036](features/SPEC-036-crypto-holdings.md), `ready`)** and is the next implementation target; bonds/metals/options remain sketches in SPEC-035. (Phase 21b Mobile Investments parity shipped 2026-06-02; deferred mobile items 228a/228b live in SPEC-030.)
 
 ---
 
@@ -28,7 +28,7 @@
 | 17 — Investment reports | ✓ done | |
 | 18 — CSV import | ✓ done | |
 | 19 — AI integration | ✓ done | |
-| 20 — Future asset classes | placeholders | See SPEC-035 roadmap |
+| 20 — Future asset classes | crypto spec'd | SPEC-036 Crypto holdings `ready` (item 222); bonds/metals/options still placeholders in SPEC-035 |
 | 21a — Android build pipeline | ✓ done | Verified on device 2026-05-28 |
 | 21b — Mobile Investments parity | ✓ done (SPEC-028) | Audit found news/AI/chart-render/Reports already responsive (JS `useMediaQuery`); only chart mobile polish needed. 228a/228b moved to SPEC-030 |
 | 22 — Stock profile resolution | ✓ done | |
@@ -104,9 +104,23 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 220. [ ] **Options** — strike, expiry, underlying, exercise/assignment lifecycle, greeks tracking — see SPEC-035 § Options
 221. [ ] **Bonds** — coupon, yield, maturity, accrued interest, amortization — see SPEC-035 § Bonds
-222. [ ] **Crypto** — wallets, network transfers, cost basis (may reuse stock model) — see SPEC-035 § Crypto
+222. [~] **Crypto** — IN PROGRESS: graduated to **[SPEC-036 Crypto holdings](features/SPEC-036-crypto-holdings.md)** (`ready`, 2026-06-02). Spot buy/sell/swap/transfer + lots, reusing the stock model (shared `rmoney_stock_transactions` + `assetClass` tag; wallet = attribute; dedicated `swap`/`transfer` types; CoinGecko adapter). 21 acceptance criteria; staking + on-chain fee attribution out of scope for v1. Cross-spec work: SPEC-027 adapter, SPEC-029 resolution, SPEC-031 CSP host, SPEC-024 reports, SPEC-016 backup-format bump evaluation.
 223. [ ] **Precious metals (storage)** — quantity, weight unit, purity, storage cost, no yield — see SPEC-035 § Precious metals — storage
 224. [ ] **Precious metals (lease)** — counterparty, lease rate, payout cadence, principal return date — see SPEC-035 § Precious metals — lease
+
+### SPEC-036 Crypto holdings — build order (active)
+
+> Sequenced for dependencies: data layer first (so the lot engine stays correct), then pricing, then the surfaces that consume both. Full per-criterion contract lives in [SPEC-036](features/SPEC-036-crypto-holdings.md); these are the build steps.
+
+1. [ ] **Asset-class tagging (D6)** — add `assetClass` to `rmoney_stock_transactions`; make `getStockTransactionsByTicker` / `getAllKnownTickers` / `hasOpenLotsForTicker` and inventory/reports asset-class-aware so stocks and coins never mix.
+2. [ ] **Crypto buy/sell + `wallet` field (D1)** — fractional quantities through the existing `getOpenLots` lot engine + FIFO/LIFO realisation + cash-movement/FX reuse; `wallet` occupies the `exchange` slot.
+3. [ ] **`swap` transaction type (D2)** — atomic record; `from` leg realises P/L vs cost basis, `to` leg opens a lot at spot, net fiat = 0; edit/delete acts on the pair.
+4. [ ] **`swap` consumers** — inventory (both coins), realised-P/L totals, investment reports, and cash-impact/Buy-Sell surfaces all handle `swap`.
+5. [ ] **wallet `transfer` record (D3)** — preserves cost basis, no realisation, partial moves; distinct from the existing inter-account transfer.
+6. [ ] **CoinGecko adapter (D5)** — register under the SPEC-027 client (spot + historical, keyless); add `api.coingecko.com` to static CSP `connect-src` (SPEC-031); no URL/key logging.
+7. [ ] **Crypto ticker→coin resolution (SPEC-029)** — disambiguate symbols (e.g. `BTC → bitcoin`); stablecoins price ~1.00 with no peg map (D4).
+8. [ ] **Reporting & display** — crypto in inventory + Investment Reports valued via FX into the portfolio total/weight; asset-class filter separates crypto from stocks.
+9. [ ] **Backup-format evaluation (SPEC-016)** — assess `rmoney-data-v4 → v5` bump for the new types/fields; update RELEASE.md *Data compatibility* table and relabel the existing stock-transactions Storage card to show the crypto/stock split.
 
 ---
 
