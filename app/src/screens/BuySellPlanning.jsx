@@ -215,8 +215,11 @@ export default function BuySellPlanning({ onNavigate }) {
     return out
   }, [tickersInScenario])
 
-  // ── FX rates effective map (user override beats live spot) ─────────────────
-  const fxRatesEffective = useMemo(() => {
+  // ── Pure-live FX map (no overrides) — the genuine spot rates from the cache ──
+  // Kept separate from the effective map so the "Live" column can always show the
+  // real spot rate (or "—" when the fetch hasn't supplied that pair), independent
+  // of whatever the user typed into Override.
+  const liveFxRates = useMemo(() => {
     const out = {}
     // Seed from live cache (rates are "1 main = N foreign" → we store both directions)
     if (liveFx?.rates) {
@@ -227,13 +230,22 @@ export default function BuySellPlanning({ onNavigate }) {
         }
       }
     }
-    // Apply per-scenario overrides last so they win
+    return out
+  }, [liveFx, mainCurrency])
+
+  // ── FX rates effective map (user override beats live spot) ─────────────────
+  // Clearing an override removes the key here, so the effective rate falls back
+  // to the pure-live value automatically — no stale or empty rate left behind.
+  const fxRatesEffective = useMemo(() => {
+    const out = { ...liveFxRates }
+    // Apply per-scenario overrides last so they win — but only when valid (> 0).
+    // An empty/zero override is ignored, leaving the live rate in place.
     for (const [pair, rate] of Object.entries(active?.fxOverrides ?? {})) {
       const n = Number(rate)
       if (Number.isFinite(n) && n > 0) out[pair] = n
     }
     return out
-  }, [liveFx, mainCurrency, active?.fxOverrides])
+  }, [liveFxRates, active?.fxOverrides])
 
   // ── Cash balances rolled up across all investing accounts, by currency ─────
   const balancesByCurrency = useMemo(() => {
@@ -564,6 +576,7 @@ export default function BuySellPlanning({ onNavigate }) {
             displayedCurrencies={displayedCurrencies}
             onToggleDisplayed={handleToggleDisplayedCurrency}
             fxRatesEffective={fxRatesEffective}
+            liveFxRates={liveFxRates}
             onSetTopUp={handleSetTopUp}
             onSetFxOverride={handleSetFxOverride}
             cashImpact={cashImpact}
@@ -721,7 +734,7 @@ export default function BuySellPlanning({ onNavigate }) {
 function OverviewBlock({
   scenario, mainCurrency, balancesByCurrency,
   distinctTradeCurrencies, displayedCurrencies, onToggleDisplayed,
-  fxRatesEffective, onSetTopUp, onSetFxOverride,
+  fxRatesEffective, liveFxRates, onSetTopUp, onSetFxOverride,
   cashImpact, sellAggregates, buyAggregates,
   onToggleIgnoreActualBalances,
 }) {
@@ -828,7 +841,9 @@ function OverviewBlock({
               <tbody>
                 {fxPairs.map(pair => {
                   const [from, to] = pair.split('->')
-                  const live = fxRatesEffective[pair] // already merged but we want pure-live for the label
+                  // Genuine live spot only — never the override — so clearing the
+                  // Override field reveals (and the calcs fall back to) the real rate.
+                  const live = lookupFxRate(from, to, liveFxRates)
                   const override = scenario.fxOverrides?.[pair] ?? ''
                   return (
                     <tr key={pair}>
