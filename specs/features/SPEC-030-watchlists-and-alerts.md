@@ -150,6 +150,12 @@ rmoney_watchlist_alerts    [
 
 `stockProfiles` is read but not modified by SPEC-030; it's owned by SPEC-029.
 
+## Mobile parity (deferred)
+These were previously tracked as Phase 21b plan items 228a/228b under SPEC-028, but they belong to this feature. Moved here 2026-06-02 so the mobile work for watchlists/alerts lives with the watchlists spec. Still deferred — not scheduled with the SPEC-028 Investments-screen work.
+
+- [ ] **228a — Watchlists & alerts on mobile.** The watchlists list, per-stock alert editing, the triggered-alert banner, and the Investments dropdown menu entry all render and work on phone-width viewports (same responsive-component approach as the rest of SPEC-028).
+- [ ] **228b — Tauri local notifications on mobile (Phase B).** Fire OS-level local notifications for triggered alerts on mobile. **Runtime upgrade only — the SPEC-030 data model is unchanged** (see the forward-compatibility note in the Goal and "OS-level notifications" out-of-scope item below). Depends on the Phase B (background/on-open evaluation) runtime, not on any new schema.
+
 ## Out of Scope
 - **Percentage-move alerts** (e.g. "−5% intraday"). v1 supports price thresholds only.
 - **Event alerts** (dividend declared, news, earnings date, corporate actions).

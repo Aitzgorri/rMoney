@@ -30,7 +30,7 @@
 | 19 — AI integration | ✓ done | |
 | 20 — Future asset classes | placeholders | See SPEC-035 roadmap |
 | 21a — Android build pipeline | ✓ done | Verified on device 2026-05-28 |
-| 21b — Mobile Investments parity | deferred (after backlog) | Six SPEC-028 items |
+| 21b — Mobile Investments parity | in progress | SPEC-028 re-grounded 2026-06-02: news/AI/chart-render already met; remaining = chart polish + Reports responsive. 228a/228b moved to SPEC-030 |
 | 22 — Stock profile resolution | ✓ done | |
 | 23 — Watchlists & alerts | ✓ done | |
 | 24 — Security & secrets handling | mostly done | 237a closed in Phase 36e; 255 still gated on IBKR adapter |
@@ -110,17 +110,18 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 ---
 
-## Phase 21b — Mobile Investments parity (deferred until backlog ships)
+## Phase 21b — Mobile Investments parity (IN PROGRESS)
 
-> Phase 21a (Android build pipeline) shipped in v0.34.0; the user can install rMoney on Android via a `.apk`. Phase 21b is the full mobile rewrite of the Investments-side screens. Deferred until the Tier 1–6 backlog above is shipped and the user has used the Android app long enough to confirm what's actually missing.
+> Phase 21a (Android build pipeline) shipped in v0.34.0. Phase 21b closes the Investments-screen mobile gap. **Re-grounded 2026-06-02:** a code-level mobile audit (recorded in SPEC-028) found that the shared responsive components + Phase 37b already satisfy news, AI evaluation, and basic chart rendering. SPEC-028 is now `ready` with criteria rewritten to match reality. Remaining work is below.
 
 ### SPEC-028 Mobile Investments Parity
-225. [ ] Stock price chart on mobile
-226. [ ] Top 5 news on mobile
-227. [ ] AI evaluation on mobile
-228. [ ] Full Investment reports on mobile
-228a. [ ] Watchlists & alerts on mobile (SPEC-030 parity, including the Investments dropdown menu)
-228b. [ ] Tauri local notifications for watchlist alerts on mobile (SPEC-030 Phase B — runtime upgrade only, data model unchanged)
+> Already met (verified, no work — see SPEC-028): stock chart renders without horizontal scroll (225), top-5 news (226), AI evaluation (227).
+
+225p. [ ] **Chart mobile polish** — wrap + touch-size the period selector; restore axis-label legibility on narrow viewports (fixed `800×220` viewBox shrinks text to ~5px on a phone).
+228. [ ] **Investment Reports responsive (main work)** — the screen's CSS has no media queries; `.breakdownSplit` forces a fixed `340px 1fr` two-column grid. Add breakpoints so all four breakdowns stack vertically (chart above table) on phones, controls (preset/type/column-picker) wrap, and tables stay legible. ← **starting here**
+
+### Moved out of Phase 21b → tracked in SPEC-030 § Mobile parity (deferred)
+- 228a Watchlists & alerts on mobile, and 228b Tauri local notifications — these belong to the watchlists feature, not the Investments-screen rendering work. Still deferred.
 
 ---
 
