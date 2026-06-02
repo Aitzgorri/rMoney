@@ -30,7 +30,7 @@
 | 19 — AI integration | ✓ done | |
 | 20 — Future asset classes | placeholders | See SPEC-035 roadmap |
 | 21a — Android build pipeline | ✓ done | Verified on device 2026-05-28 |
-| 21b — Mobile Investments parity | in progress | SPEC-028 re-grounded 2026-06-02: news/AI/chart-render already met; remaining = chart polish + Reports responsive. 228a/228b moved to SPEC-030 |
+| 21b — Mobile Investments parity | ✓ done (SPEC-028) | Audit found news/AI/chart-render/Reports already responsive (JS `useMediaQuery`); only chart mobile polish needed. 228a/228b moved to SPEC-030 |
 | 22 — Stock profile resolution | ✓ done | |
 | 23 — Watchlists & alerts | ✓ done | |
 | 24 — Security & secrets handling | mostly done | 237a closed in Phase 36e; 255 still gated on IBKR adapter |
@@ -114,11 +114,8 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 > Phase 21a (Android build pipeline) shipped in v0.34.0. Phase 21b closes the Investments-screen mobile gap. **Re-grounded 2026-06-02:** a code-level mobile audit (recorded in SPEC-028) found that the shared responsive components + Phase 37b already satisfy news, AI evaluation, and basic chart rendering. SPEC-028 is now `ready` with criteria rewritten to match reality. Remaining work is below.
 
-### SPEC-028 Mobile Investments Parity
-> Already met (verified, no work — see SPEC-028): stock chart renders without horizontal scroll (225), top-5 news (226), AI evaluation (227).
-
-225p. [ ] **Chart mobile polish** — wrap + touch-size the period selector; restore axis-label legibility on narrow viewports (fixed `800×220` viewBox shrinks text to ~5px on a phone).
-228. [ ] **Investment Reports responsive (main work)** — the screen's CSS has no media queries; `.breakdownSplit` forces a fixed `340px 1fr` two-column grid. Add breakpoints so all four breakdowns stack vertically (chart above table) on phones, controls (preset/type/column-picker) wrap, and tables stay legible. ← **starting here**
+### SPEC-028 Mobile Investments Parity — ✓ complete (2026-06-02)
+All criteria met. The audit found the shared responsive components already covered news, AI evaluation, chart rendering, **and** the Investment Reports screen (it stacks below 1024px via `useMediaQuery(DESKTOP)` — the responsive work is in JS, not CSS). The only code written for this phase was the **chart mobile polish**: wrap + touch-size the period selector, and a phone-width `380×220` viewBox so axis labels stay legible (`PHONE` breakpoint added to `utils/mediaQuery.js`). See SPEC-028 for the per-criterion record.
 
 ### Moved out of Phase 21b → tracked in SPEC-030 § Mobile parity (deferred)
 - 228a Watchlists & alerts on mobile, and 228b Tauri local notifications — these belong to the watchlists feature, not the Investments-screen rendering work. Still deferred.

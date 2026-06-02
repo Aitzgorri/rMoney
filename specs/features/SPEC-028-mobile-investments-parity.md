@@ -1,7 +1,7 @@
 ---
 id: SPEC-028
 name: Mobile Investments Parity
-status: ready
+status: done
 created: 2026-04-23
 ---
 
@@ -27,14 +27,15 @@ Bring the Investments module to full feature parity on mobile (narrow viewports 
 - [x] **Top 5 news items render on mobile.** Rendered as a plain vertical list (`.newsList` / `.newsItem`), no fixed widths.
 - [x] **AI evaluation button and response panel render on mobile** (when a SPEC-026 connection is configured and enabled). `AiChatPanel` is a column-flow chat layout (`flex-direction: column`, `min-width:0`, `max-width:88%` bubbles) with no fixed-width grid.
 
-### Price-chart mobile polish (Phase 21b)
-- [ ] **Touch-friendly period selector.** The period bar (`1D 1W 1M 3M 6M 1Y 5Y All`) wraps instead of overflowing at ~360px, and each button meets a comfortable touch target (~36–44px tall) on narrow viewports while staying compact on desktop.
-- [ ] **Readable axis labels on narrow screens.** The chart's fixed `800×220` viewBox currently scales axis text down to ~5px on a phone. Axis/label legibility is restored at phone width (e.g. larger relative font size, fewer ticks, or a width-aware viewBox) without breaking the desktop rendering.
+### Price-chart mobile polish (Phase 21b — implemented 2026-06-02)
+- [x] **Touch-friendly period selector.** `.chartPeriodBar` now sets `flex-wrap: wrap` and `.chartPeriodBtn` is `padding: 7px 12px; min-height: 36px` by default (mobile-first), so the buttons (`1D 1M 3M 6M 1Y 5Y All`) wrap rather than overflow at ~360px and present comfortable touch targets. A `@media (min-width: 1024px)` override restores the compact desktop bar (`padding: 3px 8px; min-height: 0`).
+- [x] **Readable axis labels on narrow screens.** `PriceChart` takes an `isNarrow` prop (from `useMediaQuery(PHONE)`, `PHONE = max-width: 640px`). At phone width it uses a `380×220` viewBox (vs `800×220`) with `LPAD 46` and 4 x-ticks, so the fixed-size axis text renders at ~10px instead of ~5px. Desktop geometry is unchanged. *(`PHONE` added to `utils/mediaQuery.js`.)*
 
-### Investment Reports on mobile (Phase 21b — the main work)
-- [ ] **Breakdowns stack vertically on phones.** `InvestmentReports.module.css` currently has **no** media queries and forces `.breakdownSplit` to a fixed `340px 1fr` two-column grid (chart beside table). On narrow viewports each breakdown becomes a vertical stack — **chart above table**, not side-by-side — for all four breakdowns (currency, region country-detail, region continent, Portfolio).
-- [ ] **Controls wrap, not overflow.** The saved-preset selector, type filter, and column-picker remain usable on a phone (wrap rather than overflow horizontally), and any hierarchical dropdowns keep the SPEC-009 flat-indent + type-filter conventions.
-- [ ] **Tables stay legible.** Wide breakdown tables remain readable on mobile (horizontal scroll is acceptable as a fallback, but the primary columns should be visible without scrolling where the layout allows).
+### Investment Reports on mobile — already met (verified by code trace 2026-06-02)
+> The original draft assumed this screen was desktop-only. It is already responsive via the `useMediaQuery(DESKTOP)` hook (`DESKTOP = min-width: 1024px`) — the responsive work is in JS, not CSS, which an initial CSS-only audit missed.
+- [x] **Breakdowns stack vertically on phones.** `.breakdownSplit` (the `340px 1fr` two-column grid) is applied **only when `isDesktop`** ([InvestmentReports.jsx](../../app/src/screens/InvestmentReports.jsx) — `isDesktop && breakdownView === 'chart' ? styles.breakdownSplit : ''`). Below 1024px the chart pane and table fall into normal block flow → **chart above table** for all four breakdowns. The breakdown pie is a fixed `220px` SVG that fits a 320px phone; pie-charts tab drops to a single column on mobile.
+- [x] **Controls wrap, not overflow.** Both `.presetBar`/`.filterBar` and `.tableFilterBar` use `flex-wrap: wrap`; the column-picker (`ConfigurableTable`) dropdown is a `min-width: 200px` panel that fits a phone. Hierarchical dropdowns continue to use the SPEC-009 flat-indent conventions.
+- [x] **Tables stay legible.** Wide tables fall back to `overflow-x: auto` (`.tableWrapper`) — the accepted mobile fallback.
 
 ## UI / Screens
 Mobile stock page (parity):

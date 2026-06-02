@@ -27,6 +27,7 @@ import EditProfileDialog from '../components/EditProfileDialog'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import ExchangeSelector from '../components/ExchangeSelector'
 import { resetPageCaches, clearCacheForTicker } from '../utils/marketDataCache'
+import { useMediaQuery, PHONE } from '../utils/mediaQuery'
 import { getPendingApiSplits, dismissSplit } from '../data/detectedSplits'
 import styles from './StockPage.module.css'
 
@@ -88,6 +89,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [manualStockListOpen, setManualStockListOpen] = useState(false)
   const [livePrice,       setLivePrice]       = useState(null)   // null | { price, currency, asOf, providerName }
   const [priceStatus,     setPriceStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
+  const isNarrow = useMediaQuery(PHONE)          // phone width → compact chart viewBox for legible axis labels
   const [chartPeriod,     setChartPeriod]     = useState('6M')
   const [chartData,       setChartData]       = useState([])
   const [chartStatus,     setChartStatus]     = useState('idle') // 'idle' | 'loading' | 'unavailable'
@@ -1273,7 +1275,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 })}
               </div>
             </div>
-            <PriceChart data={chartData} status={chartStatus} isIntraday={chartPeriod === '1D'} />
+            <PriceChart data={chartData} status={chartStatus} isIntraday={chartPeriod === '1D'} isNarrow={isNarrow} />
           </div>
 
           {/* Positions */}
@@ -2299,7 +2301,7 @@ function ConvertToDeclaredDialog({ defaultExDate = '', defaultPerShare = '', def
 
 // ─── Price chart ──────────────────────────────────────────────────────────────
 
-function PriceChart({ data, status, isIntraday = false }) {
+function PriceChart({ data, status, isIntraday = false, isNarrow = false }) {
   const [hover, setHover] = useState(null)  // null | { idx, x, y }
 
   if (status === 'loading') {
@@ -2314,8 +2316,11 @@ function PriceChart({ data, status, isIntraday = false }) {
   const maxVal = Math.max(...closes)
   const range  = maxVal - minVal || 1
 
-  const VW = 800, VH = 220
-  const LPAD = 66, RPAD = 8, TPAD = 8, BPAD = 22
+  // On phones the SVG fills a ~360px-wide container, so a wide 800px viewBox
+  // would scale every label down to ~5px. A smaller viewBox keeps the geometry
+  // identical but lets the fixed-size axis text render at a legible ~10px.
+  const VW = isNarrow ? 380 : 800, VH = 220
+  const LPAD = isNarrow ? 46 : 66, RPAD = 8, TPAD = 8, BPAD = 22
   const CW = VW - LPAD - RPAD
   const CH = VH - TPAD - BPAD
 
@@ -2329,7 +2334,7 @@ function PriceChart({ data, status, isIntraday = false }) {
     y:     toY(minVal + frac * range),
   }))
 
-  const numX = Math.min(5, data.length)
+  const numX = Math.min(isNarrow ? 4 : 5, data.length)
   const xTicks = Array.from({ length: numX }, (_, i) => {
     const idx = Math.round((i / (numX - 1)) * (data.length - 1))
     return { x: toX(idx), date: data[idx].date, i }

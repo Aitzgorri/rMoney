@@ -1415,14 +1415,17 @@
 
 .chartPeriodBar {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .chartPeriodBtn {
   background: none;
   border: 1px solid #2d3448;
   border-radius: 5px;
-  padding: 3px 8px;
+  /* Touch-friendly by default (mobile-first); compacted on desktop below. */
+  padding: 7px 12px;
+  min-height: 36px;
   color: var(--text-faint);
   font-size: 12px;
   font-weight: 600;
@@ -1437,6 +1440,12 @@
   background: #2d3448;
   border-color: #3b82f6;
   color: #f1f5f9;
+}
+
+/* Desktop has precise pointers and room on one row — compact the period bar. */
+@media (min-width: 1024px) {
+  .chartPeriodBar { gap: 2px; }
+  .chartPeriodBtn { padding: 3px 8px; min-height: 0; }
 }
 
 .chartWrap {

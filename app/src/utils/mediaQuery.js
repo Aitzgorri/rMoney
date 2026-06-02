@@ -12,3 +12,6 @@ export function useMediaQuery(query) {
 }
 
 export const DESKTOP = '(min-width: 1024px)'
+// Phone-width viewports — used to give SVG charts a smaller viewBox so axis
+// labels don't shrink into illegibility when the chart fills a narrow screen.
+export const PHONE = '(max-width: 640px)'
