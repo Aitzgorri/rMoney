@@ -336,7 +336,36 @@ async function _searchSymbols(query) {
   return Array.from(merged.values())
 }
 
-// ─── Crypto resolution (SPEC-036 / SPEC-029) ──────────────────────────────────
+// ─── Crypto resolution + pricing (SPEC-036 / SPEC-029) ─────────────────────────
+
+// Returns { price, currency, asOf, providerName } — current crypto price in `vsCurrency`.
+// Crypto-only: calls CoinGecko directly (not the stock chain). Hot-cached via the existing
+// price cache, namespaced by `crypto:<vs>` in the exchange slot so it never collides with a
+// stock quote for the same ticker. `coinId` (from cryptoProfiles) prices the exact coin;
+// without it the adapter falls back to its highest-market-cap symbol guess.
+export function getCryptoPrice(ticker, vsCurrency, coinId = null, { forceRefresh = false } = {}) {
+  const t   = ticker.toUpperCase()
+  const vs  = (vsCurrency ?? 'usd').toLowerCase()
+  const key = `crypto:${vs}`
+
+  if (!forceRefresh) {
+    const cached = getCachedPrice(t, key)
+    if (cached) return Promise.resolve(cached)
+  }
+
+  return dedup(`cryptoPrice:${t}:${vs}:${coinId ?? ''}`, async () => {
+    try {
+      const result = await coingecko.getLatestPrice(t, null, { vsCurrency: vs, coinId })
+      const entry = { ...result, providerName: 'coingecko' }
+      setCachedPrice(t, key, entry)
+      return entry
+    } catch (err) {
+      const stale = getCachedPriceStale(t, key)
+      if (stale) return { ...stale, providerName: 'stale-cache', isStale: true }
+      throw err
+    }
+  })
+}
 
 // Returns [{ coinId, symbol, name, marketCapRank }] — candidate coins for a free-text
 // query, so the user can disambiguate a crypto symbol (e.g. "BTC" → bitcoin) before it

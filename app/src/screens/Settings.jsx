@@ -32,6 +32,7 @@ import { getDividendChartPresets, getDividendChartPresetsStorageBytes, deleteAll
 import { backfillFxSnapshots } from '../data/stockTransactions'
 import { getApiDividendHistoryStats, clearApiDividendHistory } from '../data/apiDividendHistory'
 import { getDismissedSplits, getDismissedSplitsStorageBytes, deleteAllDismissedSplits } from '../data/detectedSplits'
+import { getCryptoProfiles, getCryptoProfilesStorageBytes, deleteAllCryptoProfiles } from '../data/cryptoProfiles'
 import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
 import { getTradingScenariosStats, deleteAllTradingScenarios } from '../data/tradingScenarios'
 import { testProvider } from '../data/marketDataClient'
@@ -172,6 +173,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [manualPricesDeleteConfirm, setManualPricesDeleteConfirm] = useState(false)
   const [tradingScenariosStats, setTradingScenariosStats] = useState(() => getTradingScenariosStats())
   const [tradingScenariosDeleteConfirm, setTradingScenariosDeleteConfirm] = useState(false)
+  const [cryptoProfiles,      setCryptoProfiles]      = useState(() => getCryptoProfiles())
+  const [cryptoProfilesBytes, setCryptoProfilesBytes] = useState(() => getCryptoProfilesStorageBytes())
+  const [cryptoProfilesConfirm, setCryptoProfilesConfirm] = useState(false)
   const [renamingId,      setRenamingId]      = useState(null)
   const [renameValue,     setRenameValue]     = useState('')
   const [deletingTpl,     setDeletingTpl]     = useState(null)
@@ -1984,6 +1988,54 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     setDismissedSplits(getDismissedSplits())
                     setDismissedSplitsBytes(getDismissedSplitsStorageBytes())
                     setDismissedSplitsConfirm(false)
+                  }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Crypto coin mappings (SPEC-036 — symbol → CoinGecko coin id) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Crypto coin mappings</div>
+            <p className={styles.description}>
+              The resolved CoinGecko coin for each crypto symbol you hold (e.g. BTC → Bitcoin),
+              used to price your crypto holdings. Clearing this only removes the mappings — your
+              crypto transactions are kept; you'll re-pick the coin next time you price them.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                {cryptoProfiles.length === 0 ? (
+                  <div className={styles.storageEmptyRow}>No crypto coins mapped yet.</div>
+                ) : (
+                  <div className={styles.storageRow}>
+                    <span className={styles.storageTicker}>Coins</span>
+                    <span className={styles.storageCount}>
+                      {cryptoProfiles.length} coin{cryptoProfiles.length === 1 ? '' : 's'}
+                    </span>
+                    <span className={styles.storageBytes}>{fmtBytes(cryptoProfilesBytes)}</span>
+                    <button
+                      className={styles.btnSmDanger}
+                      disabled={cryptoProfiles.length === 0}
+                      onClick={() => setCryptoProfilesConfirm(true)}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {cryptoProfilesConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Clear all {cryptoProfiles.length} crypto coin mapping{cryptoProfiles.length === 1 ? '' : 's'}?
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} onClick={() => setCryptoProfilesConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} onClick={() => {
+                    deleteAllCryptoProfiles()
+                    setCryptoProfiles(getCryptoProfiles())
+                    setCryptoProfilesBytes(getCryptoProfilesStorageBytes())
+                    setCryptoProfilesConfirm(false)
                   }}>Clear</button>
                 </div>
               </div>
