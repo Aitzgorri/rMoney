@@ -24,6 +24,8 @@ import {
   createBuy,
   createSell,
   createTransfer,
+  createSwap,
+  createWalletTransfer,
   getStockTransaction,
   getStockTransactionsByTicker,
   createCurrencyExchange,
@@ -76,7 +78,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
 
-  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy' | 'crypto-sell'
+  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy' | 'crypto-sell' | 'crypto-swap' | 'crypto-wallet-transfer'
   const [activeBalanceId, setActiveBalanceId] = useState(null)
 
   const [editingOpeningId,    setEditingOpeningId]    = useState(null)
@@ -523,6 +525,19 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     setDefaultTransferTicker(null)
   }
 
+  // SPEC-036 crypto swap / wallet-transfer (coin-for-coin and wallet moves).
+  function handleCryptoSwap(params) {
+    createSwap({ ...params, investingAccountId: accountId })
+    refresh()
+    closeForm()
+  }
+
+  function handleCryptoWalletTransfer(params) {
+    createWalletTransfer({ ...params, investingAccountId: accountId })
+    refresh()
+    closeForm()
+  }
+
   function handleDividend(params) {
     createDividend(params)
     refresh()
@@ -710,6 +725,21 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 position={cryptoActionPos}
                 balances={balances}
                 onSave={handleSell}
+                onCancel={closeForm}
+              />
+            )}
+            {formMode === 'crypto-swap' && cryptoActionPos && (
+              <CryptoSwapForm
+                position={cryptoActionPos}
+                balances={balances}
+                onSave={handleCryptoSwap}
+                onCancel={closeForm}
+              />
+            )}
+            {formMode === 'crypto-wallet-transfer' && cryptoActionPos && (
+              <CryptoWalletTransferForm
+                position={cryptoActionPos}
+                onSave={handleCryptoWalletTransfer}
                 onCancel={closeForm}
               />
             )}
@@ -1012,10 +1042,11 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               {
                 id: 'actions', label: '',
                 render: p => (
-                  <button
-                    className={styles.actionBtnSmall}
-                    onClick={() => { setCryptoActionPos(p); setFormMode('crypto-sell') }}
-                  >Sell</button>
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-sell') }}>Sell</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-swap') }}>Swap</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-wallet-transfer') }}>Move</button>
+                  </span>
                 ),
               },
             ]}
@@ -2635,6 +2666,145 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Crypto swap form (SPEC-036, D2) ──────────────────────────────────────────
+// Disposes some of a held coin (FROM, fixed) for another coin (TO, searched).
+// One atomic createSwap record; no fiat moves except an optional fee.
+function CryptoSwapForm({ position, balances, onSave, onCancel }) {
+  const currency      = position.currency
+  const available     = position.shares
+  const feeBalances   = balances.filter(b => b.currency === currency)
+
+  const [date,         setDate]         = useState(today)
+  const [fromQty,      setFromQty]      = useState('')
+  const [toCoin,       setToCoin]       = useState(null)
+  const [toQty,        setToQty]        = useState('')
+  const [spotValue,    setSpotValue]    = useState('')
+  const [fee,          setFee]          = useState('0')
+  const [feeBalanceId, setFeeBalanceId] = useState(() => feeBalances[0]?.id ?? '')
+
+  const fromNum  = Number(fromQty)
+  const overFrom = fromNum > available + 1e-9
+  const sameCoin = toCoin && toCoin.symbol === position.ticker
+  const canSave  = fromNum > 0 && !overFrom && !!toCoin && !sameCoin && Number(toQty) > 0 && Number(spotValue) > 0
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    setCryptoCoin(toCoin.symbol, { coinId: toCoin.coinId, name: toCoin.name })
+    onSave({
+      date,
+      fromTicker: position.ticker,
+      fromQuantity: fromNum,
+      toTicker: toCoin.symbol,
+      toQuantity: Number(toQty),
+      spotValue: Number(spotValue),
+      currency,
+      fee: Number(fee || 0),
+      feeCashBalanceId: Number(fee) > 0 ? (feeBalanceId || null) : null,
+    })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Swap {position.ticker}</h3>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>From — {position.ticker} quantity</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={fromQty} onChange={e => setFromQty(e.target.value)} placeholder={trimDecimals(available)} autoFocus />
+        <p className={styles.ratePreview}>Held: {trimDecimals(available)} {position.ticker}</p>
+        {overFrom && <span className={styles.shareWarnChip}>Exceeds the {trimDecimals(available)} you hold.</span>}
+      </div>
+      <p className={styles.formSubtitle}>To — acquired coin</p>
+      <CoinSearchPicker value={toCoin} onChange={setToCoin} />
+      {sameCoin && <span className={styles.shareWarnChip}>Pick a different coin than {position.ticker}.</span>}
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>To quantity{toCoin ? ` — ${toCoin.symbol}` : ''}</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={toQty} onChange={e => setToQty(e.target.value)} placeholder="8" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Trade value (total, {currency})</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={spotValue} onChange={e => setSpotValue(e.target.value)} placeholder="6000" />
+        <p className={styles.ratePreview}>Market value of the coins exchanged — sets the realised P/L and the new coin's cost basis.</p>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Fee ({currency})</label>
+        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+      </div>
+      {Number(fee) > 0 && feeBalances.length > 0 && (
+        <div className={styles.formRow}>
+          <label className={styles.formLabel}>Fee paid from</label>
+          <select className={styles.formSelect} value={feeBalanceId} onChange={e => setFeeBalanceId(e.target.value)}>
+            {feeBalances.map(b => <option key={b.id} value={b.id}>{b.currency} ({fmtAmt(getCurrentBalance(b.id))} available)</option>)}
+          </select>
+        </div>
+      )}
+      <p className={styles.formSubtitle}>No cash changes hands — only the optional fee debits your {currency} balance.</p>
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Swap</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Crypto wallet transfer form (SPEC-036, D3 — coarse-label audit record) ────
+// Records moving a coin between the user's wallets. No effect on holdings/P&L.
+function CryptoWalletTransferForm({ position, onSave, onCancel }) {
+  const [date,       setDate]       = useState(today)
+  const [quantity,   setQuantity]   = useState('')
+  const [fromWallet, setFromWallet] = useState('')
+  const [toWallet,   setToWallet]   = useState('')
+
+  const available = position.shares
+  const qtyNum    = Number(quantity)
+  const over      = qtyNum > available + 1e-9
+  const canSave   = qtyNum > 0 && !over && toWallet.trim()
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    onSave({
+      date,
+      ticker: position.ticker,
+      quantity: qtyNum,
+      fromWallet: fromWallet.trim() || null,
+      toWallet: toWallet.trim() || null,
+    })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Move {position.ticker} between wallets</h3>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Quantity</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder={trimDecimals(available)} autoFocus />
+        <p className={styles.ratePreview}>Held: {trimDecimals(available)} {position.ticker}</p>
+        {over && <span className={styles.shareWarnChip}>Exceeds the {trimDecimals(available)} you hold.</span>}
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>From wallet (optional)</label>
+        <input className={styles.formInput} value={fromWallet} onChange={e => setFromWallet(e.target.value)} placeholder="exchange" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>To wallet</label>
+        <input className={styles.formInput} value={toWallet} onChange={e => setToWallet(e.target.value)} placeholder="cold-storage / ledger" />
+      </div>
+      <p className={styles.formSubtitle}>Records the move only — cost basis is preserved and no P/L is realised.</p>
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Move</button>
       </div>
     </form>
   )
