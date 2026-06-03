@@ -1,7 +1,7 @@
 ---
 id: SPEC-036
 name: Crypto holdings
-status: ready
+status: in-progress
 created: 2026-06-02
 ---
 
@@ -27,8 +27,8 @@ model, so the guiding principle is **maximum reuse, minimum new machinery**.
 ## Acceptance Criteria
 
 ### Data model & asset-class tagging (D6)
-- [ ] Crypto records are stored in `rmoney_stock_transactions` with `assetClass:'crypto'`; records without the field are treated as `'stock'`.
-- [ ] `getStockTransactionsByTicker`, `getAllKnownTickers`, `hasOpenLotsForTicker`, and any other cross-asset query accept/apply an `assetClass` filter so stock and crypto holdings never mix in inventory, resolution, or reports.
+- [ ] Crypto records are stored in `rmoney_stock_transactions` with `assetClass:'crypto'`; records without the field are treated as `'stock'`. *(Read-side half done in step 1: `assetClassOf()` treats absent ⇒ `'stock'`. Write-side `assetClass:'crypto'` lands with crypto create in step 2.)*
+- [x] `getStockTransactionsByTicker`, `getAllKnownTickers`, `hasOpenLotsForTicker`, and any other cross-asset query accept/apply an `assetClass` filter so stock and crypto holdings never mix in inventory, resolution, or reports. *(Step 1: added `ASSET_CLASS` + `assetClassOf()`; threaded an `assetClass` param defaulting to `STOCK` through `getStockTransactionsByTicker`, `getAllKnownTickers`, `hasOpenLotsForTicker`, `getOpenLots`, `getPositions`. Existing callers unchanged; crypto is opt-in.)*
 - [ ] A crypto buy/sell carries an optional `wallet` (label or address) field; it occupies the display slot `exchange` fills for stocks (D1). No new wallet entity exists.
 
 ### Buy / Sell (reuses existing lot engine)

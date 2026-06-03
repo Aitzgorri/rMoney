@@ -9,6 +9,17 @@ function load() {
 }
 function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
 
+// SPEC-036 (Phase 20 crypto): the rmoney_stock_transactions collection is shared
+// across asset classes, discriminated by an `assetClass` field. Records created
+// before this phase carry no field — their ABSENCE is the canonical marker for a
+// stock record (D6). Cross-asset queries below take an `assetClass` argument that
+// defaults to STOCK, so every existing caller keeps stock-only behaviour and crypto
+// is strictly opt-in (pass ASSET_CLASS.CRYPTO).
+export const ASSET_CLASS = { STOCK: 'stock', CRYPTO: 'crypto' }
+export function assetClassOf(txn) {
+  return txn.assetClass ?? ASSET_CLASS.STOCK
+}
+
 export function getStockTransaction(id) {
   return load().find(t => t.id === id) ?? null
 }
@@ -19,25 +30,26 @@ export function getStockTransactions(investingAccountId) {
     .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
 }
 
-// All buy/sell/split/transfer records for a ticker across every investing account
-export function getStockTransactionsByTicker(ticker) {
+// All buy/sell/split/transfer records for a ticker across every investing account,
+// scoped to one asset class (defaults to stock — see ASSET_CLASS note above).
+export function getStockTransactionsByTicker(ticker, assetClass = ASSET_CLASS.STOCK) {
   const norm = ticker.trim().toUpperCase()
   return load()
-    .filter(t => t.ticker === norm && (t.type === 'buy' || t.type === 'sell' || t.type === 'split' || t.type === 'transfer'))
+    .filter(t => t.ticker === norm && assetClassOf(t) === assetClass && (t.type === 'buy' || t.type === 'sell' || t.type === 'split' || t.type === 'transfer'))
     .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
 }
 
 // Returns true if the ticker has at least one open lot in any investing account.
 // Used by the Stock inventory archive precondition (Phase 30).
-export function hasOpenLotsForTicker(ticker) {
+export function hasOpenLotsForTicker(ticker, assetClass = ASSET_CLASS.STOCK) {
   const t = ticker.trim().toUpperCase()
   const accounts = getInvestingAccounts()
-  return accounts.some(a => getOpenLots(a.id, t).some(lot => lot.remainingShares > 0))
+  return accounts.some(a => getOpenLots(a.id, t, null, assetClass).some(lot => lot.remainingShares > 0))
 }
 
-// All tickers that appear in any buy transaction, across every account
-export function getAllKnownTickers() {
-  return [...new Set(load().filter(t => t.type === 'buy').map(t => t.ticker))].sort()
+// All tickers that appear in any buy transaction of the given asset class, across every account
+export function getAllKnownTickers(assetClass = ASSET_CLASS.STOCK) {
+  return [...new Set(load().filter(t => t.type === 'buy' && assetClassOf(t) === assetClass).map(t => t.ticker))].sort()
 }
 
 // Returns buy lots sorted oldest-first, each augmented with remainingShares (shares not yet consumed by sells/transfers-out).
@@ -46,8 +58,10 @@ export function getAllKnownTickers() {
 // Transfers-in (where this account is the destination) are synthesized as lots preserving the original buy's date and price.
 // asOfDate (optional ISO date): when provided, only transactions dated ≤ asOfDate are considered. Splits after
 // asOfDate are ignored, so the returned shares/price reflect the lot as it existed at end-of-day on asOfDate.
-export function getOpenLots(investingAccountId, ticker, asOfDate = null) {
-  const all = load().filter(t => t.ticker === ticker && (!asOfDate || t.date <= asOfDate))
+// assetClass (defaults to stock): isolates lots to one asset class so a stock and a crypto sharing a ticker
+// symbol never mix (D6). Crypto callers pass ASSET_CLASS.CRYPTO.
+export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetClass = ASSET_CLASS.STOCK) {
+  const all = load().filter(t => t.ticker === ticker && assetClassOf(t) === assetClass && (!asOfDate || t.date <= asOfDate))
 
   // Direct buys in this account
   const directBuys = all.filter(t => t.type === 'buy' && t.investingAccountId === investingAccountId)
@@ -119,20 +133,21 @@ export function getOpenLots(investingAccountId, ticker, asOfDate = null) {
     .filter(lot => lot.remainingShares > 0.000001)
 }
 
-// Returns current open positions (ticker, shares, avgCost, currency) for an account.
-export function getPositions(investingAccountId) {
+// Returns current open positions (ticker, shares, avgCost, currency) for an account,
+// scoped to one asset class (defaults to stock — see ASSET_CLASS note above).
+export function getPositions(investingAccountId, assetClass = ASSET_CLASS.STOCK) {
   const all = load()
   const directTickers = all
-    .filter(t => t.type === 'buy' && t.investingAccountId === investingAccountId)
+    .filter(t => t.type === 'buy' && t.investingAccountId === investingAccountId && assetClassOf(t) === assetClass)
     .map(t => t.ticker)
   const transferInTickers = all
-    .filter(t => t.type === 'transfer' && t.destinationInvestingAccountId === investingAccountId)
+    .filter(t => t.type === 'transfer' && t.destinationInvestingAccountId === investingAccountId && assetClassOf(t) === assetClass)
     .map(t => t.ticker)
   const tickers = [...new Set([...directTickers, ...transferInTickers])]
 
   const positions = []
   for (const ticker of tickers) {
-    const lots = getOpenLots(investingAccountId, ticker)
+    const lots = getOpenLots(investingAccountId, ticker, null, assetClass)
     if (lots.length === 0) continue
     const shares = lots.reduce((s, l) => s + l.remainingShares, 0)
     if (shares < 0.000001) continue

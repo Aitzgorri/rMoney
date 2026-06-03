@@ -112,7 +112,7 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 > Sequenced for dependencies: data layer first (so the lot engine stays correct), then pricing, then the surfaces that consume both. Full per-criterion contract lives in [SPEC-036](features/SPEC-036-crypto-holdings.md); these are the build steps.
 
-1. [ ] **Asset-class tagging (D6)** — add `assetClass` to `rmoney_stock_transactions`; make `getStockTransactionsByTicker` / `getAllKnownTickers` / `hasOpenLotsForTicker` and inventory/reports asset-class-aware so stocks and coins never mix.
+1. [x] **Asset-class tagging (D6)** — data layer done: `ASSET_CLASS` + `assetClassOf()` (absent ⇒ stock) in `stockTransactions.js`, with an `assetClass` param (default stock) threaded through `getStockTransactionsByTicker` / `getAllKnownTickers` / `hasOpenLotsForTicker` / `getOpenLots` / `getPositions`. Existing callers unchanged; crypto is opt-in. Build passes. *(Consumer-side crypto display is item 8; write-side `assetClass:'crypto'` is item 2.)*
 2. [ ] **Crypto buy/sell + `wallet` field (D1)** — fractional quantities through the existing `getOpenLots` lot engine + FIFO/LIFO realisation + cash-movement/FX reuse; `wallet` occupies the `exchange` slot.
 3. [ ] **`swap` transaction type (D2)** — atomic record; `from` leg realises P/L vs cost basis, `to` leg opens a lot at spot, net fiat = 0; edit/delete acts on the pair.
 4. [ ] **`swap` consumers** — inventory (both coins), realised-P/L totals, investment reports, and cash-impact/Buy-Sell surfaces all handle `swap`.
