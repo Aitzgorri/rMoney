@@ -551,6 +551,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     { id: 'withdrawal', label: 'Withdrawal' },
     { id: 'currency-exchange', label: 'Currency exchange' },
     { id: 'transfer-fee', label: 'Transfer fee' },
+    { id: 'swap-fee', label: 'Swap fee' },
   ]
 
   const tickerOptions = [...new Set(
@@ -1147,6 +1148,7 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
     sell:                'Stock sell',
     dividend:            'Dividend',
     'transfer-fee':      'Transfer fee',
+    'swap-fee':          'Swap fee',   // SPEC-036: crypto swap fee — standalone row (no parent buy/sell movement)
   }[movement.type] ?? movement.type
 
   return (
