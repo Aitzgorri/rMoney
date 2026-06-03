@@ -47,7 +47,8 @@ import { fmtAmt } from '../utils/format'
 import HybridFilterDropdown from '../components/HybridFilterDropdown'
 import { snapshotFxRates, convertToMain } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
-import { getLatestPrice } from '../data/marketDataClient'
+import { getLatestPrice, searchCryptoCoins } from '../data/marketDataClient'
+import { setCryptoCoin } from '../data/cryptoProfiles'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -71,7 +72,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
 
-  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend'
+  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy'
   const [activeBalanceId, setActiveBalanceId] = useState(null)
 
   const [editingOpeningId,    setEditingOpeningId]    = useState(null)
@@ -662,6 +663,13 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 onCancel={closeForm}
               />
             )}
+            {formMode === 'crypto-buy' && (
+              <CryptoBuyForm
+                balances={balances}
+                onSave={handleBuy}
+                onCancel={closeForm}
+              />
+            )}
             {formMode === 'sell' && (
               <SellForm
                 accountId={accountId}
@@ -767,6 +775,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
           <span className={styles.sectionLabel}>Positions</span>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className={styles.newBalBtn} onClick={() => setFormMode('buy')}>+ Buy</button>
+            <button className={styles.newBalBtn} onClick={() => setFormMode('crypto-buy')}>+ Buy crypto</button>
             <button className={styles.newBalBtn} onClick={() => { setDefaultDividendTicker(null); setFormMode('dividend') }}>+ Dividend</button>
             {positions.length > 0 && (
               <button className={styles.newBalBtn} onClick={() => { setDefaultTransferTicker(null); setFormMode('transfer') }}>Transfer</button>
@@ -2274,6 +2283,194 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Crypto coin picker (SPEC-036 / D8) ──────────────────────────────────────
+// Search CoinGecko for a symbol/name, show ranked candidates with the top
+// (highest-market-cap) pre-selected, let the user confirm or change it.
+// `value` / onChange carry { coinId, symbol, name } | null.
+function CoinSearchPicker({ value, onChange }) {
+  const [query,      setQuery]      = useState('')
+  const [candidates, setCandidates] = useState([])
+  const [searching,  setSearching]  = useState(false)
+  const [error,      setError]      = useState('')
+
+  async function runSearch() {
+    const q = query.trim()
+    if (!q) return
+    setSearching(true); setError('')
+    try {
+      const results = await searchCryptoCoins(q)
+      setCandidates(results)
+      if (results.length > 0) {
+        const top = results[0]
+        onChange({ coinId: top.coinId, symbol: top.symbol, name: top.name })
+      } else {
+        onChange(null)
+        setError('No coins found for that symbol or name.')
+      }
+    } catch {
+      setError('Coin search failed — check your connection.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  return (
+    <div className={styles.formRow}>
+      <label className={styles.formLabel}>Coin</label>
+      <div className={styles.tickerInputRow}>
+        <input
+          className={styles.formInput}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runSearch() } }}
+          placeholder="BTC or Bitcoin"
+          autoFocus
+        />
+        <button type="button" className={styles.lookupBtn} onClick={runSearch} disabled={!query.trim() || searching}>
+          {searching ? '…' : 'Search'}
+        </button>
+      </div>
+      {error && <span className={styles.manualStockChip}>{error}</span>}
+      {candidates.length > 0 && (
+        <div className={styles.coinCandidates}>
+          {candidates.slice(0, 8).map(c => (
+            <label key={c.coinId} className={styles.coinCandidateRow}>
+              <input
+                type="radio"
+                name="cryptoCoin"
+                checked={value?.coinId === c.coinId}
+                onChange={() => onChange({ coinId: c.coinId, symbol: c.symbol, name: c.name })}
+              />
+              <span>{c.name} ({c.symbol}){c.marketCapRank ? ` · #${c.marketCapRank}` : ''}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {value && (
+        <div className={styles.profileCard}>
+          <span className={styles.profileCardText}>Selected: {value.name} ({value.symbol})</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Crypto buy form (SPEC-036) ───────────────────────────────────────────────
+// Mirrors BuyForm (same cash-balance + cross-currency FX param shape, reused by
+// handleBuy) but with a coin picker instead of stock resolution and a wallet
+// label instead of an exchange. Persists the chosen symbol→coin mapping.
+function CryptoBuyForm({ balances, onSave, onCancel }) {
+  const [date,     setDate]     = useState(today)
+  const [coin,     setCoin]     = useState(null)   // { coinId, symbol, name } | null
+  const [wallet,   setWallet]   = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [price,    setPrice]    = useState('')
+  const [currency, setCurrency] = useState(() => balances[0]?.currency ?? 'USD')
+  const [fee,      setFee]      = useState('0')
+
+  const [sourceBalanceId, setSourceBalanceId] = useState(() => {
+    const match = balances.find(b => b.currency === (balances[0]?.currency ?? 'USD'))
+    return match?.id ?? balances[0]?.id ?? ''
+  })
+  const [fxRate, setFxRate] = useState('1')
+  const [fxFee,  setFxFee]  = useState('0')
+
+  const sourceBal      = balances.find(b => b.id === sourceBalanceId)
+  const isCrossSource  = sourceBal && sourceBal.currency !== currency
+  const total          = Number(quantity || 0) * Number(price || 0) + Number(fee || 0)
+  const fxSourceAmount = isCrossSource && Number(fxRate) > 0 ? total / Number(fxRate) : 0
+  const canSave        = !!coin && Number(quantity) > 0 && Number(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
+
+  function handleCurrencyChange(c) {
+    setCurrency(c)
+    const match = balances.find(b => b.currency === c)
+    if (match) setSourceBalanceId(match.id)
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    // Persist the symbol→coin mapping so pricing uses the exact coin (D8).
+    setCryptoCoin(coin.symbol, { coinId: coin.coinId, name: coin.name })
+    onSave({
+      assetClass: 'crypto',
+      date,
+      ticker: coin.symbol,
+      wallet: wallet.trim() || null,
+      stockExchange: null,
+      shares: Number(quantity),
+      price: Number(price),
+      currency,
+      fee: Number(fee || 0),
+      transactionExternalId: null,
+      sourceCashBalanceId: isCrossSource ? sourceBalanceId : null,
+      fxExchangeRate: isCrossSource ? Number(fxRate) : null,
+      fxSourceAmount:  isCrossSource ? fxSourceAmount : null,
+      fxFeeAmount:     isCrossSource ? Number(fxFee || 0) : null,
+    })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Buy crypto</h3>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <CoinSearchPicker value={coin} onChange={setCoin} />
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Wallet (optional)</label>
+        <input className={styles.formInput} value={wallet} onChange={e => setWallet(e.target.value)} placeholder="cold-storage / ledger / exchange" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Quantity</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0.05" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Price per coin</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="64000" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Currency</label>
+        <CurrencyDropdown className={styles.formInput} value={currency} onChange={handleCurrencyChange} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Fee ({currency})</label>
+        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+      </div>
+      {balances.length > 0 && (
+        <div className={styles.formRow}>
+          <label className={styles.formLabel}>Pay from</label>
+          <select className={styles.formSelect} value={sourceBalanceId} onChange={e => setSourceBalanceId(e.target.value)}>
+            {balances.map(b => (
+              <option key={b.id} value={b.id}>{b.currency} ({fmtAmt(getCurrentBalance(b.id))} available)</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isCrossSource && (
+        <div className={styles.crossCurrencyBox}>
+          <p className={styles.crossCurrencyLabel}>Currency exchange required — {sourceBal.currency} → {currency}</p>
+          <p className={styles.ratePreview}>Need: {fmtAmt(total)} {currency}</p>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Rate (1 {sourceBal.currency} = ? {currency})</label>
+            <input className={styles.formInput} type="number" min="0.000001" step="any" value={fxRate} onChange={e => setFxRate(e.target.value)} />
+          </div>
+          <p className={styles.ratePreview}>Pay: {fmtAmt(fxSourceAmount)} {sourceBal.currency}</p>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Exchange fee ({sourceBal.currency})</label>
+            <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+          </div>
+        </div>
+      )}
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Buy</button>
       </div>
     </form>
   )
