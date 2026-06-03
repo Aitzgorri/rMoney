@@ -27,14 +27,14 @@ model, so the guiding principle is **maximum reuse, minimum new machinery**.
 ## Acceptance Criteria
 
 ### Data model & asset-class tagging (D6)
-- [ ] Crypto records are stored in `rmoney_stock_transactions` with `assetClass:'crypto'`; records without the field are treated as `'stock'`. *(Read-side half done in step 1: `assetClassOf()` treats absent ⇒ `'stock'`. Write-side `assetClass:'crypto'` lands with crypto create in step 2.)*
+- [x] Crypto records are stored in `rmoney_stock_transactions` with `assetClass:'crypto'`; records without the field are treated as `'stock'`. *(Read-side step 1 via `assetClassOf()`; write-side step 2 — `createBuy`/`createSell` stamp `assetClass:'crypto'` only for crypto, so stock records stay byte-identical.)*
 - [x] `getStockTransactionsByTicker`, `getAllKnownTickers`, `hasOpenLotsForTicker`, and any other cross-asset query accept/apply an `assetClass` filter so stock and crypto holdings never mix in inventory, resolution, or reports. *(Step 1: added `ASSET_CLASS` + `assetClassOf()`; threaded an `assetClass` param defaulting to `STOCK` through `getStockTransactionsByTicker`, `getAllKnownTickers`, `hasOpenLotsForTicker`, `getOpenLots`, `getPositions`. Existing callers unchanged; crypto is opt-in.)*
-- [ ] A crypto buy/sell carries an optional `wallet` (label or address) field; it occupies the display slot `exchange` fills for stocks (D1). No new wallet entity exists.
+- [x] A crypto buy/sell carries an optional `wallet` (label or address) field; it occupies the display slot `exchange` fills for stocks (D1). No new wallet entity exists. *(Step 2: `wallet` accepted by `createBuy`/`createSell`/`updateBuy`/`updateSell`, stored only on crypto records. The UI that renders it in the exchange slot is the entry-form step.)*
 
 ### Buy / Sell (reuses existing lot engine)
-- [ ] A crypto **buy** records `{ assetClass:'crypto', type:'buy', ticker, wallet?, date, quantity, price, currency, fee }` and opens a lot via the existing `getOpenLots` path; fractional quantities (e.g. 0.0123 BTC) are supported.
-- [ ] A crypto **sell** consumes lots by the existing FIFO/LIFO selection and realises P/L against cost basis exactly as stocks do; partial sells leave the remaining lots intact.
-- [ ] Buy debits / sell credits the correct investing-account cash balance in the trade currency, reusing the existing cash-movement path; FX to main currency reuses the existing snapshotting.
+- [x] A crypto **buy** records `{ assetClass:'crypto', type:'buy', ticker, wallet?, date, quantity, price, currency, fee }` and opens a lot via the existing `getOpenLots` path; fractional quantities (e.g. 0.0123 BTC) are supported. *(Step 2: `createBuy({ assetClass:'crypto', wallet })`; `shares` flows unchanged so fractions work. Exercised by the entry-form step.)*
+- [x] A crypto **sell** consumes lots by the existing FIFO/LIFO selection and realises P/L against cost basis exactly as stocks do; partial sells leave the remaining lots intact. *(Step 2: `createSell` now scopes its default FIFO allocation to `getOpenLots(..., assetClass)`, so a crypto sell only consumes crypto lots.)*
+- [x] Buy debits / sell credits the correct investing-account cash balance in the trade currency, reusing the existing cash-movement path; FX to main currency reuses the existing snapshotting. *(Step 2: no change needed — `createBuy`/`createSell` already route through `addCashMovement` + `exchangeRates`; crypto reuses it as-is.)*
 
 ### Swap (dedicated `swap` type — D2)
 - [ ] A **swap** is one record `{ assetClass:'crypto', type:'swap', from:{ticker,quantity}, to:{ticker,quantity}, spotValue, currency, fee, wallet?, date }`.

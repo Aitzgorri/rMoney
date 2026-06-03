@@ -170,7 +170,7 @@ export function computeFifoAllocations(openLots, totalShares) {
   return { allocations, satisfied: remaining <= 0.000001 }
 }
 
-export function createBuy({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null, exchangeRates = null }) {
+export function createBuy({ date, investingAccountId, ticker, stockExchange = null, wallet = null, assetClass = ASSET_CLASS.STOCK, shares, price, currency, fee = 0, transactionExternalId = null, exchangeRates = null }) {
   let balance = getCashBalanceByCurrency(investingAccountId, currency)
   if (!balance) balance = createCashBalance({ investingAccountId, currency, openingBalance: 0 })
 
@@ -192,6 +192,12 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
     exchangeRates,
     createdAt: new Date().toISOString(),
   }
+  // SPEC-036 (D1/D6): stamp crypto-only fields so stock records stay byte-identical (absence ⇒ stock).
+  // `wallet` is the exchange-slot analogue; fractional `shares` flow through unchanged.
+  if (assetClass === ASSET_CLASS.CRYPTO) {
+    txn.assetClass = ASSET_CLASS.CRYPTO
+    txn.wallet = wallet?.trim() || null
+  }
   save([...load(), txn])
 
   const mvtSnapshot = exchangeRates
@@ -204,9 +210,9 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
   return txn
 }
 
-export function createSell({ date, investingAccountId, ticker, stockExchange = null, shares, price, currency, fee = 0, transactionExternalId = null, lotAllocations = null, exchangeRates = null }) {
+export function createSell({ date, investingAccountId, ticker, stockExchange = null, wallet = null, assetClass = ASSET_CLASS.STOCK, shares, price, currency, fee = 0, transactionExternalId = null, lotAllocations = null, exchangeRates = null }) {
   if (!lotAllocations) {
-    const { allocations } = computeFifoAllocations(getOpenLots(investingAccountId, ticker), Number(shares))
+    const { allocations } = computeFifoAllocations(getOpenLots(investingAccountId, ticker, null, assetClass), Number(shares))
     lotAllocations = allocations
   }
 
@@ -230,6 +236,12 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
     lotAllocations,
     exchangeRates,
     createdAt: new Date().toISOString(),
+  }
+  // SPEC-036 (D1/D6): stamp crypto-only fields; FIFO/LIFO lot selection above is scoped to the
+  // matching asset class so a crypto sell only consumes crypto lots.
+  if (assetClass === ASSET_CLASS.CRYPTO) {
+    txn.assetClass = ASSET_CLASS.CRYPTO
+    txn.wallet = wallet?.trim() || null
   }
   save([...load(), txn])
 
@@ -550,7 +562,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
 // Ticker and currency are not editable to avoid cascading cost-basis changes.
 // Editable fields: date, stockExchange, shares, price, fee, transactionExternalId.
 // Recaptures FX snapshot when exchangeRates is supplied (caller fetches it when date changed).
-export function updateBuy(id, { date, stockExchange, shares, price, fee, transactionExternalId, exchangeRates }) {
+export function updateBuy(id, { date, stockExchange, wallet, shares, price, fee, transactionExternalId, exchangeRates }) {
   const txns = load()
   const txn = txns.find(t => t.id === id && t.type === 'buy')
   if (!txn) throw new Error('Buy not found')
@@ -584,6 +596,9 @@ export function updateBuy(id, { date, stockExchange, shares, price, fee, transac
     transactionExternalId: transactionExternalId?.trim() || null,
     exchangeRates: exchangeRates ?? txn.exchangeRates,
   }
+  // SPEC-036: only override `wallet` when the caller supplies it (crypto edit); otherwise
+  // the spread above preserves the record's existing assetClass/wallet.
+  if (wallet !== undefined) updated.wallet = wallet?.trim() || null
   save(txns.map(t => t.id === id ? updated : t))
 
   let balance = getCashBalanceByCurrency(txn.investingAccountId, txn.currency)
@@ -600,7 +615,7 @@ export function updateBuy(id, { date, stockExchange, shares, price, fee, transac
 }
 
 // Ticker and currency are not editable. Lot allocations must be re-supplied if shares change.
-export function updateSell(id, { date, stockExchange, shares, price, fee, transactionExternalId, lotAllocations, exchangeRates }) {
+export function updateSell(id, { date, stockExchange, wallet, shares, price, fee, transactionExternalId, lotAllocations, exchangeRates }) {
   const txns = load()
   const txn = txns.find(t => t.id === id && t.type === 'sell')
   if (!txn) throw new Error('Sell not found')
@@ -627,6 +642,8 @@ export function updateSell(id, { date, stockExchange, shares, price, fee, transa
     lotAllocations: finalAllocations,
     exchangeRates: exchangeRates ?? txn.exchangeRates,
   }
+  // SPEC-036: only override `wallet` when supplied (crypto edit); spread preserves it otherwise.
+  if (wallet !== undefined) updated.wallet = wallet?.trim() || null
   save(txns.map(t => t.id === id ? updated : t))
 
   let balance = getCashBalanceByCurrency(txn.investingAccountId, txn.currency)
