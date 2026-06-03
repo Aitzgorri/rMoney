@@ -17,6 +17,7 @@ import { twelveData }   from '../services/providers/twelveData'
 import { finnhub }      from '../services/providers/finnhub'
 import { alphaVantage } from '../services/providers/alphaVantage'
 import { stooq }        from '../services/providers/stooq'
+import { coingecko }    from '../services/providers/coingecko'
 
 // Chain order: IBKR → Yahoo Finance → Massive → Twelve Data → Finnhub → Alpha Vantage → Stooq
 const CHAIN = [
@@ -333,6 +334,18 @@ async function _searchSymbols(query) {
   }
 
   return Array.from(merged.values())
+}
+
+// ─── Crypto resolution (SPEC-036 / SPEC-029) ──────────────────────────────────
+
+// Returns [{ coinId, symbol, name, marketCapRank }] — candidate coins for a free-text
+// query, so the user can disambiguate a crypto symbol (e.g. "BTC" → bitcoin) before it
+// is stored on a holding. Crypto-only: calls CoinGecko directly, bypassing the stock
+// provider chain (which is keyed on stock symbols/exchanges). Keyless, no logging of URLs.
+export function searchCryptoCoins(query) {
+  const q = (query ?? '').trim()
+  if (!q) return Promise.resolve([])
+  return dedup(`cryptoSearch:${q.toLowerCase()}`, () => coingecko.searchCoins(q))
 }
 
 // Convenience wrapper for callers that already have a stockProfile in hand

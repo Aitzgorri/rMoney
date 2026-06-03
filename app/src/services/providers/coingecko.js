@@ -45,9 +45,21 @@ async function resolveMarket(symbol, vs) {
 const notSupported = () => async () => { throw new Error('not supported') }
 
 export const coingecko = {
-  // config.vsCurrency: fiat to price in (default 'usd'). Returns { price, currency, asOf }.
+  // config.vsCurrency: fiat to price in (default 'usd'). config.coinId: a resolved CoinGecko
+  // coin id (SPEC-029, step 7) — when present it is used directly and the symbol guess is skipped.
+  // Returns { price, currency, asOf }.
   async getLatestPrice(ticker, _exchange, config) {
     const vs = (config?.vsCurrency ?? 'usd').toLowerCase()
+    if (config?.coinId) {
+      const data = await cg('/simple/price', { ids: config.coinId, vs_currencies: vs, include_last_updated_at: true })
+      const row = data?.[config.coinId]
+      if (!row || row[vs] == null) throw new Error('no data')
+      return {
+        price: row[vs],
+        currency: vs.toUpperCase(),
+        asOf: row.last_updated_at ? new Date(row.last_updated_at * 1000).toISOString() : new Date().toISOString(),
+      }
+    }
     const m = await resolveMarket(ticker, vs)
     if (m.current_price == null) throw new Error('no data')
     _idCache.set(`${ticker.toUpperCase()}:${vs}`, m.id)
@@ -58,10 +70,11 @@ export const coingecko = {
     }
   },
 
-  // Daily closes over the requested period, priced in config.vsCurrency. Returns [{ date, close }].
+  // Daily closes over the requested period, priced in config.vsCurrency. Uses config.coinId when
+  // supplied (else resolves the symbol). Returns [{ date, close }].
   async getHistoricalSeries(ticker, _exchange, period, _resolution, config) {
     const vs = (config?.vsCurrency ?? 'usd').toLowerCase()
-    let id = _idCache.get(`${ticker.toUpperCase()}:${vs}`)
+    let id = config?.coinId ?? _idCache.get(`${ticker.toUpperCase()}:${vs}`)
     if (!id) {
       id = (await resolveMarket(ticker, vs)).id
       _idCache.set(`${ticker.toUpperCase()}:${vs}`, id)
@@ -76,6 +89,21 @@ export const coingecko = {
       byDay.set(new Date(ms).toISOString().slice(0, 10), price)
     }
     return [...byDay.entries()].map(([date, close]) => ({ date, close }))
+  },
+
+  // SPEC-036/SPEC-029 resolution: search coins by free text (symbol or name). Returns ranked
+  // candidates [{ coinId, symbol, name, marketCapRank }] for the user to disambiguate
+  // (e.g. "BTC" → bitcoin). Highest market-cap / lowest rank first.
+  async searchCoins(query) {
+    const data = await cg('/search', { query: query.trim() })
+    const coins = data?.coins
+    if (!Array.isArray(coins)) return []
+    return coins.map(c => ({
+      coinId: c.id,
+      symbol: (c.symbol ?? '').toUpperCase(),
+      name: c.name ?? null,
+      marketCapRank: c.market_cap_rank ?? null,
+    }))
   },
 
   // Everything else is out of scope for a crypto price source — throw so a chain falls through.
