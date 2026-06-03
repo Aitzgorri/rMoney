@@ -20,6 +20,7 @@ import {
   getPositions,
   getOpenLots,
   computeFifoAllocations,
+  ASSET_CLASS,
   createBuy,
   createSell,
   createTransfer,
@@ -47,8 +48,8 @@ import { fmtAmt } from '../utils/format'
 import HybridFilterDropdown from '../components/HybridFilterDropdown'
 import { snapshotFxRates, convertToMain } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
-import { getLatestPrice, searchCryptoCoins } from '../data/marketDataClient'
-import { setCryptoCoin } from '../data/cryptoProfiles'
+import { getLatestPrice, searchCryptoCoins, getCryptoPrice } from '../data/marketDataClient'
+import { setCryptoCoin, getCoinId } from '../data/cryptoProfiles'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -68,6 +69,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [movements, setMovements] = useState(() => getAccountCashMovements(accountId))
 
   const [positions,           setPositions]           = useState(() => getPositions(accountId))
+  const [cryptoPositions,     setCryptoPositions]     = useState(() => getPositions(accountId, ASSET_CLASS.CRYPTO))
+  const [enrichedCrypto,      setEnrichedCrypto]      = useState([])
   const [defaultSellTicker,   setDefaultSellTicker]   = useState(null)
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
@@ -108,6 +111,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     setBalances(getCashBalances(accountId))
     setMovements(getAccountCashMovements(accountId))
     setPositions(getPositions(accountId))
+    setCryptoPositions(getPositions(accountId, ASSET_CLASS.CRYPTO))
   }
 
   const balanceMap = Object.fromEntries(balances.map(b => [b.id, b]))
@@ -163,6 +167,35 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
 
     return () => { cancelled = true }
   }, [accountId, positions]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Enrich crypto positions with live CoinGecko prices (SPEC-036, 8b) ─────────
+  // Priced in each holding's trade currency via the resolved coinId (cryptoProfiles),
+  // then converted to main. Mirrors the stock enrichment above.
+  useEffect(() => {
+    if (cryptoPositions.length === 0) { setEnrichedCrypto([]); return }
+    const mainCurrency = getMainCurrency()
+    let cancelled = false
+
+    Promise.all(cryptoPositions.map(async pos => {
+      const coinId = getCoinId(pos.ticker)
+      let latestPrice = null
+      try {
+        const result = await getCryptoPrice(pos.ticker, pos.currency, coinId)
+        latestPrice = result.price ?? null
+      } catch { /* price unavailable — show "—" */ }
+
+      const mvTrading = latestPrice != null ? pos.shares * latestPrice : null
+      const mvMain    = mvTrading != null ? convertToMain(mvTrading, pos.currency, mainCurrency) : null
+      const costMain  = convertToMain(pos.avgCost * pos.shares, pos.currency, mainCurrency)
+      const plMain    = (mvMain != null && costMain != null) ? mvMain - costMain : null
+      const plPct     = (latestPrice != null && pos.avgCost > 0) ? ((latestPrice - pos.avgCost) / pos.avgCost) * 100 : null
+      return { ...pos, coinId, latestPrice, mvTrading, mvMain, plMain, plPct }
+    })).then(enriched => {
+      if (!cancelled) setEnrichedCrypto(enriched)
+    })
+
+    return () => { cancelled = true }
+  }, [accountId, cryptoPositions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -922,6 +955,54 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
           />
         )}
       </div>
+
+      {/* ── Crypto holdings (SPEC-036, 8b) ──────────────────────────────────── */}
+
+      {cryptoPositions.length > 0 && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Crypto holdings</span>
+          </div>
+          <ConfigurableTable
+            storageKey={`rmoney_crypto_positions_columns_${accountId}`}
+            rowKey={p => p.ticker}
+            rows={enrichedCrypto.length > 0 ? enrichedCrypto : cryptoPositions}
+            maxHeight="460px"
+            emptyMessage="No crypto positions."
+            columns={[
+              { id: 'ticker', label: 'Coin', sortValue: p => p.ticker, render: p => p.ticker },
+              { id: 'quantity', label: 'Quantity', align: 'right', sortValue: p => p.shares, render: p => trimDecimals(p.shares) },
+              { id: 'avgCost', label: 'Avg cost (w/ fee)', align: 'right', sortValue: p => p.avgCost, render: p => `${fmtAmt(p.avgCost)} ${p.currency}` },
+              { id: 'latestPrice', label: 'Latest price', align: 'right', sortValue: p => p.latestPrice ?? -Infinity, render: p => p.latestPrice != null ? `${fmtAmt(p.latestPrice)} ${p.currency}` : '—' },
+              { id: 'mvTrading', label: 'Value (trading)', align: 'right', sortValue: p => p.mvTrading ?? -Infinity, render: p => p.mvTrading != null ? `${fmtAmt(p.mvTrading)} ${p.currency}` : '—' },
+              {
+                id: 'mvMain', label: 'Value (main)', align: 'right',
+                sortValue: p => p.mvMain ?? -Infinity,
+                render: p => { const mc = getMainCurrency(); return p.mvMain != null ? `${fmtAmt(p.mvMain)} ${mc}` : '—' },
+              },
+              {
+                id: 'plMain', label: 'P/L (main)', align: 'right',
+                sortValue: p => p.plMain ?? -Infinity,
+                render: p => {
+                  const mc = getMainCurrency()
+                  if (p.plMain == null) return '—'
+                  const sign = p.plMain >= 0 ? '+' : '−'
+                  return <span style={{ color: p.plMain >= 0 ? '#4ade80' : '#f87171' }}>{sign}{fmtAmt(Math.abs(p.plMain))} {mc}</span>
+                },
+              },
+              {
+                id: 'plPct', label: 'P/L %', align: 'right',
+                sortValue: p => p.plPct ?? -Infinity,
+                render: p => {
+                  if (p.plPct == null) return '—'
+                  const sign = p.plPct >= 0 ? '+' : ''
+                  return <span style={{ color: p.plPct >= 0 ? '#4ade80' : '#f87171' }}>{sign}{p.plPct.toFixed(2)}%</span>
+                },
+              },
+            ]}
+          />
+        </div>
+      )}
 
       {/* ── Cash movements ─────────────────────────────────────────────────── */}
 
@@ -2337,16 +2418,19 @@ function CoinSearchPicker({ value, onChange }) {
       </div>
       {error && <span className={styles.manualStockChip}>{error}</span>}
       {candidates.length > 0 && (
-        <div className={styles.coinCandidates}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: '6px 0', maxHeight: 220, overflowY: 'auto' }}>
           {candidates.slice(0, 8).map(c => (
-            <label key={c.coinId} className={styles.coinCandidateRow}>
+            <label
+              key={c.coinId}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
+            >
               <input
                 type="radio"
                 name="cryptoCoin"
                 checked={value?.coinId === c.coinId}
                 onChange={() => onChange({ coinId: c.coinId, symbol: c.symbol, name: c.name })}
               />
-              <span>{c.name} ({c.symbol}){c.marketCapRank ? ` · #${c.marketCapRank}` : ''}</span>
+              <span>{c.name} <span style={{ opacity: 0.6 }}>({c.symbol}){c.marketCapRank ? ` · #${c.marketCapRank}` : ''}</span></span>
             </label>
           ))}
         </div>
