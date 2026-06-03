@@ -71,11 +71,12 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [positions,           setPositions]           = useState(() => getPositions(accountId))
   const [cryptoPositions,     setCryptoPositions]     = useState(() => getPositions(accountId, ASSET_CLASS.CRYPTO))
   const [enrichedCrypto,      setEnrichedCrypto]      = useState([])
+  const [cryptoActionPos,     setCryptoActionPos]     = useState(null)  // crypto position targeted by Sell/Swap/Transfer
   const [defaultSellTicker,   setDefaultSellTicker]   = useState(null)
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
 
-  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy'
+  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy' | 'crypto-sell'
   const [activeBalanceId, setActiveBalanceId] = useState(null)
 
   const [editingOpeningId,    setEditingOpeningId]    = useState(null)
@@ -202,6 +203,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   function closeForm() {
     setFormMode(null)
     setActiveBalanceId(null)
+    setCryptoActionPos(null)
   }
 
   function handleDeleteBalanceRequest(balance) {
@@ -703,6 +705,14 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 onCancel={closeForm}
               />
             )}
+            {formMode === 'crypto-sell' && cryptoActionPos && (
+              <CryptoSellForm
+                position={cryptoActionPos}
+                balances={balances}
+                onSave={handleSell}
+                onCancel={closeForm}
+              />
+            )}
             {formMode === 'sell' && (
               <SellForm
                 accountId={accountId}
@@ -998,6 +1008,15 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                   const sign = p.plPct >= 0 ? '+' : ''
                   return <span style={{ color: p.plPct >= 0 ? '#4ade80' : '#f87171' }}>{sign}{p.plPct.toFixed(2)}%</span>
                 },
+              },
+              {
+                id: 'actions', label: '',
+                render: p => (
+                  <button
+                    className={styles.actionBtnSmall}
+                    onClick={() => { setCryptoActionPos(p); setFormMode('crypto-sell') }}
+                  >Sell</button>
+                ),
               },
             ]}
           />
@@ -2555,6 +2574,67 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Buy</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Crypto sell form (SPEC-036) ──────────────────────────────────────────────
+// Coin is fixed (from the holdings row). FIFO lot selection is the createSell
+// default (scoped to crypto lots). Proceeds land in the trade-currency cash
+// balance. Reuses handleSell; cross-currency proceeds are a later enhancement.
+function CryptoSellForm({ position, balances, onSave, onCancel }) {
+  const [date,     setDate]     = useState(today)
+  const [quantity, setQuantity] = useState('')
+  const [price,    setPrice]    = useState('')
+  const [fee,      setFee]      = useState('0')
+
+  const currency  = position.currency
+  const available = position.shares
+  const qtyNum    = Number(quantity)
+  const overSell  = qtyNum > available + 1e-9
+  const canSave   = qtyNum > 0 && !overSell && Number(price) > 0
+  const hasTradeBal = balances.some(b => b.currency === currency)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSave) return
+    onSave({
+      assetClass: 'crypto',
+      date,
+      ticker: position.ticker,
+      shares: qtyNum,
+      price: Number(price),
+      currency,
+      fee: Number(fee || 0),
+    })
+  }
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <h3 className={styles.formTitle}>Sell {position.ticker}</h3>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Date</label>
+        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Quantity</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder={trimDecimals(available)} autoFocus />
+        <p className={styles.ratePreview}>Held: {trimDecimals(available)} {position.ticker}</p>
+        {overSell && <span className={styles.shareWarnChip}>Quantity exceeds the {trimDecimals(available)} you hold.</span>}
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Price per coin ({currency})</label>
+        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="64000" />
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>Fee ({currency})</label>
+        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+      </div>
+      <p className={styles.formSubtitle}>Proceeds land in your {currency} cash balance{hasTradeBal ? '' : ' (it will be created)'}.</p>
+      <div className={styles.formActions}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
       </div>
     </form>
   )
