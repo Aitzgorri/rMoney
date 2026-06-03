@@ -50,10 +50,10 @@ model, so the guiding principle is **maximum reuse, minimum new machinery**.
 - [x] Crypto transfer is distinct from the existing stock inter-*account* transfer (which uses `destinationInvestingAccountId`); the crypto path uses a separate `type` and keys on wallet label. *(Step 5: distinct `type:'wallet-transfer'` — `getOpenLots`/`canDelete` have no branch for it, so it can't be misread as a consumer or inter-account transfer.)*
 
 ### Pricing (CoinGecko adapter — D5)
-- [ ] A CoinGecko adapter is registered under the SPEC-027 market-data client, returning spot + historical prices; it is keyless in v1.
-- [ ] `api.coingecko.com` is added to the static CSP `connect-src` in `tauri.conf.json` (SPEC-031); no URL or response is logged.
-- [ ] A ticker→coin resolution step (SPEC-029) disambiguates symbols (e.g. `BTC → bitcoin`) before a price call.
-- [ ] Stablecoins resolve and price like any other coin (~1.00); no peg map exists (D4).
+- [ ] A CoinGecko adapter is registered under the SPEC-027 market-data client, returning spot + historical prices; it is keyless in v1. *(Step 6: the adapter module `services/providers/coingecko.js` is built — keyless `getLatestPrice` + `getHistoricalSeries` priced in `config.vsCurrency`, other methods throw. **Client registration + the crypto-specific call path** (so crypto isn't tried against stock providers) is step 8 wiring.)*
+- [x] `api.coingecko.com` is added to the static CSP `connect-src` in `tauri.conf.json` (SPEC-031); no URL or response is logged. *(Step 6. Keyless ⇒ no `secrets.js` record, no redaction-map entry, no `apiKeySet` flag. The adapter never logs; the client logs only the ticker.)*
+- [ ] A ticker→coin resolution step (SPEC-029) disambiguates symbols (e.g. `BTC → bitcoin`) before a price call. *(Step 7. The step-6 adapter has a best-effort default — `resolveMarket` picks the highest-market-cap coin for a symbol — which step 7 refines into a user-facing disambiguation/storage flow.)*
+- [ ] Stablecoins resolve and price like any other coin (~1.00); no peg map exists (D4). *(Step 6: confirmed by design — the adapter treats USDC/USDT exactly like BTC, no peg map. The "resolve" half completes with step 7.)*
 
 ### Reporting & display
 - [ ] Crypto holdings appear in the existing investment inventory and Investment Reports surfaces, valued in main currency via FX, contributing to portfolio total and weight.
