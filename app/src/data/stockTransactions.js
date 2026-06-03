@@ -587,6 +587,30 @@ export function createTransfer({
   return txn
 }
 
+// SPEC-036 (D3, coarse-label model): move a crypto holding between the user's own wallets.
+// Holdings, cost basis and P/L are tracked per (account, coin) and do NOT partition by wallet,
+// so this is an audit/history record only — it consumes no lots, creates no cash movement, and
+// has no effect on computed quantities or realised P/L. A distinct `type: 'wallet-transfer'`
+// (not the inter-account `transfer`) keeps the lot engine from misreading it: `getOpenLots` has
+// no branch matching this type, so total holdings stay unchanged with no engine change.
+// On-chain fee attribution is out of scope for v1 (no fee movement).
+export function createWalletTransfer({ date, investingAccountId, ticker, quantity, fromWallet = null, toWallet = null }) {
+  const txn = {
+    id: crypto.randomUUID(),
+    type: 'wallet-transfer',
+    assetClass: ASSET_CLASS.CRYPTO,
+    date,
+    investingAccountId,
+    ticker: ticker.trim().toUpperCase(),
+    quantity: Number(quantity),
+    fromWallet: fromWallet?.trim() || null,
+    toWallet: toWallet?.trim() || null,
+    createdAt: new Date().toISOString(),
+  }
+  save([...load(), txn])
+  return txn
+}
+
 // Walks all stockTransactions and cashMovements that lack an FX snapshot (or have one for a
 // different main currency) and fills them using SPEC-027 historical forex.
 // Marks each backfilled record with fxBackfilled: true for transparency.
