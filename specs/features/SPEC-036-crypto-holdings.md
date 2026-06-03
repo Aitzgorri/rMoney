@@ -37,12 +37,12 @@ model, so the guiding principle is **maximum reuse, minimum new machinery**.
 - [x] Buy debits / sell credits the correct investing-account cash balance in the trade currency, reusing the existing cash-movement path; FX to main currency reuses the existing snapshotting. *(Step 2: no change needed — `createBuy`/`createSell` already route through `addCashMovement` + `exchangeRates`; crypto reuses it as-is.)*
 
 ### Swap (dedicated `swap` type — D2)
-- [ ] A **swap** is one record `{ assetClass:'crypto', type:'swap', from:{ticker,quantity}, to:{ticker,quantity}, spotValue, currency, fee, wallet?, date }`.
-- [ ] The `from` leg realises P/L against the disposed coin's cost basis using the same lot-selection rule as a sell.
-- [ ] The `to` leg opens a new lot for the acquired coin at `spotValue` (its cost basis).
-- [ ] Net fiat cash impact of a swap is **zero** (no cash movement created beyond an optional fee).
-- [ ] Every consumer handles `swap`: inventory quantities (both coins), realised-P/L totals, investment reports, and the cash-impact/Buy-Sell surfaces.
-- [ ] Editing or deleting a swap acts on the single atomic record (both legs together).
+- [x] A **swap** is one record `{ assetClass:'crypto', type:'swap', from:{ticker,quantity}, to:{ticker,quantity}, spotValue, currency, fee, wallet?, date }`. *(Step 3: `createSwap()` writes exactly this shape, plus `feeCurrency`/`feeCashBalanceId` and the FROM-leg `lotAllocations`.)*
+- [ ] The `from` leg realises P/L against the disposed coin's cost basis using the same lot-selection rule as a sell. *(Step 3: lot-selection + consumption done — `createSwap` FIFO-allocates over the disposed coin's crypto lots and `getOpenLots` drops them; the realised-P/L **figure** (spotValue − consumed cost basis) surfaces in reporting, step 4.)*
+- [x] The `to` leg opens a new lot for the acquired coin at `spotValue` (its cost basis). *(Step 3: `getOpenLots` synthesizes a TO-leg lot `${swapId}:to` at `spotValue/toQuantity`, swap fee folded in. Chained swaps consume a prior TO-leg lot.)*
+- [x] Net fiat cash impact of a swap is **zero** (no cash movement created beyond an optional fee). *(Step 3: `createSwap` emits no buy/sell movement; only a `swap-fee` debit when a fee + cash balance are given.)*
+- [ ] Every consumer handles `swap`: inventory quantities (both coins), realised-P/L totals, investment reports, and the cash-impact/Buy-Sell surfaces. *(Step 4. Inventory **quantities** are already correct via `getOpenLots`/`getPositions`; the realised-P/L totals + reports/Buy-Sell surfaces are step 4.)*
+- [ ] Editing or deleting a swap acts on the single atomic record (both legs together). *(Step 3: **deleting** done — `canDeleteStockTransaction` guards the TO-leg-consumed case and a buy whose lot a swap consumed; the generic delete removes the one record + its fee movement, restoring both legs. **Editing** needs the swap form, a later UI step.)*
 
 ### Transfer between wallets (dedicated `transfer` record — D3)
 - [ ] A crypto **transfer** records `{ assetClass:'crypto', type:'transfer', ticker, quantity, fromWallet, toWallet, date }`, preserves cost basis and acquisition dates, and realises **no** P/L.

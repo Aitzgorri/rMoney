@@ -47,9 +47,13 @@ export function hasOpenLotsForTicker(ticker, assetClass = ASSET_CLASS.STOCK) {
   return accounts.some(a => getOpenLots(a.id, t, null, assetClass).some(lot => lot.remainingShares > 0))
 }
 
-// All tickers that appear in any buy transaction of the given asset class, across every account
+// All tickers held in the given asset class across every account — from buys and (for crypto)
+// the receiving leg of swaps, so a coin acquired only via a swap is still discoverable.
 export function getAllKnownTickers(assetClass = ASSET_CLASS.STOCK) {
-  return [...new Set(load().filter(t => t.type === 'buy' && assetClassOf(t) === assetClass).map(t => t.ticker))].sort()
+  const txns = load().filter(t => assetClassOf(t) === assetClass)
+  const fromBuys = txns.filter(t => t.type === 'buy').map(t => t.ticker)
+  const fromSwaps = txns.filter(t => t.type === 'swap').map(t => t.to?.ticker).filter(Boolean)
+  return [...new Set([...fromBuys, ...fromSwaps])].sort()
 }
 
 // Returns buy lots sorted oldest-first, each augmented with remainingShares (shares not yet consumed by sells/transfers-out).
@@ -62,6 +66,30 @@ export function getAllKnownTickers(assetClass = ASSET_CLASS.STOCK) {
 // symbol never mix (D6). Crypto callers pass ASSET_CLASS.CRYPTO.
 export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetClass = ASSET_CLASS.STOCK) {
   const all = load().filter(t => t.ticker === ticker && assetClassOf(t) === assetClass && (!asOfDate || t.date <= asOfDate))
+
+  // SPEC-036: swaps reference their tickers via from/to legs (no top-level `ticker`), so they are
+  // gathered separately. The TO leg opens a lot for the acquired coin at the swap-rate spot; the
+  // FROM leg consumes lots of the disposed coin (like a sell). Chained swaps work because a TO-leg
+  // lot id (`${swapId}:to`) can be the sourceBuyId of a later swap's FROM-leg allocation.
+  const swapPool = load().filter(t =>
+    t.type === 'swap' && assetClassOf(t) === assetClass &&
+    t.investingAccountId === investingAccountId && (!asOfDate || t.date <= asOfDate)
+  )
+  const swapInLots = swapPool
+    .filter(s => s.to?.ticker === ticker)
+    .map(s => ({
+      id: `${s.id}:to`,
+      type: 'buy',
+      date: s.date,
+      price: s.to.quantity > 0 ? s.spotValue / s.to.quantity : 0,
+      currency: s.currency,
+      shares: s.to.quantity,
+      ticker,
+      investingAccountId,
+      fee: s.fee ?? 0,           // swap fee folds into the acquired coin's cost basis
+      fromSwapId: s.id,
+      createdAt: s.createdAt,
+    }))
 
   // Direct buys in this account
   const directBuys = all.filter(t => t.type === 'buy' && t.investingAccountId === investingAccountId)
@@ -89,13 +117,15 @@ export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetCl
     }
   }
 
-  const buys = [...directBuys, ...transferInLots]
+  const buys = [...directBuys, ...transferInLots, ...swapInLots]
     .sort((a, b) => a.date.localeCompare(b.date) || new Date(a.createdAt) - new Date(b.createdAt))
 
-  // Sells AND transfers-out from this account both consume lots
-  const consumers = all.filter(t =>
-    (t.type === 'sell' || t.type === 'transfer') && t.investingAccountId === investingAccountId
-  )
+  // Sells AND transfers-out from this account both consume lots; a swap's FROM leg consumes
+  // lots of the disposed coin too (SPEC-036).
+  const consumers = [
+    ...all.filter(t => (t.type === 'sell' || t.type === 'transfer') && t.investingAccountId === investingAccountId),
+    ...swapPool.filter(s => s.from?.ticker === ticker),
+  ]
   const splits = all.filter(t => t.type === 'split' && t.investingAccountId === investingAccountId)
 
   // Cumulative split multiplier for events strictly after `dateStr`.
@@ -143,7 +173,12 @@ export function getPositions(investingAccountId, assetClass = ASSET_CLASS.STOCK)
   const transferInTickers = all
     .filter(t => t.type === 'transfer' && t.destinationInvestingAccountId === investingAccountId && assetClassOf(t) === assetClass)
     .map(t => t.ticker)
-  const tickers = [...new Set([...directTickers, ...transferInTickers])]
+  // SPEC-036: a coin acquired only via a swap's TO leg is still a held position.
+  const swapInTickers = all
+    .filter(t => t.type === 'swap' && t.investingAccountId === investingAccountId && assetClassOf(t) === assetClass)
+    .map(t => t.to?.ticker)
+    .filter(Boolean)
+  const tickers = [...new Set([...directTickers, ...transferInTickers, ...swapInTickers])]
 
   const positions = []
   for (const ticker of tickers) {
@@ -255,26 +290,110 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
   return txn
 }
 
+// SPEC-036 (D2): a coin-to-coin swap is one atomic record. The FROM leg disposes `fromQuantity`
+// of `fromTicker` (consuming its crypto lots via FIFO, like a sell); the TO leg opens a lot of
+// `toTicker` at the swap-rate spot (`spotValue` is the total market value of the trade in
+// `currency`, == disposal proceeds == acquisition cost basis). No fiat cash moves — only an
+// optional fee is debited. Realised P/L on the FROM leg is derived at read time from lotAllocations
+// vs spotValue (reporting concern, build-order step 4).
+export function createSwap({
+  date,
+  investingAccountId,
+  fromTicker,
+  fromQuantity,
+  toTicker,
+  toQuantity,
+  spotValue,
+  currency,
+  fee = 0,
+  feeCashBalanceId = null,
+  wallet = null,
+  lotAllocations = null,
+}) {
+  const fromNorm = fromTicker.trim().toUpperCase()
+  const toNorm = toTicker.trim().toUpperCase()
+  if (fromNorm === toNorm) throw new Error('A swap must be between two different coins')
+
+  // FROM leg consumes crypto lots of the disposed coin (FIFO by default, scoped to crypto).
+  if (!lotAllocations) {
+    const { allocations } = computeFifoAllocations(
+      getOpenLots(investingAccountId, fromNorm, null, ASSET_CLASS.CRYPTO),
+      Number(fromQuantity)
+    )
+    lotAllocations = allocations
+  }
+
+  const normCurrency = currency.trim().toUpperCase()
+  const txn = {
+    id: crypto.randomUUID(),
+    type: 'swap',
+    assetClass: ASSET_CLASS.CRYPTO,
+    date,
+    investingAccountId,
+    from: { ticker: fromNorm, quantity: Number(fromQuantity) },
+    to: { ticker: toNorm, quantity: Number(toQuantity) },
+    spotValue: Number(spotValue),
+    currency: normCurrency,
+    fee: Number(fee || 0),
+    feeCurrency: normCurrency,
+    feeCashBalanceId: feeCashBalanceId || null,
+    wallet: wallet?.trim() || null,
+    lotAllocations,              // FROM-leg allocations over fromTicker lots
+    createdAt: new Date().toISOString(),
+  }
+  save([...load(), txn])
+
+  // Net fiat = 0: the coin-for-coin exchange creates no cash movement. Only an optional fee debits cash.
+  if (Number(fee) > 0 && feeCashBalanceId) {
+    addCashMovement({ type: 'swap-fee', date, cashBalanceId: feeCashBalanceId, amount: -Number(fee), linkedStockTransactionId: txn.id })
+  }
+  return txn
+}
+
 export function canDeleteStockTransaction(id) {
   const all = load()
   const txn = all.find(t => t.id === id)
   if (!txn) return { canDelete: true }
 
   if (txn.type === 'buy') {
-    // Sells AND transfers-out from this account that consumed this lot
+    // Sells, transfers-out, AND swap FROM-legs from this account that consumed this lot (SPEC-036)
     const blocking = all.filter(t =>
-      (t.type === 'sell' || t.type === 'transfer') &&
-      t.investingAccountId === txn.investingAccountId &&
-      t.ticker === txn.ticker &&
-      t.lotAllocations?.some(a => a.sourceBuyId === id)
+      ((t.type === 'sell' || t.type === 'transfer') &&
+        t.investingAccountId === txn.investingAccountId &&
+        t.ticker === txn.ticker &&
+        t.lotAllocations?.some(a => a.sourceBuyId === id)) ||
+      (t.type === 'swap' &&
+        t.investingAccountId === txn.investingAccountId &&
+        t.from?.ticker === txn.ticker &&
+        t.lotAllocations?.some(a => a.sourceBuyId === id))
     )
     if (blocking.length > 0) {
       const sells = blocking.filter(t => t.type === 'sell').length
       const xfers = blocking.filter(t => t.type === 'transfer').length
+      const swaps = blocking.filter(t => t.type === 'swap').length
       const parts = []
       if (sells > 0) parts.push(`${sells} sell record(s)`)
       if (xfers > 0) parts.push(`${xfers} transfer record(s)`)
+      if (swaps > 0) parts.push(`${swaps} swap record(s)`)
       return { canDelete: false, reason: `This buy's lot is used by ${parts.join(' and ')}. Delete those first.` }
+    }
+  }
+
+  if (txn.type === 'swap') {
+    // The coin received in this swap (TO leg, lot id `${id}:to`) may have been sold or swapped away.
+    const toLotId = `${txn.id}:to`
+    const blocking = all.filter(t =>
+      ((t.type === 'sell' || t.type === 'transfer') &&
+        t.investingAccountId === txn.investingAccountId &&
+        t.ticker === txn.to?.ticker &&
+        t.lotAllocations?.some(a => a.sourceBuyId === toLotId)) ||
+      (t.type === 'swap' &&
+        t.investingAccountId === txn.investingAccountId &&
+        t.from?.ticker === txn.to?.ticker &&
+        t.lotAllocations?.some(a => a.sourceBuyId === toLotId))
+    )
+    if (blocking.length > 0) {
+      return { canDelete: false, reason: `The coin received in this swap has since been sold or swapped. Delete those ${blocking.length} record(s) first.` }
     }
   }
 
