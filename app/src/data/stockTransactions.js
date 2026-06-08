@@ -39,6 +39,20 @@ export function getStockTransactionsByTicker(ticker, assetClass = ASSET_CLASS.ST
     .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
 }
 
+// Currency-exchange records triggered by a cross-source BUY of `ticker` (SPEC-019 #77).
+// `currency-exchange` rows carry no `ticker`; they link back via `triggeredByStockTransactionId`,
+// which only buys set (sell-proceeds exchanges are standalone). Newest first.
+export function getTriggeredExchangesByTicker(ticker, assetClass = ASSET_CLASS.STOCK) {
+  const norm = ticker.trim().toUpperCase()
+  const all = load()
+  const buyIds = new Set(
+    all.filter(t => t.type === 'buy' && t.ticker === norm && assetClassOf(t) === assetClass).map(t => t.id)
+  )
+  return all
+    .filter(t => t.type === 'currency-exchange' && buyIds.has(t.triggeredByStockTransactionId))
+    .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
+}
+
 // Returns true if the ticker has at least one open lot in any investing account.
 // Used by the Stock inventory archive precondition (Phase 30).
 export function hasOpenLotsForTicker(ticker, assetClass = ASSET_CLASS.STOCK) {

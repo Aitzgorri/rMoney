@@ -1,7 +1,7 @@
 ---
 id: SPEC-019
 name: Stock Transactions
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -78,7 +78,7 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 ### Currency exchange (as a stock transaction type)
 - [x] A currency exchange is represented as a **single record** — type `'currency-exchange'` — storing: date, investingAccountId, sourceCashBalanceId, sourceAmount, targetCashBalanceId, targetAmount, exchangeRate, optional fee (with its own currency), and `triggeredByStockTransactionId` (nullable — null when user initiates the exchange standalone from SPEC-018's exchange form).
 - [x] An exchange writes two `cashMovement` rows of `type: 'currency-exchange'`: a debit on the source cash balance (`amount = −sourceAmount`) and a credit on the target cash balance (`amount = +targetAmount`), both sharing the same `linkedStockTransactionId` pointing to the exchange record. If a fee is specified it is debited from the fee currency's cash balance as a third `cashMovement` of `type: 'exchange-fee'`.
-- [ ] A currency exchange that was **triggered by a buy** appears in the stock's transaction history on SPEC-021 alongside the buy. **Deferred — requires SPEC-021 integration.**
+- [x] **Buy-triggered currency exchange in the stock's transaction history.** A `currency-exchange` record created by a cross-source buy (`triggeredByStockTransactionId` → a buy of this stock) appears in the stock page's transaction history, date-sorted so it sits alongside the buy that triggered it. The row is badged **FX**, shows the conversion `{sourceAmount} {srcCcy} → {targetAmount} {tgtCcy}` with any FX fee, and is included in the **FX** history filter. Source/target currencies are resolved from the linked cash balances. *(Sell-proceeds exchanges are standalone — not linked back to the sell — so they remain out of scope for this stock-scoped view.)*
 - [x] A standalone currency exchange (no `triggeredByStockTransactionId`) does **not** appear in any stock's history — it lives only in the investing account's cash-balance movement list (SPEC-018).
 - [x] Editing a standalone exchange recalculates both `cashMovement` rows (date, amounts, fee). Triggered-exchange editing (item 288): the edit button appears on buy-triggered exchange movement rows (they have `linkedStockTransactionId` = exchange record ID); `ExchangeForm` shows a "triggered by buy" note with ticker and date; source/target balances are locked; rate and fee are editable.
 

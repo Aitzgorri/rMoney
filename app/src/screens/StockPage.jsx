@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStockTransactionsByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
+import { getStockTransactionsByTicker, getTriggeredExchangesByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
 import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, deleteDividend } from '../data/dividends'
-import { getInvestingAccounts, getCashBalances, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
+import { getInvestingAccounts, getCashBalances, getCashBalance, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, setManualPrice, clearManualPrice, renameTicker } from '../data/stockProfiles'
 import {
@@ -320,8 +320,18 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     return acc
   }, {})
 
+  // Currency exchanges triggered by a cross-source buy of this stock (SPEC-019 #77).
+  // Resolve source/target currencies from the linked cash balances for display.
+  const triggeredFx = getTriggeredExchangesByTicker(norm).map(fx => ({
+    ...fx,
+    _kind: 'currency-exchange',
+    _srcCurrency: getCashBalance(fx.sourceCashBalanceId)?.currency ?? '',
+    _tgtCurrency: getCashBalance(fx.targetCashBalanceId)?.currency ?? '',
+  }))
+
   const allTxns = [
     ...stockTxns.map(t => ({ ...t, _kind: t.type })),
+    ...triggeredFx,
     ...dividends.map(d => ({ ...d, _kind: 'dividend', date: d.payoutDate })),
   ].sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
 
@@ -1972,8 +1982,8 @@ function TxRow({ txn, accountsById, onEditSplit, mainCurrency, realized = null, 
     amountCls = styles.txAmountNegative
   } else if (kind === 'currency-exchange') {
     badge = 'FX'; badgeCls = styles.badgeTransfer
-    desc = txn.description ?? `${txn.fromCurrency ?? ''} → ${txn.toCurrency ?? ''}`
-    amountStr = txn.fee > 0 ? `−${fmtAmt(txn.fee)} fee` : ''
+    desc = `${fmtAmt(txn.sourceAmount)} ${txn._srcCurrency} → ${fmtAmt(txn.targetAmount)} ${txn._tgtCurrency}`
+    amountStr = txn.feeAmount > 0 ? `−${fmtAmt(txn.feeAmount)} fee ${txn._srcCurrency}` : ''
     amountCls = styles.txAmountNegative
   } else {
     badge = 'Div'; badgeCls = styles.badgeDividend
