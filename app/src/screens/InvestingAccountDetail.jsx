@@ -958,9 +958,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
       {/* ── Positions ───────────────────────────────────────────────────── */}
 
       <div className={styles.section}>
-        <div className={styles.sectionHeader}>
+        <div className={`${styles.sectionHeader} ${styles.sectionHeaderWrap}`}>
           <span className={styles.sectionLabel}>Positions</span>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className={styles.sectionHeaderActions}>
             <button className={styles.newBalBtn} onClick={() => setFormMode('buy')}>+ Buy</button>
             <button className={styles.newBalBtn} onClick={() => setFormMode('crypto-buy')}>+ Buy crypto</button>
             <button className={styles.newBalBtn} onClick={() => { setDefaultDividendTicker(null); setFormMode('dividend') }}>+ Dividend</button>

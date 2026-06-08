@@ -105,6 +105,35 @@
 
 .newBalBtn:hover { border-color: #3b82f6; color: #f1f5f9; }
 
+/* Positions-header action button group (replaces an inline flex style). Wraps even
+   on desktop if cramped; the mobile rules below make the buttons fill + flow. */
+.sectionHeaderActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sectionHeaderActions .newBalBtn { white-space: nowrap; }
+
+/* ── Phone-width layout (PHONE = max-width 640px) ─────────────────────────────
+   Stack the account-detail action rows so balances/labels never overlap buttons. */
+@media (max-width: 640px) {
+  /* Positions header: headline on its own row, buttons flow below it full-width */
+  .sectionHeaderWrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .sectionHeaderWrap .sectionHeaderActions .newBalBtn {
+    flex: 1 1 auto;       /* grow to fill the row so labels have room … */
+    min-width: 104px;     /* … and never wrap to a second line */
+    text-align: center;
+  }
+
+  /* Cash balance rows: amount+currency on one full-width row, buttons below (right-aligned) */
+  .balanceMain   { flex-basis: 100%; }
+  .balanceActions { flex-basis: 100%; justify-content: flex-end; }
+}
+
 /* ── Cash balance rows ───────────────────────────────────────────────────── */
 
 .balanceList {

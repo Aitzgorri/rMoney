@@ -66,6 +66,11 @@ Introduce a top-level "Investments" section in the app, separate from the budget
 - [x] The confirmation is shown once per operation, at save time. Once confirmed and saved, the negative balance is treated normally by downstream math (rollups, reports).
 - [x] A persistent warning badge (⚠) is shown on the cash balance's row in the account detail view whenever its current balance is negative, so it doesn't get silently forgotten.
 
+### Mobile layout (account detail page)
+On phone-width viewports (`≤ 640px`, the app's `PHONE` breakpoint) the account-detail action rows reflow so nothing wraps or overlaps:
+- [x] **Cash balance rows stack.** The currency + amount stay together on their own full-width row (never wrapping or overlapping the buttons); the action buttons (Deposit / Withdraw / Exchange / edit / delete) move onto the row(s) directly below it, **right-aligned**. On desktop they remain side-by-side as before.
+- [x] **Positions header stacks.** The action buttons (+ Buy, + Buy crypto, + Dividend, Transfer, Import CSV) move below the "Positions" headline. Each button is wide enough that its label never wraps (`white-space: nowrap`), the buttons grow to fill the width and flow across multiple rows as needed, and the group never overflows the viewport. On desktop the buttons stay inline next to the headline.
+
 ### Linked-transaction integrity
 - [x] Deposit and withdrawal movements can be deleted from the account detail view's movement list. Deleting a movement also deletes its linked budgeting transaction, so both sides are always removed together.
 - [x] Linked budgeting transactions (`linkedFromInvestments: true`) are blocked from deletion in the Transactions screen. The delete button is replaced with a note directing the user to remove the movement from the Investments screen instead.
