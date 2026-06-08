@@ -15,11 +15,15 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 // v3→v4 (v0.36.0): adds the `settings.favoriteCountries` key (Phase 38 item 435).
 // The key rides inside the existing `rmoney_settings` blob, so the delta is
 // purely additive — older backups load and default the key on first use.
-const VERSION = 'rmoney-data-v4'
+// v5 (SPEC-036): adds the rmoney_crypto_profiles collection (symbol→coin mappings) and crypto
+// shapes inside rmoney_stock_transactions (assetClass/wallet, swap + wallet-transfer types,
+// fee:{coin,quantity}). The delta is additive — older backups load and default the new bits
+// (absent cryptoProfiles → []; transactions without assetClass are treated as stock).
+const VERSION = 'rmoney-data-v5'
 
-// Versions the loader can ingest. Newer code accepts older backups (v1, v2, v3)
-// and migrates them in-memory before writing v4-shape data to localStorage.
-const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4']
+// Versions the loader can ingest. Newer code accepts older backups (v1–v4)
+// and migrates them in-memory before writing v5-shape data to localStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5']
 
 const KEYS = {
   accounts:           'rmoney_accounts',
@@ -44,6 +48,7 @@ const KEYS = {
   stockTransactions:  'rmoney_stock_transactions',
   dividends:          'rmoney_dividends',
   stockProfiles:      'rmoney_stock_profiles',
+  cryptoProfiles:     'rmoney_crypto_profiles',
   portfolios:         'rmoney_portfolios',
   portfolioAssignments: 'rmoney_portfolio_assignments',
   csvTemplates:       'rmoney_csv_templates',
@@ -123,6 +128,7 @@ export function exportAppData({ mode = 'sharable', strongholdVault = null } = {}
     stockTransactions:  readList(KEYS.stockTransactions),
     dividends:          readList(KEYS.dividends),
     stockProfiles:      readList(KEYS.stockProfiles),
+    cryptoProfiles:     readList(KEYS.cryptoProfiles),
     portfolios:         readList(KEYS.portfolios),
     portfolioAssignments: readList(KEYS.portfolioAssignments),
     csvTemplates:       readList(KEYS.csvTemplates),
@@ -397,6 +403,7 @@ export function importAppData(data) {
   write(KEYS.stockTransactions,  data.stockTransactions  ?? [])
   write(KEYS.dividends,            data.dividends            ?? [])
   write(KEYS.stockProfiles,        data.stockProfiles        ?? [])
+  write(KEYS.cryptoProfiles,       data.cryptoProfiles       ?? [])
   write(KEYS.portfolios,           data.portfolios           ?? [])
   write(KEYS.portfolioAssignments, data.portfolioAssignments ?? [])
   write(KEYS.csvTemplates,         data.csvTemplates         ?? [])
