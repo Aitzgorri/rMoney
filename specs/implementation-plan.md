@@ -90,8 +90,8 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 > #27 (resolution save-gate) resolved 2026-06-08: spec amended to match the shipped, deliberate design — resolution is offered but optional, and unresolved stocks are confirmed later via the Stock inventory **Unconfirmed** filter (the CSV-import / offline path depends on this).
 
-54. [ ] **Realized P/L per lot** displayed on the stock page (SPEC-021). Realized P/L is computed in the lot engine but per-lot display on the stock page is unconfirmed.
-77. [ ] **Buy-triggered currency-exchange shown alongside the buy** in the stock's transaction history. FX records render in the history with a filter; the buy→FX linkage display is unconfirmed.
+54. [ ] **Realized P/L per lot** displayed on the stock page (SPEC-021). *Confirmed not built (2026-06-08):* the stock page renders only **open** lots (remaining shares, cost basis, weighted avg) and sell rows show gross proceeds (`+shares×price − fee`); there is no realized-gain-vs-cost-basis computed or shown anywhere on the page.
+77. [ ] **Buy-triggered currency-exchange shown alongside the buy** in the stock's transaction history. *Confirmed not built (2026-06-08):* `getStockTransactionsByTicker` returns only `buy/sell/split/transfer` for the ticker and excludes `currency-exchange` (which carry no `ticker`), so triggered FX never reaches the stock history. The stock page's FX render branch + `currency-exchange` filter are present but dead — and the branch reads `description`/`fromCurrency`/`toCurrency`, which real FX records (source/target cash-balance IDs) don't have, so wiring it would also need a correct row renderer.
 
 ### SPEC-021 Stock Page
 35. [ ] **Right-column AI panel** rendered always on desktop (≥1024px), fixed 400px column (layout slot only; content owned by SPEC-026). *(Deferred to Phase 19b.)*
