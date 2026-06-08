@@ -1275,7 +1275,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                       <AssetActivityRow
                         key={item.id}
                         activity={item.activity}
-                        onEdit={item.activity.type === 'swap' ? () => requestEditActivity(item.activity) : undefined}
+                        isExpanded={expandedMovementId === item.id}
+                        onToggle={() => setExpandedMovementId(prev => prev === item.id ? null : item.id)}
+                        onEdit={item.activity.type === 'swap' ? () => { requestEditActivity(item.activity); setExpandedMovementId(null) } : undefined}
                         onDelete={() => requestDeleteActivity(item.activity)}
                       />
                     )
@@ -3046,40 +3048,74 @@ function CryptoWalletTransferForm({ position, onSave, onCancel }) {
 }
 
 // ─── Asset-movements row for a crypto swap / wallet-transfer (SPEC-036) ────────
-// Informational (no cash impact). Shows swap legs + implied rate + crypto fee +
-// stored-price swap P/L, or a wallet move. Optional edit/delete.
-function AssetActivityRow({ activity: a, onEdit, onDelete }) {
-  let main
-  let plNode = null
-  if (a.type === 'swap') {
-    const rate  = a.from?.quantity > 0 ? a.to.quantity / a.from.quantity : null
-    const given = a.from?.price != null ? a.from.quantity * a.from.price : null
-    const recv  = a.to?.price != null ? a.to.quantity * a.to.price : null
-    const pl    = given != null && recv != null ? recv - given : null
-    main = (
-      <span style={{ flex: 1 }}>
-        <strong>Swap</strong> {trimDecimals(a.from.quantity)} {a.from.ticker} → {trimDecimals(a.to.quantity)} {a.to.ticker}
-        {rate != null && <span style={{ opacity: 0.65 }}> · 1 {a.from.ticker} = {trimDecimals(rate)} {a.to.ticker}</span>}
-        {a.fee?.coin && a.fee.quantity != null && <span style={{ opacity: 0.65 }}> · fee {trimDecimals(a.fee.quantity)} {a.fee.coin}</span>}
-      </span>
-    )
-    if (pl != null) plNode = <span style={{ color: pl >= 0 ? '#4ade80' : '#f87171' }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
-  } else {
-    main = (
-      <span style={{ flex: 1 }}>
-        <strong>Move</strong> {trimDecimals(a.quantity)} {a.ticker}
-        <span style={{ opacity: 0.65 }}> · {a.fromWallet || '—'} → {a.toWallet || '—'}</span>
-      </span>
-    )
-  }
+// Expandable like a buy/sell MovementRow: collapsed summary + ▼, click to expand a
+// detail grid; × deletes, "Edit swap →" lives in the detail. Informational (no cash).
+function AssetActivityRow({ activity: a, isExpanded, onToggle, onEdit, onDelete }) {
+  const isSwap   = a.type === 'swap'
+  const rate     = isSwap && a.from?.quantity > 0 ? a.to.quantity / a.from.quantity : null
+  const mktRate  = isSwap && a.from?.price != null && a.to?.price != null && a.to.price !== 0 ? a.from.price / a.to.price : null
+  const given    = isSwap && a.from?.price != null ? a.from.quantity * a.from.price : null
+  const recv     = isSwap && a.to?.price != null ? a.to.quantity * a.to.price : null
+  const pl       = given != null && recv != null ? recv - given : null
+  const plColor  = pl != null ? (pl >= 0 ? '#4ade80' : '#f87171') : undefined
+
+  const summary = isSwap
+    ? `${trimDecimals(a.from.quantity)} ${a.from.ticker} → ${trimDecimals(a.to.quantity)} ${a.to.ticker}`
+    : `${trimDecimals(a.quantity)} ${a.ticker} · ${a.fromWallet || '—'} → ${a.toWallet || '—'}`
+
   return (
-    <div className={styles.movementRow} style={{ alignItems: 'baseline', gap: 8 }}>
-      <span className={styles.movementDate}>{a.date}</span>
-      {main}
-      {plNode}
-      <span style={{ opacity: 0.55, fontSize: '0.78em' }}>no cash</span>
-      {onEdit && <button type="button" className={styles.actionBtnSmall} onClick={onEdit}>Edit</button>}
-      {onDelete && <button type="button" className={styles.actionBtnSmall} onClick={onDelete}>Delete</button>}
+    <div className={styles.movementGroup}>
+      <div className={`${styles.movementRow} ${styles.movementRowClickable}`} onClick={onToggle}>
+        <span className={styles.movementDate}>{a.date}</span>
+        <div className={styles.movementTypeGroup}>
+          <span className={styles.movementType}>{isSwap ? 'Swap' : 'Wallet move'}</span>
+          <span className={styles.movementStockMeta}>{summary}</span>
+        </div>
+        {pl != null
+          ? <span className={styles.movementAmount} style={{ color: plColor }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
+          : <span className={`${styles.movementAmount} ${styles.muted}`}>no cash</span>}
+        <span className={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</span>
+        {onDelete && (
+          <button className={styles.movementDeleteBtn} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete" aria-label="Delete">×</button>
+        )}
+      </div>
+      {isExpanded && (
+        <div className={styles.movementDetail}>
+          <div className={styles.detailGrid}>
+            {isSwap ? (
+              <>
+                <span className={styles.detailLabel}>From</span>
+                <span>{trimDecimals(a.from.quantity)} {a.from.ticker}</span>
+                <span className={styles.detailLabel}>To</span>
+                <span>{trimDecimals(a.to.quantity)} {a.to.ticker}</span>
+                {rate != null && <><span className={styles.detailLabel}>Your rate</span><span>1 {a.from.ticker} = {trimDecimals(rate)} {a.to.ticker}</span></>}
+                {mktRate != null && <><span className={styles.detailLabel}>Market rate</span><span>1 {a.from.ticker} = {trimDecimals(mktRate)} {a.to.ticker}</span></>}
+                {a.from?.price != null && <><span className={styles.detailLabel}>{a.from.ticker} price</span><span>{fmtAmt(a.from.price)} {a.currency}</span></>}
+                {a.to?.price != null && <><span className={styles.detailLabel}>{a.to.ticker} price</span><span>{fmtAmt(a.to.price)} {a.currency}</span></>}
+                {a.fee?.coin && a.fee.quantity != null && <><span className={styles.detailLabel}>Fee</span><span>{trimDecimals(a.fee.quantity)} {a.fee.coin}</span></>}
+                {given != null && <><span className={styles.detailLabel}>Value given</span><span>{fmtAmt(given)} {a.currency}</span></>}
+                {recv != null && <><span className={styles.detailLabel}>Value received</span><span>{fmtAmt(recv)} {a.currency}</span></>}
+                {pl != null && <><span className={styles.detailLabel}>Swap P/L</span><span style={{ color: plColor }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span></>}
+              </>
+            ) : (
+              <>
+                <span className={styles.detailLabel}>Coin</span>
+                <span>{a.ticker}</span>
+                <span className={styles.detailLabel}>Quantity</span>
+                <span>{trimDecimals(a.quantity)}</span>
+                <span className={styles.detailLabel}>From wallet</span>
+                <span>{a.fromWallet || '—'}</span>
+                <span className={styles.detailLabel}>To wallet</span>
+                <span>{a.toWallet || '—'}</span>
+              </>
+            )}
+          </div>
+          <p className={styles.formSubtitle}>No cash impact — a swap is coin-for-coin; a wallet move only relabels where the coin is held.</p>
+          {isSwap && onEdit && (
+            <button className={styles.detailEditBtn} onClick={onEdit}>Edit swap →</button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
