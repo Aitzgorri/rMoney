@@ -1,7 +1,7 @@
 ---
 id: SPEC-021
 name: Stock Page
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -32,8 +32,8 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [x] Transactions list shows, for this stock across all the user's investing accounts, sorted by date: buys, sells, transfers, splits, dividends, and buy-triggered currency exchanges (**FX**). A filter control lets the user show only selected types: All / Buy / Sell / Transfer / Split / Dividend / FX. The list is capped at a max-height of ~15 rows (570px) with standard scroll. *(Phase 28d; Transfer/Split/FX filters and FX rows completed in Phase 14 — see the Realized gains + FX section below.)*
 - [x] Dividend section: past payouts from SPEC-020 records shown in a separate section; payouts with `type === 'special'` display a "Special" badge. *(Next-4 projections deferred to Phase 13c)* Past payouts table merges user `dividends` and `apiDividendHistory` records, deduped by `(ticker, exDate)` with user record taking precedence (user `type` and `perShare` win; API row hidden when both exist for the same date). API-only rows render with muted style and an "API" label. Max-height for 15 rows; scrolling down lazy-loads chronologically older year chunks (one year per chunk). *(Phase 28d)*
 - [x] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*
-- [ ] **Right-column AI panel** is rendered always on desktop (`≥ 1024px`), occupying a fixed 400px-wide right column from below the header to the bottom of the viewport (see Phase 37b). Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Deferred to Phase 19b)*
-- [ ] On mobile, the AI panel stacks below the rest of the page content (single column), preserving the existing mobile flow. *(Deferred to Phase 19b — mobile parity also covered by SPEC-028)*
+- [x] **Right-column AI panel** is rendered always on desktop (`≥ 1024px`), occupying a fixed 400px-wide right column from below the header to the bottom of the viewport. Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Built in Phase 37b: `.body` switches to `flex-direction: row` at `≥1024px` and `.rightCol` is `position: sticky; top: 56px; width: 400px; height: calc(100svh − 56px)`, holding `<AiChatPanel>`; widened to ⅓ of the page at `≥1400px` in Phase 38.)*
+- [x] On mobile, the AI panel stacks below the rest of the page content (single column), preserving the existing mobile flow. *(Built: default `.body` is `flex-direction: column`, so below 1024px `.rightCol` (the AI panel) stacks beneath `.leftCol`. Mobile parity also covered by SPEC-028.)*
 - [x] Stale price indicator / manual price override. *(Deferred to SPEC-027)*
 - [x] Positions summary across all investing accounts shown at the top of the page. Average cost shown is fee-inclusive (buy price + pro-rated buy fee per share). *(Phase 26d)*
 - [x] Portfolio memberships section shows which portfolios the stock is assigned to (from SPEC-022), with per-portfolio target %.

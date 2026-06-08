@@ -81,7 +81,7 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 
 ## Spec-reconciliation backlog (surfaced 2026-06-08)
 
-> A doc-vs-code reconciliation pass moved 11 specs to `done` and ticked all built-but-unchecked criteria. The items below are the **genuine** remaining gaps it surfaced — features the specs describe but the code does not (yet) implement as written.
+> A doc-vs-code reconciliation pass (2026-06-08) moved most specs to `done` and ticked every built-but-unchecked criterion. It surfaced a few genuine gaps, all since closed: SPEC-019 #54 (realized P/L) and #77 (buy-triggered FX) were **built**, #27 was an intentional design the spec now matches, and SPEC-021 #35/#36 (AI panel) turned out already built (Phase 37b). The resolved notes below record each. **The only remaining open item is the SPEC-016 manual smoke test.**
 
 ### SPEC-016 Data Portability
 61. [ ] **Round-trip verification (v0.35.0).** Manual smoke test — export on `rmoney-data-v3` → reload → confirm no data loss; load a v2 backup → confirm `dismissedSplits` defaults and `feeCurrency` backfills. (Verification task only; the code path is built. Likely already exercised when v0.35.0/v0.36.0 were tagged — confirm and tick, or re-run.)
@@ -92,11 +92,11 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 >
 > #54 (realized P/L per lot) shipped 2026-06-08: `getRealizedPLByTicker` (reusing a new unfiltered `buildLots`) drives an inline expandable figure on each sell row plus a dedicated "Realized gains" section with per-currency totals on the stock page.
 >
-> #77 (buy-triggered FX in stock history) shipped 2026-06-08: `getTriggeredExchangesByTicker` merges cross-source-buy currency exchanges into the stock page's transaction history (date-sorted, FX-badged, in the FX filter), and the FX row renderer was fixed to read the real `sourceAmount`/`targetAmount` + cash-balance currencies. SPEC-019 now fully done. *Confirmed not built (2026-06-08):* `getStockTransactionsByTicker` returns only `buy/sell/split/transfer` for the ticker and excludes `currency-exchange` (which carry no `ticker`), so triggered FX never reaches the stock history. The stock page's FX render branch + `currency-exchange` filter are present but dead — and the branch reads `description`/`fromCurrency`/`toCurrency`, which real FX records (source/target cash-balance IDs) don't have, so wiring it would also need a correct row renderer.
+> #77 (buy-triggered FX in stock history) shipped 2026-06-08: `getTriggeredExchangesByTicker` merges cross-source-buy currency exchanges into the stock page's transaction history (date-sorted, FX-badged, in the FX filter), and the FX row renderer was fixed to read the real `sourceAmount`/`targetAmount` + cash-balance currencies. SPEC-019 now fully done.
 
 ### SPEC-021 Stock Page
-35. [ ] **Right-column AI panel** rendered always on desktop (≥1024px), fixed 400px column (layout slot only; content owned by SPEC-026). *(Deferred to Phase 19b.)*
-36. [ ] **AI panel stacks below content on mobile.** *(Deferred to Phase 19b.)*
+
+> #35/#36 (right-column AI panel) resolved 2026-06-08: reconciliation found the layout slot was already built in Phase 37b (`.rightCol` sticky 400px column holding `<AiChatPanel>` at ≥1024px; widened to ⅓ at ≥1400px in Phase 38) and stacks below the content on mobile (`.body` default `flex-direction: column`). Verified on desktop + phone-width via headless Chrome. SPEC-021 now fully done — the "Deferred to Phase 19b" notes were stale.
 
 > **Not added here (kept as a `plan:validate` warning, not an error):** SPEC-031 has 19 unchecked criteria — the bulk are the Tauri **Stronghold encryption-at-rest** items (Phase 24e), gated before wider distribution and tracked in CLAUDE.md. A focused SPEC-031 audit is a separate security-sensitive pass.
 
