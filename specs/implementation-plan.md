@@ -87,7 +87,9 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 61. [ ] **Round-trip verification (v0.35.0).** Manual smoke test — export on `rmoney-data-v3` → reload → confirm no data loss; load a v2 backup → confirm `dismissedSplits` defaults and `feeCurrency` backfills. (Verification task only; the code path is built. Likely already exercised when v0.35.0/v0.36.0 were tagged — confirm and tick, or re-run.)
 
 ### SPEC-019 Stock Transactions
-27. [ ] **Resolution save-gate.** Buy form offers "Look up" + resolution dialog + pre-fill, but `canSave` does not require a resolved profile, so a buy can be saved while unresolved. Spec says "the buy cannot be saved while the profile is unresolved." Decide: enforce the gate, or amend the spec to make resolution optional.
+
+> #27 (resolution save-gate) resolved 2026-06-08: spec amended to match the shipped, deliberate design — resolution is offered but optional, and unresolved stocks are confirmed later via the Stock inventory **Unconfirmed** filter (the CSV-import / offline path depends on this).
+
 54. [ ] **Realized P/L per lot** displayed on the stock page (SPEC-021). Realized P/L is computed in the lot engine but per-lot display on the stock page is unconfirmed.
 77. [ ] **Buy-triggered currency-exchange shown alongside the buy** in the stock's transaction history. FX records render in the history with a filter; the buy→FX linkage display is unconfirmed.
 
