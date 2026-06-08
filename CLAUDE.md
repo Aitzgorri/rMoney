@@ -90,7 +90,7 @@ When adding a new provider or new authenticated integration:
 3. Add a record name under `marketData/<id>/apiKey` (or similar) in `secrets.js`
 4. Refactor any new settings shape to use `<field>Set: bool` rather than the raw value
 
-**Git publication is gated on Phase 24a–24d (SPEC-031 implementation).** Until those sub-phases are complete, do not propose `git push`, do not run `git init` against this repo, and do not suggest setting up a GitHub remote. If the user asks to publish, redirect them to the SPEC-031 pre-publish checklist (root `.gitignore`, pre-commit hook, pre-push hook, audit script, `Import_test.csv` resolution). Phase 24e (Stronghold encryption) does not gate first push but is required before any wider distribution of the app.
+**Git publication: the repo is public and the SPEC-031 publication gate is CLEARED** (as of 2026-06-08). `origin` is `github.com/Aitzgorri/rMoney`; `main` is pushed through Phase 20 (crypto / SPEC-036) and `v0.36.0` is tagged on the remote. All SPEC-031 pre-publish safeguards are in place and active: root `.gitignore`, the **pre-commit hook** (blocks staged secrets) and **pre-push hook** (runs `scripts/pre-publish-audit.sh`) wired via `core.hooksPath=scripts/git-hooks`, the audit script itself, and `Import_test.csv` is not tracked. So `git push` is allowed — but still follow the commit workflow in [`commands/commit.md`](commands/commit.md): **propose first and wait for an explicit instruction before pushing**, and never bypass the hooks (`--no-verify`). Phase 24e (Stronghold encryption) does **not** gate pushing, but is still required before any wider *distribution* of the app (e.g. shipping installers broadly).
 
 ## Tech Stack
 - React + Vite (web MVP)
