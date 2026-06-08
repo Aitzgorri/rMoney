@@ -53,7 +53,7 @@ import HybridFilterDropdown from '../components/HybridFilterDropdown'
 import { snapshotFxRates, convertToMain } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import { getLatestPrice, searchCryptoCoins, getCryptoPrice } from '../data/marketDataClient'
-import { setCryptoCoin, getCoinId } from '../data/cryptoProfiles'
+import { setCryptoCoin, getCoinId, getCryptoProfile } from '../data/cryptoProfiles'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
@@ -80,11 +80,12 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [showStocks,          setShowStocks]          = useState(true)  // Asset-movements: show stock rows
   const [showCrypto,          setShowCrypto]          = useState(true)  // Asset-movements: show crypto rows + swaps/moves
   const [activityDelete,      setActivityDelete]      = useState(null)  // { activity } | { activity, blocked, reason }
+  const [cryptoEditSwap,      setCryptoEditSwap]      = useState(null)  // swap record being edited (replace-on-save)
   const [defaultSellTicker,   setDefaultSellTicker]   = useState(null)
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
 
-  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy' | 'crypto-sell' | 'crypto-swap' | 'crypto-wallet-transfer'
+  const [formMode,       setFormMode]       = useState(null)  // null | 'new-balance' | 'deposit' | 'withdraw' | 'exchange' | 'buy' | 'sell' | 'transfer' | 'dividend' | 'crypto-buy' | 'crypto-sell' | 'crypto-swap' | 'crypto-swap-edit' | 'crypto-wallet-transfer'
   const [activeBalanceId, setActiveBalanceId] = useState(null)
 
   const [editingOpeningId,    setEditingOpeningId]    = useState(null)
@@ -213,6 +214,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     setFormMode(null)
     setActiveBalanceId(null)
     setCryptoActionPos(null)
+    setCryptoEditSwap(null)
   }
 
   function handleDeleteBalanceRequest(balance) {
@@ -557,6 +559,21 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     refresh()
   }
 
+  // Edit a swap = replace: it must first be deletable (its produced coin not yet consumed).
+  function requestEditActivity(activity) {
+    if (activity.type !== 'swap') return
+    const { canDelete, reason } = canDeleteStockTransaction(activity.id)
+    if (!canDelete) { setActivityDelete({ activity, blocked: true, reason }); return }
+    setCryptoEditSwap(activity)
+    setFormMode('crypto-swap-edit')
+  }
+  function handleEditSwap(params) {
+    if (cryptoEditSwap) deleteStockTransaction(cryptoEditSwap.id)
+    createSwap({ ...params, investingAccountId: accountId })
+    refresh()
+    closeForm()
+  }
+
   function handleDividend(params) {
     createDividend(params)
     refresh()
@@ -782,6 +799,32 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 onCancel={closeForm}
               />
             )}
+            {formMode === 'crypto-swap-edit' && cryptoEditSwap && (() => {
+              const s = cryptoEditSwap
+              const cur = cryptoPositions.find(p => p.ticker === s.from.ticker)
+              // Restore the disposed amount so the original quantity validates on re-save.
+              const restored = (cur?.shares ?? 0) + s.from.quantity + (s.fee?.coin === s.from.ticker ? s.fee.quantity : 0)
+              const editPos = { ticker: s.from.ticker, currency: s.currency, shares: restored }
+              const editInitial = {
+                date: s.date,
+                fromQty: String(s.from.quantity),
+                toCoin: { coinId: getCoinId(s.to.ticker), symbol: s.to.ticker, name: getCryptoProfile(s.to.ticker)?.name ?? s.to.ticker },
+                toQty: String(s.to.quantity),
+                fromPrice: s.from?.price != null ? String(s.from.price) : '',
+                toPrice: s.to?.price != null ? String(s.to.price) : '',
+                fee: s.fee ? String(s.fee.quantity) : '0',
+                feeCoin: s.fee?.coin ?? s.from.ticker,
+              }
+              return (
+                <CryptoSwapForm
+                  position={editPos}
+                  cryptoTickers={cryptoPositions.map(p => p.ticker)}
+                  initial={editInitial}
+                  onSave={handleEditSwap}
+                  onCancel={closeForm}
+                />
+              )
+            })()}
             {formMode === 'crypto-wallet-transfer' && cryptoActionPos && (
               <CryptoWalletTransferForm
                 position={cryptoActionPos}
@@ -1232,6 +1275,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                       <AssetActivityRow
                         key={item.id}
                         activity={item.activity}
+                        onEdit={item.activity.type === 'swap' ? () => requestEditActivity(item.activity) : undefined}
                         onDelete={() => requestDeleteActivity(item.activity)}
                       />
                     )
@@ -2791,40 +2835,42 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
 // and stores both prices on the record. One atomic createSwap; no fiat moves
 // except an optional fee. The disposal value (fromQty × fromPrice) sets the
 // realised P/L and the acquired coin's cost basis.
-function CryptoSwapForm({ position, cryptoTickers = [], onSave, onCancel }) {
+function CryptoSwapForm({ position, cryptoTickers = [], initial = null, onSave, onCancel }) {
+  const isEdit         = !!initial
   const currency       = position.currency
   const available      = position.shares
   const feeCoinOptions = [...new Set([position.ticker, ...cryptoTickers])]  // held coins; FROM first
 
-  const [date,             setDate]             = useState(today)
-  const [fromQty,          setFromQty]          = useState('')
-  const [toCoin,           setToCoin]           = useState(null)
-  const [toQty,            setToQty]            = useState('')
-  const [fromPrice,        setFromPrice]        = useState('')
-  const [toPrice,          setToPrice]          = useState('')
+  const [date,             setDate]             = useState(initial?.date ?? today)
+  const [fromQty,          setFromQty]          = useState(initial?.fromQty ?? '')
+  const [toCoin,           setToCoin]           = useState(initial?.toCoin ?? null)
+  const [toQty,            setToQty]            = useState(initial?.toQty ?? '')
+  const [fromPrice,        setFromPrice]        = useState(initial?.fromPrice ?? '')
+  const [toPrice,          setToPrice]          = useState(initial?.toPrice ?? '')
   const [fromPriceLoading, setFromPriceLoading] = useState(false)
   const [toPriceLoading,   setToPriceLoading]   = useState(false)
-  const [fee,              setFee]              = useState('0')
-  const [feeCoin,          setFeeCoin]          = useState(position.ticker)
+  const [fee,              setFee]              = useState(initial?.fee ?? '0')
+  const [feeCoin,          setFeeCoin]          = useState(initial?.feeCoin ?? position.ticker)
 
-  // Live price of the held (FROM) coin — coinId from cryptoProfiles.
+  // Live price of the held (FROM) coin — coinId from cryptoProfiles. Only fills an EMPTY field,
+  // so a seeded (edit) or user-edited price is never clobbered.
   useEffect(() => {
     let cancelled = false
     setFromPriceLoading(true)
     getCryptoPrice(position.ticker, currency, getCoinId(position.ticker))
-      .then(r => { if (!cancelled && r?.price != null) setFromPrice(String(r.price)) })
+      .then(r => { if (!cancelled && r?.price != null) setFromPrice(prev => prev === '' ? String(r.price) : prev) })
       .catch(() => {})
       .finally(() => { if (!cancelled) setFromPriceLoading(false) })
     return () => { cancelled = true }
   }, [position.ticker, currency])
 
-  // Live price of the acquired (TO) coin whenever the selection changes.
+  // Live price of the acquired (TO) coin whenever the selection changes (fills only when empty).
   useEffect(() => {
     if (!toCoin) { setToPrice(''); return }
     let cancelled = false
     setToPriceLoading(true)
     getCryptoPrice(toCoin.symbol, currency, toCoin.coinId)
-      .then(r => { if (!cancelled && r?.price != null) setToPrice(String(r.price)) })
+      .then(r => { if (!cancelled && r?.price != null) setToPrice(prev => prev === '' ? String(r.price) : prev) })
       .catch(() => {})
       .finally(() => { if (!cancelled) setToPriceLoading(false) })
     return () => { cancelled = true }
@@ -2867,7 +2913,8 @@ function CryptoSwapForm({ position, cryptoTickers = [], onSave, onCancel }) {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <h3 className={styles.formTitle}>Swap {position.ticker}</h3>
+      <h3 className={styles.formTitle}>{isEdit ? 'Edit swap' : 'Swap'} {position.ticker}</h3>
+      {isEdit && <p className={styles.formSubtitle}>Saving replaces the original swap record.</p>}
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Date</label>
         <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -2937,7 +2984,7 @@ function CryptoSwapForm({ position, cryptoTickers = [], onSave, onCancel }) {
       </p>
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Swap</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave}>{isEdit ? 'Save' : 'Swap'}</button>
       </div>
     </form>
   )
