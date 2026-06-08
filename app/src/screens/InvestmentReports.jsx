@@ -5,7 +5,8 @@ import { getPositions, getStockTransactionsByTicker } from '../data/stockTransac
 import { getDividendsByTicker, computeDividendDerived } from '../data/dividends'
 import { getPortfoliosFlat, getAllPortfolioAssignments } from '../data/portfolios'
 import { getStockProfile, upsertStockProfile, getManualPrice, getEffectiveHqCountry } from '../data/stockProfiles'
-import { getLatestPrice } from '../data/marketDataClient'
+import { getLatestPrice, getCryptoPrice } from '../data/marketDataClient'
+import { getCryptoProfile, getCoinId } from '../data/cryptoProfiles'
 import { convertToMain, ensureRates, getCachedRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import {
@@ -70,13 +71,14 @@ const INVESTMENT_TYPES = [
   { id: 'stocks',         label: 'Stocks',                    live: true },
   { id: 'options',        label: 'Options',                   live: false },
   { id: 'bonds',          label: 'Bonds',                     live: false },
-  { id: 'crypto',         label: 'Crypto',                    live: false },
+  { id: 'crypto',         label: 'Crypto',                    live: true },
   { id: 'metals-storage', label: 'Precious metals — storage', live: false },
   { id: 'metals-lease',   label: 'Precious metals — lease',   live: false },
 ]
 
 const BREAKDOWN_TABS = [
   { id: 'table',            label: 'Table' },
+  { id: 'asset-class',      label: 'By asset class' },
   { id: 'currency',         label: 'By currency' },
   { id: 'region-country',   label: 'By region' },
   { id: 'region-continent', label: 'By continent' },
@@ -111,8 +113,8 @@ function fmtMC(n, mc) {
   return `${fmtAmt(n)} ${mc}`
 }
 
-function getFirstBuyDate(ticker) {
-  const txns = getStockTransactionsByTicker(ticker)
+function getFirstBuyDate(ticker, assetClass = 'stock') {
+  const txns = getStockTransactionsByTicker(ticker, assetClass)
   const dates = txns.filter(t => t.type === 'buy').map(t => t.date).sort()
   return dates[0] ?? null
 }
@@ -147,25 +149,31 @@ function gatherRawRows(accounts) {
   const rows = []
   for (const acc of accounts) {
     for (const pos of getPositions(acc.id)) {
-      rows.push({ ...pos, accountId: acc.id, accountName: acc.name })
+      rows.push({ ...pos, assetClass: 'stock', accountId: acc.id, accountName: acc.name })
+    }
+    for (const pos of getPositions(acc.id, 'crypto')) {
+      rows.push({ ...pos, assetClass: 'crypto', accountId: acc.id, accountName: acc.name })
     }
   }
   return rows
 }
 
 function aggregateByTicker(rawRows) {
-  const byTicker = {}
+  const byKey = {}
   for (const row of rawRows) {
-    if (!byTicker[row.ticker]) {
-      byTicker[row.ticker] = { ticker: row.ticker, currency: row.currency, shares: 0, totalCost: 0, accountNames: [] }
+    const cls = row.assetClass ?? 'stock'
+    const key = `${cls}:${row.ticker}`   // keep a stock and crypto with the same symbol separate
+    if (!byKey[key]) {
+      byKey[key] = { ticker: row.ticker, assetClass: cls, currency: row.currency, shares: 0, totalCost: 0, accountNames: [] }
     }
-    const e = byTicker[row.ticker]
+    const e = byKey[key]
     e.shares += row.shares
     e.totalCost += row.shares * row.avgCost
     if (!e.accountNames.includes(row.accountName)) e.accountNames.push(row.accountName)
   }
-  return Object.values(byTicker).map(e => ({
+  return Object.values(byKey).map(e => ({
     ticker: e.ticker,
+    assetClass: e.assetClass,
     currency: e.currency,
     shares: e.shares,
     avgCost: e.shares > 0 ? e.totalCost / e.shares : 0,
@@ -179,11 +187,13 @@ function computeRows(posRows, apiPrices, mainCurrency) {
   let totalMV = 0
   // First pass: compute per-row values (except shareWhole which needs the total)
   const partial = posRows.map(pos => {
-    const profile = getStockProfile(pos.ticker)
-    const manual = getManualPrice(pos.ticker)
+    const assetClass = pos.assetClass ?? 'stock'
+    const isCrypto = assetClass === 'crypto'
+    const profile = isCrypto ? null : getStockProfile(pos.ticker)
+    const manual = isCrypto ? null : getManualPrice(pos.ticker)
     const priceInfo = manual
       ? { price: manual.amount, currency: manual.currency }
-      : (apiPrices[pos.ticker] ?? null)
+      : (apiPrices[`${assetClass}:${pos.ticker}`] ?? null)
     const priceNative = priceInfo?.price ?? null
     const priceCurrency = priceInfo?.currency ?? pos.currency
 
@@ -199,10 +209,11 @@ function computeRows(posRows, apiPrices, mainCurrency) {
     const totalReturnPct = (totalReturn != null && totalInvested != null && totalInvested !== 0)
       ? (totalReturn / totalInvested) * 100 : null
 
-    const firstBuyDate = getFirstBuyDate(pos.ticker)
+    const firstBuyDate = getFirstBuyDate(pos.ticker, assetClass)
     const paReturn = computePaReturn(totalReturnPct, firstBuyDate)
 
-    const { div12m, divTotal } = computeDividendData(pos.ticker, mainCurrency)
+    // Crypto has no dividends; its name comes from cryptoProfiles, not stockProfiles.
+    const { div12m, divTotal } = isCrypto ? { div12m: 0, divTotal: 0 } : computeDividendData(pos.ticker, mainCurrency)
     const dividendYield12m = (div12m > 0 && marketValue != null && marketValue > 0)
       ? (div12m / marketValue) * 100 : null
 
@@ -210,7 +221,8 @@ function computeRows(posRows, apiPrices, mainCurrency) {
 
     return {
       ticker: pos.ticker,
-      name: profile?.name ?? null,
+      assetClass,
+      name: isCrypto ? (getCryptoProfile(pos.ticker)?.name ?? null) : (profile?.name ?? null),
       priceNative,
       priceCurrency,
       nativeCurrency: pos.currency,
@@ -350,19 +362,27 @@ export default function InvestmentReports() {
     [rawRows, grouping]
   )
 
-  // Fetch prices when posRows change
+  // Fetch prices when posRows change. Keyed by `assetClass:ticker` so a stock and a crypto
+  // sharing a symbol never collide; crypto prices come from CoinGecko in the holding's currency.
   useEffect(() => {
-    const tickers = [...new Set(posRows.map(r => r.ticker))]
-    const needFetch = tickers.filter(t => !getManualPrice(t))
+    const seen = new Map()  // key -> { ticker, assetClass, currency }
+    for (const r of posRows) {
+      const cls = r.assetClass ?? 'stock'
+      const key = `${cls}:${r.ticker}`
+      if (!seen.has(key)) seen.set(key, { ticker: r.ticker, assetClass: cls, currency: r.currency })
+    }
+    const needFetch = [...seen.values()].filter(s => s.assetClass === 'crypto' || !getManualPrice(s.ticker))
     if (needFetch.length === 0) return
     let cancelled = false
     setPricesLoading(true)
     Promise.allSettled(
-      needFetch.map(ticker => {
-        const profile = getStockProfile(ticker)
-        return getLatestPrice(ticker, profile?.stockExchange ?? null)
-          .then(result => [ticker, result])
-          .catch(() => [ticker, null])
+      needFetch.map(s => {
+        const key = `${s.assetClass}:${s.ticker}`
+        if (s.assetClass === 'crypto') {
+          return getCryptoPrice(s.ticker, s.currency, getCoinId(s.ticker)).then(r => [key, r]).catch(() => [key, null])
+        }
+        const profile = getStockProfile(s.ticker)
+        return getLatestPrice(s.ticker, profile?.stockExchange ?? null).then(r => [key, r]).catch(() => [key, null])
       })
     ).then(results => {
       if (cancelled) return
@@ -396,8 +416,9 @@ export default function InvestmentReports() {
   )
 
   const displayRows = useMemo(() => {
-    if (typeFilter.includes('stocks')) return rowsWithPortfolio
-    return []
+    return rowsWithPortfolio.filter(r =>
+      typeFilter.includes(r.assetClass === 'crypto' ? 'crypto' : 'stocks')
+    )
   }, [rowsWithPortfolio, typeFilter])
 
   // Table tab filtered rows (applies the five HybridFilterDropdown filters)
@@ -434,6 +455,10 @@ export default function InvestmentReports() {
   )
   const regionContinentGroups = useMemo(
     () => buildBreakdownGroups(displayRows, r => continentRegion(r.hqCountry)),
+    [displayRows]
+  )
+  const assetClassGroups = useMemo(
+    () => buildBreakdownGroups(displayRows, r => r.assetClass === 'crypto' ? 'Crypto' : 'Stocks'),
     [displayRows]
   )
   const portfolioGroups = useMemo(() => {
@@ -528,6 +553,7 @@ export default function InvestmentReports() {
 
 
   function getBreakdownGroups() {
+    if (breakdown === 'asset-class')      return assetClassGroups
     if (breakdown === 'currency')         return currencyGroups
     if (breakdown === 'region-country')   return regionCountryGroups
     if (breakdown === 'region-continent') return regionContinentGroups

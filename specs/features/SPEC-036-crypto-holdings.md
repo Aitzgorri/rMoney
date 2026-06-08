@@ -56,8 +56,8 @@ model, so the guiding principle is **maximum reuse, minimum new machinery**.
 - [x] Stablecoins resolve and price like any other coin (~1.00); no peg map exists (D4). *(Steps 6–7: `searchCryptoCoins` finds USDC/USDT like any coin and the adapter prices them identically — no peg map anywhere.)*
 
 ### Reporting & display
-- [ ] Crypto holdings appear in the existing investment inventory and Investment Reports surfaces, valued in main currency via FX, contributing to portfolio total and weight.
-- [ ] The investment-type filter in reports distinguishes crypto from stocks (reuses the Phase 20 placeholder slot).
+- [x] Crypto holdings appear in the existing investment inventory and Investment Reports surfaces, valued in main currency via FX, contributing to portfolio total and weight. *(8b: per-account Crypto holdings view. 8c: `gatherRawRows` includes `getPositions(acc,'crypto')` tagged `assetClass`; prices fetched via `getCryptoPrice` (keyed `assetClass:ticker`); `computeRows` values crypto, skips dividends/HQ, names via `cryptoProfiles`; crypto rows feed the report total + weights.)*
+- [x] The investment-type filter in reports distinguishes crypto from stocks (reuses the Phase 20 placeholder slot). *(8c: the **Crypto** investment-type chip is now `live`; `displayRows` includes a row iff its `assetClass` is selected; new **By asset class** breakdown tab shows Stocks vs Crypto allocation. The portfolio-value-over-time chart (`portfolioHistory`) staying stock-only is a deferred refinement.)*
 
 ## UI / Screens
 Entry reuses existing surfaces; display gets a dedicated crypto view (D7):
