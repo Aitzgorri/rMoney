@@ -64,7 +64,11 @@ export function getAllKnownTickers(assetClass = ASSET_CLASS.STOCK) {
 // asOfDate are ignored, so the returned shares/price reflect the lot as it existed at end-of-day on asOfDate.
 // assetClass (defaults to stock): isolates lots to one asset class so a stock and a crypto sharing a ticker
 // symbol never mix (D6). Crypto callers pass ASSET_CLASS.CRYPTO.
-export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetClass = ASSET_CLASS.STOCK) {
+// Build every lot for an account+ticker (split-adjusted to `asOfDate`) WITHOUT dropping
+// fully-consumed lots. Each lot carries `feeInclusivePrice` (cost/share incl. buy fee) and
+// `remainingShares`. `getOpenLots` is this filtered to lots with shares left; realized-P/L
+// needs the unfiltered list so it can read the cost basis of lots a sale fully closed.
+function buildLots(investingAccountId, ticker, asOfDate = null, assetClass = ASSET_CLASS.STOCK) {
   const all = load().filter(t => t.ticker === ticker && assetClassOf(t) === assetClass && (!asOfDate || t.date <= asOfDate))
 
   // SPEC-036: swaps reference their tickers via from/to legs (no top-level `ticker`), so they are
@@ -169,7 +173,65 @@ export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetCl
         remainingShares: adjustedShares - (consumed[buy.id] ?? 0),
       }
     })
+}
+
+export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetClass = ASSET_CLASS.STOCK) {
+  return buildLots(investingAccountId, ticker, asOfDate, assetClass)
     .filter(lot => lot.remainingShares > 0.000001)
+}
+
+// Realized P/L for every sell of `ticker` (across all accounts), with per-lot detail.
+// Read-time only — derived from each sell's `lotAllocations` vs the source lots' cost basis,
+// so it reflects buy edits and splits automatically. Numbers are in each sell's own trade
+// currency; the caller converts to the main currency via `exchangeRates`. Newest first.
+export function getRealizedPLByTicker(ticker, assetClass = ASSET_CLASS.STOCK) {
+  const norm = ticker.trim().toUpperCase()
+  const sells = load()
+    .filter(t => t.type === 'sell' && t.ticker === norm && assetClassOf(t) === assetClass)
+    .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
+
+  return sells.map(sell => {
+    const shares = Number(sell.shares)
+    const fee    = Number(sell.fee ?? 0)
+    const price  = Number(sell.price)
+    // Spread the sell fee across shares so per-lot figures sum to (proceeds − costBasis).
+    const netPricePerShare = shares > 0 ? price - fee / shares : 0
+    const proceeds = shares * price - fee
+
+    // Cost basis of each source lot, split-adjusted to THIS sale's date so its units match
+    // the stored `sharesFromLot`. Unfiltered so lots the sale fully closed are still present.
+    const lotsAtSell = buildLots(sell.investingAccountId, norm, sell.date, assetClass)
+    const lotById = {}
+    for (const l of lotsAtSell) lotById[l.id] = l
+
+    const lots = (sell.lotAllocations ?? []).map(a => {
+      const sharesFromLot = Number(a.sharesFromLot)
+      const source        = lotById[a.sourceBuyId]
+      const costPerShare  = source?.feeInclusivePrice ?? 0
+      return {
+        sourceBuyId: a.sourceBuyId,
+        buyDate: source?.date ?? null,
+        sharesFromLot,
+        costPerShare,
+        costBasis: sharesFromLot * costPerShare,
+        realized: sharesFromLot * (netPricePerShare - costPerShare),
+      }
+    })
+    const costBasis = lots.reduce((s, l) => s + l.costBasis, 0)
+
+    return {
+      sellId: sell.id,
+      date: sell.date,
+      investingAccountId: sell.investingAccountId,
+      shares, price, fee,
+      currency: sell.currency,
+      proceeds,
+      costBasis,
+      realized: proceeds - costBasis,
+      exchangeRates: sell.exchangeRates ?? null,
+      lots,
+    }
+  })
 }
 
 // SPEC-036: crypto swaps + wallet-transfers for an account — non-cash events that don't

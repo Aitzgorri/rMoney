@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStockTransactionsByTicker, getPositions, getOpenLots, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
+import { getStockTransactionsByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
 import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, deleteDividend } from '../data/dividends'
 import { getInvestingAccounts, getCashBalances, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
@@ -111,6 +111,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [divHiddenCols,       setDivHiddenCols]       = useState(() => loadHiddenDivCols())
   const [deletingDividend,    setDeletingDividend]    = useState(null) // user dividend record being deleted
   const [expandedPositions,   setExpandedPositions]   = useState(() => new Set()) // expanded position account IDs
+  const [expandedSells,       setExpandedSells]       = useState(() => new Set()) // expanded sell IDs (realized P/L breakdown)
   const payoutListRef = useRef(null)
   const divColPickerRef = useRef(null)
   const [resetState, setResetState] = useState('idle')
@@ -309,6 +310,15 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const stockTxns = getStockTransactionsByTicker(norm)
   const dividends = getDividendsByTicker(norm)
   const currency  = stockTxns[0]?.currency ?? dividends[0]?.currency ?? ''
+
+  // Realized P/L per disposal (SPEC-019 #54). Keyed by sellId for the inline sell-row figure;
+  // the full list drives the dedicated "Realized gains" section below.
+  const realizedDisposals = getRealizedPLByTicker(norm)
+  const realizedBySellId  = Object.fromEntries(realizedDisposals.map(d => [d.sellId, d]))
+  const realizedTotals    = realizedDisposals.reduce((acc, d) => {
+    acc[d.currency] = (acc[d.currency] ?? 0) + d.realized
+    return acc
+  }, {})
 
   const allTxns = [
     ...stockTxns.map(t => ({ ...t, _kind: t.type })),
@@ -1578,11 +1588,62 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                     accountsById={accountsById}
                     onEditSplit={t._kind === 'split' ? () => setEditingSplitTx(t) : null}
                     mainCurrency={mainCurrency}
+                    realized={t._kind === 'sell' ? realizedBySellId[t.id] : null}
+                    expanded={expandedSells.has(t.id)}
+                    onToggleRealized={() => setExpandedSells(prev => {
+                      const next = new Set(prev)
+                      next.has(t.id) ? next.delete(t.id) : next.add(t.id)
+                      return next
+                    })}
                   />
                 ))}
               </div>
             )}
           </div>
+
+          {/* Realized gains — per-disposal, per-lot (SPEC-019 #54) */}
+          {realizedDisposals.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Realized gains</div>
+              <div className={styles.realizedList}>
+                {realizedDisposals.map(d => {
+                  const acct = accountsById[d.investingAccountId]
+                  return (
+                    <div key={d.sellId} className={styles.realizedDisposal}>
+                      <div className={styles.realizedHead}>
+                        <span className={styles.realizedDate}>{d.date}</span>
+                        <span className={styles.realizedSummary}>
+                          {trimDec(d.shares)} sh · proceeds {fmtAmt(d.proceeds)} {d.currency}
+                        </span>
+                        {acct && <span className={styles.txAccount}>{acct.name}</span>}
+                        <span className={`${styles.realizedAmount} ${d.realized >= 0 ? styles.txAmountPositive : styles.txAmountNegative}`}>
+                          {d.realized >= 0 ? '+' : '−'}{fmtAmt(Math.abs(d.realized))} {d.currency}
+                        </span>
+                      </div>
+                      {d.lots.map((l, i) => (
+                        <div key={i} className={styles.realizedLotRow}>
+                          <span className={styles.realizedLotDate}>from lot {l.buyDate ?? '—'}</span>
+                          <span className={styles.realizedLotShares}>
+                            {trimDec(l.sharesFromLot)} sh @ cost {fmtAmt(l.costPerShare)} {d.currency}
+                          </span>
+                          <span className={`${styles.realizedLotPL} ${l.realized >= 0 ? styles.txAmountPositive : styles.txAmountNegative}`}>
+                            {l.realized >= 0 ? '+' : '−'}{fmtAmt(Math.abs(l.realized))} {d.currency}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className={styles.realizedTotals}>
+                {Object.entries(realizedTotals).map(([ccy, total]) => (
+                  <span key={ccy} className={`${styles.realizedTotal} ${total >= 0 ? styles.txAmountPositive : styles.txAmountNegative}`}>
+                    Total realized: {total >= 0 ? '+' : '−'}{fmtAmt(Math.abs(total))} {ccy}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Dividends — unified list (items 320-323 / Phase 28f-ii) */}
           {(mergedPayouts.length > 0 || futurePayouts.length > 0 || totalShares > 0) && (
@@ -1881,7 +1942,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 
-function TxRow({ txn, accountsById, onEditSplit, mainCurrency }) {
+function TxRow({ txn, accountsById, onEditSplit, mainCurrency, realized = null, expanded = false, onToggleRealized = null }) {
   const account = accountsById[txn.investingAccountId]
   const kind = txn._kind
 
@@ -1934,23 +1995,66 @@ function TxRow({ txn, accountsById, onEditSplit, mainCurrency }) {
     return convertToMain(tradingTotal, txn.currency, mainCurrency) ?? null
   })()
 
+  // Main-currency equivalent of the realized figure (SPEC-019 #54), via the sell's FX snapshot.
+  const realizedMain = (() => {
+    if (!realized || !mainCurrency || txn.currency === mainCurrency) return null
+    const snap = txn.exchangeRates?.rateToMain
+    if (snap) return realized.realized * snap
+    return convertToMain(realized.realized, txn.currency, mainCurrency) ?? null
+  })()
+  const plCls = pl => (pl >= 0 ? styles.txAmountPositive : styles.txAmountNegative)
+  const plStr = pl => `${pl >= 0 ? '+' : '−'}${fmtAmt(Math.abs(pl))}`
+
   return (
-    <div className={styles.txRow}>
-      <span className={styles.txDate}>{txn.date}</span>
-      <span className={`${styles.txBadge} ${badgeCls}`}>{badge}</span>
-      <span className={styles.txDesc}>{desc}</span>
-      <span className={`${styles.txAmount} ${amountCls}`}>{amountStr}</span>
-      {mainEquivalent != null && (
-        <span className={styles.txMainCcy}>
-          ({mainEquivalent >= 0 ? '+' : '−'}{fmtAmt(Math.abs(mainEquivalent))} {mainCurrency}
-          {txn.exchangeRates?.rateToMain ? '' : ' ~'})
-        </span>
+    <>
+      <div className={styles.txRow}>
+        <span className={styles.txDate}>{txn.date}</span>
+        <span className={`${styles.txBadge} ${badgeCls}`}>{badge}</span>
+        <span className={styles.txDesc}>{desc}</span>
+        <span className={`${styles.txAmount} ${amountCls}`}>{amountStr}</span>
+        {mainEquivalent != null && (
+          <span className={styles.txMainCcy}>
+            ({mainEquivalent >= 0 ? '+' : '−'}{fmtAmt(Math.abs(mainEquivalent))} {mainCurrency}
+            {txn.exchangeRates?.rateToMain ? '' : ' ~'})
+          </span>
+        )}
+        {realized && (
+          <button
+            type="button"
+            className={`${styles.txRealizedChip} ${plCls(realized.realized)}`}
+            onClick={onToggleRealized}
+            title="Realized P/L for this sale — click for the per-lot breakdown"
+          >
+            {expanded ? '▾' : '▸'} {plStr(realized.realized)} {txn.currency} P/L
+          </button>
+        )}
+        {account && <span className={styles.txAccount}>{account.name}</span>}
+        {onEditSplit && (
+          <button className={styles.txEditBtn} onClick={onEditSplit} title="Edit split">✎</button>
+        )}
+      </div>
+      {realized && expanded && (
+        <div className={styles.txLotBreakdown}>
+          {realized.lots.map((l, i) => (
+            <div key={i} className={styles.txLotRow}>
+              <span className={styles.txLotDate}>from lot {l.buyDate ?? '—'}</span>
+              <span className={styles.txLotShares}>{trimDec(l.sharesFromLot)} sh</span>
+              <span className={styles.txLotCost}>cost {fmtAmt(l.costPerShare)} {txn.currency}</span>
+              <span className={`${styles.txLotPL} ${plCls(l.realized)}`}>{plStr(l.realized)} {txn.currency}</span>
+            </div>
+          ))}
+          <div className={`${styles.txLotRow} ${styles.txLotSummary}`}>
+            <span className={styles.txLotDate}>
+              proceeds {fmtAmt(realized.proceeds)} − cost {fmtAmt(realized.costBasis)}
+            </span>
+            <span className={`${styles.txLotPL} ${plCls(realized.realized)}`}>
+              {plStr(realized.realized)} {txn.currency}
+              {realizedMain != null && ` (${plStr(realizedMain)} ${mainCurrency}${txn.exchangeRates?.rateToMain ? '' : ' ~'})`}
+            </span>
+          </div>
+        </div>
       )}
-      {account && <span className={styles.txAccount}>{account.name}</span>}
-      {onEditSplit && (
-        <button className={styles.txEditBtn} onClick={onEditSplit} title="Edit split">✎</button>
-      )}
-    </div>
+    </>
   )
 }
 

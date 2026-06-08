@@ -51,7 +51,11 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [x] Auto-creates a matching-currency cash balance if it doesn't yet exist.
 - [x] Saving a sell writes a **cashMovement** (`type: 'sell'`) crediting the matching-currency cash balance by `shares × price`, plus a **cashMovement** (`type: 'sell-fee'`) debiting the same balance by `fee` when `fee > 0`.
 - [x] Exchange rates at sell date snapshotted via `snapshotFxRates()`. *(Phase 25a)*
-- [ ] Realized P/L per lot — deferred to Phase 14 (Stock page).
+- [x] **Realized P/L per lot (stock page).** When shares are sold, the stock page surfaces the realized gain/loss of each disposal, broken down by the buy lot(s) it drew from. Computed at read time from the sell's `lotAllocations` (no stored P/L), so it stays correct after buy edits and splits.
+  - **Per-lot math:** for each allocation, `realized = sharesFromLot × (netSellPrice/sh − lotCost/sh)`, where `netSellPrice/sh = price − fee/shares` (the sell fee spread across shares) and `lotCost/sh` is the source lot's fee-inclusive cost per share, split-adjusted to the sale date by reusing the lot engine (`buildLots`). The per-lot figures sum exactly to `proceeds − costBasis` for the sell.
+  - **Inline on sell rows:** each Sell row in the transaction history shows its realized figure (green positive / red negative) and expands to a per-lot breakdown (buy date, shares from lot, cost/share, realized), mirroring the open-lots expand on positions.
+  - **Dedicated "Realized gains" section:** lists every disposal (newest first, labelled with its account) and its per-lot detail, with a realized **total per trade currency** at the foot. Rendered only when at least one sell exists for the stock.
+  - **Currency:** figures are in each sell's trade currency; a main-currency equivalent is shown using the sell's stored FX snapshot (falling back to the live rate with a `~` marker), consistent with the existing buy/sell rows.
 - [x] Edit form for sell: edits date, exchange, shares, price, fee, transaction ID; lot picker always available for re-allocation; recreates cashMovements and recaptures FX snapshot when date changes. *(Phase 26c)*
 
 ### Transfers between investing accounts

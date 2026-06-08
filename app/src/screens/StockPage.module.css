@@ -1742,3 +1742,90 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ── Realized P/L (SPEC-019 #54) ─────────────────────────────────────────── */
+
+/* Inline chip on a sell row + its expandable per-lot breakdown */
+.txRealizedChip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: #161c2a;
+  border: 1px solid #2a3344;
+  cursor: pointer;
+}
+.txRealizedChip:hover { border-color: #3b4a63; }
+
+.txLotBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: -2px 0 4px 92px;
+  padding: 6px 10px;
+  background: #181f2d;
+  border-radius: 0 0 8px 8px;
+}
+.txLotRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.txLotDate   { min-width: 130px; flex-shrink: 0; }
+.txLotShares { min-width: 60px;  flex-shrink: 0; }
+.txLotCost   { flex: 1; }
+.txLotPL     { flex-shrink: 0; font-weight: 500; }
+.txLotSummary {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #2a3344;
+  color: #cbd5e1;
+}
+.txLotSummary .txLotDate { flex: 1; min-width: 0; }
+
+/* Dedicated "Realized gains" section */
+.realizedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.realizedDisposal {
+  padding: 8px 10px;
+  background: #1e2535;
+  border-radius: 8px;
+}
+.realizedHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.realizedDate    { font-size: 12px; color: var(--text-faint); min-width: 82px; flex-shrink: 0; }
+.realizedSummary { flex: 1; font-size: 13px; color: #f1f5f9; min-width: 0; }
+.realizedAmount  { font-size: 13px; font-weight: 600; flex-shrink: 0; }
+
+.realizedLotRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+  padding-left: 92px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.realizedLotDate   { min-width: 130px; flex-shrink: 0; }
+.realizedLotShares { flex: 1; }
+.realizedLotPL     { flex-shrink: 0; font-weight: 500; }
+
+.realizedTotals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #2a3344;
+}
+.realizedTotal { font-size: 13px; font-weight: 700; }
