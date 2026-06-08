@@ -79,6 +79,24 @@ Every Tier (1–6) of the post-v0.34.0 backlog is now closed. The only items rem
 ### SPEC-031 Security and secrets handling (Phase 24 leftovers)
 255. [ ] When IBKR retail OAuth ships, tokens go straight to Stronghold under `marketData/ibkr/oauth/{accessToken,refreshToken}` — gated on the IBKR adapter actually being built (currently a stub).
 
+## Spec-reconciliation backlog (surfaced 2026-06-08)
+
+> A doc-vs-code reconciliation pass moved 11 specs to `done` and ticked all built-but-unchecked criteria. The items below are the **genuine** remaining gaps it surfaced — features the specs describe but the code does not (yet) implement as written.
+
+### SPEC-016 Data Portability
+61. [ ] **Round-trip verification (v0.35.0).** Manual smoke test — export on `rmoney-data-v3` → reload → confirm no data loss; load a v2 backup → confirm `dismissedSplits` defaults and `feeCurrency` backfills. (Verification task only; the code path is built. Likely already exercised when v0.35.0/v0.36.0 were tagged — confirm and tick, or re-run.)
+
+### SPEC-019 Stock Transactions
+27. [ ] **Resolution save-gate.** Buy form offers "Look up" + resolution dialog + pre-fill, but `canSave` does not require a resolved profile, so a buy can be saved while unresolved. Spec says "the buy cannot be saved while the profile is unresolved." Decide: enforce the gate, or amend the spec to make resolution optional.
+54. [ ] **Realized P/L per lot** displayed on the stock page (SPEC-021). Realized P/L is computed in the lot engine but per-lot display on the stock page is unconfirmed.
+77. [ ] **Buy-triggered currency-exchange shown alongside the buy** in the stock's transaction history. FX records render in the history with a filter; the buy→FX linkage display is unconfirmed.
+
+### SPEC-021 Stock Page
+35. [ ] **Right-column AI panel** rendered always on desktop (≥1024px), fixed 400px column (layout slot only; content owned by SPEC-026). *(Deferred to Phase 19b.)*
+36. [ ] **AI panel stacks below content on mobile.** *(Deferred to Phase 19b.)*
+
+> **Not added here (kept as a `plan:validate` warning, not an error):** SPEC-031 has 19 unchecked criteria — the bulk are the Tauri **Stronghold encryption-at-rest** items (Phase 24e), gated before wider distribution and tracked in CLAUDE.md. A focused SPEC-031 audit is a separate security-sensitive pass.
+
 
 ---
 

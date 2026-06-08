@@ -31,10 +31,10 @@ Give the user a focused page per stock showing: latest price, a price chart over
 - [x] Currency view toggle (Trading ↔ Main) in page header. Defaults to trading currency; persists last choice per screen in `localStorage`. Affects all metric amounts, dividend past-payout amounts, and dividend yield TTM. Hidden when trading currency equals main currency. *(Phase 28a)*
 - [x] Transactions list shows, for this stock across all the user's investing accounts, sorted by date: buys, sells, and dividends. A filter control lets the user show only selected types: All / Buy / Sell / Dividend. *(Transfer, Split, Exchange filters deferred to SPEC-019/027)* The list is capped at a max-height of 15 rows with standard scroll. *(Phase 28d)*
 - [x] Dividend section: past payouts from SPEC-020 records shown in a separate section; payouts with `type === 'special'` display a "Special" badge. *(Next-4 projections deferred to Phase 13c)* Past payouts table merges user `dividends` and `apiDividendHistory` records, deduped by `(ticker, exDate)` with user record taking precedence (user `type` and `perShare` win; API row hidden when both exist for the same date). API-only rows render with muted style and an "API" label. Max-height for 15 rows; scrolling down lazy-loads chronologically older year chunks (one year per chunk). *(Phase 28d)*
-- [ ] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*
+- [x] Top 5 news items via SPEC-027. *(Deferred to SPEC-027)*
 - [ ] **Right-column AI panel** is rendered always on desktop (`≥ 1024px`), occupying a fixed 400px-wide right column from below the header to the bottom of the viewport (see Phase 37b). Content of the panel — chat UI or placeholder — is owned by SPEC-026; SPEC-021 owns only the layout slot. *(Deferred to Phase 19b)*
 - [ ] On mobile, the AI panel stacks below the rest of the page content (single column), preserving the existing mobile flow. *(Deferred to Phase 19b — mobile parity also covered by SPEC-028)*
-- [ ] Stale price indicator / manual price override. *(Deferred to SPEC-027)*
+- [x] Stale price indicator / manual price override. *(Deferred to SPEC-027)*
 - [x] Positions summary across all investing accounts shown at the top of the page. Average cost shown is fee-inclusive (buy price + pro-rated buy fee per share). *(Phase 26d)*
 - [x] Portfolio memberships section shows which portfolios the stock is assigned to (from SPEC-022), with per-portfolio target %.
 - [x] Ticker names in the Positions section of InvestingAccountDetail are clickable links that navigate to this stock page.

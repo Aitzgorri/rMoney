@@ -1,7 +1,7 @@
 ---
 id: SPEC-017
 name: Currency Conversion
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 

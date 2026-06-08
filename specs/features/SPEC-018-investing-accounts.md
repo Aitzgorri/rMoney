@@ -1,7 +1,7 @@
 ---
 id: SPEC-018
 name: Investing Accounts
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -25,7 +25,7 @@ Introduce a top-level "Investments" section in the app, separate from the budget
 ### Top-level Investments section
 - [x] Main navigation gains a top-level "Investments" entry, distinct from Budgeting. The existing budgeting nav (Accounts, Transactions, Envelopes, Categories, Planning, Dashboard, Bills & Income, Scheduled Transfers) stays exactly as-is.
 - [x] Clicking "Investments" lands on an Investments home screen showing all investing accounts with a rollup of each account's cash-balance total in main currency via SPEC-017. Each card shows a "Positions: N stocks" line when the account has open positions. *(Market-value total including positions deferred to SPEC-027.)*
-- [ ] **Investments dropdown** (added by SPEC-030): clicking the "Investments" nav entry opens a dropdown rather than navigating directly. Menu entries: **Investments overview** (the home screen above), **Portfolios** (SPEC-022), **Watchlists** (SPEC-030). Future investments-related screens (Reports — SPEC-024, Benchmarks — SPEC-023) will be added to this dropdown when their specs are implemented. Selecting any item navigates the user to that screen. The dropdown trigger may carry a small badge (e.g. count of triggered alerts from SPEC-030) when there is something requiring attention in any of its destinations.
+- [x] **Investments dropdown** (added by SPEC-030): clicking the "Investments" nav entry opens a dropdown rather than navigating directly. Menu entries: **Investments overview** (the home screen above), **Portfolios** (SPEC-022), **Watchlists** (SPEC-030). Future investments-related screens (Reports — SPEC-024, Benchmarks — SPEC-023) will be added to this dropdown when their specs are implemented. Selecting any item navigates the user to that screen. The dropdown trigger may carry a small badge (e.g. count of triggered alerts from SPEC-030) when there is something requiring attention in any of its destinations.
 
 ### Persistent account selection
 - [x] When the user selects an investing account and then navigates away (to any other screen), on returning to the Investments screen the previously selected account is automatically re-selected. The user does not need to click the account again to see its details.

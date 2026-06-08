@@ -1,7 +1,7 @@
 ---
 id: SPEC-029
 name: Stock Profile Resolution
-status: in-progress
+status: done
 created: 2026-04-29
 ---
 

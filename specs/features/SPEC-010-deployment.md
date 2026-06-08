@@ -1,7 +1,7 @@
 ---
 id: SPEC-010
 name: Deployment
-status: in-progress
+status: done
 created: 2026-04-08
 ---
 

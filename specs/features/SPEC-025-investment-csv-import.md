@@ -1,7 +1,7 @@
 ---
 id: SPEC-025
 name: Investment CSV Import
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 

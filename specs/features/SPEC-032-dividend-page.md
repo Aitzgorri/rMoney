@@ -1,7 +1,7 @@
 ---
 id: SPEC-032
 name: Dividend page
-status: in-progress
+status: done
 created: 2026-05-06
 ---
 

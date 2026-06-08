@@ -85,9 +85,9 @@ This spec covers stocks only. Dividends are SPEC-020. Other asset classes (optio
 - [x] The movement list renders a warning chip on any buy/sell row tagged `legacyFeeMismatch: true`. *(item 291)*
 
 ### Retroactive recalculation (applies to all types)
-- [ ] Any edit to a buy record (price, fee, shares, date) that affects cost basis triggers recalculation of all downstream sells' realized P/L, all open-lot weighted averages, and any cached position values. Sells themselves are not edited — their cost-basis numbers are derived.
-- [ ] Deletion of a buy is blocked if any sell or transfer drew from its lot and would otherwise be left without a basis. Error message explains which sell(s) are blocking.
-- [ ] Deletion of a buy also deletes its associated `cashMovement` rows and reverses its triggering exchange (if any) — with confirmation.
+- [x] Any edit to a buy record (price, fee, shares, date) that affects cost basis triggers recalculation of all downstream sells' realized P/L, all open-lot weighted averages, and any cached position values. Sells themselves are not edited — their cost-basis numbers are derived.
+- [x] Deletion of a buy is blocked if any sell or transfer drew from its lot and would otherwise be left without a basis. Error message explains which sell(s) are blocking.
+- [x] Deletion of a buy also deletes its associated `cashMovement` rows and reverses its triggering exchange (if any) — with confirmation.
 
 ## UI / Screens
 

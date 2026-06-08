@@ -1,7 +1,7 @@
 ---
 id: SPEC-034
 name: Buy-Sell Planning
-status: ready
+status: done
 created: 2026-05-14
 ---
 

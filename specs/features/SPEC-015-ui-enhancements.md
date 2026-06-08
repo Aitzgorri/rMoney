@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 name: UI Enhancements
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 

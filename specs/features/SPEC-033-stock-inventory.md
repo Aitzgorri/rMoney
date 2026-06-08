@@ -1,7 +1,7 @@
 ---
 id: SPEC-033
 name: Stock inventory
-status: in-progress
+status: done
 created: 2026-05-06
 ---
 
