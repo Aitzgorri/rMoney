@@ -1279,13 +1279,14 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
     ? (stockTxn.shares * stockTxn.price + (movement.type === 'buy' ? stockTxn.fee : -stockTxn.fee)) / stockTxn.shares
     : null
 
+  const isCryptoTxn = stockTxn?.assetClass === 'crypto'  // SPEC-036: label crypto trades distinctly
   const typeLabel = {
     opening:             'Opening balance',
     deposit:             'Deposit',
     withdrawal:          'Withdrawal',
     'currency-exchange': movement.amount < 0 ? 'Exchange out' : 'Exchange in',
-    buy:                 'Stock buy',
-    sell:                'Stock sell',
+    buy:                 isCryptoTxn ? 'Crypto buy'  : 'Stock buy',
+    sell:                isCryptoTxn ? 'Crypto sell' : 'Stock sell',
     dividend:            'Dividend',
     'transfer-fee':      'Transfer fee',
     'swap-fee':          'Swap fee',   // SPEC-036: crypto swap fee — standalone row (no parent buy/sell movement)
@@ -2428,6 +2429,7 @@ function CoinSearchPicker({ value, onChange }) {
   const [candidates, setCandidates] = useState([])
   const [searching,  setSearching]  = useState(false)
   const [error,      setError]      = useState('')
+  const [listOpen,   setListOpen]   = useState(true)
 
   async function runSearch() {
     const q = query.trim()
@@ -2436,6 +2438,7 @@ function CoinSearchPicker({ value, onChange }) {
     try {
       const results = await searchCryptoCoins(q)
       setCandidates(results)
+      setListOpen(true)
       if (results.length > 0) {
         const top = results[0]
         onChange({ coinId: top.coinId, symbol: top.symbol, name: top.name })
@@ -2468,21 +2471,32 @@ function CoinSearchPicker({ value, onChange }) {
       </div>
       {error && <span className={styles.manualStockChip}>{error}</span>}
       {candidates.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: '6px 0', maxHeight: 220, overflowY: 'auto' }}>
-          {candidates.slice(0, 8).map(c => (
-            <label
-              key={c.coinId}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
-            >
-              <input
-                type="radio"
-                name="cryptoCoin"
-                checked={value?.coinId === c.coinId}
-                onChange={() => onChange({ coinId: c.coinId, symbol: c.symbol, name: c.name })}
-              />
-              <span>{c.name} <span style={{ opacity: 0.6 }}>({c.symbol}){c.marketCapRank ? ` · #${c.marketCapRank}` : ''}</span></span>
-            </label>
-          ))}
+        <div style={{ margin: '6px 0' }}>
+          <button
+            type="button"
+            onClick={() => setListOpen(o => !o)}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, fontSize: '0.85em', padding: 0 }}
+          >
+            {listOpen ? '▾' : '▸'} {candidates.length} match{candidates.length === 1 ? '' : 'es'}
+          </button>
+          {listOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4, maxHeight: 220, overflowY: 'auto' }}>
+              {candidates.slice(0, 8).map(c => (
+                <label
+                  key={c.coinId}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
+                >
+                  <input
+                    type="radio"
+                    name="cryptoCoin"
+                    checked={value?.coinId === c.coinId}
+                    onChange={() => { onChange({ coinId: c.coinId, symbol: c.symbol, name: c.name }); setListOpen(false) }}
+                  />
+                  <span>{c.name} <span style={{ opacity: 0.6 }}>({c.symbol}){c.marketCapRank ? ` · #${c.marketCapRank}` : ''}</span></span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {value && (
@@ -2673,24 +2687,63 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
 
 // ─── Crypto swap form (SPEC-036, D2) ──────────────────────────────────────────
 // Disposes some of a held coin (FROM, fixed) for another coin (TO, searched).
-// One atomic createSwap record; no fiat moves except an optional fee.
+// Auto-fetches both coins' live prices (editable — fall back to last/edited price
+// if a fetch fails) to show the implied vs market exchange rate and the swap P/L,
+// and stores both prices on the record. One atomic createSwap; no fiat moves
+// except an optional fee. The disposal value (fromQty × fromPrice) sets the
+// realised P/L and the acquired coin's cost basis.
 function CryptoSwapForm({ position, balances, onSave, onCancel }) {
   const currency      = position.currency
   const available     = position.shares
   const feeBalances   = balances.filter(b => b.currency === currency)
 
-  const [date,         setDate]         = useState(today)
-  const [fromQty,      setFromQty]      = useState('')
-  const [toCoin,       setToCoin]       = useState(null)
-  const [toQty,        setToQty]        = useState('')
-  const [spotValue,    setSpotValue]    = useState('')
-  const [fee,          setFee]          = useState('0')
-  const [feeBalanceId, setFeeBalanceId] = useState(() => feeBalances[0]?.id ?? '')
+  const [date,             setDate]             = useState(today)
+  const [fromQty,          setFromQty]          = useState('')
+  const [toCoin,           setToCoin]           = useState(null)
+  const [toQty,            setToQty]            = useState('')
+  const [fromPrice,        setFromPrice]        = useState('')
+  const [toPrice,          setToPrice]          = useState('')
+  const [fromPriceLoading, setFromPriceLoading] = useState(false)
+  const [toPriceLoading,   setToPriceLoading]   = useState(false)
+  const [fee,              setFee]              = useState('0')
+  const [feeBalanceId,     setFeeBalanceId]     = useState(() => feeBalances[0]?.id ?? '')
 
-  const fromNum  = Number(fromQty)
-  const overFrom = fromNum > available + 1e-9
-  const sameCoin = toCoin && toCoin.symbol === position.ticker
-  const canSave  = fromNum > 0 && !overFrom && !!toCoin && !sameCoin && Number(toQty) > 0 && Number(spotValue) > 0
+  // Live price of the held (FROM) coin — coinId from cryptoProfiles.
+  useEffect(() => {
+    let cancelled = false
+    setFromPriceLoading(true)
+    getCryptoPrice(position.ticker, currency, getCoinId(position.ticker))
+      .then(r => { if (!cancelled && r?.price != null) setFromPrice(String(r.price)) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setFromPriceLoading(false) })
+    return () => { cancelled = true }
+  }, [position.ticker, currency])
+
+  // Live price of the acquired (TO) coin whenever the selection changes.
+  useEffect(() => {
+    if (!toCoin) { setToPrice(''); return }
+    let cancelled = false
+    setToPriceLoading(true)
+    getCryptoPrice(toCoin.symbol, currency, toCoin.coinId)
+      .then(r => { if (!cancelled && r?.price != null) setToPrice(String(r.price)) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setToPriceLoading(false) })
+    return () => { cancelled = true }
+  }, [toCoin, currency])
+
+  const fromNum     = Number(fromQty)
+  const toNum       = Number(toQty)
+  const fromP       = Number(fromPrice)
+  const toP         = Number(toPrice)
+  const overFrom    = fromNum > available + 1e-9
+  const sameCoin    = toCoin && toCoin.symbol === position.ticker
+  const given       = fromNum > 0 && fromP > 0 ? fromNum * fromP : null   // market value disposed
+  const received    = toNum > 0 && toP > 0 ? toNum * toP : null           // market value acquired
+  const impliedRate = fromNum > 0 && toNum > 0 ? toNum / fromNum : null   // TO per 1 FROM (your swap)
+  const marketRate  = fromP > 0 && toP > 0 ? fromP / toP : null           // TO per 1 FROM at market
+  const swapPL      = given != null && received != null ? received - given : null
+  const swapPLpct   = swapPL != null && given > 0 ? (swapPL / given) * 100 : null
+  const canSave     = fromNum > 0 && !overFrom && !!toCoin && !sameCoin && toNum > 0 && fromP > 0
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -2701,13 +2754,17 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
       fromTicker: position.ticker,
       fromQuantity: fromNum,
       toTicker: toCoin.symbol,
-      toQuantity: Number(toQty),
-      spotValue: Number(spotValue),
+      toQuantity: toNum,
+      spotValue: given,                 // disposal value → realised P/L + TO cost basis
+      fromPrice: fromP,
+      toPrice: toP > 0 ? toP : null,
       currency,
       fee: Number(fee || 0),
       feeCashBalanceId: Number(fee) > 0 ? (feeBalanceId || null) : null,
     })
   }
+
+  const plColor = swapPL != null ? (swapPL >= 0 ? '#4ade80' : '#f87171') : undefined
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -2729,11 +2786,38 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
         <label className={styles.formLabel}>To quantity{toCoin ? ` — ${toCoin.symbol}` : ''}</label>
         <input className={styles.formInput} type="number" min="0.00000001" step="any" value={toQty} onChange={e => setToQty(e.target.value)} placeholder="8" />
       </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Trade value (total, {currency})</label>
-        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={spotValue} onChange={e => setSpotValue(e.target.value)} placeholder="6000" />
-        <p className={styles.ratePreview}>Market value of the coins exchanged — sets the realised P/L and the new coin's cost basis.</p>
+
+      {/* Live prices (editable — last/edited value is kept if a fetch fails). */}
+      <div className={styles.formPairRow}>
+        <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
+          <label className={styles.formLabel}>{position.ticker} price ({currency}){fromPriceLoading ? ' …' : ''}</label>
+          <input className={styles.formInput} type="number" min="0" step="any" value={fromPrice} onChange={e => setFromPrice(e.target.value)} placeholder="60000" />
+        </div>
+        <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
+          <label className={styles.formLabel}>{toCoin ? toCoin.symbol : 'To'} price ({currency}){toPriceLoading ? ' …' : ''}</label>
+          <input className={styles.formInput} type="number" min="0" step="any" value={toPrice} onChange={e => setToPrice(e.target.value)} placeholder="0.60" />
+        </div>
       </div>
+
+      {(impliedRate != null || given != null) && (
+        <div className={styles.crossCurrencyBox}>
+          {impliedRate != null && toCoin && (
+            <p className={styles.ratePreview}>Your rate: 1 {position.ticker} = {trimDecimals(impliedRate)} {toCoin.symbol}</p>
+          )}
+          {marketRate != null && toCoin && (
+            <p className={styles.ratePreview}>Market rate: 1 {position.ticker} = {trimDecimals(marketRate)} {toCoin.symbol}</p>
+          )}
+          {given != null && (
+            <p className={styles.ratePreview}>Value given: {fmtAmt(given)} {currency}{received != null ? ` · received: ${fmtAmt(received)} ${currency}` : ''}</p>
+          )}
+          {swapPL != null && (
+            <p className={styles.ratePreview} style={{ color: plColor }}>
+              Swap P/L: {swapPL >= 0 ? '+' : '−'}{fmtAmt(Math.abs(swapPL))} {currency}{swapPLpct != null ? ` (${swapPLpct >= 0 ? '+' : ''}${swapPLpct.toFixed(2)}%)` : ''}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee ({currency})</label>
         <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
@@ -2746,7 +2830,7 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
           </select>
         </div>
       )}
-      <p className={styles.formSubtitle}>No cash changes hands — only the optional fee debits your {currency} balance.</p>
+      <p className={styles.formSubtitle}>No cash changes hands — only the optional fee debits your {currency} balance. Both prices are saved with the swap.</p>
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Swap</button>

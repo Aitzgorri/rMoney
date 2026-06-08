@@ -305,6 +305,8 @@ export function createSwap({
   toQuantity,
   spotValue,
   currency,
+  fromPrice = null,   // market price of the disposed coin at swap time, in `currency`
+  toPrice = null,     // market price of the acquired coin at swap time, in `currency`
   fee = 0,
   feeCashBalanceId = null,
   wallet = null,
@@ -324,15 +326,20 @@ export function createSwap({
   }
 
   const normCurrency = currency.trim().toUpperCase()
+  // spotValue (the disposal value that drives realised P/L + the TO-leg cost basis) defaults to
+  // the FROM coin's market value at swap time when not supplied explicitly.
+  const resolvedSpot = spotValue != null
+    ? Number(spotValue)
+    : (fromPrice != null ? Number(fromQuantity) * Number(fromPrice) : 0)
   const txn = {
     id: crypto.randomUUID(),
     type: 'swap',
     assetClass: ASSET_CLASS.CRYPTO,
     date,
     investingAccountId,
-    from: { ticker: fromNorm, quantity: Number(fromQuantity) },
-    to: { ticker: toNorm, quantity: Number(toQuantity) },
-    spotValue: Number(spotValue),
+    from: { ticker: fromNorm, quantity: Number(fromQuantity), price: fromPrice != null ? Number(fromPrice) : null },
+    to: { ticker: toNorm, quantity: Number(toQuantity), price: toPrice != null ? Number(toPrice) : null },
+    spotValue: resolvedSpot,
     currency: normCurrency,
     fee: Number(fee || 0),
     feeCurrency: normCurrency,
