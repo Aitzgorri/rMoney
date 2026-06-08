@@ -142,6 +142,15 @@ export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetCl
       consumed[alloc.sourceBuyId] = (consumed[alloc.sourceBuyId] ?? 0) + alloc.sharesFromLot * m
     }
   }
+  // SPEC-036: a swap fee paid in a coin OTHER than its FROM coin consumes that coin's own lots.
+  // (A fee paid in the FROM coin is already folded into the FROM-leg lotAllocations above.)
+  for (const s of swapPool) {
+    if (s.fee?.coin !== ticker || !s.feeLotAllocations) continue
+    const m = splitMultiplierAfter(s.date)
+    for (const alloc of s.feeLotAllocations) {
+      consumed[alloc.sourceBuyId] = (consumed[alloc.sourceBuyId] ?? 0) + alloc.sharesFromLot * m
+    }
+  }
 
   return buys
     .map(buy => {
@@ -307,22 +316,37 @@ export function createSwap({
   currency,
   fromPrice = null,   // market price of the disposed coin at swap time, in `currency`
   toPrice = null,     // market price of the acquired coin at swap time, in `currency`
-  fee = 0,
-  feeCashBalanceId = null,
+  fee = 0,            // fee QUANTITY, denominated in `feeCoin` (crypto, D2 refinement) — NOT fiat
+  feeCoin = null,     // coin the fee is paid in; defaults to the FROM coin (may be any held coin)
   wallet = null,
   lotAllocations = null,
+  feeLotAllocations = null,
 }) {
   const fromNorm = fromTicker.trim().toUpperCase()
   const toNorm = toTicker.trim().toUpperCase()
   if (fromNorm === toNorm) throw new Error('A swap must be between two different coins')
 
-  // FROM leg consumes crypto lots of the disposed coin (FIFO by default, scoped to crypto).
+  const feeQty      = Number(fee || 0)
+  const feeCoinNorm = feeQty > 0 ? (feeCoin?.trim().toUpperCase() || fromNorm) : null
+  const feeOnFrom   = feeCoinNorm === fromNorm
+
+  // FROM leg consumes the productive quantity, plus the fee quantity when the fee is paid in the
+  // FROM coin (those fee coins are disposed with no return — a pure cost). FIFO, scoped to crypto.
   if (!lotAllocations) {
+    const fromDisposed = Number(fromQuantity) + (feeOnFrom ? feeQty : 0)
     const { allocations } = computeFifoAllocations(
       getOpenLots(investingAccountId, fromNorm, null, ASSET_CLASS.CRYPTO),
-      Number(fromQuantity)
+      fromDisposed
     )
     lotAllocations = allocations
+  }
+  // A fee paid in a DIFFERENT coin (e.g. a network coin) consumes that coin's own lots.
+  if (feeQty > 0 && !feeOnFrom && !feeLotAllocations) {
+    const { allocations } = computeFifoAllocations(
+      getOpenLots(investingAccountId, feeCoinNorm, null, ASSET_CLASS.CRYPTO),
+      feeQty
+    )
+    feeLotAllocations = allocations
   }
 
   const normCurrency = currency.trim().toUpperCase()
@@ -341,19 +365,14 @@ export function createSwap({
     to: { ticker: toNorm, quantity: Number(toQuantity), price: toPrice != null ? Number(toPrice) : null },
     spotValue: resolvedSpot,
     currency: normCurrency,
-    fee: Number(fee || 0),
-    feeCurrency: normCurrency,
-    feeCashBalanceId: feeCashBalanceId || null,
+    fee: feeQty > 0 ? { coin: feeCoinNorm, quantity: feeQty } : null,  // crypto fee, in feeCoin (D2)
     wallet: wallet?.trim() || null,
-    lotAllocations,              // FROM-leg allocations over fromTicker lots
+    lotAllocations,              // FROM-leg (productive + fee-if-paid-in-FROM)
+    feeLotAllocations,           // fee leg when paid in a non-FROM coin
     createdAt: new Date().toISOString(),
   }
   save([...load(), txn])
-
-  // Net fiat = 0: the coin-for-coin exchange creates no cash movement. Only an optional fee debits cash.
-  if (Number(fee) > 0 && feeCashBalanceId) {
-    addCashMovement({ type: 'swap-fee', date, cashBalanceId: feeCashBalanceId, amount: -Number(fee), linkedStockTransactionId: txn.id })
-  }
+  // No cash movement: a swap is coin-for-coin and the fee is paid in crypto (reduces a holding).
   return txn
 }
 
@@ -372,7 +391,11 @@ export function canDeleteStockTransaction(id) {
       (t.type === 'swap' &&
         t.investingAccountId === txn.investingAccountId &&
         t.from?.ticker === txn.ticker &&
-        t.lotAllocations?.some(a => a.sourceBuyId === id))
+        t.lotAllocations?.some(a => a.sourceBuyId === id)) ||
+      (t.type === 'swap' &&
+        t.investingAccountId === txn.investingAccountId &&
+        t.fee?.coin === txn.ticker &&
+        t.feeLotAllocations?.some(a => a.sourceBuyId === id))
     )
     if (blocking.length > 0) {
       const sells = blocking.filter(t => t.type === 'sell').length

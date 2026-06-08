@@ -731,7 +731,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
             {formMode === 'crypto-swap' && cryptoActionPos && (
               <CryptoSwapForm
                 position={cryptoActionPos}
-                balances={balances}
+                cryptoTickers={cryptoPositions.map(p => p.ticker)}
                 onSave={handleCryptoSwap}
                 onCancel={closeForm}
               />
@@ -2692,10 +2692,10 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
 // and stores both prices on the record. One atomic createSwap; no fiat moves
 // except an optional fee. The disposal value (fromQty × fromPrice) sets the
 // realised P/L and the acquired coin's cost basis.
-function CryptoSwapForm({ position, balances, onSave, onCancel }) {
-  const currency      = position.currency
-  const available     = position.shares
-  const feeBalances   = balances.filter(b => b.currency === currency)
+function CryptoSwapForm({ position, cryptoTickers = [], onSave, onCancel }) {
+  const currency       = position.currency
+  const available      = position.shares
+  const feeCoinOptions = [...new Set([position.ticker, ...cryptoTickers])]  // held coins; FROM first
 
   const [date,             setDate]             = useState(today)
   const [fromQty,          setFromQty]          = useState('')
@@ -2706,7 +2706,7 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
   const [fromPriceLoading, setFromPriceLoading] = useState(false)
   const [toPriceLoading,   setToPriceLoading]   = useState(false)
   const [fee,              setFee]              = useState('0')
-  const [feeBalanceId,     setFeeBalanceId]     = useState(() => feeBalances[0]?.id ?? '')
+  const [feeCoin,          setFeeCoin]          = useState(position.ticker)
 
   // Live price of the held (FROM) coin — coinId from cryptoProfiles.
   useEffect(() => {
@@ -2759,8 +2759,8 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
       fromPrice: fromP,
       toPrice: toP > 0 ? toP : null,
       currency,
-      fee: Number(fee || 0),
-      feeCashBalanceId: Number(fee) > 0 ? (feeBalanceId || null) : null,
+      fee: Number(fee || 0),            // crypto fee QUANTITY, in feeCoin
+      feeCoin: Number(fee) > 0 ? feeCoin : null,
     })
   }
 
@@ -2818,19 +2818,24 @@ function CryptoSwapForm({ position, balances, onSave, onCancel }) {
         </div>
       )}
 
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Fee ({currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
-      </div>
-      {Number(fee) > 0 && feeBalances.length > 0 && (
-        <div className={styles.formRow}>
-          <label className={styles.formLabel}>Fee paid from</label>
-          <select className={styles.formSelect} value={feeBalanceId} onChange={e => setFeeBalanceId(e.target.value)}>
-            {feeBalances.map(b => <option key={b.id} value={b.id}>{b.currency} ({fmtAmt(getCurrentBalance(b.id))} available)</option>)}
-          </select>
+      <div className={styles.formPairRow}>
+        <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
+          <label className={styles.formLabel}>Fee quantity (crypto)</label>
+          <input className={styles.formInput} type="number" min="0" step="any" value={fee} onChange={e => setFee(e.target.value)} placeholder="0" />
         </div>
-      )}
-      <p className={styles.formSubtitle}>No cash changes hands — only the optional fee debits your {currency} balance. Both prices are saved with the swap.</p>
+        {Number(fee) > 0 && (
+          <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
+            <label className={styles.formLabel}>Fee coin</label>
+            <select className={styles.formSelect} value={feeCoin} onChange={e => setFeeCoin(e.target.value)}>
+              {feeCoinOptions.map(t => <option key={t} value={t}>{t}{t === position.ticker ? ' (spent coin)' : ''}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      <p className={styles.formSubtitle}>
+        No cash changes hands — a swap is coin-for-coin. Any fee is paid in crypto (default the spent coin) and
+        reduces that holding. Both prices are saved with the swap.
+      </p>
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Swap</button>
