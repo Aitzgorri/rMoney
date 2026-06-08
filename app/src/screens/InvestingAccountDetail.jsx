@@ -27,6 +27,7 @@ import {
   createSwap,
   createWalletTransfer,
   getCryptoActivity,
+  canDeleteStockTransaction,
   getStockTransaction,
   getStockTransactionsByTicker,
   createCurrencyExchange,
@@ -76,6 +77,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [enrichedCrypto,      setEnrichedCrypto]      = useState([])
   const [cryptoActivity,      setCryptoActivity]      = useState(() => getCryptoActivity(accountId))
   const [cryptoActionPos,     setCryptoActionPos]     = useState(null)  // crypto position targeted by Sell/Swap/Transfer
+  const [showStocks,          setShowStocks]          = useState(true)  // Asset-movements: show stock rows
+  const [showCrypto,          setShowCrypto]          = useState(true)  // Asset-movements: show crypto rows + swaps/moves
+  const [activityDelete,      setActivityDelete]      = useState(null)  // { activity } | { activity, blocked, reason }
   const [defaultSellTicker,   setDefaultSellTicker]   = useState(null)
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
   const [defaultTransferTicker, setDefaultTransferTicker] = useState(null)
@@ -541,6 +545,18 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     closeForm()
   }
 
+  // Delete a crypto swap / wallet-transfer (from the Asset movements list). A swap is blocked
+  // if the coin it produced has since been sold or swapped (canDeleteStockTransaction).
+  function requestDeleteActivity(activity) {
+    const { canDelete, reason } = canDeleteStockTransaction(activity.id)
+    setActivityDelete(canDelete ? { activity } : { activity, blocked: true, reason })
+  }
+  function confirmDeleteActivity() {
+    deleteStockTransaction(activityDelete.activity.id)
+    setActivityDelete(null)
+    refresh()
+  }
+
   function handleDividend(params) {
     createDividend(params)
     refresh()
@@ -592,9 +608,36 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     return true
   })
 
+  // SPEC-036: classify a cash movement by asset class for the Stocks/Crypto toggles.
+  function movementAssetClass(m) {
+    if (m.type === 'buy' || m.type === 'sell') {
+      const tx = m.linkedStockTransactionId ? getStockTransaction(m.linkedStockTransactionId) : null
+      return tx?.assetClass === 'crypto' ? 'crypto' : 'stock'
+    }
+    if (m.type === 'dividend') return 'stock'
+    if (m.type === 'swap-fee') return 'crypto'
+    return 'other'   // deposits, withdrawals, exchanges, opening — not asset-specific, always shown
+  }
+
+  // Merge cash movements with crypto swaps/wallet-transfers (informational, no cash leg) into one
+  // "asset movements" stream, gated by the Stocks/Crypto toggles, newest first.
+  const cashItems = displayMovements
+    .filter(m => {
+      const cls = movementAssetClass(m)
+      if (cls === 'stock') return showStocks
+      if (cls === 'crypto') return showCrypto
+      return true
+    })
+    .map(m => ({ kind: 'cash', id: m.id, date: m.date, createdAt: m.createdAt, movement: m }))
+  const activityItems = showCrypto
+    ? cryptoActivity.map(a => ({ kind: 'activity', id: a.id, date: a.date, createdAt: a.createdAt, activity: a }))
+    : []
+  const combinedItems = [...cashItems, ...activityItems]
+    .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
+
   // Visible slice for virtualization
-  const shownMovements = displayMovements.slice(0, visibleCount)
-  const hasMore = displayMovements.length > visibleCount
+  const shownItems = combinedItems.slice(0, visibleCount)
+  const hasMore = combinedItems.length > visibleCount
 
   // Filter options derived from baseMovements
   const typeOptions = [
@@ -789,6 +832,31 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               <button className={styles.cancelBtn} onClick={() => setNegConfirm(null)}>Cancel</button>
               <button className={styles.proceedBtn} onClick={negConfirm.onConfirm}>Proceed</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activityDelete && (
+        <div className={styles.overlay}>
+          <div className={styles.dialog}>
+            {activityDelete.blocked ? (
+              <>
+                <h3>Can't delete</h3>
+                <p>{activityDelete.reason}</p>
+                <div className={styles.dialogActions}>
+                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>Delete {activityDelete.activity.type === 'swap' ? 'swap' : 'wallet move'}?</h3>
+                <p>This reverses its effect on your crypto holdings and can't be undone.</p>
+                <div className={styles.dialogActions}>
+                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)}>Cancel</button>
+                  <button className={styles.proceedBtn} onClick={confirmDeleteActivity}>Delete</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1057,61 +1125,33 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
         </div>
       )}
 
-      {/* ── Crypto activity (SPEC-036 — swaps + wallet moves, no cash leg) ──── */}
-
-      {cryptoActivity.length > 0 && (
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionLabel}>Crypto activity</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {cryptoActivity.map(a => {
-              if (a.type === 'swap') {
-                const rate = a.from?.quantity > 0 ? a.to.quantity / a.from.quantity : null
-                const given = a.from?.price != null ? a.from.quantity * a.from.price : null
-                const recv  = a.to?.price != null ? a.to.quantity * a.to.price : null
-                const pl    = given != null && recv != null ? recv - given : null
-                const plColor = pl != null ? (pl >= 0 ? '#4ade80' : '#f87171') : undefined
-                return (
-                  <div key={a.id} className={styles.movementRow} style={{ alignItems: 'baseline' }}>
-                    <span className={styles.movementDate}>{a.date}</span>
-                    <span style={{ flex: 1 }}>
-                      <strong>Swap</strong> {trimDecimals(a.from.quantity)} {a.from.ticker} → {trimDecimals(a.to.quantity)} {a.to.ticker}
-                      {rate != null && <span style={{ opacity: 0.65 }}> · 1 {a.from.ticker} = {trimDecimals(rate)} {a.to.ticker}</span>}
-                      {a.fee && <span style={{ opacity: 0.65 }}> · fee {trimDecimals(a.fee.quantity)} {a.fee.coin}</span>}
-                    </span>
-                    {pl != null && (
-                      <span style={{ color: plColor }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
-                    )}
-                  </div>
-                )
-              }
-              // wallet-transfer
-              return (
-                <div key={a.id} className={styles.movementRow} style={{ alignItems: 'baseline' }}>
-                  <span className={styles.movementDate}>{a.date}</span>
-                  <span style={{ flex: 1 }}>
-                    <strong>Move</strong> {trimDecimals(a.quantity)} {a.ticker}
-                    <span style={{ opacity: 0.65 }}> · {a.fromWallet || '—'} → {a.toWallet || '—'}</span>
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Cash movements ─────────────────────────────────────────────────── */}
+      {/* ── Asset movements (cash + crypto swaps/moves, SPEC-036) ───────────── */}
 
       <div className={`${styles.section} ${movementsFullscreen ? styles.movementsFullscreenSection : ''}`}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionLabel}>
-            Cash movements
+            Asset movements
             {activeFilterCount > 0 && (
-              <span className={styles.filterBadge}>{displayMovements.length}</span>
+              <span className={styles.filterBadge}>{combinedItems.length}</span>
             )}
           </span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button
+              type="button"
+              className={`${styles.filterToggleBtn} ${showStocks ? styles.filterToggleActive : ''}`}
+              onClick={() => setShowStocks(v => !v)}
+              title="Show / hide stock movements"
+            >
+              Stocks
+            </button>
+            <button
+              type="button"
+              className={`${styles.filterToggleBtn} ${showCrypto ? styles.filterToggleActive : ''}`}
+              onClick={() => setShowCrypto(v => !v)}
+              title="Show / hide crypto movements, swaps and wallet moves"
+            >
+              Crypto
+            </button>
             <button
               className={`${styles.filterToggleBtn} ${filterBarOpen ? styles.filterToggleOpen : ''} ${activeFilterCount > 0 ? styles.filterToggleActive : ''}`}
               onClick={toggleFilterBar}
@@ -1179,14 +1219,25 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
         )}
 
         <div className={styles.movementScrollWrap}>
-          {displayMovements.length === 0 ? (
+          {combinedItems.length === 0 ? (
             <p className={styles.emptySection}>
-              {activeFilterCount > 0 ? 'No movements match the current filters.' : 'No movements yet.'}
+              {(activeFilterCount > 0 || !showStocks || !showCrypto) ? 'No movements match the current filters.' : 'No movements yet.'}
             </p>
           ) : (
             <>
               <div className={styles.movementList}>
-                {shownMovements.map(m => (
+                {shownItems.map(item => {
+                  if (item.kind === 'activity') {
+                    return (
+                      <AssetActivityRow
+                        key={item.id}
+                        activity={item.activity}
+                        onDelete={() => requestDeleteActivity(item.activity)}
+                      />
+                    )
+                  }
+                  const m = item.movement
+                  return (
                   <MovementRow
                     key={m.id}
                     movement={m}
@@ -1222,7 +1273,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                             : null
                     }
                   />
-                ))}
+                  )
+                })}
               </div>
               {hasMore && (
                 <button
@@ -1230,7 +1282,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                   onClick={() => setVisibleCount(v => v + 50)}
                   type="button"
                 >
-                  Load more ({displayMovements.length - visibleCount} remaining)
+                  Load more ({combinedItems.length - visibleCount} remaining)
                 </button>
               )}
             </>
@@ -2943,6 +2995,45 @@ function CryptoWalletTransferForm({ position, onSave, onCancel }) {
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Move</button>
       </div>
     </form>
+  )
+}
+
+// ─── Asset-movements row for a crypto swap / wallet-transfer (SPEC-036) ────────
+// Informational (no cash impact). Shows swap legs + implied rate + crypto fee +
+// stored-price swap P/L, or a wallet move. Optional edit/delete.
+function AssetActivityRow({ activity: a, onEdit, onDelete }) {
+  let main
+  let plNode = null
+  if (a.type === 'swap') {
+    const rate  = a.from?.quantity > 0 ? a.to.quantity / a.from.quantity : null
+    const given = a.from?.price != null ? a.from.quantity * a.from.price : null
+    const recv  = a.to?.price != null ? a.to.quantity * a.to.price : null
+    const pl    = given != null && recv != null ? recv - given : null
+    main = (
+      <span style={{ flex: 1 }}>
+        <strong>Swap</strong> {trimDecimals(a.from.quantity)} {a.from.ticker} → {trimDecimals(a.to.quantity)} {a.to.ticker}
+        {rate != null && <span style={{ opacity: 0.65 }}> · 1 {a.from.ticker} = {trimDecimals(rate)} {a.to.ticker}</span>}
+        {a.fee?.coin && a.fee.quantity != null && <span style={{ opacity: 0.65 }}> · fee {trimDecimals(a.fee.quantity)} {a.fee.coin}</span>}
+      </span>
+    )
+    if (pl != null) plNode = <span style={{ color: pl >= 0 ? '#4ade80' : '#f87171' }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
+  } else {
+    main = (
+      <span style={{ flex: 1 }}>
+        <strong>Move</strong> {trimDecimals(a.quantity)} {a.ticker}
+        <span style={{ opacity: 0.65 }}> · {a.fromWallet || '—'} → {a.toWallet || '—'}</span>
+      </span>
+    )
+  }
+  return (
+    <div className={styles.movementRow} style={{ alignItems: 'baseline', gap: 8 }}>
+      <span className={styles.movementDate}>{a.date}</span>
+      {main}
+      {plNode}
+      <span style={{ opacity: 0.55, fontSize: '0.78em' }}>no cash</span>
+      {onEdit && <button type="button" className={styles.actionBtnSmall} onClick={onEdit}>Edit</button>}
+      {onDelete && <button type="button" className={styles.actionBtnSmall} onClick={onDelete}>Delete</button>}
+    </div>
   )
 }
 
