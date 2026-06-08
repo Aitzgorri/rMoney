@@ -172,6 +172,16 @@ export function getOpenLots(investingAccountId, ticker, asOfDate = null, assetCl
     .filter(lot => lot.remainingShares > 0.000001)
 }
 
+// SPEC-036: crypto swaps + wallet-transfers for an account — non-cash events that don't
+// appear in the cash-movement ledger. Newest first. Drives the "Crypto activity" list.
+export function getCryptoActivity(investingAccountId) {
+  return load()
+    .filter(t => t.investingAccountId === investingAccountId &&
+                 assetClassOf(t) === ASSET_CLASS.CRYPTO &&
+                 (t.type === 'swap' || t.type === 'wallet-transfer'))
+    .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt))
+}
+
 // Returns current open positions (ticker, shares, avgCost, currency) for an account,
 // scoped to one asset class (defaults to stock — see ASSET_CLASS note above).
 export function getPositions(investingAccountId, assetClass = ASSET_CLASS.STOCK) {

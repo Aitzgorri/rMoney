@@ -26,6 +26,7 @@ import {
   createTransfer,
   createSwap,
   createWalletTransfer,
+  getCryptoActivity,
   getStockTransaction,
   getStockTransactionsByTicker,
   createCurrencyExchange,
@@ -73,6 +74,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [positions,           setPositions]           = useState(() => getPositions(accountId))
   const [cryptoPositions,     setCryptoPositions]     = useState(() => getPositions(accountId, ASSET_CLASS.CRYPTO))
   const [enrichedCrypto,      setEnrichedCrypto]      = useState([])
+  const [cryptoActivity,      setCryptoActivity]      = useState(() => getCryptoActivity(accountId))
   const [cryptoActionPos,     setCryptoActionPos]     = useState(null)  // crypto position targeted by Sell/Swap/Transfer
   const [defaultSellTicker,   setDefaultSellTicker]   = useState(null)
   const [defaultDividendTicker, setDefaultDividendTicker] = useState(null)
@@ -115,6 +117,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     setMovements(getAccountCashMovements(accountId))
     setPositions(getPositions(accountId))
     setCryptoPositions(getPositions(accountId, ASSET_CLASS.CRYPTO))
+    setCryptoActivity(getCryptoActivity(accountId))
   }
 
   const balanceMap = Object.fromEntries(balances.map(b => [b.id, b]))
@@ -1051,6 +1054,50 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               },
             ]}
           />
+        </div>
+      )}
+
+      {/* ── Crypto activity (SPEC-036 — swaps + wallet moves, no cash leg) ──── */}
+
+      {cryptoActivity.length > 0 && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Crypto activity</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {cryptoActivity.map(a => {
+              if (a.type === 'swap') {
+                const rate = a.from?.quantity > 0 ? a.to.quantity / a.from.quantity : null
+                const given = a.from?.price != null ? a.from.quantity * a.from.price : null
+                const recv  = a.to?.price != null ? a.to.quantity * a.to.price : null
+                const pl    = given != null && recv != null ? recv - given : null
+                const plColor = pl != null ? (pl >= 0 ? '#4ade80' : '#f87171') : undefined
+                return (
+                  <div key={a.id} className={styles.movementRow} style={{ alignItems: 'baseline' }}>
+                    <span className={styles.movementDate}>{a.date}</span>
+                    <span style={{ flex: 1 }}>
+                      <strong>Swap</strong> {trimDecimals(a.from.quantity)} {a.from.ticker} → {trimDecimals(a.to.quantity)} {a.to.ticker}
+                      {rate != null && <span style={{ opacity: 0.65 }}> · 1 {a.from.ticker} = {trimDecimals(rate)} {a.to.ticker}</span>}
+                      {a.fee && <span style={{ opacity: 0.65 }}> · fee {trimDecimals(a.fee.quantity)} {a.fee.coin}</span>}
+                    </span>
+                    {pl != null && (
+                      <span style={{ color: plColor }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
+                    )}
+                  </div>
+                )
+              }
+              // wallet-transfer
+              return (
+                <div key={a.id} className={styles.movementRow} style={{ alignItems: 'baseline' }}>
+                  <span className={styles.movementDate}>{a.date}</span>
+                  <span style={{ flex: 1 }}>
+                    <strong>Move</strong> {trimDecimals(a.quantity)} {a.ticker}
+                    <span style={{ opacity: 0.65 }}> · {a.fromWallet || '—'} → {a.toWallet || '—'}</span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
