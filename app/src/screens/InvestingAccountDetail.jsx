@@ -3075,9 +3075,6 @@ function AssetActivityRow({ activity: a, isExpanded, onToggle, onEdit, onDelete 
           ? <span className={styles.movementAmount} style={{ color: plColor }}>{pl >= 0 ? '+' : '−'}{fmtAmt(Math.abs(pl))} {a.currency}</span>
           : <span className={`${styles.movementAmount} ${styles.muted}`}>no cash</span>}
         <span className={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</span>
-        {onDelete && (
-          <button className={styles.movementDeleteBtn} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete" aria-label="Delete">×</button>
-        )}
       </div>
       {isExpanded && (
         <div className={styles.movementDetail}>
@@ -3111,9 +3108,14 @@ function AssetActivityRow({ activity: a, isExpanded, onToggle, onEdit, onDelete 
             )}
           </div>
           <p className={styles.formSubtitle}>No cash impact — a swap is coin-for-coin; a wallet move only relabels where the coin is held.</p>
-          {isSwap && onEdit && (
-            <button className={styles.detailEditBtn} onClick={onEdit}>Edit swap →</button>
-          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {isSwap && onEdit && (
+              <button className={styles.detailEditBtn} onClick={onEdit}>Edit swap →</button>
+            )}
+            {onDelete && (
+              <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>
+            )}
+          </div>
         </div>
       )}
     </div>
