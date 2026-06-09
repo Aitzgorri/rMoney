@@ -104,6 +104,50 @@ The app holds credentials that can move money (IBKR OAuth tokens) and consume pa
 - [x] **Forgotten-passphrase recovery:** `PassphraseUnlock.jsx` "Forgot passphrase?" link → confirmation screen explaining all keys will be lost → clears `apiKeySet` flags in localStorage → calls `deleteVaultFile()` → transitions to `PassphraseSetup`.
 - [x] **Memory hygiene:** market data keys are fetched inside `buildProviderCfg()` per call and not retained; AI keys are fetched inside `sendRequest()` / `callAi()` per request. The module-level `_store` reference holds the Stronghold session, not the plaintext keys.
 
+### Access and password modes (Phase 39)
+
+Until now the passphrase was **mandatory on every Tauri launch** and protected **only the API keys** (all financial data stayed in plaintext `localStorage`). Phase 39 makes the passphrase a **user choice between three modes**, configured in a new **Settings → Security** tab and chosen at first launch. This section *amends* the "First-launch flow" / "Subsequent-launch flow" criteria above: those describe the behaviour of the `app` mode specifically; they are no longer unconditional.
+
+#### The three modes
+
+- **`app` — password protects the whole app (full at-rest encryption).** A passphrase is required at startup before any screen renders. The Stronghold vault holds **both the API keys and an encrypted snapshot of all app data** (`rmoney_*` collections). While the app is open, the decrypted data lives **in memory only** — never written to disk in plaintext (Strategy B, see below). This is the strongest mode and the only one that protects against a stolen/imaged disk.
+- **`keys` — password protects API keys only.** The app opens immediately with **no prompt**. The vault is unlocked **lazily** the first time a key is actually needed (revealing/changing a key in Settings, or the first market-data / AI request). Financial data stays in plaintext `localStorage`, as it is today. This matches the *stated purpose* of the original vault design.
+- **`none` — no password anywhere.** No vault, no prompt. API keys are stored unencrypted in `localStorage` (the existing `rmoney_dev_secrets` mechanism, promoted to a first-class storage backend). Clearly flagged in the UI as the lowest-security option. This is also the only mode available on non-Tauri builds (Vite dev, Capacitor Android), because Stronghold is Tauri-only.
+
+#### Storage architecture (Strategy B — in-memory store behind a wrapper)
+
+- [ ] A single **`appStorage` module** (`app/src/utils/appStorage.js`) is introduced with a synchronous `getItem` / `setItem` / `removeItem` / `keys` API mirroring `localStorage`. **All 38 files** that currently call `localStorage.*` for `rmoney_*` keys are migrated to import and use `appStorage` instead. (Non-`rmoney_*` infrastructure keys — the vault-created flag, the security-mode flag itself, dev-secrets — keep raw `localStorage` access because they must be readable *before* the store is hydrated.)
+- [ ] `appStorage` has a **swappable backend** selected by the active `securityMode`:
+  - `none` / `keys` modes → backend is plain `localStorage` (today's behaviour; zero functional change).
+  - `app` mode → backend is an **in-memory `Map`**, hydrated from the decrypted vault snapshot on unlock and flushed back (encrypted, debounced) on every mutation. The plaintext snapshot is **never** written to `localStorage` or disk.
+- [ ] In `app` mode the full snapshot is persisted as a **single Stronghold record** (`appData/snapshot`, a JSON blob of all `rmoney_*` key/values) alongside the existing per-key secret records. Writes are debounced (e.g. 500 ms) and also flushed on `app` lock / `visibilitychange` hidden / before unload.
+- [ ] On lock or app close in `app` mode, the in-memory map is dropped; nothing decrypted remains. A subsequent launch shows the unlock screen and re-hydrates only after a correct passphrase.
+
+#### Mode selection and transitions
+
+- [ ] **First launch (new install):** a mode-selection screen offers the three modes with a one-line security summary each. Choosing `app` or `keys` proceeds to passphrase creation (reusing `PassphraseSetup`, min. 12 chars); choosing `none` proceeds straight into the app. The chosen mode is written to `securityMode`.
+- [ ] **Existing vault users (upgrade):** users who already have a vault (`rmoney_vault_created`) are defaulted to **`app` mode** so their current "passphrase asked at startup" experience is preserved — *and* on the first unlock after upgrade, a one-time migration encrypts all existing `rmoney_*` data into the vault snapshot and clears the plaintext copies. They are never silently downgraded to a mode with no startup prompt.
+- [ ] **Settings → Security tab** lets the user switch modes at any time. Every transition that changes what the passphrase protects requires confirming the **current passphrase** (to read/decrypt) and, when a vault is being created, setting a **new passphrase**:
+  - `none → keys`: create vault, move plaintext keys into it.
+  - `none → app`: create vault, encrypt all data + keys into it, enable startup gate.
+  - `keys → app`: encrypt all data into the existing vault, enable startup gate.
+  - `keys → none`: decrypt keys out to plaintext, delete vault.
+  - `app → keys`: decrypt all data back to plaintext `localStorage`, keep keys in vault, disable startup gate.
+  - `app → none`: decrypt everything to plaintext, delete vault.
+  - **Change passphrase** (within `app` or `keys`): re-key the vault; old passphrase required.
+- [ ] The Security tab states the current mode, what it protects, and (for `none`) a prominent reduced-security warning. On non-Tauri builds the tab shows only `none` as available, with a note that encryption requires the desktop build.
+
+#### Backup / restore and other integrations
+
+- [ ] **Sharable export** is unchanged in all modes: it reads the current (decrypted, in-memory in `app` mode) data through `appStorage`, redacts keys, writes plaintext JSON. Works because the data is decrypted in memory during the session.
+- [ ] **Full backup** in `app` mode embeds the encrypted vault (existing `_strongholdVault` path) — which now also carries the data snapshot — so a restore reconstructs everything behind the same passphrase. In `keys` mode it behaves as today (vault carries keys only; data rides in the plaintext payload). In `none` mode there is no vault to embed.
+- [ ] The `securityMode` flag rides inside the existing `rmoney_settings` blob (a non-secret flag, allowed by the localStorage-discipline rule above), so **no new Settings → Storage card** is required — same precedent as `favoriteCountries`. The encrypted vault snapshot is not a `localStorage` collection and is represented in the Storage tab only as an informational note, not a deletable card.
+- [ ] **Forgot-passphrase** in `app` mode is far more destructive than in `keys` mode (it loses **all data**, not just keys). The reset confirmation copy is mode-aware and spells this out explicitly before proceeding.
+
+#### Migration / compatibility note
+
+- [ ] The full-data snapshot inside the vault is versioned (`appData/snapshotVersion`) so the in-vault format can evolve independently of the on-disk backup format (`rmoney-data-vN`). Document the version alongside the backup-format table in `RELEASE.md` when Phase 39 ships.
+
 ### Future-state markers
 - [ ] When cloud sync ships (post-Phase 2 in `project goal.md`): the Stronghold vault file itself is what syncs across devices; the cloud backend never sees plaintext keys. **Do not begin cloud sync without revisiting this spec.**
 - [ ] When multi-user ships (post-Phase 2): each user has a separate Stronghold vault, separate passphrase, never shared. Same revisit-this-spec rule.

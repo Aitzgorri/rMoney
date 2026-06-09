@@ -47,6 +47,7 @@
 | 36 — Tier 3/4/6 adapters + splits + exchange + polish | ✓ shipped in v0.35.0 | Finnhub/Stooq, API splits (36d), exchange selector (36c), CSV template (36f), lot picker (36g) |
 | 37 — Selective reset + responsive header | ✓ shipped in v0.35.0 | 37a Reset data (SPEC-016), 37b responsive Stock page (SPEC-021) |
 | 38 — June 2026 adjustments | ✓ shipped in v0.36.0 | 430–439 batch + Buy-Sell cash-impact follow-up; backup → rmoney-data-v4 |
+| 39 — Access / password modes | planned | SPEC-031 ext: app / keys-only / none modes + Settings → Security tab + `appStorage` wrapper (Strategy B full at-rest encryption) |
 
 ---
 
@@ -144,6 +145,23 @@ All criteria met. The audit found the shared responsive components already cover
 
 ### Moved out of Phase 21b → tracked in SPEC-030 § Mobile parity (deferred)
 - 228a Watchlists & alerts on mobile, and 228b Tauri local notifications — these belong to the watchlists feature, not the Investments-screen rendering work. Still deferred.
+
+---
+
+## Phase 39 — Access / password modes (planned)
+
+> Lets the user choose how the passphrase protects the app: **`app`** (whole-app, full at-rest encryption), **`keys`** (API keys only, as the vault was originally intended), or **`none`** (no password). Design lives in [SPEC-031 § Access and password modes](features/SPEC-031-security-and-secrets-handling.md). Decisions locked 2026-06-09: app mode = full at-rest encryption; engine = **Strategy B** (in-memory store behind an `appStorage` wrapper).
+>
+> **Touches secrets / vault — re-read SPEC-031 before each sub-phase.** Existing-vault users default to `app` mode (startup prompt preserved) with a one-time data-into-vault migration on first unlock; never silently downgraded.
+
+Recommended sub-phase order (each is independently shippable / testable):
+
+39a. **`appStorage` wrapper + migration of the 38 data files.** Introduce `app/src/utils/appStorage.js` (sync `getItem`/`setItem`/`removeItem`/`keys`, `localStorage` backend by default). Mechanically migrate every `rmoney_*` `localStorage.*` call site to it. **No behaviour change** — pure refactor, lands first to de-risk the rest. (Infra keys — `rmoney_vault_created`, the `securityMode` flag, `rmoney_dev_secrets` — keep raw `localStorage`.)
+39b. **`securityMode` flag + Settings → Security tab (read-only first).** Add `securityMode` to `rmoney_settings` (get/set), render the new tab showing current mode + what it protects. Default existing-vault users to `app`, new users prompted at first launch.
+39c. **First-launch mode-selection screen.** New-install flow offers the three modes; `app`/`keys` route into `PassphraseSetup`, `none` goes straight in.
+39d. **`keys` and `none` modes (no full-data encryption yet).** Lazy vault unlock for `keys`; promote `rmoney_dev_secrets` to a first-class plaintext backend for `none`. Wire mode transitions that don't involve the data snapshot (`none↔keys`, change-passphrase).
+39e. **`app` mode in-memory backend + vault data snapshot (Strategy B core).** In-memory `Map` backend for `appStorage`, hydrate-on-unlock / debounced-encrypt-on-change / drop-on-lock; `appData/snapshot` + `appData/snapshotVersion` records; one-time existing-user migration.
+39f. **Remaining transitions + backup/restore integration.** `keys↔app`, `app→none`, mode-aware Forgot-passphrase copy, Full-backup vault-embed in `app` mode, Storage-tab informational note, `RELEASE.md` snapshot-version entry.
 
 ---
 
