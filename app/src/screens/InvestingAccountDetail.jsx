@@ -58,12 +58,20 @@ import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
 import CurrencyDropdown from '../components/CurrencyDropdown'
+import { BuyEditForm, SellEditForm } from '../components/StockTxEditForms'
+import { applyBuyEdit, applySellEdit } from '../data/stockTxEdit'
 import styles from './InvestingAccountDetail.module.css'
 
 function today() { return new Date().toISOString().split('T')[0] }
 
 // Fee movement types merged into parent rows; not rendered as standalone rows.
 const FEE_TYPES = new Set(['buy-fee', 'sell-fee', 'exchange-fee'])
+
+// Human labels for the delete-confirmation dialog, keyed by stock-transaction type.
+const STOCK_TXN_DELETE_LABELS = {
+  buy: 'buy', sell: 'sell', transfer: 'transfer',
+  swap: 'swap', 'wallet-transfer': 'wallet move',
+}
 
 // ─── Main detail screen ───────────────────────────────────────────────────────
 
@@ -395,23 +403,13 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   }
 
   async function handleUpdateBuy(params) {
-    const mainCurrency = getMainCurrency()
-    let exchangeRates = editingStockTx.exchangeRates
-    if (params.date !== editingStockTx.date || !exchangeRates) {
-      exchangeRates = await snapshotFxRates(editingStockTx.currency, params.date, mainCurrency)
-    }
-    updateBuy(editingStockTx.id, { ...params, exchangeRates })
+    await applyBuyEdit(editingStockTx, params)
     refresh()
     setEditingStockTx(null)
   }
 
   async function handleUpdateSell(params) {
-    const mainCurrency = getMainCurrency()
-    let exchangeRates = editingStockTx.exchangeRates
-    if (params.date !== editingStockTx.date || !exchangeRates) {
-      exchangeRates = await snapshotFxRates(editingStockTx.currency, params.date, mainCurrency)
-    }
-    updateSell(editingStockTx.id, { ...params, exchangeRates })
+    await applySellEdit(editingStockTx, params)
     refresh()
     setEditingStockTx(null)
   }
@@ -547,8 +545,10 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
     closeForm()
   }
 
-  // Delete a crypto swap / wallet-transfer (from the Asset movements list). A swap is blocked
-  // if the coin it produced has since been sold or swapped (canDeleteStockTransaction).
+  // Guarded delete (with confirmation) for any stock-transaction-backed row in the Asset
+  // movements list — buys, sells, transfers, and crypto swaps / wallet-transfers. The
+  // `canDeleteStockTransaction` guard blocks a buy whose lot is consumed, a transfer whose
+  // destination lots are consumed, or a swap whose produced coin was sold/swapped.
   function requestDeleteActivity(activity) {
     const { canDelete, reason } = canDeleteStockTransaction(activity.id)
     setActivityDelete(canDelete ? { activity } : { activity, blocked: true, reason })
@@ -892,8 +892,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               </>
             ) : (
               <>
-                <h3>Delete {activityDelete.activity.type === 'swap' ? 'swap' : 'wallet move'}?</h3>
-                <p>This reverses its effect on your crypto holdings and can't be undone.</p>
+                <h3>Delete {STOCK_TXN_DELETE_LABELS[activityDelete.activity.type] ?? 'transaction'}?</h3>
+                <p>This removes the record and its linked cash movements, then reverses its effect on your holdings and cash balances. It can't be undone.</p>
                 <div className={styles.dialogActions}>
                   <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)}>Cancel</button>
                   <button className={styles.proceedBtn} onClick={confirmDeleteActivity}>Delete</button>
@@ -1307,7 +1307,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                           ? () => { deleteCashMovement(m.id); refresh(); setExpandedMovementId(null) }
                           : (m.type === 'currency-exchange' && m.linkedStockTransactionId)
                             ? () => { deleteStockTransaction(m.linkedStockTransactionId); refresh(); setExpandedMovementId(null) }
-                            : null
+                            : (['buy', 'sell', 'transfer-fee'].includes(m.type) && m.linkedStockTransactionId)
+                              ? () => { const txn = getStockTransaction(m.linkedStockTransactionId); if (txn) { requestDeleteActivity(txn); setExpandedMovementId(null) } }
+                              : null
                     }
                     onEdit={
                       (m.type === 'currency-exchange' && m.linkedStockTransactionId)
@@ -1461,9 +1463,6 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
           {isNeg ? '−' : '+'}{fmtAmt(Math.abs(displayAmount))} {currency}
         </span>
         {!isOpening && <span className={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</span>}
-        {onDelete && (
-          <button className={styles.movementDeleteBtn} onClick={e => { e.stopPropagation(); onDelete() }} title="Delete movement" aria-label="Delete movement">×</button>
-        )}
       </div>
       {isExpanded && (
         <MovementDetail
@@ -1474,6 +1473,7 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
           balanceMap={balanceMap}
           onOpenLinkedTx={onOpenLinkedTx}
           onEdit={onEdit}
+          onDelete={onDelete}
         />
       )}
     </div>
@@ -1482,8 +1482,13 @@ function MovementRow({ movement, currency, allMovements, balanceMap, isExpanded,
 
 // ─── Movement detail (expanded) ───────────────────────────────────────────────
 
-function MovementDetail({ movement, currency, feeMovement, allMovements, balanceMap, onOpenLinkedTx, onEdit }) {
+function MovementDetail({ movement, currency, feeMovement, allMovements, balanceMap, onOpenLinkedTx, onEdit, onDelete }) {
   const stockTxn = movement.linkedStockTransactionId ? getStockTransaction(movement.linkedStockTransactionId) : null
+  // Shared action footer: edit (label/handler vary per branch) sits next to a red Delete,
+  // mirroring the crypto AssetActivityRow layout (delete now lives in the expanded detail).
+  const deleteBtn = onDelete && (
+    <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>
+  )
 
   if ((movement.type === 'buy' || movement.type === 'sell') && stockTxn) {
     const isBuy = movement.type === 'buy'
@@ -1515,11 +1520,14 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
             <span className={styles.detailMono}>{stockTxn.transactionExternalId}</span>
           </>}
         </div>
-        {onEdit && (
-          <button className={styles.detailEditBtn} onClick={onEdit}>
-            Edit {isBuy ? 'buy' : 'sell'} →
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onEdit && (
+            <button className={styles.detailEditBtn} onClick={onEdit}>
+              Edit {isBuy ? 'buy' : 'sell'} →
+            </button>
+          )}
+          {deleteBtn}
+        </div>
       </div>
     )
   }
@@ -1556,11 +1564,14 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
           <span className={styles.detailLabel}>Date</span>
           <span>{movement.date}</span>
         </div>
-        {onOpenLinkedTx && (
-          <button className={styles.detailEditBtn} onClick={onOpenLinkedTx}>
-            Edit linked transaction →
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onOpenLinkedTx && (
+            <button className={styles.detailEditBtn} onClick={onOpenLinkedTx}>
+              Edit linked transaction →
+            </button>
+          )}
+          {deleteBtn}
+        </div>
       </div>
     )
   }
@@ -1591,6 +1602,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
           <span className={styles.detailLabel}>Payout date</span>
           <span>{dividend.payoutDate}</span>
         </div>
+        {deleteBtn && <div style={{ display: 'flex', gap: 8 }}>{deleteBtn}</div>}
       </div>
     )
   }
@@ -1632,9 +1644,12 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
             <span>{fmtAmt(Math.abs(feeMovEx.amount))} {feeCurrency}</span>
           </>}
         </div>
-        {onEdit && movement.linkedStockTransactionId && (
-          <button className={styles.detailEditBtn} onClick={onEdit}>Edit exchange →</button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onEdit && movement.linkedStockTransactionId && (
+            <button className={styles.detailEditBtn} onClick={onEdit}>Edit exchange →</button>
+          )}
+          {deleteBtn}
+        </div>
       </div>
     )
   }
@@ -1657,9 +1672,12 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
             <span className={styles.detailMono}>{stockTxn.transactionExternalId}</span>
           </>}
         </div>
-        {onEdit && (
-          <button className={styles.detailEditBtn} onClick={onEdit}>Edit transfer →</button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onEdit && (
+            <button className={styles.detailEditBtn} onClick={onEdit}>Edit transfer →</button>
+          )}
+          {deleteBtn}
+        </div>
       </div>
     )
   }
@@ -3330,241 +3348,6 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
-      </div>
-    </form>
-  )
-}
-
-// ─── Buy edit form (26c) ─────────────────────────────────────────────────────
-
-// Ticker and currency are non-editable. Only the numeric / metadata fields can change.
-function BuyEditForm({ txn, onSave, onCancel }) {
-  const [date,          setDate]          = useState(txn.date)
-  const [stockExchange, setStockExchange] = useState(txn.stockExchange ?? '')
-  const [shares,        setShares]        = useState(String(txn.shares))
-  const [price,         setPrice]         = useState(String(txn.price))
-  const [fee,           setFee]           = useState(String(txn.fee ?? 0))
-  const [extId,         setExtId]         = useState(txn.transactionExternalId ?? '')
-  const [saveError,     setSaveError]     = useState(null)
-
-  const feeMismatch = txn.feeCurrency && txn.feeCurrency !== txn.currency
-  const total  = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
-  const canSave = Number(shares) > 0 && Number(price) > 0 && !feeMismatch
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSave) return
-    setSaveError(null)
-    try {
-      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
-    } catch (err) {
-      setSaveError(err.message)
-    }
-  }
-
-  return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <h3 className={styles.formTitle}>Edit buy — {txn.ticker}</h3>
-      <p className={styles.formSubtitle}>{txn.currency} · ticker and currency cannot be changed here</p>
-      {feeMismatch && (
-        <p className={styles.formError}>Fee currency ({txn.feeCurrency}) differs from trade currency ({txn.currency}) — this record cannot be edited until the mismatch is corrected.</p>
-      )}
-      {saveError && <p className={styles.formError}>{saveError}</p>}
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Date</label>
-        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Exchange (optional)</label>
-        <input className={styles.formInput} value={stockExchange} onChange={e => setStockExchange(e.target.value)} placeholder="NASDAQ" />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Shares</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => setShares(e.target.value)} autoFocus />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Price per share ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Fee ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Transaction ID (optional)</label>
-        <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
-      </div>
-      {total > 0 && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {txn.currency}</p>}
-      <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
-      </div>
-    </form>
-  )
-}
-
-// ─── Sell edit form (26c) ─────────────────────────────────────────────────────
-
-function SellEditForm({ txn, accountId, onSave, onCancel }) {
-  const [date,          setDate]          = useState(txn.date)
-  const [stockExchange, setStockExchange] = useState(txn.stockExchange ?? '')
-  const [shares,        setShares]        = useState(String(txn.shares))
-  const [price,         setPrice]         = useState(String(txn.price))
-  const [fee,           setFee]           = useState(String(txn.fee ?? 0))
-  const [extId,         setExtId]         = useState(txn.transactionExternalId ?? '')
-  const [saveError,     setSaveError]     = useState(null)
-
-  const feeMismatch = txn.feeCurrency && txn.feeCurrency !== txn.currency
-  const [showLots,      setShowLots]      = useState(false)
-  const [lotInputs,     setLotInputs]     = useState(() => {
-    const inputs = {}
-    for (const alloc of txn.lotAllocations ?? []) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
-    return inputs
-  })
-  // Phase 32c / item 368: lot-edit toggles manual mode (lots → total). Closing +
-  // reopening the picker resets to auto-mode (total → lots via FIFO).
-  const [manualMode,    setManualMode]    = useState(false)
-
-  // Open lots EXCLUDING the shares being sold (they're currently "consumed" by this sell record).
-  // updateSell deletes and recreates the movements, so for UI purposes we show the lots as if this sell didn't exist.
-  const openLots = getOpenLots(accountId, txn.ticker)
-  // Add back the shares from the existing allocation so the user can redistribute them
-  const lotsWithCredit = openLots.map(lot => {
-    const existingAlloc = txn.lotAllocations?.find(a => a.sourceBuyId === lot.id)
-    return existingAlloc
-      ? { ...lot, remainingShares: lot.remainingShares + existingAlloc.sharesFromLot }
-      : lot
-  })
-
-  function handleSharesChange(value) {
-    setShares(value)
-    if (showLots && !manualMode && lotsWithCredit.length > 0) {
-      const sharesToSell = Number(value || 0)
-      const inputs = {}
-      if (sharesToSell > 0) {
-        const { allocations } = computeFifoAllocations(lotsWithCredit, sharesToSell)
-        for (const alloc of allocations) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
-      }
-      for (const lot of lotsWithCredit) if (!(lot.id in inputs)) inputs[lot.id] = '0'
-      setLotInputs(inputs)
-    }
-  }
-
-  function handleLotChange(lotId, raw) {
-    const lot = lotsWithCredit.find(l => l.id === lotId)
-    if (!lot) return
-    // Phase 32c / item 367: clamp to lot's remaining shares (including the credit-back
-    // from the existing allocation, so the user can redistribute up to what's truly available).
-    let clamped = raw
-    const numVal = Number(raw)
-    if (Number.isFinite(numVal) && numVal > lot.remainingShares) {
-      clamped = String(lot.remainingShares)
-    }
-    const nextInputs = { ...lotInputs, [lotId]: clamped }
-    setLotInputs(nextInputs)
-    setManualMode(true)
-    const sum = Object.values(nextInputs).reduce((s, v) => s + Number(v || 0), 0)
-    setShares(sum > 0 ? trimDecimals(sum) : '')
-  }
-
-  function toggleLots() {
-    if (!showLots) {
-      const sharesToSell = Number(shares || 0)
-      const inputs = {}
-      if (sharesToSell > 0 && lotsWithCredit.length > 0) {
-        const { allocations } = computeFifoAllocations(lotsWithCredit, sharesToSell)
-        for (const alloc of allocations) inputs[alloc.sourceBuyId] = String(alloc.sharesFromLot)
-      }
-      for (const lot of lotsWithCredit) if (!(lot.id in inputs)) inputs[lot.id] = '0'
-      setLotInputs(inputs)
-      setManualMode(false)
-    }
-    setShowLots(v => !v)
-  }
-
-  const lotTotal = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
-  const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
-  const proceeds = Number(shares || 0) * Number(price || 0)
-  const canSave  = Number(shares) > 0 && Number(price) > 0 && lotValid && !feeMismatch
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSave) return
-    setSaveError(null)
-    try {
-      const lotAllocations = showLots
-        ? Object.entries(lotInputs).filter(([, v]) => Number(v) > 0).map(([sourceBuyId, v]) => ({ sourceBuyId, sharesFromLot: Number(v) }))
-        : null
-      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null, lotAllocations })
-    } catch (err) {
-      setSaveError(err.message)
-    }
-  }
-
-  return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <h3 className={styles.formTitle}>Edit sell — {txn.ticker}</h3>
-      <p className={styles.formSubtitle}>{txn.currency} · ticker and currency cannot be changed here</p>
-      {feeMismatch && (
-        <p className={styles.formError}>Fee currency ({txn.feeCurrency}) differs from trade currency ({txn.currency}) — this record cannot be edited until the mismatch is corrected.</p>
-      )}
-      {saveError && <p className={styles.formError}>{saveError}</p>}
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Date</label>
-        <input className={styles.formInput} type="date" value={date} onChange={e => setDate(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Exchange (optional)</label>
-        <input className={styles.formInput} value={stockExchange} onChange={e => setStockExchange(e.target.value)} placeholder="NASDAQ" />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Shares</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={shares} onChange={e => handleSharesChange(e.target.value)} autoFocus />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Price per share ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Fee ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
-      </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>Transaction ID (optional)</label>
-        <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
-      </div>
-      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - Number(fee || 0))} {txn.currency}</p>}
-      {lotsWithCredit.length > 0 && (
-        <div className={styles.lotPickerSection}>
-          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
-            {showLots ? '▲' : '▼'} Advanced: choose lots
-          </button>
-          {showLots && (
-            <div className={styles.lotList}>
-              {lotsWithCredit.map(lot => (
-                <div key={lot.id} className={styles.lotRow}>
-                  <span className={styles.lotMeta}>{lot.date} · {trimDecimals(lot.remainingShares)} sh @ {fmtAmt(lot.price)}</span>
-                  <input
-                    className={styles.lotInput}
-                    type="number" min="0" max={lot.remainingShares} step="any"
-                    value={lotInputs[lot.id] ?? '0'}
-                    onChange={e => handleLotChange(lot.id, e.target.value)}
-                  />
-                  <span className={styles.lotMaxHint}>max {trimDecimals(lot.remainingShares)}</span>
-                </div>
-              ))}
-              {!lotValid && (
-                <p className={styles.fieldError}>
-                  Lot totals ({trimDecimals(lotTotal)}) must equal shares to sell ({shares}).
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
       </div>
     </form>
   )

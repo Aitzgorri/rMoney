@@ -1754,18 +1754,40 @@
   flex-shrink: 0;
   background: #161c2a;
   border: 1px solid #2a3344;
+}
+
+/* Whole transaction row is clickable to expand its details + edit/delete actions */
+.txRowClickable { cursor: pointer; }
+.txRowClickable:hover { background: #232b3d; }
+.txExpandIcon { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
+
+/* Expanded panel under a transaction row */
+.txExpanded {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: -2px 0 6px 0;
+  padding: 8px 10px;
+  background: #181f2d;
+  border-radius: 0 0 8px 8px;
+}
+.txDetailActions { display: flex; gap: 8px; }
+.txDetailBtn {
+  background: none;
+  border: 1px solid #2a3344;
+  border-radius: 6px;
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
   cursor: pointer;
 }
-.txRealizedChip:hover { border-color: #3b4a63; }
+.txDetailBtn:hover { background: #1e2535; border-color: #3b4a63; }
 
 .txLotBreakdown {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: -2px 0 4px 92px;
-  padding: 6px 10px;
-  background: #181f2d;
-  border-radius: 0 0 8px 8px;
 }
 .txLotRow {
   display: flex;

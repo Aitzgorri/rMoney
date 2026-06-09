@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getStockTransactionsByTicker, getTriggeredExchangesByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell } from '../data/stockTransactions'
+import { getStockTransactionsByTicker, getTriggeredExchangesByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell, canDeleteStockTransaction, deleteStockTransaction } from '../data/stockTransactions'
+import { BuyEditForm, SellEditForm } from '../components/StockTxEditForms'
+import { applyBuyEdit, applySellEdit } from '../data/stockTxEdit'
 import { getDividendsByTicker, computeDividendDerived, resolveDividendTaxPercent, updateDividend, deleteDividend } from '../data/dividends'
 import { getInvestingAccounts, getCashBalances, getCashBalance, getCashBalanceByCurrency, getCurrentBalance } from '../data/investingAccounts'
 import { getAllPortfolioAssignments, getPortfolios } from '../data/portfolios'
@@ -111,7 +113,9 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [divHiddenCols,       setDivHiddenCols]       = useState(() => loadHiddenDivCols())
   const [deletingDividend,    setDeletingDividend]    = useState(null) // user dividend record being deleted
   const [expandedPositions,   setExpandedPositions]   = useState(() => new Set()) // expanded position account IDs
-  const [expandedSells,       setExpandedSells]       = useState(() => new Set()) // expanded sell IDs (realized P/L breakdown)
+  const [expandedTxId,        setExpandedTxId]        = useState(null)  // expanded transaction row (details + edit/delete)
+  const [editingStockTx,      setEditingStockTx]      = useState(null)  // buy/sell being edited (shared form)
+  const [deletingTx,          setDeletingTx]          = useState(null)  // { txn, blocked?, reason? } pending delete confirm
   const payoutListRef = useRef(null)
   const divColPickerRef = useRef(null)
   const [resetState, setResetState] = useState('idle')
@@ -304,6 +308,22 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
     const exchangeRates = await snapshotFxRates(params.currency, params.date, getMainCurrency())
     createSell({ ...params, investingAccountId: accId, exchangeRates })
     closeAction()
+  }
+
+  // Edit / delete of a buy or sell straight from the stock page (SPEC-019). Reuses the shared
+  // forms + cascade helper; setState below re-renders so positions/realized P/L re-read fresh.
+  async function handleUpdateStockTx(params) {
+    if (editingStockTx.type === 'buy') await applyBuyEdit(editingStockTx, params)
+    else await applySellEdit(editingStockTx, params)
+    setEditingStockTx(null); setExpandedTxId(null)
+  }
+  function requestDeleteTx(t) {
+    const { canDelete, reason } = canDeleteStockTransaction(t.id)
+    setDeletingTx(canDelete ? { txn: t } : { txn: t, blocked: true, reason })
+  }
+  function confirmDeleteTx() {
+    deleteStockTransaction(deletingTx.txn.id)
+    setDeletingTx(null); setExpandedTxId(null)
   }
 
 
@@ -1082,6 +1102,41 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
         />
       )}
 
+      {editingStockTx && (
+        <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) setEditingStockTx(null) }}>
+          <div className={styles.dialogBox}>
+            {editingStockTx.type === 'buy'
+              ? <BuyEditForm txn={editingStockTx} onSave={handleUpdateStockTx} onCancel={() => setEditingStockTx(null)} />
+              : <SellEditForm txn={editingStockTx} onSave={handleUpdateStockTx} onCancel={() => setEditingStockTx(null)} />}
+          </div>
+        </div>
+      )}
+
+      {deletingTx && (
+        <div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) setDeletingTx(null) }}>
+          <div className={styles.dialogBox}>
+            {deletingTx.blocked ? (
+              <>
+                <h2 className={styles.dialogTitle}>Can't delete</h2>
+                <p className={styles.dialogNote}>{deletingTx.reason}</p>
+                <div className={styles.dialogActions}>
+                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className={styles.dialogTitle}>Delete {deletingTx.txn._kind === 'currency-exchange' ? 'currency exchange' : deletingTx.txn._kind}?</h2>
+                <p className={styles.dialogNote}>This removes the record and its linked cash movements, then recalculates your positions. It can't be undone.</p>
+                <div className={styles.dialogActions}>
+                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)}>Cancel</button>
+                  <button className={styles.dialogDangerBtn} onClick={confirmDeleteTx}>Delete</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {yieldDetailKind && (
         <YieldDetailDialog
           kind={yieldDetailKind}
@@ -1591,22 +1646,33 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
               <p className={styles.empty}>No transactions.</p>
             ) : (
               <div className={styles.txList} style={{ maxHeight: '570px', overflowY: 'auto' }}>
-                {filteredTxns.map(t => (
-                  <TxRow
-                    key={t.id}
-                    txn={t}
-                    accountsById={accountsById}
-                    onEditSplit={t._kind === 'split' ? () => setEditingSplitTx(t) : null}
-                    mainCurrency={mainCurrency}
-                    realized={t._kind === 'sell' ? realizedBySellId[t.id] : null}
-                    expanded={expandedSells.has(t.id)}
-                    onToggleRealized={() => setExpandedSells(prev => {
-                      const next = new Set(prev)
-                      next.has(t.id) ? next.delete(t.id) : next.add(t.id)
-                      return next
-                    })}
-                  />
-                ))}
+                {filteredTxns.map(t => {
+                  const k = t._kind
+                  const editLabel = { buy: 'buy', sell: 'sell', split: 'split', dividend: 'dividend' }[k] ?? null
+                  return (
+                    <TxRow
+                      key={t.id}
+                      txn={t}
+                      accountsById={accountsById}
+                      mainCurrency={mainCurrency}
+                      realized={k === 'sell' ? realizedBySellId[t.id] : null}
+                      expanded={expandedTxId === t.id}
+                      onToggle={() => setExpandedTxId(prev => (prev === t.id ? null : t.id))}
+                      editLabel={editLabel}
+                      onEdit={
+                        k === 'split' ? () => setEditingSplitTx(t)
+                          : k === 'dividend' ? () => setEditingDividend(t)
+                            : (k === 'buy' || k === 'sell') ? () => setEditingStockTx(t)
+                              : null
+                      }
+                      onDelete={
+                        k === 'dividend' ? () => setDeletingDividend(t)
+                          : ['buy', 'sell', 'transfer', 'split', 'currency-exchange'].includes(k) ? () => requestDeleteTx(t)
+                            : null
+                      }
+                    />
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1952,7 +2018,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
 // ─── Transaction row ──────────────────────────────────────────────────────────
 
-function TxRow({ txn, accountsById, onEditSplit, mainCurrency, realized = null, expanded = false, onToggleRealized = null }) {
+function TxRow({ txn, accountsById, mainCurrency, realized = null, expanded = false, onToggle, onEdit = null, onDelete = null, editLabel = null }) {
   const account = accountsById[txn.investingAccountId]
   const kind = txn._kind
 
@@ -2017,7 +2083,7 @@ function TxRow({ txn, accountsById, onEditSplit, mainCurrency, realized = null, 
 
   return (
     <>
-      <div className={styles.txRow}>
+      <div className={`${styles.txRow} ${styles.txRowClickable}`} onClick={onToggle}>
         <span className={styles.txDate}>{txn.date}</span>
         <span className={`${styles.txBadge} ${badgeCls}`}>{badge}</span>
         <span className={styles.txDesc}>{desc}</span>
@@ -2029,39 +2095,42 @@ function TxRow({ txn, accountsById, onEditSplit, mainCurrency, realized = null, 
           </span>
         )}
         {realized && (
-          <button
-            type="button"
-            className={`${styles.txRealizedChip} ${plCls(realized.realized)}`}
-            onClick={onToggleRealized}
-            title="Realized P/L for this sale — click for the per-lot breakdown"
-          >
-            {expanded ? '▾' : '▸'} {plStr(realized.realized)} {txn.currency} P/L
-          </button>
+          <span className={`${styles.txRealizedChip} ${plCls(realized.realized)}`}>
+            {plStr(realized.realized)} {txn.currency} P/L
+          </span>
         )}
         {account && <span className={styles.txAccount}>{account.name}</span>}
-        {onEditSplit && (
-          <button className={styles.txEditBtn} onClick={onEditSplit} title="Edit split">✎</button>
-        )}
+        <span className={styles.txExpandIcon}>{expanded ? '▲' : '▼'}</span>
       </div>
-      {realized && expanded && (
-        <div className={styles.txLotBreakdown}>
-          {realized.lots.map((l, i) => (
-            <div key={i} className={styles.txLotRow}>
-              <span className={styles.txLotDate}>from lot {l.buyDate ?? '—'}</span>
-              <span className={styles.txLotShares}>{trimDec(l.sharesFromLot)} sh</span>
-              <span className={styles.txLotCost}>cost {fmtAmt(l.costPerShare)} {txn.currency}</span>
-              <span className={`${styles.txLotPL} ${plCls(l.realized)}`}>{plStr(l.realized)} {txn.currency}</span>
+      {expanded && (
+        <div className={styles.txExpanded}>
+          {realized && (
+            <div className={styles.txLotBreakdown}>
+              {realized.lots.map((l, i) => (
+                <div key={i} className={styles.txLotRow}>
+                  <span className={styles.txLotDate}>from lot {l.buyDate ?? '—'}</span>
+                  <span className={styles.txLotShares}>{trimDec(l.sharesFromLot)} sh</span>
+                  <span className={styles.txLotCost}>cost {fmtAmt(l.costPerShare)} {txn.currency}</span>
+                  <span className={`${styles.txLotPL} ${plCls(l.realized)}`}>{plStr(l.realized)} {txn.currency}</span>
+                </div>
+              ))}
+              <div className={`${styles.txLotRow} ${styles.txLotSummary}`}>
+                <span className={styles.txLotDate}>
+                  proceeds {fmtAmt(realized.proceeds)} − cost {fmtAmt(realized.costBasis)}
+                </span>
+                <span className={`${styles.txLotPL} ${plCls(realized.realized)}`}>
+                  {plStr(realized.realized)} {txn.currency}
+                  {realizedMain != null && ` (${plStr(realizedMain)} ${mainCurrency}${txn.exchangeRates?.rateToMain ? '' : ' ~'})`}
+                </span>
+              </div>
             </div>
-          ))}
-          <div className={`${styles.txLotRow} ${styles.txLotSummary}`}>
-            <span className={styles.txLotDate}>
-              proceeds {fmtAmt(realized.proceeds)} − cost {fmtAmt(realized.costBasis)}
-            </span>
-            <span className={`${styles.txLotPL} ${plCls(realized.realized)}`}>
-              {plStr(realized.realized)} {txn.currency}
-              {realizedMain != null && ` (${plStr(realizedMain)} ${mainCurrency}${txn.exchangeRates?.rateToMain ? '' : ' ~'})`}
-            </span>
-          </div>
+          )}
+          {(onEdit || onDelete) && (
+            <div className={styles.txDetailActions}>
+              {onEdit && <button className={styles.txDetailBtn} onClick={onEdit}>Edit {editLabel} →</button>}
+              {onDelete && <button className={styles.txDetailBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>}
+            </div>
+          )}
         </div>
       )}
     </>
