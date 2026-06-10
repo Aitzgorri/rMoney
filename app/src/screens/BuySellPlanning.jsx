@@ -889,6 +889,7 @@ function OverviewBlock({
 
       <div className={styles.overviewCardWide}>
         <h3 className={styles.overviewCardTitle}>Cash impact</h3>
+        <div className={styles.tableScroll}>
         <table className={styles.impactTable}>
           <thead>
             <tr>
@@ -942,12 +943,14 @@ function OverviewBlock({
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className={styles.overviewCardWide}>
         <h3 className={styles.overviewCardTitle}>
           Dividend impact (forward yield, weighted by trade value in {mainCurrency})
         </h3>
+        <div className={styles.tableScroll}>
         <table className={styles.impactTable}>
           <thead>
             <tr>
@@ -988,6 +991,7 @@ function OverviewBlock({
             )}
           </tbody>
         </table>
+        </div>
         {dividendFxNote && (
           <p className={styles.cellMuted}>
             {dividendFxNote}

@@ -125,6 +125,12 @@
   text-decoration-color: var(--text-faint);
 }
 
+/* Horizontal scroll wrapper for the wide impact tables on narrow viewports,
+   mirroring the ConfigurableTable `.tableWrap` pattern. */
+.tableScroll {
+  overflow-x: auto;
+}
+
 .balancesTable, .impactTable {
   width: 100%;
   border-collapse: collapse;
