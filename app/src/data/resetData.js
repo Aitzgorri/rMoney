@@ -9,6 +9,7 @@ import {
   getSecret, setSecret, deleteSecret, deleteVaultFile,
 } from '../utils/secrets'
 import appStorage from '../utils/appStorage'
+import { flushAppStore } from '../utils/appData'
 
 // Keyed market data providers whose API keys live in Stronghold.
 const KEYED_PROVIDERS = ['massive', 'twelveData', 'finnhub', 'alphaVantage']
@@ -129,4 +130,9 @@ export async function resetAppData(preserve) {
   clearRmoneyLocal()
   await clearSecrets(snap)
   await restore(snap)
+  // In 'app' mode the cleared/restored data lives in the in-memory backend; the
+  // vault still holds the pre-reset encrypted snapshot. Re-encrypt the current
+  // (reduced) store so a reload does not resurrect the wiped data. No-op unless
+  // the in-memory backend is active and the vault is still open.
+  await flushAppStore()
 }

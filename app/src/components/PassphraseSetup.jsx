@@ -23,11 +23,14 @@ export default function PassphraseSetup({ onDone }) {
     try {
       await openVault(passphrase)
       await migrateKeysToVault()
-      onDone()
     } catch (err) {
       setError('Could not create vault: ' + err.message)
       setBusy(false)
+      return
     }
+    // Vault created — hand off (in 'app' mode onDone migrates existing data into
+    // the encrypted snapshot before the app renders).
+    await onDone()
   }
 
   return (

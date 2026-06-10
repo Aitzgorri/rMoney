@@ -43,6 +43,7 @@ import { DATE_FORMATS } from '../utils/csvParse'
 import { getCurrentPeriod } from '../utils/planningPeriod'
 import { SUPPORTED_CURRENCIES } from '../utils/currency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
+import SecurityModeChange from '../components/SecurityModeChange'
 import styles from './Settings.module.css'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
@@ -125,9 +126,11 @@ const AI_HOST_ALLOWLIST = ['api.anthropic.com', 'api.openai.com']
 export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [activeTab, setActiveTab] = useState(initialTab && TABS.some(t => t.id === initialTab) ? initialTab : 'general')
 
-  // Access / password mode (Phase 39b — read-only display; switching lands later)
+  // Access / password mode (Phase 39b display; switching/change-passphrase 39d/39f)
   const securityMode = getSecurityMode()
   const encryptionAvailable = isEncryptionAvailable()
+  // Pending mode transition driven by the Security tab: { from, to } or null.
+  const [modeChange, setModeChange] = useState(null)
 
   const [startDay, setStartDay] = useState(() => getPlanningStartDay())
   const [warningThreshold, setWarningThreshold] = useState(() => getBudgetWarningThreshold())
@@ -1815,6 +1818,14 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     </div>
                     <div className={styles.securityModeProtects}>Protects: {info.protects}</div>
                     <p className={styles.securityModeDesc}>{info.desc}</p>
+                    {!isCurrent && !unavailable && (
+                      <button
+                        className={styles.securityModeSwitch}
+                        onClick={() => setModeChange({ from: securityMode, to: mode })}
+                      >
+                        Switch to {info.label}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -1827,16 +1838,46 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               </div>
             )}
 
+            {encryptionAvailable && securityMode !== 'none' && (
+              <button
+                className={styles.secondaryBtn}
+                onClick={() => setModeChange({ from: securityMode, to: securityMode })}
+              >
+                Change passphrase
+              </button>
+            )}
+
             <p className={styles.hint}>
-              Switching between modes — and setting or changing your passphrase —
-              will be available here in an upcoming update.
+              Switching modes moves your keys (and, in App-password mode, all your
+              data) between encrypted and unencrypted storage, then reloads rMoney.
             </p>
           </div>
+
+          {modeChange && (
+            <SecurityModeChange
+              from={modeChange.from}
+              to={modeChange.to}
+              onClose={() => setModeChange(null)}
+            />
+          )}
         </>
       )}
 
       {activeTab === 'storage' && (
         <>
+          {securityMode === 'app' && (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>Encrypted at rest</div>
+              <p className={styles.description}>
+                You are in <strong>App-password mode</strong>. While rMoney is open your
+                data lives only in memory; on disk it is stored as a single encrypted
+                snapshot inside your vault, not as the individual browser-storage
+                collections listed below. The sizes here reflect the in-memory data —
+                clearing a collection re-encrypts the snapshot on your next change.
+              </p>
+            </div>
+          )}
+
           {/* Watchlists */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>Watchlists</div>

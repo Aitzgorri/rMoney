@@ -44,6 +44,22 @@ The `.rmy` backup file (SPEC-016 Data Portability) carries a `version` field. Th
 
 When you bump the data version, update the table above too.
 
+### Vault snapshot format (App-password mode)
+
+Independent of the `.rmy` backup format above, App-password mode (SPEC-031 Phase 39e)
+stores all `rmoney_*` app data as a single encrypted record inside the Stronghold
+vault, versioned by the `appData/snapshotVersion` record so the in-vault shape can
+evolve on its own:
+
+| Snapshot version | Written by | Notes |
+|---|---|---|
+| `1` | Phase 39e onward | flat `{ rmoney_key: stringValue }` map of every app-data collection, mirroring the localStorage keys. Hydrated into memory on unlock; re-encrypted (debounced) on every change. |
+
+A Full backup taken in App-password mode embeds the whole encrypted vault (which
+carries this snapshot) under `_strongholdVault`, so restoring reconstructs both keys
+and data behind the same passphrase. Bump `SNAPSHOT_VERSION` in `secrets.js` and add a
+row here whenever the in-vault shape changes.
+
 ---
 
 ## Platforms

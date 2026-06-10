@@ -766,6 +766,40 @@
   line-height: 1.5;
 }
 
+.securityModeSwitch {
+  align-self: flex-start;
+  margin-top: 8px;
+  background: #2d3448;
+  border: 1px solid #3d4d6a;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.securityModeSwitch:hover {
+  background: #374060;
+}
+
+.secondaryBtn {
+  align-self: flex-start;
+  margin-top: 14px;
+  background: #2d3448;
+  border: 1px solid #3d4d6a;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  background: #374060;
+}
+
 .providerDeferred {
   font-size: 12px;
   color: var(--text-faint);

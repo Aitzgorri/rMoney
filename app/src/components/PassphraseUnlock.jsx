@@ -5,7 +5,7 @@ import { getMarketDataProviders, setMarketDataProviders, getAiConnection, setAiC
 
 const MAX_ATTEMPTS = 3
 
-export default function PassphraseUnlock({ onDone, onReset }) {
+export default function PassphraseUnlock({ onDone, onReset, onCancel, mode = 'keys' }) {
   const [passphrase, setPassphrase] = useState('')
   const [showPass,   setShowPass]   = useState(false)
   const [error,      setError]      = useState('')
@@ -22,7 +22,6 @@ export default function PassphraseUnlock({ onDone, onReset }) {
     setError('')
     try {
       await openVault(passphrase)
-      onDone()
     } catch {
       const next = attempts + 1
       setAttempts(next)
@@ -33,7 +32,11 @@ export default function PassphraseUnlock({ onDone, onReset }) {
         setError(`Incorrect passphrase. ${MAX_ATTEMPTS - next} attempt${MAX_ATTEMPTS - next === 1 ? '' : 's'} remaining.`)
       }
       setBusy(false)
+      return
     }
+    // Vault opened — hand off (in 'app' mode onDone hydrates the in-memory
+    // store, which can take a moment, so keep the busy state until it resolves).
+    await onDone()
   }
 
   async function handleReset() {
@@ -60,8 +63,14 @@ export default function PassphraseUnlock({ onDone, onReset }) {
         <div className={styles.modal}>
           <h2 className={styles.title}>Reset vault</h2>
           <p className={styles.description}>
-            Resetting the vault <strong>permanently deletes</strong> all stored API keys.
-            You will need to re-enter them in Settings after setting a new passphrase.
+            {mode === 'app' ? (
+              <>Resetting the vault <strong>permanently deletes ALL your data</strong> —
+              every account, transaction, and setting — along with your stored API keys,
+              because in App-password mode everything is encrypted inside the vault.</>
+            ) : (
+              <>Resetting the vault <strong>permanently deletes</strong> all stored API keys.
+              You will need to re-enter them in Settings after setting a new passphrase.</>
+            )}
           </p>
           <p className={styles.warning}>This cannot be undone.</p>
           <div className={styles.actions}>
@@ -82,7 +91,9 @@ export default function PassphraseUnlock({ onDone, onReset }) {
       <div className={styles.modal}>
         <h2 className={styles.title}>Unlock rMoney</h2>
         <p className={styles.description}>
-          Enter your vault passphrase to decrypt your stored API keys.
+          {mode === 'app'
+            ? 'Enter your passphrase to decrypt your data and open rMoney.'
+            : 'Enter your vault passphrase to decrypt your stored API keys.'}
         </p>
 
         <div className={styles.field}>
@@ -108,6 +119,11 @@ export default function PassphraseUnlock({ onDone, onReset }) {
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.actions}>
+          {onCancel && (
+            <button className={styles.cancelBtn} onClick={onCancel} disabled={busy}>
+              Cancel
+            </button>
+          )}
           <button
             className={styles.primaryBtn}
             onClick={handleUnlock}

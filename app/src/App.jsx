@@ -4,7 +4,8 @@ import TopNav from './components/TopNav'
 import PassphraseSetup from './components/PassphraseSetup'
 import PassphraseUnlock from './components/PassphraseUnlock'
 import SecurityModeSelect from './components/SecurityModeSelect'
-import { vaultExists, readVaultBytes, writeVaultBytes, getSecurityMode, setSecurityMode, isSecurityModeSet } from './utils/secrets'
+import { vaultExists, readVaultBytes, writeVaultBytes, getSecurityMode, setSecurityMode, isSecurityModeSet, setVaultUnlockHandler } from './utils/secrets'
+import { hydrateAppStore, flushAppStore, installAppStoreLifecycle } from './utils/appData'
 import FullBackupPassphrasePrompt from './components/FullBackupPassphrasePrompt'
 import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
@@ -49,6 +50,11 @@ export default function App() {
   // Vault startup: 'checking' → 'mode-select' | 'setup' | 'unlock' | 'dev' → 'ready'
   const [vaultStatus, setVaultStatus] = useState('checking')
 
+  // Lazy 'keys'-mode unlock: when a secret is needed and the vault is closed,
+  // secrets.js calls our registered handler, which shows this modal and resolves
+  // once the user unlocks (or cancels). Holds the pending promise resolver.
+  const [lazyUnlockResolve, setLazyUnlockResolve] = useState(null)
+
   const [saveBanner, setSaveBanner] = useState(null)    // { filename, redacted } or null
   const [saveDialog, setSaveDialog] = useState(false)
   const [saveMode, setSaveMode] = useState('sharable')  // 'sharable' | 'full'
@@ -64,18 +70,24 @@ export default function App() {
     if (!IS_TAURI) {
       // Web/Capacitor: no Stronghold, keys are plaintext — always 'none' mode.
       setVaultStatus('dev')
-    } else if (vaultExists()) {
-      // Existing vault (incl. pre-39 upgrade users defaulting to 'app'): unlock.
-      setVaultStatus('unlock')
-    } else if (!isSecurityModeSet()) {
-      // Brand-new install: let the user choose how the app is protected.
+      return
+    }
+    // Brand-new install (no explicit mode AND no vault): choose how to protect.
+    if (!isSecurityModeSet() && !vaultExists()) {
       setVaultStatus('mode-select')
-    } else if (getSecurityMode() === 'none') {
-      // 'none' chosen, no vault to open — go straight in.
-      setVaultStatus('ready')
+      return
+    }
+    // getSecurityMode() infers 'app' for an existing pre-39 vault (upgrade users
+    // keep their startup-prompt experience).
+    const mode = getSecurityMode()
+    if (mode === 'none') {
+      setVaultStatus('ready')              // no vault, no prompt
+    } else if (mode === 'keys') {
+      setVaultStatus('ready')              // open immediately; vault unlocked lazily
+    } else if (vaultExists()) {
+      setVaultStatus('unlock')             // 'app' mode: prompt, then hydrate
     } else {
-      // 'app'/'keys' chosen but the vault was not created yet — create it.
-      setVaultStatus('setup')
+      setVaultStatus('setup')              // 'app'/'keys' chosen but vault not created yet
     }
   }, [])
 
@@ -85,6 +97,41 @@ export default function App() {
     setSecurityMode(mode)
     setVaultStatus(mode === 'none' ? 'ready' : 'setup')
   }
+
+  // Called after the vault is opened at startup (setup or unlock). In 'app' mode
+  // the encrypted snapshot must be decrypted into the in-memory store before any
+  // screen renders, so we await hydration here (Phase 39e). Other modes go
+  // straight to ready.
+  async function finishVaultOpen() {
+    if (IS_TAURI && getSecurityMode() === 'app') {
+      try {
+        await hydrateAppStore()
+      } catch (err) {
+        // Hydration failed (corrupt/unreadable snapshot). The setup/unlock
+        // screens render before the main app, so a banner there would be
+        // invisible — surface it with a blocking alert instead of silently
+        // rendering an empty app over real encrypted data, and stay on the
+        // unlock screen so the user can retry or restart.
+        window.alert('Could not load your encrypted data: ' + (err.message || 'Unknown error') +
+          '\n\nClose and reopen rMoney to try again.')
+        return
+      }
+    }
+    setVaultStatus('ready')
+  }
+
+  // Register the lazy-unlock handler and 'app'-mode lifecycle flushes once.
+  useEffect(() => {
+    setVaultUnlockHandler(() => new Promise(resolve => {
+      // Store the resolver; the modal calls it with true (unlocked) or false.
+      setLazyUnlockResolve(() => resolve)
+    }))
+    const cleanup = installAppStoreLifecycle()
+    return () => {
+      setVaultUnlockHandler(null)
+      cleanup()
+    }
+  }, [])
 
   useEffect(() => {
     if (vaultStatus !== 'ready' && vaultStatus !== 'dev') return
@@ -158,6 +205,10 @@ export default function App() {
   async function handlePassphraseConfirmed() {
     setAwaitingPassphrase(false)
     try {
+      // In 'app' mode the latest in-memory data must be encrypted into the vault
+      // snapshot record before we read the vault bytes, or the embedded vault
+      // would carry a stale snapshot (Phase 39e/39f).
+      await flushAppStore()
       const vaultBytes = await readVaultBytes()
       await writeBackupFile(vaultBytes)
     } catch (err) {
@@ -233,13 +284,14 @@ export default function App() {
   }
 
   if (vaultStatus === 'setup') {
-    return <PassphraseSetup onDone={() => setVaultStatus('ready')} />
+    return <PassphraseSetup onDone={finishVaultOpen} />
   }
 
   if (vaultStatus === 'unlock') {
     return (
       <PassphraseUnlock
-        onDone={() => setVaultStatus('ready')}
+        mode={getSecurityMode()}
+        onDone={finishVaultOpen}
         onReset={() => setVaultStatus('setup')}
       />
     )
@@ -363,6 +415,17 @@ export default function App() {
         <ResetDataDialog
           onBackup={handleResetBackup}
           onClose={() => setResetDialog(false)}
+        />
+      )}
+
+      {/* Lazy 'keys'-mode unlock (Phase 39d): shown on demand when a secret is
+          needed and the vault is still locked this session. */}
+      {lazyUnlockResolve && (
+        <PassphraseUnlock
+          mode={getSecurityMode()}
+          onDone={() => { const r = lazyUnlockResolve; setLazyUnlockResolve(null); r(true) }}
+          onCancel={() => { const r = lazyUnlockResolve; setLazyUnlockResolve(null); r(false) }}
+          onReset={() => { const r = lazyUnlockResolve; setLazyUnlockResolve(null); r(false); window.location.reload() }}
         />
       )}
     </div>

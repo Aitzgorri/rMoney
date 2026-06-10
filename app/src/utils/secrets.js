@@ -92,6 +92,98 @@ export function isEncryptionAvailable() {
   return IS_TAURI
 }
 
+// Whether the Stronghold vault is currently open (decrypted) this session.
+export function isVaultOpen() {
+  return !!_store
+}
+
+// ─── Plaintext key backend ('none' mode + web/Capacitor) ────────────────────
+// In 'none' mode keys are stored unencrypted in rmoney_dev_secrets — the same
+// mechanism used in non-Tauri dev mode, now a first-class backend (Phase 39d).
+
+function devGet(key) {
+  const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
+  return dev[key] ?? null
+}
+
+function devSet(key, value) {
+  const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
+  dev[key] = value
+  localStorage.setItem(DEV_KEY, JSON.stringify(dev))
+}
+
+function devDelete(key) {
+  const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
+  delete dev[key]
+  localStorage.setItem(DEV_KEY, JSON.stringify(dev))
+}
+
+// True when secrets should use the plaintext backend rather than the vault:
+// either there is no Stronghold (web/Capacitor) or the active mode is 'none'.
+function usesPlaintextSecrets() {
+  return !IS_TAURI || getSecurityMode() === 'none'
+}
+
+const encode = str => Array.from(new TextEncoder().encode(str))
+const decode = bytes => new TextDecoder().decode(new Uint8Array(bytes))
+
+// ─── Low-level accessors for mode transitions ───────────────────────────────
+// Mode transitions (Settings → Security) move secrets between the vault and the
+// plaintext backend while getSecurityMode() is mid-change, so they must address
+// each backend explicitly rather than through the mode-aware getSecret/setSecret.
+
+export async function vaultGet(key) {
+  if (!IS_TAURI || !_store) return null
+  const raw = await _store.get(key)
+  if (!raw) return null
+  return decode(raw)
+}
+
+export async function vaultSet(key, value) {
+  if (!IS_TAURI || !_store) throw new Error('Vault is not open')
+  await _store.insert(key, encode(value))
+  await _stronghold.save()
+}
+
+export async function vaultRemove(key) {
+  if (!IS_TAURI || !_store) return
+  try { await _store.remove(key) } catch { /* record may not exist */ }
+  await _stronghold.save()
+}
+
+export const plainGet = devGet
+export const plainSet = devSet
+export const plainDelete = devDelete
+
+// ─── Lazy unlock gate ('keys' mode) ─────────────────────────────────────────
+// In 'keys' mode the app opens without a prompt and the vault is unlocked the
+// first time a secret is actually needed. App.jsx registers an interactive
+// unlock handler (shows a passphrase modal) via setVaultUnlockHandler; the
+// secret accessors await ensureVaultOpen() before touching the store.
+
+let _unlockHandler = null
+let _unlockInFlight = null
+
+export function setVaultUnlockHandler(fn) {
+  _unlockHandler = fn
+}
+
+// Ensure the vault is open before a secret read/write in an encrypted mode.
+// Returns true if usable. In 'none' mode / non-Tauri there is no vault to open.
+// Concurrent callers (e.g. several market-data fetches at once) share a single
+// in-flight unlock so only one passphrase prompt is shown.
+export async function ensureVaultOpen() {
+  if (usesPlaintextSecrets()) return true
+  if (_store) return true                 // already open (app mode, or earlier unlock)
+  if (!vaultExists()) return true         // no vault yet (no keys saved) — nothing to open
+  if (!_unlockHandler) return false
+  if (!_unlockInFlight) {
+    _unlockInFlight = Promise.resolve(_unlockHandler()).finally(() => { _unlockInFlight = null })
+  }
+  await _unlockInFlight
+  return !!_store
+}
+
 // Open (or create) the vault with the given passphrase.
 // On first open, creates a new vault; on subsequent opens, decrypts the existing one.
 export async function openVault(passphrase) {
@@ -125,35 +217,25 @@ export async function deleteVaultFile() {
 }
 
 export async function getSecret(key) {
-  if (!IS_TAURI) {
-    const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
-    return dev[key] ?? null
-  }
+  if (usesPlaintextSecrets()) return devGet(key)
+  await ensureVaultOpen()
   if (!_store) return null
   const raw = await _store.get(key)
   if (!raw) return null
-  return new TextDecoder().decode(new Uint8Array(raw))
+  return decode(raw)
 }
 
 export async function setSecret(key, value) {
-  if (!IS_TAURI) {
-    const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
-    dev[key] = value
-    localStorage.setItem(DEV_KEY, JSON.stringify(dev))
-    return
-  }
+  if (usesPlaintextSecrets()) return devSet(key, value)
+  await ensureVaultOpen()
   if (!_store) throw new Error('Vault is not open')
-  await _store.insert(key, Array.from(new TextEncoder().encode(value)))
+  await _store.insert(key, encode(value))
   await _stronghold.save()
 }
 
 export async function deleteSecret(key) {
-  if (!IS_TAURI) {
-    const dev = JSON.parse(localStorage.getItem(DEV_KEY) ?? '{}')
-    delete dev[key]
-    localStorage.setItem(DEV_KEY, JSON.stringify(dev))
-    return
-  }
+  if (usesPlaintextSecrets()) return devDelete(key)
+  await ensureVaultOpen()
   if (!_store) throw new Error('Vault is not open')
   await _store.remove(key)
   await _stronghold.save()
@@ -242,4 +324,63 @@ export async function migrateKeysToVault() {
   if (dirty) {
     localStorage.setItem('rmoney_settings', JSON.stringify(settings))
   }
+}
+
+// ─── App-data snapshot in the vault ('app' mode, Strategy B — Phase 39e) ─────
+// The full set of `rmoney_*` app-data key/values is persisted as a single
+// encrypted Stronghold record so decrypted data never touches the disk. The
+// snapshot is versioned independently of the on-disk backup format so the
+// in-vault shape can evolve on its own.
+
+const SNAPSHOT_KEY = 'appData/snapshot'
+const SNAPSHOT_VERSION_KEY = 'appData/snapshotVersion'
+export const SNAPSHOT_VERSION = 1
+
+// Canonical list of per-key secret records (API keys). Used by passphrase
+// re-keying and by mode transitions that move keys between backends.
+const KEYED_PROVIDERS = ['massive', 'twelveData', 'finnhub', 'alphaVantage']
+export const ALL_SECRET_KEYS = [
+  ...KEYED_PROVIDERS.map(id => `marketData/${id}/apiKey`),
+  'ai/apiKey',
+]
+
+// Write the decrypted app-data object as one encrypted record. Vault must be open.
+export async function saveDataSnapshot(obj) {
+  if (!IS_TAURI || !_store) return
+  await _store.insert(SNAPSHOT_KEY, encode(JSON.stringify(obj)))
+  await _store.insert(SNAPSHOT_VERSION_KEY, encode(String(SNAPSHOT_VERSION)))
+  await _stronghold.save()
+}
+
+// Read and parse the app-data snapshot, or null if none exists yet. Vault must
+// be open. `null` (vs `{}`) is the signal that a one-time migration is needed.
+export async function loadDataSnapshot() {
+  if (!IS_TAURI || !_store) return null
+  const raw = await _store.get(SNAPSHOT_KEY)
+  if (!raw) return null
+  try { return JSON.parse(decode(raw)) } catch { return {} }
+}
+
+// Re-key the vault: copy every record into a fresh vault encrypted with a new
+// passphrase. The old passphrase is required (and verified by the load). The
+// data snapshot, if present, travels with the keys so `app` mode survives a
+// passphrase change. Best-effort `unload` releases the file handle before the
+// file is replaced (important on Windows where an open handle locks the file).
+export async function changePassphrase(oldPass, newPass) {
+  if (!IS_TAURI) return
+  // Load with the old passphrase — throws on a wrong passphrase, which the
+  // caller surfaces as "incorrect current passphrase".
+  await openVault(oldPass)
+  const records = {}
+  for (const k of [...ALL_SECRET_KEYS, SNAPSHOT_KEY, SNAPSHOT_VERSION_KEY]) {
+    const raw = await _store.get(k)
+    if (raw && raw.length) records[k] = Array.from(raw)
+  }
+  try { await _stronghold?.unload() } catch { /* plugin may not expose unload */ }
+  await deleteVaultFile()
+  await openVault(newPass)
+  for (const [k, raw] of Object.entries(records)) {
+    await _store.insert(k, raw)
+  }
+  await _stronghold.save()
 }
