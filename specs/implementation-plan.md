@@ -48,6 +48,10 @@
 | 37 — Selective reset + responsive header | ✓ shipped in v0.35.0 | 37a Reset data (SPEC-016), 37b responsive Stock page (SPEC-021) |
 | 38 — June 2026 adjustments | ✓ shipped in v0.36.0 | 430–439 batch + Buy-Sell cash-impact follow-up; backup → rmoney-data-v4 |
 | 39 — Access / password modes | planned | SPEC-031 ext: app / keys-only / none modes + Settings → Security tab + `appStorage` wrapper (Strategy B full at-rest encryption) |
+| 43 — Envelope transfer correctness + comma number format + UI polish | planned | From the 10 Jun 2026 notes — see Phase 43 section below |
+| 44 — Payees: report + management + autocomplete upgrade | planned | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
+
+> Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
 ---
 
@@ -164,6 +168,61 @@ Recommended sub-phase order (each is independently shippable / testable):
 39f. ✓ **DONE** — **Remaining transitions + backup/restore integration.** `keys↔app`, `app→none` in `performTransition`; mode-aware Forgot-passphrase + unlock copy (`PassphraseUnlock` `mode` prop); Full-backup vault-embed flushes the snapshot first (`flushAppStore` before `readVaultBytes`); "Encrypted at rest" Storage-tab note in `app` mode; `RELEASE.md` vault-snapshot-format subsection. Build clean; no new lint errors.
 
 > **⚠ Verification gap:** the encrypted-mode paths (Stronghold vault, in-memory backend, all six transitions, change-passphrase) only execute in the **Tauri desktop build** and were **not runtime-tested** in this environment — only the web (`none`) build + `vite build` + ESLint were exercised. Before relying on App/Keys mode, smoke-test on a real desktop build: first-launch each mode, lock/unlock round-trip, every transition, change-passphrase (Windows file-handle behaviour for the vault re-key especially), and Full-backup → restore.
+
+---
+
+## Phase 43 — Envelope transfer correctness + comma number format + UI polish (planned)
+
+> From the **10 June 2026** scratch notes. Root causes traced in code; scope agreed with the user 2026-06-10 (number format = **Tier 2: app-controlled comma**). Specs touched: SPEC-004, SPEC-007, SPEC-009, SPEC-015 (each moved to `in-progress` with the new criteria unchecked); SPEC-025 stays `done` (its `parseNumber` already handles comma — only a default flips, specced under SPEC-015 here). Items are grouped by spec below; suggested build order is 43a→43c (data correctness) first, then the format + UI polish.
+>
+> **Shared-code note:** all the formatting work funnels into one module — `src/utils/format.js` grows from a single `fmtAmt` into the central amount-formatter family (`fmtAmt` comma output + `round2` + signed helper). Consolidate the per-screen duplicates (`BuySellPlanning` `fmtNum`/`fmtSigned`, `DividendPage` `fmtMC`/`fmtCompact`, `InvestmentReports` `fmtMC`, `StockPage` inline `en-US`) into/through it; do not add new local money formatters. `round2` is also the fix vehicle for the `−0.00` bug — build it once (43b) and reuse it in the formatter (43h).
+>
+> **Release/backup note:** Phase 43 is compute/display + a data *repair* migration only — it adds **no new persisted field** and **no backup-format bump**. The migration coerces existing values in place (string → number) within the existing `rmoney_envelope_transfers` / `rmoney_envelope_scheduled` blobs.
+
+### SPEC-004 Envelopes — transfer amount integrity
+43a. [ ] **Coerce on write.** `Number(form.amount)` in the one-time branch of `EnvelopeTransferForm`, plus `Number(...)` inside `updateEnvelopeTransfer` / `updateScheduledTransfer`, so no edit path can persist a string. Fixes the `NaN` *and* the silently-wrong concatenated sums (`200 + "150"` → `"200150"`) after editing a transfer.
+43b. [ ] **Coerce on read.** `s + Number(t.amount)` for transfers-in and transfers-out in `getEnvelopeBalance`, so even a legacy string amount can never corrupt a sum — correct results before the migration runs.
+43c. [ ] **Startup migration.** One-time pass that rewrites any stored string transfer/scheduled amounts to numbers (alongside the existing `cleanupSelfScheduledTransfers`).
+
+### SPEC-007 Envelope List
+43d. [ ] **No `−0.00`.** Apply `round2` (from 43h) to envelope balances **before** the `< 0` sign check (own-balance chip + total) so a near-zero balance renders `0.00`, and the spurious own-balance chip is hidden when the own balance is only sub-cent residue. Also covers the EnvelopeHistory balance card / running balance / grand total.
+43e. [ ] **Desktop left-column live refresh.** Add an `onDataChange` prop to `EnvelopeHistory`; have its local `refresh()` also invoke it; pass `onDataChange={refresh}` from the `Envelopes` desktop detail pane so editing/deleting a record in the right pane immediately recomputes the left-hand tree balances.
+
+### SPEC-009 Planning
+43f. [ ] **Row hover parity.** Extend the Phase-42 `.expenseRow:hover` treatment to `.incomeRow` and `.transferRow` in `Planning.module.css`, and raise the hover contrast so it's actually noticeable.
+43g. [ ] **Value-column comma format.** Flip the YR/QTR/MON value columns to comma decimal via the new central `fmtAmt` (the criterion example becomes `1 234,00`).
+
+### SPEC-015 UI Enhancements
+43h. [ ] **Central comma formatter.** `fmtAmt` outputs comma decimal + narrow-space thousands always (drop the `en-US`-then-replace trick); add `round2(n)` (snap to 2dp, collapse `−0`/sub-cent to `+0`) and a signed helper; `fmtAmt` guards against emitting `−0.00`.
+43i. [ ] **Consolidate duplicate formatters.** Route the per-screen money formatters (`BuySellPlanning`, `DividendPage`, `InvestmentReports`, `StockPage`) through `format.js`; remove their local `toLocaleString('en-US')…replace(/,/g,' ')` / bare `toFixed` for amounts.
+43j. [ ] **Ratios stay dot.** Percentages and FX rates keep the dot decimal; only currency amounts switch to comma.
+43k. [ ] **Chart money ticks.** Axis tick labels that show monetary amounts use the comma formatting (date/ratio ticks unaffected).
+43l. [ ] **Envelope tree pane 40%.** `.treePane` in `Envelopes.module.css`: `width: 380px` → `width: 40%` + min/max clamp (~320–560px); detail pane keeps `flex: 1`.
+43m. [ ] **CSV import default separator.** Default the investment import wizard's decimal-separator selector to comma to match the app format (parsing already supports both via `parseNumber` — no parser change).
+
+---
+
+## Phase 44 — Payees: report + management + autocomplete upgrade (planned)
+
+> From the **10 June 2026** scratch notes (Payees chapter). Scope confirmed with the user 2026-06-10: rename/merge/delete apply to **both transactions and Bills & Income planned items**; all four enhancements (per-payee summary, click-txn-to-edit, shared autocomplete component, sort/search) are in. New spec **[SPEC-037 Payees](features/SPEC-037-payees.md)** (`ready`) for the report + management screen; **SPEC-005** extended (`in-progress`) for the autocomplete upgrade and the `payeeId`→`payeeName` data-model correction.
+>
+> **Data-model note:** payees are free-text `payeeName` strings on transactions (not id references), plus a secondary `rmoney_payees` registry; planned items (SPEC-013) carry their own `payee` string. Management operates by **normalized name** (`trim().toLowerCase()`) and rewrites transactions + planned items + the registry together. **No id migration, no new collection, no backup-format bump** (`rmoney_payees` is already exported).
+>
+> **Shared-code note:** extract the payee autocomplete (currently inline in `TransactionForm`) into one reusable component and reuse it in the SPEC-037 report filter and the SPEC-007 Envelope History payee filter. Reuse the existing EnvelopeHistory filter-panel pattern for the report's date/amount/currency/envelope/account/category filters. (SPEC-037 lists ~19 acceptance criteria; the sub-phases below consolidate them — `plan:validate` will show a benign count-difference warning, as with SPEC-031.)
+>
+> **Suggested order:** 44a–44b (autocomplete, smallest + independent) → 44c–44f (report) → 44g (management, the riskiest) → 44h (storage card).
+
+### SPEC-005 Transaction Entry — payee autocomplete upgrade
+44a. [ ] Upgrade the payee autocomplete: top-10 ranked by most-used (tie-break recent), shown on empty focus, full keyboard nav (↑/↓ move, Enter/Tab select, Esc close, click still works), field stays freely editable.
+44b. [ ] Extract the autocomplete into a **shared reusable component** (consumed by the transaction form, the SPEC-037 report filter, and the SPEC-007 Envelope History payee filter); correct the SPEC-005 data-model doc to `payeeName` (string).
+
+### SPEC-037 Payees — report + management
+44c. [ ] New **Payees** screen + `payees` route in `App.jsx`; entries in `BottomNav` more-menu and `TopNav` More sub-row; desktop-wide / mobile single-column.
+44d. [ ] Report **filters**: last-12-months default + date from/until, amount range, currency, envelope, account, category — hierarchical envelope/category dropdowns with Income/Expense headers; combine + clear-filters.
+44e. [ ] Payee **list**: derived from transaction payee strings, normalized grouping (trim + case-fold), income/expense only, `"(no payee)"` and `"Unspecified payee"` buckets, expandable/collapsible per-payee transaction lists.
+44f. [ ] Per-payee **summary** (total paid/received, count, last-used, per currency) + **sort/search** + **click a transaction to edit** it (reuses SPEC-005 edit form).
+44g. [ ] Payee **management**: rename (rewrites transactions + planned items + registry); rename-collision → **merge** with confirmation; **delete** → payee-less transactions + planned items (records kept) with confirmation; `"Unspecified payee"` not renamable/deletable.
+44h. [ ] Add a **Payees card** to Settings → Storage (SPEC-026) for the existing `rmoney_payees` collection.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-007
 name: Envelope List
-status: done
+status: in-progress
 created: 2026-04-03
 ---
 
@@ -30,6 +30,8 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] Both the total sum balance and the own balance are color coded: positive amounts in green, negative amounts in red
 - [x] Built-in default envelopes ("Undistributed income", "Unassigned expenses") are shown at the top
 - [x] Archived envelopes are hidden, viewable via "Show archived" toggle
+- [ ] A balance that nets to zero within sub-cent floating-point tolerance renders as `0.00`, never `−0.00` (no negative-zero, no spurious minus sign), via the shared `round2` snap *(Phase 43)*
+- [ ] The secondary own-balance chip is **not** shown when the own balance is only a sub-cent floating-point residue (i.e. it is treated as exactly zero) *(Phase 43)*
 
 ### Envelope transaction history
 - [x] Tapping an envelope opens its transaction history
@@ -57,6 +59,7 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] Tapping an envelope transfer row opens the envelope transfer form for editing (from SPEC-004)
 - [x] On desktop, rows highlight on hover with pointer cursor to indicate they are tappable
 - [x] The edit form includes a Delete button (red, requires confirmation dialog before deleting)
+- [ ] On the desktop split layout (tree pane + detail pane), adding, editing, or deleting a record in the right-hand detail pane immediately refreshes the **left-hand tree balances** — including parent/total sums — without the user having to select another envelope first *(Phase 43; the detail pane signals the parent list via an `onDataChange` callback)*
 
 ### Navigation
 - [x] A back button returns the user from envelope history to the envelope list

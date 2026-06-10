@@ -1,7 +1,7 @@
 ---
 id: SPEC-004
 name: Envelopes
-status: done
+status: in-progress
 created: 2026-04-03
 ---
 
@@ -49,6 +49,12 @@ Envelopes are primarily a savings-tracking tool: the user distributes income int
 - [x] When the form is opened from the **envelope detail screen**, the toggle defaults to **one-time**
 - [x] When the form is opened from the **planning tool** (SPEC-009), the toggle defaults to **regular** *(prop ready, planning tool not yet built)*
 - [x] Switching the toggle to "regular" reveals the frequency / day-of-execution fields
+
+### Transfer amount integrity & balance calculation *(Phase 43)*
+- [ ] Transfer amounts are always stored as **numbers**, never strings — every write path coerces with `Number(...)` before persisting: one-time **create** and **edit** (`createEnvelopeTransfer` / `updateEnvelopeTransfer`) and scheduled **create** and **edit** (`createScheduledTransfer` / `updateScheduledTransfer`). (Previously the one-time *edit* path stored the raw string from the form, corrupting later sums.)
+- [ ] Envelope balance derivation coerces amounts on **read** (`s + Number(t.amount)` for both transfers-in and transfers-out in `getEnvelopeBalance`), so even a legacy string amount can never corrupt a sum. This makes calculations correct immediately, before the migration below runs.
+- [ ] Editing a transfer's amount immediately yields a correct parent / total balance — no `NaN`, and no string-concatenated value (e.g. `200 + "150"` must give `350`, not `"200150"`).
+- [ ] A one-time startup migration repairs any already-stored **string** transfer and scheduled-transfer amounts by coercing them to numbers, so previously-corrupted data is cleaned up without the user re-saving each record.
 
 ### Scheduled transfers
 - [x] User can create a scheduled transfer with: source envelope, destination envelope, amount, frequency, day of execution

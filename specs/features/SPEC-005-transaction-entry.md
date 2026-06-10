@@ -1,7 +1,7 @@
 ---
 id: SPEC-005
 name: Transaction Entry
-status: done
+status: in-progress
 created: 2026-04-03
 ---
 
@@ -51,7 +51,14 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 ### Payees
 - [x] Payees are built up over time — when a user types a payee name, it is saved for future use
 - [x] Previously used payees are suggested (autocomplete) when entering a new transaction
-- [x] Payees can be used for reporting (total received from / total paid to a payee)
+- [x] Payees can be used for reporting (total received from / total paid to a payee) — the report UI lives in **SPEC-037 (Payees)**
+
+#### Payee autocomplete behaviour *(Phase 44)*
+- [ ] The suggestion list shows up to **10** payees (raised from 5), ranked by **most-used** (number of transactions), tie-broken by most-recent use
+- [ ] When the payee field is **focused while empty**, the top-10 most-used payees are shown as the baseline list (not only after the user starts typing)
+- [ ] The list is keyboard-navigable: **↑ / ↓** move the highlight, **Enter or Tab** selects the highlighted payee, **Esc** dismisses the list; mouse click still selects
+- [ ] The field stays **freely editable** — choosing a suggestion only fills the text; the user can keep typing a brand-new payee that isn't in the list
+- [ ] The autocomplete is implemented as a **shared, reusable component** (also consumed by SPEC-037's report filter and the SPEC-007 Envelope History payee filter)
 
 ### Recurring transactions
 Recurring transactions are **planned items** managed by SPEC-013 (Bills & Income). The transaction form provides a convenient shortcut to create them.
@@ -149,7 +156,7 @@ Transaction record:
 - transferFee: number (default 0, deducted from source account)
 - categoryId: id of category, or built-in default (income/expense only)
 - envelopeId: id of envelope, or built-in default (income/expense only)
-- payeeId: id of payee, or built-in default (income/expense only)
+- payeeName: free-text payee name string (income/expense only; defaults to "Unspecified payee" when blank). NOTE: payees are stored denormalised as a name string on the transaction, not as an id reference — the `rmoney_payees` registry below is a secondary lookup populated from these names. (Earlier drafts said `payeeId`; corrected to match the implemented string model — see SPEC-037.)
 - date: date
 - note: text (optional)
 - isRecurring: true | false

@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 name: UI Enhancements
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
@@ -23,6 +23,7 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] On viewports ≥ 1024px, the app removes the mobile-column fixed-width container; content stretches to fill the viewport with a sensible max-width guard (e.g. 1600px) to avoid absurdly wide lines.
 - [x] Dashboard: widgets render in a responsive CSS grid on desktop (2–3 columns depending on width). Mobile stays single-column.
 - [x] Envelope list: desktop layout = tree pane on the left + detail pane on the right (selected envelope's recent transactions, scheduled transfers, monthly totals). Mobile stays single-column.
+- [ ] On desktop the envelope **tree pane is 40% of the viewport width** (clamped with a sensible min/max, e.g. ~320–560px) rather than a fixed 380px; the detail pane fills the remainder *(Phase 43)*
 - [x] Transaction list: desktop layout = filters sidebar on the left + list on the right. Mobile stays single-column with filters accessed via a "Filter" button.
 - [x] Investment reports (SPEC-024): on desktop, charts and table sit side-by-side. Mobile stacks. (`InvestmentReports.jsx` uses `repeat(${isDesktop ? tilesPerRow : 1}, 1fr)` for the pie-charts grid; tiles wrap on narrow viewports.)
 - [x] Stock page (SPEC-021): on desktop, price chart + stock metadata row at the top, transactions + dividends below. Mobile stacks. (`StockPage.module.css` `@media (min-width: 768px)` switches `.body` to row layout with sticky right column.)
@@ -40,6 +41,18 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] **Single shared "muted text" colour token.** `app/src/styles/tokens.css` defines `--text-muted: #94a3b8` (≈6.6:1) and `--text-faint: #7c8da4` (≈5.1:1) — both WCAG AA on `#0f1117`. 624 `color:` usages replaced across 38 CSS modules. `index.css` imports `tokens.css` and aliases `--text-dim` → `var(--text-muted)` for backward compatibility.
 - [x] **Small body text minimum size.** 177 sub-12 px font sizes (9 px, 10 px, 11 px) raised to 12 px across 34 CSS modules, plus one 8 px chevron in HybridFilterDropdown.
 - [x] **Spot-check pass.** Walk every screen at default zoom and at 125 % zoom; verify the new contrast holds.
+
+### Amount / number formatting *(Phase 43)*
+
+> App-wide convention for how monetary amounts render. Decided 2026-06-10: amounts use a **comma decimal separator** (the user's preference) with the existing narrow-space thousands grouping, controlled by the app — not the browser locale. This is the single source of truth; CLAUDE.md → UI Conventions carries the short mandatory rule that points here.
+
+- [ ] All monetary amounts render via a **single central formatter** in `src/utils/format.js` (`fmtAmt` and a small family of related helpers) that always produces **comma decimal + narrow-space (` `) thousands**, e.g. `1 234,56`, **regardless of browser/OS locale**.
+- [ ] The per-screen duplicate formatters are consolidated to route through `src/utils/format.js`. No component formats an amount with its own `toLocaleString('en-US', …).replace(/,/g,' ')` or bare `toFixed(2)`. (Known duplicates to fold in: `fmtNum`/`fmtSigned` in `BuySellPlanning.jsx`; `fmtMC`/`fmtCompact` in `DividendPage.jsx`; `fmtMC` in `InvestmentReports.jsx`; the inline `en-US` formatters in `StockPage.jsx`.)
+- [ ] A shared **`round2(n)`** helper snaps a value to two decimals and collapses negative-zero / sub-cent residue to `+0`, so no amount ever renders as `−0.00`. `fmtAmt` itself also guards against emitting `−0.00` as a backstop.
+- [ ] **Percentages and FX rates keep the dot** decimal separator (they are ratios, not currency amounts) — e.g. `14.3%`, rate `1.0825`. Only currency amounts switch to comma.
+- [ ] **Amount inputs are unchanged**: `<input type="number">` continues to be used for entry. The browser localizes the *displayed* separator per OS, and its `.value` is always dot-normalized, so existing `Number(value)` parsing keeps working — no input rewrite, no new parsing code.
+- [ ] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected).
+- [ ] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.)
 
 ## UI / Screens
 Desktop Dashboard (text sketch):
