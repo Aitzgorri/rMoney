@@ -109,6 +109,8 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] For leaf items: percentage = (item monthly amount / total monthly expenses for same currency) × 100
 - [x] For parent items: percentage = (parent monthly sum / total monthly expenses for same currency) × 100
 - [x] Percentages are displayed to one decimal place (e.g. "14.3%")
+- [x] The YR / QTR / MON value columns are formatted to two decimal places with a space thousands separator (e.g. "1 234.00"), via `fmtAmt` from `src/utils/format.js`
+- [x] On desktop, the value columns and actions column are wide enough that the out-of-sync indicator dot (`●`) never overlaps the MON value
 - [x] The expense form shows Yearly, Quarterly, and Monthly amount fields in a compact row with currency dropdown at the end
 
 ### Amount input behaviour fix

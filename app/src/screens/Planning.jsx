@@ -738,9 +738,9 @@ function ExpenseNode({
           <span className={styles.expenseName}>{item.name}</span>
         </div>
         <span className={styles.pctCell}>{pct != null ? `${pct.toFixed(1)}%` : '—'}</span>
-        <span className={styles.amountCell}>{amounts.yearly    != null ? amounts.yearly.toFixed(0)    : '—'}</span>
-        <span className={styles.amountCell}>{amounts.quarterly != null ? amounts.quarterly.toFixed(0) : '—'}</span>
-        <span className={styles.amountCell}>{amounts.monthly   != null ? amounts.monthly.toFixed(0)   : '—'}</span>
+        <span className={styles.amountCell}>{amounts.yearly    != null ? fmtAmt(amounts.yearly)    : '—'}</span>
+        <span className={styles.amountCell}>{amounts.quarterly != null ? fmtAmt(amounts.quarterly) : '—'}</span>
+        <span className={styles.amountCell}>{amounts.monthly   != null ? fmtAmt(amounts.monthly)   : '—'}</span>
         <div className={styles.expenseActions}>
           {!isParent && isOutOfSync && (
             <span className={styles.syncActions}>

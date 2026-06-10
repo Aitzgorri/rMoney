@@ -196,7 +196,7 @@
 
 .expenseTableHeader {
   display: grid;
-  grid-template-columns: 1fr 36px 56px 44px 52px 72px;
+  grid-template-columns: 1fr 40px 72px 64px 72px 112px;
   align-items: center;
   padding: 8px 8px;
   border-bottom: 1px solid #2d3448;
@@ -212,7 +212,7 @@
 
 .expenseRow {
   display: grid;
-  grid-template-columns: 1fr 36px 56px 44px 52px 72px;
+  grid-template-columns: 1fr 40px 72px 64px 72px 112px;
   align-items: center;
   padding: 8px 8px 8px 8px;
   border-bottom: 1px solid #1a2030;
