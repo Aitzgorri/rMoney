@@ -1,15 +1,17 @@
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_accounts'
 
 function load() {
   try {
-    return JSON.parse(localStorage.getItem(KEY)) ?? []
+    return JSON.parse(appStorage.getItem(KEY)) ?? []
   } catch {
     return []
   }
 }
 
 function save(accounts) {
-  localStorage.setItem(KEY, JSON.stringify(accounts))
+  appStorage.setItem(KEY, JSON.stringify(accounts))
 }
 
 function sortAlpha(items) {

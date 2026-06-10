@@ -4,10 +4,12 @@
 // crypto "BTC" (D6), and it carries stock-only fields. Holds the resolved coinId
 // (SPEC-029 / D8) so pricing skips the symbol guess, plus the coin name for display.
 
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_crypto_profiles'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 export function getCryptoProfile(ticker) {
   const t = ticker?.trim().toUpperCase()
@@ -45,7 +47,7 @@ export function deleteCryptoProfile(ticker) {
 // ─── Storage-tab helpers (SPEC-026) ───────────────────────────────────────────
 
 export function getCryptoProfilesStorageBytes() {
-  const raw = localStorage.getItem(KEY) ?? '[]'
+  const raw = appStorage.getItem(KEY) ?? '[]'
   return new Blob([raw]).size
 }
 

@@ -1,13 +1,14 @@
 import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvestingAccounts } from './investingAccounts'
 import { getHistoricalForex } from './marketDataClient'
 import { getMainCurrency } from './settings'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_stock_transactions'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 // SPEC-036 (Phase 20 crypto): the rmoney_stock_transactions collection is shared
 // across asset classes, discriminated by an `assetClass` field. Records created
@@ -541,16 +542,16 @@ export function deleteStockTransaction(id) {
     const triggeredExchange = load().find(t => t.type === 'currency-exchange' && t.triggeredByStockTransactionId === id)
     if (triggeredExchange) {
       try {
-        const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-        localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== triggeredExchange.id)))
+        const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+        appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== triggeredExchange.id)))
       } catch {}
       save(load().filter(t => t.id !== triggeredExchange.id))
     }
   }
 
   try {
-    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+    const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
   save(load().filter(t => t.id !== id))
 }
@@ -612,8 +613,8 @@ export function updateCurrencyExchange(id, {
 
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
-    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+    const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
   const updated = {
@@ -736,7 +737,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   const KEY_BALANCES  = 'rmoney_cash_balances'
 
-  const balances = (() => { try { return JSON.parse(localStorage.getItem(KEY_BALANCES)) ?? [] } catch { return [] } })()
+  const balances = (() => { try { return JSON.parse(appStorage.getItem(KEY_BALANCES)) ?? [] } catch { return [] } })()
   const balanceCurrency = Object.fromEntries(balances.map(b => [b.id, b.currency]))
 
   // Per-run cache for (currency, date) → rate to avoid duplicate API calls
@@ -794,7 +795,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
   }
 
   // ── Cash movements ──────────────────────────────────────────────────────────
-  const movements = (() => { try { return JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? [] } catch { return [] } })()
+  const movements = (() => { try { return JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? [] } catch { return [] } })()
   const updatedMovements = []
   for (const mov of movements) {
     const m = { ...mov }
@@ -810,8 +811,8 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
     updatedMovements.push(m)
   }
 
-  localStorage.setItem('rmoney_stock_transactions', JSON.stringify(updatedTxns))
-  localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(updatedMovements))
+  appStorage.setItem('rmoney_stock_transactions', JSON.stringify(updatedTxns))
+  appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(updatedMovements))
 
   return { processed, failed }
 }
@@ -841,8 +842,8 @@ export function updateBuy(id, { date, stockExchange, wallet, shares, price, fee,
 
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
-    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+    const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
   const updated = {
@@ -885,8 +886,8 @@ export function updateSell(id, { date, stockExchange, wallet, shares, price, fee
 
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
-    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+    const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
   const finalAllocations = lotAllocations ?? txn.lotAllocations
@@ -937,8 +938,8 @@ export function updateTransfer(id, { date, destinationInvestingAccountId, shares
 
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
-    const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-    localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
+    const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
   const finalAllocations = lotAllocations ?? txn.lotAllocations

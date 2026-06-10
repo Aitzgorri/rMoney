@@ -2,12 +2,13 @@ import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvest
 import { getSetting } from './settings'
 import { getOpenLots } from './stockTransactions'
 import { getApiDividendHistory } from './apiDividendHistory'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_dividends'
 const KEY_MOVEMENTS = 'rmoney_cash_movements'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 export function computeDividendDerived({ dividendPerShare, shareCount, taxPercent }) {
   const totalBeforeTax = Number(dividendPerShare) * Number(shareCount)
@@ -20,7 +21,7 @@ export function computeDividendDerived({ dividendPerShare, shareCount, taxPercen
 // Resolves tax % for a ticker using: per-stock override → per-country → global default.
 export function resolveDividendTaxPercent(ticker) {
   const profiles = (() => {
-    try { return JSON.parse(localStorage.getItem('rmoney_stock_profiles')) ?? [] }
+    try { return JSON.parse(appStorage.getItem('rmoney_stock_profiles')) ?? [] }
     catch { return [] }
   })()
   const t = ticker?.trim().toUpperCase()
@@ -129,8 +130,8 @@ export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
 
   if (dividend.cashMovementId) {
     try {
-      const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-      localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
+      const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+      appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
         movements.map(m => m.id === dividend.cashMovementId ? { ...m, amount: netTotal } : m)
       ))
     } catch {}
@@ -146,8 +147,8 @@ export function deleteDividend(id) {
   if (!dividend) return
   if (dividend.cashMovementId) {
     try {
-      const movements = JSON.parse(localStorage.getItem(KEY_MOVEMENTS)) ?? []
-      localStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
+      const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+      appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
         movements.filter(m => m.id !== dividend.cashMovementId)
       ))
     } catch {}
@@ -197,9 +198,9 @@ export function migrateDividendsArrayToV2(list) {
 // Idempotent — rows that already carry a status field are left untouched.
 const MIGRATION_KEY = 'rmoney_dividends_status_migrated_v1'
 export function migrateDividendStatuses() {
-  if (localStorage.getItem(MIGRATION_KEY) === '1') return
+  if (appStorage.getItem(MIGRATION_KEY) === '1') return
   save(migrateDividendsArrayToV2(load()))
-  localStorage.setItem(MIGRATION_KEY, '1')
+  appStorage.setItem(MIGRATION_KEY, '1')
 }
 
 // ─── promoteDividends ────────────────────────────────────────────────────────
@@ -291,7 +292,7 @@ export function autoCreatePendingFromApi() {
   )
 
   const profiles = (() => {
-    try { return JSON.parse(localStorage.getItem('rmoney_stock_profiles')) ?? [] } catch { return [] }
+    try { return JSON.parse(appStorage.getItem('rmoney_stock_profiles')) ?? [] } catch { return [] }
   })()
 
   const accounts = getInvestingAccounts()

@@ -1,7 +1,9 @@
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_dividend_chart_presets'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 export function getDividendChartPresets() { return load() }
 
@@ -38,7 +40,7 @@ export function deleteDividendChartPreset(id) {
 }
 
 export function getDividendChartPresetsStorageBytes() {
-  const raw = localStorage.getItem(KEY) ?? '[]'
+  const raw = appStorage.getItem(KEY) ?? '[]'
   return new Blob([raw]).size
 }
 

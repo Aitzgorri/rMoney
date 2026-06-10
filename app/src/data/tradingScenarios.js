@@ -1,11 +1,12 @@
 import { nanoid } from 'nanoid'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_trading_scenarios'
 const ACTIVE_KEY = 'rmoney_trading_scenarios_active'
 const LAST_BUY_ACCOUNT_KEY = 'rmoney_trading_scenarios_last_buy_account'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 function blankScenario(name) {
   const now = new Date().toISOString()
@@ -77,12 +78,12 @@ export function deleteTradingScenario(id) {
 // ─── Active scenario (per-device picker state) ────────────────────────────────
 
 export function getActiveScenarioId() {
-  return localStorage.getItem(ACTIVE_KEY) || null
+  return appStorage.getItem(ACTIVE_KEY) || null
 }
 
 export function setActiveScenarioId(id) {
-  if (id) localStorage.setItem(ACTIVE_KEY, id)
-  else localStorage.removeItem(ACTIVE_KEY)
+  if (id) appStorage.setItem(ACTIVE_KEY, id)
+  else appStorage.removeItem(ACTIVE_KEY)
 }
 
 // ─── Row helpers ──────────────────────────────────────────────────────────────
@@ -207,17 +208,17 @@ export function markRowExecuted(scenarioId, side /* 'sell' | 'buy' */, rowId, tr
 // ─── Most-recently-used investing account (used as Buy-row default) ───────────
 
 export function getLastBuyAccountId() {
-  return localStorage.getItem(LAST_BUY_ACCOUNT_KEY) || null
+  return appStorage.getItem(LAST_BUY_ACCOUNT_KEY) || null
 }
 
 export function setLastBuyAccountId(id) {
-  if (id) localStorage.setItem(LAST_BUY_ACCOUNT_KEY, id)
+  if (id) appStorage.setItem(LAST_BUY_ACCOUNT_KEY, id)
 }
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 export function getTradingScenariosStorageBytes() {
-  const raw = localStorage.getItem(KEY) ?? '[]'
+  const raw = appStorage.getItem(KEY) ?? '[]'
   return new Blob([raw]).size
 }
 

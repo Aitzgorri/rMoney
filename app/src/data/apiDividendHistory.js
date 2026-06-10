@@ -12,24 +12,25 @@
 
 import { getDividends as apiGetDividends } from './marketDataClient'
 import { upsertStockProfile, getStockProfile } from './stockProfiles'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_api_dividend_history'
 const META_KEY = 'rmoney_api_dividend_history_meta'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
 
 function save(records) {
-  localStorage.setItem(KEY, JSON.stringify(records))
+  appStorage.setItem(KEY, JSON.stringify(records))
 }
 
 function loadMeta() {
-  try { return JSON.parse(localStorage.getItem(META_KEY)) ?? {} } catch { return {} }
+  try { return JSON.parse(appStorage.getItem(META_KEY)) ?? {} } catch { return {} }
 }
 
 function saveMeta(meta) {
-  localStorage.setItem(META_KEY, JSON.stringify(meta))
+  appStorage.setItem(META_KEY, JSON.stringify(meta))
 }
 
 // ── Per-ticker refresh metadata ───────────────────────────────────────────────
@@ -202,11 +203,11 @@ export async function refreshApiDividendHistory(ticker, exchange) {
 
 export function clearApiDividendHistory() {
   save([])
-  localStorage.removeItem(META_KEY)
+  appStorage.removeItem(META_KEY)
 }
 
 export function getApiDividendHistoryStorageBytes() {
-  return new Blob([localStorage.getItem(KEY) ?? '[]']).size
+  return new Blob([appStorage.getItem(KEY) ?? '[]']).size
 }
 
 export function getApiDividendHistoryStats() {

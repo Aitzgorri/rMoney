@@ -1,7 +1,9 @@
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_csv_templates'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 export function getCsvTemplates() {
   return load().sort((a, b) => a.name.localeCompare(b.name))
@@ -48,7 +50,7 @@ export function deleteCsvTemplate(id) {
 // Returns investing accounts that use this template as their default
 export function getTemplateUsers(templateId) {
   try {
-    const accounts = JSON.parse(localStorage.getItem('rmoney_investing_accounts')) ?? []
+    const accounts = JSON.parse(appStorage.getItem('rmoney_investing_accounts')) ?? []
     return accounts.filter(a => a.defaultCsvTemplateId === templateId)
   } catch { return [] }
 }

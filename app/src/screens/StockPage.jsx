@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import appStorage from '../utils/appStorage'
 import { getStockTransactionsByTicker, getTriggeredExchangesByTicker, getPositions, getOpenLots, getRealizedPLByTicker, applySplit, updateSplit, createBuy, createSell, canDeleteStockTransaction, deleteStockTransaction } from '../data/stockTransactions'
 import { BuyEditForm, SellEditForm } from '../components/StockTxEditForms'
 import { applyBuyEdit, applySellEdit } from '../data/stockTxEdit'
@@ -59,7 +60,7 @@ const DIV_COLUMNS = [
 
 function loadHiddenDivCols() {
   try {
-    const raw = localStorage.getItem('rmoney_dividend_columns')
+    const raw = appStorage.getItem('rmoney_dividend_columns')
     if (!raw) return new Set(DIV_COLUMNS.filter(c => c.defaultHidden).map(c => c.id))
     return new Set(JSON.parse(raw))
   } catch {
@@ -68,7 +69,7 @@ function loadHiddenDivCols() {
 }
 
 function saveHiddenDivCols(set) {
-  try { localStorage.setItem('rmoney_dividend_columns', JSON.stringify([...set])) } catch { /* ignore */ }
+  try { appStorage.setItem('rmoney_dividend_columns', JSON.stringify([...set])) } catch { /* ignore */ }
 }
 
 // ─── StockPage ────────────────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
   const [ratesVersion,    setRatesVersion]    = useState(0)
   const [divRefreshStatus, setDivRefreshStatus] = useState('idle') // 'idle' | 'loading' | 'failed'
   const [divHistoryKey,    setDivHistoryKey]    = useState(0)      // bump to re-read stale indicator
-  const [currencyMode,     setCurrencyMode]     = useState(() => localStorage.getItem('rmoney_currency_toggle_stock') ?? 'trading')
+  const [currencyMode,     setCurrencyMode]     = useState(() => appStorage.getItem('rmoney_currency_toggle_stock') ?? 'trading')
   const [yieldDetailKind,  setYieldDetailKind]  = useState(null) // null | 'ttm-price' | 'ttm-cost' | 'forward-price' | 'forward-cost'
   const [portfolioMvPcts,  setPortfolioMvPcts]  = useState({})   // portfolioId → % share | null
   const [payoutChunksVisible, setPayoutChunksVisible] = useState(1) // year-chunks loaded in past-payouts table
@@ -686,7 +687,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
   function handleCurrencyModeChange(mode) {
     setCurrencyMode(mode)
-    localStorage.setItem('rmoney_currency_toggle_stock', mode)
+    appStorage.setItem('rmoney_currency_toggle_stock', mode)
   }
 
   async function handleRefreshDividends() {

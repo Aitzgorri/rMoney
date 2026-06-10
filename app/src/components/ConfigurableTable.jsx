@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import styles from './ConfigurableTable.module.css'
+import appStorage from '../utils/appStorage'
 
 /**
  * A configurable table with:
@@ -13,7 +14,7 @@ import styles from './ConfigurableTable.module.css'
  *   columns        — [{ id, label, render, sortValue?, align?, minWidth?, defaultHidden? }]
  *   rows           — any[]  (passed to column.render(row))
  *   rowKey         — (row) => string
- *   storageKey?    — localStorage key for persisting column config
+ *   storageKey?    — appStorage key for persisting column config
  *   emptyMessage?  — string
  *   maxHeight?     — css string (default "440px")
  */
@@ -226,7 +227,7 @@ function loadColConfig(key, columns) {
   }
   if (!key) return defaults
   try {
-    const raw = localStorage.getItem(key)
+    const raw = appStorage.getItem(key)
     if (!raw) return defaults
     const parsed = JSON.parse(raw)
     // Merge: keep only known columns; add any new columns at the end
@@ -244,7 +245,7 @@ function loadColConfig(key, columns) {
 
 function saveColConfig(key, config) {
   if (!key) return
-  localStorage.setItem(key, JSON.stringify({
+  appStorage.setItem(key, JSON.stringify({
     order:  config.order,
     hidden: [...config.hidden],
   }))

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import appStorage from '../utils/appStorage'
 import { getInvestingAccounts } from '../data/investingAccounts'
 import { getPositions, getOpenLots } from '../data/stockTransactions'
 import {
@@ -465,46 +466,46 @@ export default function DividendPage({ initialTab, onNavigate }) {
   }
 
   // ── Calendar state ────────────────────────────────────────────────────────
-  const [calView,   setCalView]   = useState(() => localStorage.getItem('rmoney_dividend_calendar_view')   ?? 'table')
-  const [calFilter, setCalFilter] = useState(() => localStorage.getItem('rmoney_dividend_calendar_filter') ?? 'pay-only')
+  const [calView,   setCalView]   = useState(() => appStorage.getItem('rmoney_dividend_calendar_view')   ?? 'table')
+  const [calFilter, setCalFilter] = useState(() => appStorage.getItem('rmoney_dividend_calendar_filter') ?? 'pay-only')
   const [calMonth,  setCalMonth]  = useState(() => {
-    return localStorage.getItem('rmoney_dividend_calendar_month') ?? today().slice(0, 7)
+    return appStorage.getItem('rmoney_dividend_calendar_month') ?? today().slice(0, 7)
   })
 
-  function setCalViewP(v)   { setCalView(v);   localStorage.setItem('rmoney_dividend_calendar_view', v) }
-  function setCalFilterP(v) { setCalFilter(v); localStorage.setItem('rmoney_dividend_calendar_filter', v) }
-  function setCalMonthP(v)  { setCalMonth(v);  localStorage.setItem('rmoney_dividend_calendar_month', v) }
+  function setCalViewP(v)   { setCalView(v);   appStorage.setItem('rmoney_dividend_calendar_view', v) }
+  function setCalFilterP(v) { setCalFilter(v); appStorage.setItem('rmoney_dividend_calendar_filter', v) }
+  function setCalMonthP(v)  { setCalMonth(v);  appStorage.setItem('rmoney_dividend_calendar_month', v) }
 
   // ── Metrics state ─────────────────────────────────────────────────────────
   const [metricsGrouping, setMetricsGroupingRaw] = useState(
-    () => localStorage.getItem('rmoney_dividend_metrics_grouping') ?? 'company'
+    () => appStorage.getItem('rmoney_dividend_metrics_grouping') ?? 'company'
   )
   function setMetricsGrouping(v) {
     setMetricsGroupingRaw(v)
-    localStorage.setItem('rmoney_dividend_metrics_grouping', v)
+    appStorage.setItem('rmoney_dividend_metrics_grouping', v)
   }
 
   const [visibleColumns, setVisibleColumnsRaw] = useState(() => {
     try {
-      const stored = localStorage.getItem('rmoney_dividend_metrics_columns')
+      const stored = appStorage.getItem('rmoney_dividend_metrics_columns')
       return stored ? JSON.parse(stored) : METRICS_COLUMNS.map(c => c.id)
     } catch { return METRICS_COLUMNS.map(c => c.id) }
   })
   function setVisibleColumns(cols) {
     setVisibleColumnsRaw(cols)
-    localStorage.setItem('rmoney_dividend_metrics_columns', JSON.stringify(cols))
+    appStorage.setItem('rmoney_dividend_metrics_columns', JSON.stringify(cols))
   }
 
   const [sortByGrouping, setSortByGroupingRaw] = useState(() => {
     try {
-      const stored = localStorage.getItem('rmoney_dividend_metrics_sort')
+      const stored = appStorage.getItem('rmoney_dividend_metrics_sort')
       return stored ? JSON.parse(stored) : {}
     } catch { return {} }
   })
   function setSortForGrouping(grouping, col, dir) {
     setSortByGroupingRaw(prev => {
       const next = { ...prev, [grouping]: { col, dir } }
-      localStorage.setItem('rmoney_dividend_metrics_sort', JSON.stringify(next))
+      appStorage.setItem('rmoney_dividend_metrics_sort', JSON.stringify(next))
       return next
     })
   }

@@ -1,13 +1,15 @@
 // Per-stock AI chat history. Each ticker holds up to 3 unpinned chats (rolling
 // eviction on new-chat creation) plus unbounded pinned chats.
 
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_ai_chats'
 const MAX_UNPINNED = 3
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? {} } catch { return {} }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? {} } catch { return {} }
 }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
 

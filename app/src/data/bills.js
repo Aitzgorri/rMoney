@@ -2,13 +2,14 @@
 // SPEC-013
 
 import { createTransaction } from './transactions'
+import appStorage from '../utils/appStorage'
 
 const KEY_ITEMS    = 'rmoney_bill_items'
 const KEY_PENDING  = 'rmoney_bill_pending'
 
 function generateId() { return `bill_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
-function load(key)     { try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] } }
-function save(key, v)  { localStorage.setItem(key, JSON.stringify(v)) }
+function load(key)     { try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] } }
+function save(key, v)  { appStorage.setItem(key, JSON.stringify(v)) }
 
 // Always use the LOCAL calendar date (not UTC) so that midnight local time
 // doesn't flip to the previous date when serialized via toISOString().

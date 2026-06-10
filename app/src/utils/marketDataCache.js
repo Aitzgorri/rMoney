@@ -7,16 +7,17 @@
 // NEVER stores API URLs, API keys, or any credential material.
 import { getApiCacheTtl } from '../data/settings'
 import { clearForexCache } from './currency'
+import appStorage from './appStorage'
 
 const CACHE_KEY = 'rmoney_market_data_cache'
 // Profiles cached indefinitely — only cleared by explicit refresh action
 
 function loadCache() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY)) ?? {} } catch { return {} }
+  try { return JSON.parse(appStorage.getItem(CACHE_KEY)) ?? {} } catch { return {} }
 }
 
 function saveCache(c) {
-  localStorage.setItem(CACHE_KEY, JSON.stringify(c))
+  appStorage.setItem(CACHE_KEY, JSON.stringify(c))
 }
 
 function cacheKey(ticker, exchange) {
@@ -198,7 +199,7 @@ const PAGE_CACHE_DEPS = {
 }
 
 // Clears only the hot-cache buckets the given page depends on.
-// Forex lives in a separate localStorage key (currency.js) — cleared via import.
+// Forex lives in a separate appStorage key (currency.js) — cleared via import.
 // Does NOT touch apiDividendHistory (persisted, rate-limited).
 // Also clears cooldown markers for the same categories so a Reset API click
 // retries previously-failing tickers immediately (otherwise the cooldown would
@@ -226,7 +227,7 @@ export function resetPageCaches(pageId) {
 // ─── Storage info ─────────────────────────────────────────────────────────────
 
 export function getCacheStorageBytes() {
-  return new Blob([localStorage.getItem(CACHE_KEY) ?? '{}']).size
+  return new Blob([appStorage.getItem(CACHE_KEY) ?? '{}']).size
 }
 
 export function getCacheStats() {

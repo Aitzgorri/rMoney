@@ -1,18 +1,20 @@
+import appStorage from './appStorage'
+
 const STORAGE_KEY = 'rmoney_market_data_log'
 const MAX_ENTRIES = 100
 
-// In-memory copy so repeated reads don't hit localStorage every time
+// In-memory copy so repeated reads don't hit appStorage every time
 let _cache = null
 
 function load() {
   if (_cache !== null) return _cache
-  try { _cache = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [] } catch { _cache = [] }
+  try { _cache = JSON.parse(appStorage.getItem(STORAGE_KEY)) ?? [] } catch { _cache = [] }
   return _cache
 }
 
 function persist(entries) {
   _cache = entries
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
+  appStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
 }
 
 // Strip URLs and API-key query params from error reasons before logging.
@@ -54,5 +56,5 @@ export function clearCallLog() {
 }
 
 export function getLogStorageBytes() {
-  return new Blob([localStorage.getItem(STORAGE_KEY) ?? '[]']).size
+  return new Blob([appStorage.getItem(STORAGE_KEY) ?? '[]']).size
 }

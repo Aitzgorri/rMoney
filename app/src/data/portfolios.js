@@ -1,10 +1,12 @@
+import appStorage from '../utils/appStorage'
+
 const KEY_PORTFOLIOS  = 'rmoney_portfolios'
 const KEY_ASSIGNMENTS = 'rmoney_portfolio_assignments'
 
 function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
-function save(key, data) { localStorage.setItem(key, JSON.stringify(data)) }
+function save(key, data) { appStorage.setItem(key, JSON.stringify(data)) }
 
 // ─── Portfolio nodes ──────────────────────────────────────────────────────────
 
@@ -181,7 +183,7 @@ export function deletePortfolioAssignment(id) {
 // Returns unique tickers from all stock transactions (for autocomplete suggestions)
 export function getKnownTickers() {
   try {
-    const txns = JSON.parse(localStorage.getItem('rmoney_stock_transactions')) ?? []
+    const txns = JSON.parse(appStorage.getItem('rmoney_stock_transactions')) ?? []
     return [...new Set(txns.filter(t => t.type === 'buy').map(t => t.ticker))].sort()
   } catch { return [] }
 }

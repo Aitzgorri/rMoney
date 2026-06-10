@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import appStorage from '../utils/appStorage'
 
 const KEYS = {
   watchlists:       'rmoney_watchlists',
@@ -6,8 +7,8 @@ const KEYS = {
   alerts:           'rmoney_watchlist_alerts',
 }
 
-function load(key) { try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] } }
-function save(key, data) { localStorage.setItem(key, JSON.stringify(data)) }
+function load(key) { try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] } }
+function save(key, data) { appStorage.setItem(key, JSON.stringify(data)) }
 
 // ─── Watchlists ───────────────────────────────────────────────────────────────
 
@@ -162,9 +163,9 @@ export function evaluateAlerts(priceMap) {
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 export function getWatchlistStorageBytes() {
-  const lists   = localStorage.getItem(KEYS.watchlists) ?? '[]'
-  const entries = localStorage.getItem(KEYS.entries)    ?? '[]'
-  const alerts  = localStorage.getItem(KEYS.alerts)     ?? '[]'
+  const lists   = appStorage.getItem(KEYS.watchlists) ?? '[]'
+  const entries = appStorage.getItem(KEYS.entries)    ?? '[]'
+  const alerts  = appStorage.getItem(KEYS.alerts)     ?? '[]'
   return (
     new Blob([lists]).size +
     new Blob([entries]).size +

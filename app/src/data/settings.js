@@ -1,17 +1,18 @@
 import { inferLocaleCurrency } from '../utils/currency'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_settings'
 
 function load() {
   try {
-    return JSON.parse(localStorage.getItem(KEY)) ?? {}
+    return JSON.parse(appStorage.getItem(KEY)) ?? {}
   } catch {
     return {}
   }
 }
 
 function save(settings) {
-  localStorage.setItem(KEY, JSON.stringify(settings))
+  appStorage.setItem(KEY, JSON.stringify(settings))
 }
 
 export function getSetting(key, defaultValue) {
@@ -322,14 +323,14 @@ const KEY_WIDGETS = 'rmoney_widgets'
 
 function loadWidgets() {
   try {
-    return JSON.parse(localStorage.getItem(KEY_WIDGETS)) ?? []
+    return JSON.parse(appStorage.getItem(KEY_WIDGETS)) ?? []
   } catch {
     return []
   }
 }
 
 function saveWidgets(widgets) {
-  localStorage.setItem(KEY_WIDGETS, JSON.stringify(widgets))
+  appStorage.setItem(KEY_WIDGETS, JSON.stringify(widgets))
 }
 
 export function getWidgets() {

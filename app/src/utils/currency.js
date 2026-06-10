@@ -1,11 +1,12 @@
 import { getHistoricalForex } from '../data/marketDataClient'
+import appStorage from './appStorage'
 
 const CACHE_KEY = 'rmoney_exchange_rates'
 
 function getForexTtlMs() {
-  // Read directly from localStorage to avoid a circular dep (settings.js → currency.js).
+  // Read directly from appStorage to avoid a circular dep (settings.js → currency.js).
   try {
-    const s = JSON.parse(localStorage.getItem('rmoney_settings')) ?? {}
+    const s = JSON.parse(appStorage.getItem('rmoney_settings')) ?? {}
     const min = s.apiCacheTtl?.forexMin
     return (Number.isFinite(min) && min > 0 ? min : 60) * 60_000
   } catch {
@@ -37,14 +38,14 @@ export function inferLocaleCurrency() {
 
 function loadCache() {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY)) ?? null
+    return JSON.parse(appStorage.getItem(CACHE_KEY)) ?? null
   } catch {
     return null
   }
 }
 
 function saveCache(data) {
-  localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+  appStorage.setItem(CACHE_KEY, JSON.stringify(data))
 }
 
 function isCacheValid(cache, baseCurrency) {
@@ -53,7 +54,7 @@ function isCacheValid(cache, baseCurrency) {
 }
 
 export function clearForexCache() {
-  localStorage.removeItem(CACHE_KEY)
+  appStorage.removeItem(CACHE_KEY)
 }
 
 export async function fetchRates(baseCurrency) {

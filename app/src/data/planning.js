@@ -1,12 +1,14 @@
+import appStorage from '../utils/appStorage'
+
 const KEY_INCOMES  = 'rmoney_planned_incomes'
 const KEY_EXPENSES = 'rmoney_planned_expenses'
 
 function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
 
 function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data))
+  appStorage.setItem(key, JSON.stringify(data))
 }
 
 function generateId() { return crypto.randomUUID() }

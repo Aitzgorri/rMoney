@@ -1,3 +1,5 @@
+import appStorage from '../utils/appStorage'
+
 const KEY_ENVELOPES  = 'rmoney_envelopes'
 const KEY_TRANSFERS  = 'rmoney_envelope_transfers'
 const KEY_SCHEDULED  = 'rmoney_envelope_scheduled'
@@ -5,11 +7,11 @@ const KEY_SCHEDULED  = 'rmoney_envelope_scheduled'
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
 
 function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data))
+  appStorage.setItem(key, JSON.stringify(data))
 }
 
 function generateId() {
@@ -151,7 +153,7 @@ export function getEnvelopeBalance(envelopeId) {
 
   // Transactions assigned to this envelope
   const KEY_TRANSACTIONS = 'rmoney_transactions'
-  const txs = (() => { try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS)) ?? [] } catch { return [] } })()
+  const txs = (() => { try { return JSON.parse(appStorage.getItem(KEY_TRANSACTIONS)) ?? [] } catch { return [] } })()
   const envelope = load(KEY_ENVELOPES).find(e => e.id === envelopeId)
 
   // Match transactions: explicitly assigned to this envelope,
@@ -175,7 +177,7 @@ export function getEnvelopeBalance(envelopeId) {
   let startingBalances = 0
   if (envelope?.isDefaultIncome) {
     const KEY_ACCOUNTS = 'rmoney_accounts'
-    const accounts = (() => { try { return JSON.parse(localStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
+    const accounts = (() => { try { return JSON.parse(appStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
     startingBalances = accounts.reduce((sum, a) => sum + Number(a.startingBalance), 0)
   }
 
@@ -199,8 +201,8 @@ export function getTotalEnvelopeBalance(envelopeId) {
 export function getEnvelopesTotalByCurrency() {
   const KEY_TRANSACTIONS = 'rmoney_transactions'
   const KEY_ACCOUNTS = 'rmoney_accounts'
-  const txs = (() => { try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS)) ?? [] } catch { return [] } })()
-  const accounts = (() => { try { return JSON.parse(localStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
+  const txs = (() => { try { return JSON.parse(appStorage.getItem(KEY_TRANSACTIONS)) ?? [] } catch { return [] } })()
+  const accounts = (() => { try { return JSON.parse(appStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
   const result = {}
   for (const a of accounts.filter(a => !a.isArchived)) {
     const cur = a.currency || 'EUR'

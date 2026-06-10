@@ -1,15 +1,17 @@
 // CRUD for AI system prompts. One prompt is selected at a time (id in app settings).
 // The collection is seeded with a "Default" prompt that cannot be deleted but can be edited.
 
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_ai_system_prompts'
 
 const DEFAULT_ID = 'default'
 const DEFAULT_CONTENT = 'You are a concise financial advisor. Analyse the provided portfolio data and give a brief, honest evaluation of the stock position. Focus on key metrics, risks, and opportunities. 3–5 paragraphs max.'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
-function save(rows) { localStorage.setItem(KEY, JSON.stringify(rows)) }
+function save(rows) { appStorage.setItem(KEY, JSON.stringify(rows)) }
 
 // Seed the default prompt if the collection is empty or the default id is missing.
 function ensureSeeded() {

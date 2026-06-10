@@ -1,16 +1,18 @@
+import appStorage from '../utils/appStorage'
+
 const KEY          = 'rmoney_categories'
 const KEY_DEFAULTS = 'rmoney_default_categories'
 
 function load() {
   try {
-    return JSON.parse(localStorage.getItem(KEY)) ?? []
+    return JSON.parse(appStorage.getItem(KEY)) ?? []
   } catch {
     return []
   }
 }
 
 function save(categories) {
-  localStorage.setItem(KEY, JSON.stringify(categories))
+  appStorage.setItem(KEY, JSON.stringify(categories))
 }
 
 function generateId() {
@@ -23,14 +25,14 @@ function sortAlpha(items) {
 
 function loadDefaults() {
   try {
-    return JSON.parse(localStorage.getItem(KEY_DEFAULTS)) ?? {}
+    return JSON.parse(appStorage.getItem(KEY_DEFAULTS)) ?? {}
   } catch {
     return {}
   }
 }
 
 function saveDefaults(defaults) {
-  localStorage.setItem(KEY_DEFAULTS, JSON.stringify(defaults))
+  appStorage.setItem(KEY_DEFAULTS, JSON.stringify(defaults))
 }
 
 // ─── Built-in categories ─────────────────────────────────────────────────────

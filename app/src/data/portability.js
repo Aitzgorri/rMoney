@@ -1,6 +1,7 @@
 import { migrateDividendsArrayToV2 } from './dividends'
 import { migrateStockProfilesArrayToV2 } from './stockProfiles'
 import { migrateSettingsObjectToV2 } from './settings'
+import appStorage from '../utils/appStorage'
 
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 
@@ -22,7 +23,7 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 const VERSION = 'rmoney-data-v5'
 
 // Versions the loader can ingest. Newer code accepts older backups (v1–v4)
-// and migrates them in-memory before writing v5-shape data to localStorage.
+// and migrates them in-memory before writing v5-shape data to appStorage.
 const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5']
 
 const KEYS = {
@@ -71,11 +72,11 @@ const KEYS = {
 }
 
 function readList(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
 
 function readObj(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? {} } catch { return {} }
+  try { return JSON.parse(appStorage.getItem(key)) ?? {} } catch { return {} }
 }
 
 // Encodes a Uint8Array as a base64 string.
@@ -344,11 +345,11 @@ export function validateImportData(parsed) {
 }
 
 // Apply v1→v2 transforms to an in-memory backup payload before it's written
-// to localStorage. The boot-time migrations (migrateDividendStatuses,
+// to appStorage. The boot-time migrations (migrateDividendStatuses,
 // migrateConfirmedField, migrateFavoriteCurrencies) would otherwise refuse to
 // re-run on top of imported v1 data because their per-key flags are already
 // set on the destination install. Applying the same pure transforms here
-// guarantees that localStorage ends up in v2 shape regardless of source.
+// guarantees that appStorage ends up in v2 shape regardless of source.
 // The v2→v3 delta (dismissedSplits collection + stockTransactions fee-currency
 // fields) is additive: importAppData defaults the new collection and the
 // item-291 boot migration backfills feeCurrency, so no explicit v2→v3 branch is
@@ -379,7 +380,7 @@ export function migrateBackup(parsed) {
 
 export function importAppData(data) {
   data = migrateBackup(data)
-  function write(key, value) { localStorage.setItem(key, JSON.stringify(value)) }
+  function write(key, value) { appStorage.setItem(key, JSON.stringify(value)) }
 
   write(KEYS.accounts,           data.accounts           ?? [])
   write(KEYS.transactions,       data.transactions       ?? [])

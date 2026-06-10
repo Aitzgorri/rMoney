@@ -1,3 +1,5 @@
+import appStorage from '../utils/appStorage'
+
 const KEY_TRANSACTIONS = 'rmoney_transactions'
 const KEY_PAYEES       = 'rmoney_payees'
 const KEY_RECURRING    = 'rmoney_recurring'
@@ -5,11 +7,11 @@ const KEY_RECURRING    = 'rmoney_recurring'
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
 
 function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data))
+  appStorage.setItem(key, JSON.stringify(data))
 }
 
 function generateId() {

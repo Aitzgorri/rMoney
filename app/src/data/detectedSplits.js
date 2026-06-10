@@ -7,11 +7,12 @@
 // a "pending" notification with Apply / Dismiss actions.
 //
 // Persisted state is only the dismissal list — the pending list is derived on
-// every visit. Dismissed entries live in localStorage under
+// every visit. Dismissed entries live in appStorage under
 // `rmoney_dismissed_splits` (see Settings → Storage tab).
 
 import { getCorporateActions } from './marketDataClient'
 import { getStockTransactionsByTicker } from './stockTransactions'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_dismissed_splits'
 
@@ -21,11 +22,11 @@ const KEY = 'rmoney_dismissed_splits'
 const LOOKBACK_YEARS = 5
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
 
 function save(data) {
-  localStorage.setItem(KEY, JSON.stringify(data))
+  appStorage.setItem(KEY, JSON.stringify(data))
 }
 
 function sameKey(a, b) {

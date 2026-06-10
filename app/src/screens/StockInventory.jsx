@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import appStorage from '../utils/appStorage'
 import {
   getActiveStockProfiles, getArchivedStockProfiles, upsertStockProfile, setConfirmed,
   archiveStockProfile, unarchiveStockProfile, deleteStockProfile, createManualStockProfile,
@@ -23,15 +24,15 @@ const SORT_KEY    = 'rmoney_stock_inventory_sort'
 const FILTER_KEY  = 'rmoney_stock_inventory_confirm_filter'
 
 function loadSort() {
-  try { return JSON.parse(localStorage.getItem(SORT_KEY)) ?? { key: 'ticker', dir: 'asc' } } catch { return { key: 'ticker', dir: 'asc' } }
+  try { return JSON.parse(appStorage.getItem(SORT_KEY)) ?? { key: 'ticker', dir: 'asc' } } catch { return { key: 'ticker', dir: 'asc' } }
 }
-function saveSort(s) { localStorage.setItem(SORT_KEY, JSON.stringify(s)) }
+function saveSort(s) { appStorage.setItem(SORT_KEY, JSON.stringify(s)) }
 
 function loadConfirmFilter() {
-  const v = localStorage.getItem(FILTER_KEY)
+  const v = appStorage.getItem(FILTER_KEY)
   return v === 'confirmed' || v === 'unconfirmed' ? v : 'all'
 }
-function saveConfirmFilter(v) { localStorage.setItem(FILTER_KEY, v) }
+function saveConfirmFilter(v) { appStorage.setItem(FILTER_KEY, v) }
 
 function detectDirection(input) {
   return /^[A-Z0-9.]{1,8}$/.test(input.trim().toUpperCase()) ? 'A' : 'B'

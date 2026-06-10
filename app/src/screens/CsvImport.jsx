@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import appStorage from '../utils/appStorage'
 import {
   parseCSVText, detectDelimiter, detectDateFormat, applyMapping, validateRow, detectTypeValues,
   DATE_FORMATS, APP_FIELDS, APP_TYPES,
@@ -987,10 +988,10 @@ function divCompositeKey(p) {
 function collectExternalIds(investingAccountId) {
   const ids = new Set()
   try {
-    const txns = JSON.parse(localStorage.getItem('rmoney_stock_transactions')) ?? []
+    const txns = JSON.parse(appStorage.getItem('rmoney_stock_transactions')) ?? []
     txns.filter(t => t.investingAccountId === investingAccountId && t.transactionExternalId)
         .forEach(t => ids.add(t.transactionExternalId))
-    const divs = JSON.parse(localStorage.getItem('rmoney_dividends')) ?? []
+    const divs = JSON.parse(appStorage.getItem('rmoney_dividends')) ?? []
     divs.filter(d => d.investingAccountId === investingAccountId && d.transactionExternalId)
         .forEach(d => ids.add(d.transactionExternalId))
   } catch {}
@@ -1000,7 +1001,7 @@ function collectExternalIds(investingAccountId) {
 function collectTransactionCompositeKeys(investingAccountId) {
   const keys = new Set()
   try {
-    const txns = JSON.parse(localStorage.getItem('rmoney_stock_transactions')) ?? []
+    const txns = JSON.parse(appStorage.getItem('rmoney_stock_transactions')) ?? []
     txns
       .filter(t => t.investingAccountId === investingAccountId && (t.type === 'buy' || t.type === 'sell'))
       .forEach(t => keys.add(
@@ -1013,7 +1014,7 @@ function collectTransactionCompositeKeys(investingAccountId) {
 function collectDividendCompositeKeys(investingAccountId) {
   const keys = new Set()
   try {
-    const divs = JSON.parse(localStorage.getItem('rmoney_dividends')) ?? []
+    const divs = JSON.parse(appStorage.getItem('rmoney_dividends')) ?? []
     divs
       .filter(d => d.investingAccountId === investingAccountId)
       .forEach(d => keys.add(
@@ -1067,12 +1068,12 @@ function rollback(committed) {
     const buyIds = new Set(committed.filter(c => c.type !== 'dividend').map(c => c.id))
     const divIds = new Set(committed.filter(c => c.type === 'dividend').map(c => c.id))
     if (buyIds.size > 0) {
-      const txns = JSON.parse(localStorage.getItem(txnKey)) ?? []
-      localStorage.setItem(txnKey, JSON.stringify(txns.filter(t => !buyIds.has(t.id))))
+      const txns = JSON.parse(appStorage.getItem(txnKey)) ?? []
+      appStorage.setItem(txnKey, JSON.stringify(txns.filter(t => !buyIds.has(t.id))))
     }
     if (divIds.size > 0) {
-      const divs = JSON.parse(localStorage.getItem(divKey)) ?? []
-      localStorage.setItem(divKey, JSON.stringify(divs.filter(d => !divIds.has(d.id))))
+      const divs = JSON.parse(appStorage.getItem(divKey)) ?? []
+      appStorage.setItem(divKey, JSON.stringify(divs.filter(d => !divIds.has(d.id))))
     }
   } catch {}
 }

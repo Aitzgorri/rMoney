@@ -8,6 +8,7 @@
 import {
   getSecret, setSecret, deleteSecret, deleteVaultFile,
 } from '../utils/secrets'
+import appStorage from '../utils/appStorage'
 
 // Keyed market data providers whose API keys live in Stronghold.
 const KEYED_PROVIDERS = ['massive', 'twelveData', 'finnhub', 'alphaVantage']
@@ -30,7 +31,7 @@ const LOCAL_KEYS_BY_ISLAND = {
 }
 
 function readSettings() {
-  try { return JSON.parse(localStorage.getItem('rmoney_settings')) ?? {} } catch { return {} }
+  try { return JSON.parse(appStorage.getItem('rmoney_settings')) ?? {} } catch { return {} }
 }
 
 // Snapshot the parts of state covered by enabled preserve islands.
@@ -45,7 +46,7 @@ async function snapshot(preserve) {
     if (!enabled) continue
 
     for (const k of LOCAL_KEYS_BY_ISLAND[island] ?? []) {
-      const v = localStorage.getItem(k)
+      const v = appStorage.getItem(k)
       if (v !== null) localKeys[k] = v
     }
 
@@ -75,23 +76,21 @@ async function snapshot(preserve) {
   return { localKeys, settings, secrets }
 }
 
-// Clear every rmoney_* localStorage key.
+// Clear every rmoney_* app-data key. Routes through appStorage so the in-memory
+// backend (Phase 39e `app` mode) is cleared too; the vault-created flag and dev
+// secrets are infrastructure keys handled separately by clearSecrets / restore.
 function clearRmoneyLocal() {
-  const toRemove = []
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i)
-    if (k?.startsWith('rmoney_')) toRemove.push(k)
-  }
-  for (const k of toRemove) localStorage.removeItem(k)
+  const toRemove = appStorage.keys().filter(k => k?.startsWith('rmoney_'))
+  for (const k of toRemove) appStorage.removeItem(k)
 }
 
 // Restore the snapshot into a fresh app state.
 async function restore(snap) {
   for (const [k, v] of Object.entries(snap.localKeys)) {
-    localStorage.setItem(k, v)
+    appStorage.setItem(k, v)
   }
   if (Object.keys(snap.settings).length > 0) {
-    localStorage.setItem('rmoney_settings', JSON.stringify(snap.settings))
+    appStorage.setItem('rmoney_settings', JSON.stringify(snap.settings))
   }
   for (const [k, v] of Object.entries(snap.secrets)) {
     try { await setSecret(k, v) } catch { /* best effort */ }

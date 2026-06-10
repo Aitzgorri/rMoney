@@ -1,14 +1,15 @@
 import { createTransaction, deleteTransaction } from './transactions'
 import { getAccounts } from './accounts'
+import appStorage from '../utils/appStorage'
 
 const KEY_ACCOUNTS  = 'rmoney_investing_accounts'
 const KEY_BALANCES  = 'rmoney_cash_balances'
 const KEY_MOVEMENTS = 'rmoney_cash_movements'
 
 function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
 }
-function save(key, data) { localStorage.setItem(key, JSON.stringify(data)) }
+function save(key, data) { appStorage.setItem(key, JSON.stringify(data)) }
 
 // ─── Investing accounts ───────────────────────────────────────────────────────
 
@@ -54,12 +55,12 @@ export function canDeleteInvestingAccount(id) {
     }
   }
   // Check stock transactions (read directly to avoid circular import)
-  const stockTxns = (() => { try { return JSON.parse(localStorage.getItem('rmoney_stock_transactions')) ?? [] } catch { return [] } })()
+  const stockTxns = (() => { try { return JSON.parse(appStorage.getItem('rmoney_stock_transactions')) ?? [] } catch { return [] } })()
   if (stockTxns.some(t => t.investingAccountId === id)) {
     return { canDelete: false, reason: 'This account has stock transactions. Remove all stock transactions first.' }
   }
   // Check dividends (read directly to avoid circular import)
-  const dividends = (() => { try { return JSON.parse(localStorage.getItem('rmoney_dividends')) ?? [] } catch { return [] } })()
+  const dividends = (() => { try { return JSON.parse(appStorage.getItem('rmoney_dividends')) ?? [] } catch { return [] } })()
   if (dividends.some(d => d.investingAccountId === id)) {
     return { canDelete: false, reason: 'This account has dividend records. Remove all dividends first.' }
   }

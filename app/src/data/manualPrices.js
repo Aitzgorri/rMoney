@@ -17,14 +17,16 @@
 //   currency: ISO code (uppercase)
 //   setAt:    ISO timestamp recording when the user saved the entry
 
+import appStorage from '../utils/appStorage'
+
 const KEY = 'rmoney_manual_prices'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
 
 function save(rows) {
-  localStorage.setItem(KEY, JSON.stringify(rows))
+  appStorage.setItem(KEY, JSON.stringify(rows))
 }
 
 // Returns every manual-price entry for a ticker, sorted newest-first by date.
@@ -80,7 +82,7 @@ export function renameManualPricesTicker(oldTicker, newTicker) {
 // ─── Storage stats (Settings → Storage tab) ──────────────────────────────────
 
 export function getManualPricesStorageBytes() {
-  return new Blob([localStorage.getItem(KEY) ?? '[]']).size
+  return new Blob([appStorage.getItem(KEY) ?? '[]']).size
 }
 
 export function getManualPricesStats() {

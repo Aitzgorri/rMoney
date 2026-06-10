@@ -1,8 +1,9 @@
 import { nanoid } from 'nanoid'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_benchmarks'
 
-// Always present; not stored in localStorage
+// Always present; not stored in appStorage
 export const CURATED_BENCHMARKS = [
   { id: 'sp500',      ticker: '^GSPC',      exchange: null, displayName: 'S&P 500',       curated: true },
   { id: 'nasdaq100',  ticker: '^NDX',       exchange: null, displayName: 'NASDAQ 100',    curated: true },
@@ -13,9 +14,9 @@ export const CURATED_BENCHMARKS = [
 ]
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 // Returns curated first, then user-added
 export function getBenchmarks() {
@@ -53,6 +54,6 @@ export function deleteAllUserBenchmarks() {
 }
 
 export function getBenchmarksStorageBytes() {
-  const raw = localStorage.getItem(KEY)
+  const raw = appStorage.getItem(KEY)
   return raw ? new Blob([raw]).size : 0
 }

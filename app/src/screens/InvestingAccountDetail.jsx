@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import appStorage from '../utils/appStorage'
 import { getTransactions, updateTransaction } from '../data/transactions'
 import TransactionForm from '../components/TransactionForm'
 import {
@@ -107,7 +108,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   const [filterTickers,     setFilterTickers]   = useState([])
   const [filterCurrencies,  setFilterCurrencies] = useState([])
   const [filterBarOpen,     setFilterBarOpen]   = useState(
-    () => localStorage.getItem(`rmoney_mov_filterbar_${accountId}`) === 'open'
+    () => appStorage.getItem(`rmoney_mov_filterbar_${accountId}`) === 'open'
   )
   const [visibleCount, setVisibleCount] = useState(50)
   const [expandedMovementId, setExpandedMovementId] = useState(null)
@@ -683,7 +684,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
   function toggleFilterBar() {
     const next = !filterBarOpen
     setFilterBarOpen(next)
-    localStorage.setItem(`rmoney_mov_filterbar_${accountId}`, next ? 'open' : 'closed')
+    appStorage.setItem(`rmoney_mov_filterbar_${accountId}`, next ? 'open' : 'closed')
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────

@@ -4,11 +4,12 @@ import {
   renameApiDividendHistoryTicker,
 } from './apiDividendHistory'
 import { renameManualPricesTicker } from './manualPrices'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_stock_profiles'
 
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] } }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function load() { try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] } }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 export function getStockProfile(ticker) {
   const t = ticker?.trim().toUpperCase()
@@ -79,9 +80,9 @@ export function migrateStockProfilesArrayToV2(list) {
 // field. Idempotent — rows that already have the field are left untouched.
 const MIGRATION_KEY = 'rmoney_stock_profiles_confirmed_migrated_v1'
 export function migrateConfirmedField() {
-  if (localStorage.getItem(MIGRATION_KEY) === '1') return
+  if (appStorage.getItem(MIGRATION_KEY) === '1') return
   save(migrateStockProfilesArrayToV2(load()))
-  localStorage.setItem(MIGRATION_KEY, '1')
+  appStorage.setItem(MIGRATION_KEY, '1')
 }
 
 // ─── HQ country (Phase 33b / SPEC-027) ──────────────────────────────────────
@@ -254,9 +255,9 @@ export function renameTicker(oldTicker, newTicker, resolvedFields = {}, mode = '
 function renameInKey(storageKey, old, next) {
   if (old === next) return
   try {
-    const arr = JSON.parse(localStorage.getItem(storageKey)) ?? []
-    localStorage.setItem(storageKey, JSON.stringify(
+    const arr = JSON.parse(appStorage.getItem(storageKey)) ?? []
+    appStorage.setItem(storageKey, JSON.stringify(
       arr.map(r => r.ticker === old ? { ...r, ticker: next } : r)
     ))
-  } catch { /* corrupt JSON in localStorage — leave untouched */ }
+  } catch { /* corrupt JSON in appStorage — leave untouched */ }
 }

@@ -2,13 +2,14 @@ import { getActiveCategories, getDescendants } from './categories'
 import { getTransactions } from './transactions'
 import { getPlanningStartDay, getSetting, setSetting } from './settings'
 import { getCurrentPeriod } from '../utils/planningPeriod'
+import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_budgets'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) ?? [] } catch { return [] }
+  try { return JSON.parse(appStorage.getItem(KEY)) ?? [] } catch { return [] }
 }
-function save(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+function save(data) { appStorage.setItem(KEY, JSON.stringify(data)) }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 
