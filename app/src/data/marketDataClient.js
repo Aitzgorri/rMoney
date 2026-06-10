@@ -7,6 +7,7 @@ import {
   getCachedNews, setCachedNews, getCachedNewsStale,
   getCachedMarketProfile, setCachedMarketProfile,
   getCachedIntraday, setCachedIntraday, getCachedIntradayStale,
+  getCachedHistorical, setCachedHistorical, getCachedHistoricalStale,
   isCoolingDown, setCooldown, clearCooldown,
 } from '../utils/marketDataCache'
 import { logCall, sanitiseReason } from '../utils/marketDataLogger'
@@ -159,8 +160,10 @@ export function getIntradaySeries(ticker, exchange, { forceRefresh = false } = {
   })
 }
 
-// Returns [{ date, close }] — not cached in Phase 2
-export function getHistoricalSeries(ticker, exchange, period, resolution) {
+// Returns [{ date, close }]. Cached with a 12-hour TTL (marketDataCache) so EOD
+// series already received aren't re-fetched — this matters for Stooq, whose
+// historical endpoint enforces a tight per-IP daily download quota.
+export function getHistoricalSeries(ticker, exchange, period, resolution, { forceRefresh = false } = {}) {
   const t = ticker.toUpperCase()
 
   // Manual stocks: synthesize the series from user-entered manual prices.
@@ -174,18 +177,27 @@ export function getHistoricalSeries(ticker, exchange, period, resolution) {
     return Promise.resolve(inWindow.map(r => ({ date: r.date, close: r.price })))
   }
 
-  if (isCoolingDown('historical', t, exchange)) {
-    logCall({ callType: 'getHistoricalSeries', args: [t, exchange, period, resolution], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
-    return Promise.reject(new Error('unavailable (cooldown)'))
+  if (!forceRefresh) {
+    const cached = getCachedHistorical(t, exchange, period, resolution)
+    if (cached) return Promise.resolve(cached)
+    if (isCoolingDown('historical', t, exchange)) {
+      logCall({ callType: 'getHistoricalSeries', args: [t, exchange, period, resolution], providerName: null, latencyMs: 0, outcome: 'cooldown-skip', reason: null })
+      const stale = getCachedHistoricalStale(t, exchange, period, resolution)
+      if (stale) return Promise.resolve(stale)
+      return Promise.reject(new Error('unavailable (cooldown)'))
+    }
   }
 
   return dedup(`series:${t}:${exchange ?? ''}:${period}:${resolution}`, async () => {
     try {
       const { result } = await callChain('getHistoricalSeries', [t, exchange, period, resolution])
+      setCachedHistorical(t, exchange, period, resolution, result)
       clearCooldown('historical', t, exchange)
       return result
     } catch (err) {
       setCooldown('historical', t, exchange)
+      const stale = getCachedHistoricalStale(t, exchange, period, resolution)
+      if (stale) return stale
       throw err
     }
   })
@@ -413,7 +425,14 @@ export async function testProvider(id) {
   const start = Date.now()
   try {
     const providerCfg = await buildProviderCfg(id, cfg[id] ?? {})
-    await provider.getLatestPrice('AAPL', null, providerCfg)
+    // Stooq's light-quote endpoint was removed upstream (hard 404); historical EOD
+    // (behind a proof-of-work gate) is the only path it can still serve, so test that.
+    if (id === 'stooq') {
+      const rows = await provider.getHistoricalSeries('AAPL', null, '1M', '1D', providerCfg)
+      if (!rows?.length) throw new Error('no data')
+    } else {
+      await provider.getLatestPrice('AAPL', null, providerCfg)
+    }
     logCall({ callType: 'testProvider', args: [id], providerName: id, latencyMs: Date.now() - start, outcome: 'success', reason: null })
   } catch (err) {
     const safe = sanitiseReason(err.message)

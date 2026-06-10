@@ -2263,9 +2263,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
           <div className={styles.card}>
             <div className={styles.cardTitle}>Market data cache</div>
             <p className={styles.description}>
-              Short-lived price, news, and profile data. Rebuilds itself automatically — excluded from
-              both Sharable and Full backups. Prices expire after 1 hour; news after 15 minutes;
-              profiles are kept until refreshed manually.
+              Short-lived price, news, profile, and historical-series data. Rebuilds itself automatically —
+              excluded from both Sharable and Full backups. Prices expire after 1 hour; news after 15 minutes;
+              historical series after 12 hours; profiles are kept until refreshed manually.
             </p>
             <div className={styles.storageTable}>
               <div className={styles.storageSection}>
@@ -2285,6 +2285,11 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 <div className={styles.storageRow}>
                   <span className={styles.storageTicker}>Profiles</span>
                   <span className={styles.storageCount}>{mdCacheStats.profileEntries} entr{mdCacheStats.profileEntries !== 1 ? 'ies' : 'y'}</span>
+                  <span className={styles.storageBytes} />
+                </div>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Historical series</span>
+                  <span className={styles.storageCount}>{mdCacheStats.historicalEntries} entr{mdCacheStats.historicalEntries !== 1 ? 'ies' : 'y'}</span>
                   <span className={styles.storageBytes} />
                 </div>
                 <div className={`${styles.storageRow} ${styles.storageSubtotal}`}>

@@ -30,7 +30,10 @@ Build the market-data provider layer that every Investments spec (SPEC-017, SPEC
 - [x] **Twelve Data** (api.twelvedata.com) — already implemented. Free Basic tier silently gates many international tickers; LSE main-market symbols typically require the paid Grow tier. Sets CORS headers.
 - [x] **Finnhub** (finnhub.io) — auth via `?token=` query param. Free tier: 60 calls/minute. Has a `/news` endpoint useful when other providers don't (Twelve Data has none on free; Alpha Vantage has one but is rate-tight). International coverage is partial on free — some EU symbols are premium-gated. Sets CORS headers (`*`).
 - [x] **Alpha Vantage** — already implemented. Free tier is effectively US-only. Kept for US fallback only.
-- [x] **Stooq** (stooq.com) — key-less CSV endpoint at `/q/l/?s={ticker}.{suffix}&f=sd2t2ohlcv&h&e=csv`. No quota, no auth. EOD prices only — does not implement dividends, profile, news, corporate actions. Used as the final price floor. CORS-blocked → uses the same transport plumbing as Yahoo. Symbol format uses lowercase ticker + a country/exchange suffix (`.uk`, `.de`, `.us`, `.fr`, `.nl`, …) — the adapter maps the canonical MIC to a Stooq suffix.
+- [x] **Stooq** (stooq.com) — key-less CSV endpoint. EOD prices only — does not implement dividends, profile, news, corporate actions. CORS-blocked → uses the same transport plumbing as Yahoo. Symbol format uses lowercase ticker + a country/exchange suffix (`.uk`, `.de`, `.us`, `.fr`, `.nl`, …) — the adapter maps the canonical MIC to a Stooq suffix.
+  - **Upstream anti-bot change (2026).** Stooq **removed the light-quote endpoint** (`/q/l/`, now a hard `404`), so `getLatestPrice` can no longer be served — it throws and the chain falls through to another provider (Yahoo Finance, also key-less, is the practical replacement). The **historical** endpoint (`/q/d/l/`) still works but is now behind a **JavaScript proof-of-work anti-bot gate**: the first response is an HTML page handing the client a signed token `c` and difficulty `d`; the client must find a nonce `n` such that `SHA-256(c + n)` (hex) starts with `d` zeros, `POST` `c`+`n` to `/__verify`, and replay the request carrying the returned `auth` cookie. This handshake is implemented in `app/src/services/providers/stooqAuth.js` (`stooqFetch`) and used only by `getHistoricalSeries`.
+  - The `auth` cookie is an anti-bot session token for **public EOD data, not a credential** — it is cached **in-memory only** (re-solved once per app session), never persisted to localStorage and never logged (SPEC-031). On Tauri it is read from the `set-cookie` response header (exposed by `@tauri-apps/plugin-http`); in browser/Vite-dev the header is unreadable so the gate can't be cleared and the adapter returns "no data" (the chain falls through).
+  - The historical endpoint enforces a **tight per-IP daily download quota** (returns an empty body once exhausted, parsed as "no data"). The client therefore **caches historical series** with a 12-hour TTL (see *Caching* below) so data already received is not re-fetched. The Stooq **Test connection** button exercises `getHistoricalSeries('AAPL', '1M', '1D')` rather than the dead light-quote endpoint.
 - [x] Disabled providers are skipped entirely (the chain acts as if they're not there). Providers without an API key (where one is required) are auto-disabled — the chain skips them with reason `"no api key configured"` rather than attempting the call.
 - [x] All API key storage, display, logging, and export rules are defined in **SPEC-031** (Security and secrets handling). Adding a new provider to this chain implies updating SPEC-031's connect-src host list and redaction map; do not implement a new provider without that paired update.
 
@@ -242,10 +245,11 @@ Per-stock data on the stock profile (canonical triple owned by SPEC-029, manual 
 Caches (in-memory, mirrored to localStorage for persistence across sessions):
 
 ```
-priceCache:   { [ticker_exchange]: { price, currency, fetchedAt, providerName } }
-forexCache:   { [from_to]:         { rate, fetchedAt, providerName } }  // shared with SPEC-017
-newsCache:    { [ticker]:          { items, fetchedAt } }                // 15-min TTL
-profileCache: { [ticker]:          { profile, fetchedAt } }              // indefinite
+priceCache:      { [ticker_exchange]:              { price, currency, fetchedAt, providerName } }
+forexCache:      { [from_to]:                      { rate, fetchedAt, providerName } }  // shared with SPEC-017
+newsCache:       { [ticker]:                       { items, fetchedAt } }                // 15-min TTL
+profileCache:    { [ticker]:                       { profile, fetchedAt } }              // indefinite
+historicalCache: { [ticker_exchange_period_res]:   { series, fetchedAt } }               // 12-hour TTL
 cooldowns:    {
   prices:     { [ticker_exchange]: { failedAt } },    // failureCooldownMin TTL
   news:       { [ticker]:          { failedAt } },
@@ -258,7 +262,6 @@ cooldowns:    {
 - Per-data-type routing logic (e.g. "use IBKR for positions but Twelve Data for dividends regardless"). Fallback is strictly failure-only.
 - User-reorderable chain order.
 - WebSocket streaming prices. All fetches are REST pull.
-- Historical-series caching beyond a single session.
 - Auto-sync of broker transactions from IBKR Web API on a schedule. Phase 2 keeps the API chain as a data-fetch layer; using IBKR to pull the user's transactions automatically is tracked as a future enhancement (the endpoints exist in the shape of `getMyTransactions` but are not wired to the Investments ingestion flow).
 - Additional providers beyond the seven chain members. (EODHD and Marketstack were considered and rejected as quotas were too tight to be useful — easy to revisit later by adding another adapter and a chain slot.)
 - Public CORS proxies (e.g. `corsproxy.io`) for the keyless providers. Yahoo / Stooq go through Tauri HTTP or Vite dev proxy only.

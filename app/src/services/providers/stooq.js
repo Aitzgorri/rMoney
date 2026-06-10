@@ -1,12 +1,22 @@
-// Stooq (stooq.com) — free, key-less CSV endpoint. Price data only (EOD).
+// Stooq (stooq.com) — free, key-less CSV endpoint. EOD price data only.
 // CORS: no Access-Control-Allow-Origin — every call goes through marketDataFetch
 // with requiresProxy: true (Tauri HTTP plugin in production, Vite /__stooq in dev).
+//
+// Upstream changes (2026): Stooq removed the light-quote endpoint (/q/l/, now a
+// hard 404) and put the historical CSV endpoint (/q/d/l/) behind a JavaScript
+// proof-of-work anti-bot gate. Consequences:
+//   • getLatestPrice can no longer work — it throws and the chain falls through.
+//   • getHistoricalSeries fetches via stooqFetch (see stooqAuth.js), which clears
+//     the proof-of-work gate. The endpoint also enforces a tight per-IP daily
+//     download quota, so the client caches results (marketDataClient) to avoid
+//     re-hitting it for data already received.
 //
 // Symbol format: lowercase ticker + country/exchange suffix (sgro.uk, bmw.de, aapl.us).
 // resolveExchange() → MIC → PROVIDER_EXCHANGE.stooq → suffix. Tickers with no
 // exchange default to .us since Stooq covers US listings by that convention.
 
 import { marketDataFetch } from '../../utils/marketDataFetch'
+import { stooqFetch } from './stooqAuth'
 import { resolveExchange, PROVIDER_EXCHANGE, stripProviderSuffix, CANONICAL_EXCHANGES } from '../../utils/marketDataExchanges'
 import { normaliseMinorUnit } from '../../utils/marketDataNormalise'
 
@@ -57,6 +67,8 @@ function resolutionToInterval(resolution) {
 const notSupported = () => async () => { throw new Error('not supported') }
 
 export const stooq = {
+  // Upstream removed the light-quote endpoint — this now always 404s. Kept so the
+  // chain has a defined method; it simply throws and the next provider is tried.
   async getLatestPrice(ticker, exchange, _config) {
     const sym = stooqSymbol(ticker, exchange)
     if (!sym) throw new Error('no data')
@@ -86,9 +98,9 @@ export const stooq = {
     const d1 = toYyyymmdd(new Date(Date.now() - days * 86400 * 1000))
     const interval = resolutionToInterval(resolution)
     const url = `${BASE}/q/d/l/?s=${sym}&i=${interval}&d1=${d1}&d2=${d2}`
-    const r = await marketDataFetch(url, {}, PROXY)
-    if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const rows = parseCsv(await r.text())
+    // stooqFetch clears the proof-of-work gate and returns the CSV text (or '' when
+    // the gate can't be cleared / the daily quota is exhausted → parsed as no data).
+    const rows = parseCsv(await stooqFetch(url))
     if (!rows.length) throw new Error('no data')
     const raw = inferQuotedCurrency(exchange)
     return rows

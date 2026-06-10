@@ -63,7 +63,7 @@ export function clearProfileCache() {
 
 // Clears all hot caches at once — call when credentials change.
 export function clearAllMarketCaches() {
-  saveCache({ prices: {}, news: {}, profiles: {}, intraday: {}, cooldowns: {} })
+  saveCache({ prices: {}, news: {}, profiles: {}, intraday: {}, historical: {}, cooldowns: {} })
 }
 
 // ─── Failure cooldown (negative cache) ───────────────────────────────────────
@@ -144,6 +144,35 @@ export function setCachedIntraday(ticker, exchange, points) {
   saveCache({ ...c, intraday: { ...(c.intraday ?? {}), [k]: { points, fetchedAt: new Date().toISOString() } } })
 }
 
+// ─── Historical-series cache (12-hour TTL) ────────────────────────────────────
+// EOD series only change once per trading day, and Stooq enforces a tight per-IP
+// daily download quota — so we cache each (ticker, exchange, period, resolution)
+// result and reuse it rather than re-fetching data already received. Fixed TTL
+// (not user-configurable): half a day keeps charts current after the close while
+// collapsing repeated views / app reloads into a single download.
+const HISTORICAL_TTL_MIN = 720
+
+function historicalKey(ticker, exchange, period, resolution) {
+  return `${cacheKey(ticker, exchange)}:${period}:${resolution}`
+}
+
+export function getCachedHistorical(ticker, exchange, period, resolution) {
+  const entry = loadCache().historical?.[historicalKey(ticker, exchange, period, resolution)]
+  if (!entry) return null
+  if (Date.now() - new Date(entry.fetchedAt).getTime() > HISTORICAL_TTL_MIN * 60_000) return null
+  return entry.series
+}
+
+export function getCachedHistoricalStale(ticker, exchange, period, resolution) {
+  return loadCache().historical?.[historicalKey(ticker, exchange, period, resolution)]?.series ?? null
+}
+
+export function setCachedHistorical(ticker, exchange, period, resolution, series) {
+  const k = historicalKey(ticker, exchange, period, resolution)
+  const c = loadCache()
+  saveCache({ ...c, historical: { ...(c.historical ?? {}), [k]: { series, fetchedAt: new Date().toISOString() } } })
+}
+
 // ─── Profile cache (indefinite) ───────────────────────────────────────────────
 
 export function getCachedMarketProfile(ticker) {
@@ -173,6 +202,11 @@ export function clearCacheForTicker(ticker) {
   if (c.intraday) {
     c.intraday = Object.fromEntries(
       Object.entries(c.intraday).filter(([k]) => k !== t && !k.startsWith(t + ':'))
+    )
+  }
+  if (c.historical) {
+    c.historical = Object.fromEntries(
+      Object.entries(c.historical).filter(([k]) => k !== t && !k.startsWith(t + ':'))
     )
   }
   if (c.profiles) delete c.profiles[t]
@@ -208,10 +242,11 @@ export function resetPageCaches(pageId) {
   const deps = PAGE_CACHE_DEPS[pageId] ?? []
   const c = loadCache()
   const updated = { ...c }
-  if (deps.includes('prices'))   updated.prices   = {}
-  if (deps.includes('news'))     updated.news     = {}
-  if (deps.includes('intraday')) updated.intraday = {}
-  if (deps.includes('profiles')) updated.profiles = {}
+  if (deps.includes('prices'))     updated.prices     = {}
+  if (deps.includes('news'))       updated.news       = {}
+  if (deps.includes('intraday'))   updated.intraday   = {}
+  if (deps.includes('historical')) updated.historical = {}
+  if (deps.includes('profiles'))   updated.profiles   = {}
   if (updated.cooldowns) {
     const cooldowns = { ...updated.cooldowns }
     if (deps.includes('prices'))     cooldowns.prices     = {}
@@ -238,10 +273,11 @@ export function getCacheStats() {
     Object.keys(c.cooldowns?.intraday   ?? {}).length +
     Object.keys(c.cooldowns?.historical ?? {}).length
   return {
-    priceEntries:    Object.keys(c.prices   ?? {}).length,
-    newsEntries:     Object.keys(c.news     ?? {}).length,
-    profileEntries:  Object.keys(c.profiles ?? {}).length,
-    intradayEntries: Object.keys(c.intraday ?? {}).length,
+    priceEntries:      Object.keys(c.prices     ?? {}).length,
+    newsEntries:       Object.keys(c.news       ?? {}).length,
+    profileEntries:    Object.keys(c.profiles   ?? {}).length,
+    intradayEntries:   Object.keys(c.intraday   ?? {}).length,
+    historicalEntries: Object.keys(c.historical ?? {}).length,
     cooldownEntries,
     bytes: getCacheStorageBytes(),
   }
