@@ -74,7 +74,7 @@ export default function EnvelopeTransferForm({
       const data = {
         fromEnvelopeId: form.fromEnvelopeId,
         toEnvelopeId:   form.toEnvelopeId,
-        amount:         form.amount,
+        amount:         Number(form.amount),
         date:           form.date,
         note:           form.note,
       }

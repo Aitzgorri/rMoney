@@ -179,10 +179,10 @@ Recommended sub-phase order (each is independently shippable / testable):
 >
 > **Release/backup note:** Phase 43 is compute/display + a data *repair* migration only — it adds **no new persisted field** and **no backup-format bump**. The migration coerces existing values in place (string → number) within the existing `rmoney_envelope_transfers` / `rmoney_envelope_scheduled` blobs.
 
-### SPEC-004 Envelopes — transfer amount integrity
-43a. [ ] **Coerce on write.** `Number(form.amount)` in the one-time branch of `EnvelopeTransferForm`, plus `Number(...)` inside `updateEnvelopeTransfer` / `updateScheduledTransfer`, so no edit path can persist a string. Fixes the `NaN` *and* the silently-wrong concatenated sums (`200 + "150"` → `"200150"`) after editing a transfer.
-43b. [ ] **Coerce on read.** `s + Number(t.amount)` for transfers-in and transfers-out in `getEnvelopeBalance`, so even a legacy string amount can never corrupt a sum — correct results before the migration runs.
-43c. [ ] **Startup migration.** One-time pass that rewrites any stored string transfer/scheduled amounts to numbers (alongside the existing `cleanupSelfScheduledTransfers`).
+### SPEC-004 Envelopes — transfer amount integrity ✓ done (SPEC-004 back to `done`)
+43a. ✓ **DONE** — **Coerce on write.** `Number(form.amount)` in the one-time branch of `EnvelopeTransferForm`, plus a `coerceAmount` helper applied inside `updateEnvelopeTransfer` / `updateScheduledTransfer`, so no edit path can persist a string. Fixes the `NaN` *and* the silently-wrong concatenated sums (`200 + "150"` → `"200150"`) after editing a transfer.
+43b. ✓ **DONE** — **Coerce on read.** `s + Number(t.amount)` for transfers-in and transfers-out in `getEnvelopeBalance`, so even a legacy string amount can never corrupt a sum — correct results before the migration runs.
+43c. ✓ **DONE** — **Startup migration.** `migrateTransferAmounts()` rewrites any stored string transfer/scheduled amounts to numbers (finite-only), wired into `main.jsx` alongside `cleanupSelfScheduledTransfers`. Build + lint clean; runtime verification in the app still recommended.
 
 ### SPEC-007 Envelope List
 43d. [ ] **No `−0.00`.** Apply `round2` (from 43h) to envelope balances **before** the `< 0` sign check (own-balance chip + total) so a near-zero balance renders `0.00`, and the spurious own-balance chip is hidden when the own balance is only sub-cent residue. Also covers the EnvelopeHistory balance card / running balance / grand total.

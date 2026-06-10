@@ -18,6 +18,16 @@ function generateId() {
   return crypto.randomUUID()
 }
 
+// Coerce an `amount` field to a number when present, so a string coming from a
+// form input never gets persisted (string amounts corrupt the balance sums,
+// which add with `+` — see migrateTransferAmounts below).
+function coerceAmount(fields) {
+  if (fields && fields.amount !== undefined) {
+    return { ...fields, amount: Number(fields.amount) }
+  }
+  return fields
+}
+
 function sortAlpha(items) {
   return [...items].sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -148,8 +158,8 @@ export function getDefaultExpenseEnvelope() {
 export function getEnvelopeBalance(envelopeId) {
   // Envelope transfers (reallocation between envelopes)
   const transfers = load(KEY_TRANSFERS)
-  const transferIn  = transfers.filter(t => t.toEnvelopeId   === envelopeId).reduce((s, t) => s + t.amount, 0)
-  const transferOut = transfers.filter(t => t.fromEnvelopeId === envelopeId).reduce((s, t) => s + t.amount, 0)
+  const transferIn  = transfers.filter(t => t.toEnvelopeId   === envelopeId).reduce((s, t) => s + Number(t.amount), 0)
+  const transferOut = transfers.filter(t => t.fromEnvelopeId === envelopeId).reduce((s, t) => s + Number(t.amount), 0)
 
   // Transactions assigned to this envelope
   const KEY_TRANSACTIONS = 'rmoney_transactions'
@@ -248,8 +258,9 @@ export function createEnvelopeTransfer({ fromEnvelopeId, toEnvelopeId, amount, d
 }
 
 export function updateEnvelopeTransfer(id, fields) {
+  const patch = coerceAmount(fields)
   const transfers = load(KEY_TRANSFERS)
-  save(KEY_TRANSFERS, transfers.map(t => t.id === id ? { ...t, ...fields } : t))
+  save(KEY_TRANSFERS, transfers.map(t => t.id === id ? { ...t, ...patch } : t))
 }
 
 export function deleteEnvelopeTransfer(id) {
@@ -320,8 +331,9 @@ export function runDueScheduledTransfers() {
 }
 
 export function updateScheduledTransfer(id, fields) {
+  const patch = coerceAmount(fields)
   const scheduled = load(KEY_SCHEDULED)
-  save(KEY_SCHEDULED, scheduled.map(s => s.id === id ? { ...s, ...fields } : s))
+  save(KEY_SCHEDULED, scheduled.map(s => s.id === id ? { ...s, ...patch } : s))
 }
 
 export function deleteScheduledTransfer(id) {
@@ -342,4 +354,33 @@ export function cleanupSelfScheduledTransfers() {
   const keep = scheduled.filter(s => s.fromEnvelopeId !== s.toEnvelopeId)
   save(KEY_SCHEDULED, keep)
   return toRemove.map(s => s.id)
+}
+
+// ─── Migration: coerce string amounts to numbers ─────────────────────────────
+// The one-time-transfer *edit* form used to persist `amount` as the raw string
+// from its <input>, and updateEnvelopeTransfer merged it verbatim. Because the
+// balance sums add amounts with `+`, a stored string turned addition into string
+// concatenation — producing wildly wrong totals and, once two decimal amounts
+// combined into a two-dot string, `NaN`. Write/read paths now coerce (Phase 43a/
+// 43b); this one-time pass repairs any already-stored string amounts so old data
+// is correct without the user re-saving each record. Only finite values are
+// rewritten, so a malformed string is left untouched rather than turned into NaN.
+export function migrateTransferAmounts() {
+  const coerceList = (items) => {
+    let changed = false
+    const fixed = items.map(item => {
+      if (typeof item.amount === 'string') {
+        const n = Number(item.amount)
+        if (Number.isFinite(n)) { changed = true; return { ...item, amount: n } }
+      }
+      return item
+    })
+    return { fixed, changed }
+  }
+
+  const transfers = coerceList(load(KEY_TRANSFERS))
+  if (transfers.changed) save(KEY_TRANSFERS, transfers.fixed)
+
+  const scheduled = coerceList(load(KEY_SCHEDULED))
+  if (scheduled.changed) save(KEY_SCHEDULED, scheduled.fixed)
 }
