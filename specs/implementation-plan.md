@@ -184,17 +184,17 @@ Recommended sub-phase order (each is independently shippable / testable):
 43b. ✓ **DONE** — **Coerce on read.** `s + Number(t.amount)` for transfers-in and transfers-out in `getEnvelopeBalance`, so even a legacy string amount can never corrupt a sum — correct results before the migration runs.
 43c. ✓ **DONE** — **Startup migration.** `migrateTransferAmounts()` rewrites any stored string transfer/scheduled amounts to numbers (finite-only), wired into `main.jsx` alongside `cleanupSelfScheduledTransfers`. Build + lint clean; runtime verification in the app still recommended.
 
-### SPEC-007 Envelope List
-43d. [ ] **No `−0.00`.** Apply `round2` (from 43h) to envelope balances **before** the `< 0` sign check (own-balance chip + total) so a near-zero balance renders `0.00`, and the spurious own-balance chip is hidden when the own balance is only sub-cent residue. Also covers the EnvelopeHistory balance card / running balance / grand total.
-43e. [ ] **Desktop left-column live refresh.** Add an `onDataChange` prop to `EnvelopeHistory`; have its local `refresh()` also invoke it; pass `onDataChange={refresh}` from the `Envelopes` desktop detail pane so editing/deleting a record in the right pane immediately recomputes the left-hand tree balances.
+### SPEC-007 Envelope List ✓ done (SPEC-007 back to `done`)
+43d. ✓ **DONE** — **No `−0.00`.** Added `round2` to `format.js`; applied to envelope balances **before** the `< 0` sign check in `Envelopes.jsx` (`EnvelopeRow`, `EnvelopeNode` own + total, `EnvelopesGrandTotal`) so near-zero renders `0.00` and the spurious own-balance chip is hidden, plus the `EnvelopeHistory` balance card and running balance.
+43e. ✓ **DONE** — **Desktop left-column live refresh.** `EnvelopeHistory` gained an `onDataChange` prop; its `refresh()` now also calls it; `Envelopes` passes `onDataChange={refresh}` to both `EnvelopeHistory` instances, so detail-pane edits recompute the left-hand tree balances immediately.
 
 ### SPEC-009 Planning
-43f. [ ] **Row hover parity.** Extend the Phase-42 `.expenseRow:hover` treatment to `.incomeRow` and `.transferRow` in `Planning.module.css`, and raise the hover contrast so it's actually noticeable.
-43g. [ ] **Value-column comma format.** Flip the YR/QTR/MON value columns to comma decimal via the new central `fmtAmt` (the criterion example becomes `1 234,00`).
+43f. ✓ **DONE** — **Row hover parity.** `.incomeRow:hover` / `.transferRow:hover` added and `.expenseRow:hover` contrast raised to a solid `#2a3450` in `Planning.module.css`.
+43g. ✓ **DONE** — **Value-column comma format.** Landed automatically once 43h switched `fmtAmt` to comma (the columns already called `fmtAmt`). Verified in the running app.
 
 ### SPEC-015 UI Enhancements
-43h. [ ] **Central comma formatter.** `fmtAmt` outputs comma decimal + narrow-space thousands always (drop the `en-US`-then-replace trick); add `round2(n)` (snap to 2dp, collapse `−0`/sub-cent to `+0`) and a signed helper; `fmtAmt` guards against emitting `−0.00`.
-43i. [ ] **Consolidate duplicate formatters.** Route the per-screen money formatters (`BuySellPlanning`, `DividendPage`, `InvestmentReports`, `StockPage`) through `format.js`; remove their local `toLocaleString('en-US')…replace(/,/g,' ')` / bare `toFixed` for amounts.
+43h. ✓ **DONE** — **Central comma formatter** (pulled forward to unblock 43g). `fmtAmt` now outputs comma decimal + narrow no-break space (U+202F) thousands always; `round2(n)` added (snap to 2dp, collapse `−0`/sub-cent to `+0`); `fmtAmt` guards against `−0.00` (rounds + `Number.isFinite` fallback). Also fixed the long-standing `no-irregular-whitespace` lint error in `format.js`. **Deferred to 43i:** the `fmtSigned` helper (lands when the per-screen formatters are consolidated and can consume it).
+43i. [ ] **Consolidate duplicate formatters.** Route the per-screen money formatters (`BuySellPlanning`, `DividendPage`, `InvestmentReports`, `StockPage`) through `format.js`; remove their local `toLocaleString('en-US')…replace(/,/g,' ')` / bare `toFixed` for amounts. Add the `fmtSigned` helper (deferred from 43h) and use it for the `{x<0?'−':''}{fmtAmt(Math.abs(x))}` patterns.
 43j. [ ] **Ratios stay dot.** Percentages and FX rates keep the dot decimal; only currency amounts switch to comma.
 43k. [ ] **Chart money ticks.** Axis tick labels that show monetary amounts use the comma formatting (date/ratio ticks unaffected).
 43l. [ ] **Envelope tree pane 40%.** `.treePane` in `Envelopes.module.css`: `width: 380px` → `width: 40%` + min/max clamp (~320–560px); detail pane keeps `flex: 1`.

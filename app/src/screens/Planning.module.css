@@ -223,10 +223,17 @@
 .expenseRow:last-child { border-bottom: none; }
 
 /* Highlight the whole row on hover so the name (left) and action buttons
-   (right) are easy to match across the wide row on desktop screens. */
+   (right) are easy to match across the wide row on desktop screens. The same
+   treatment is applied to income rows and the transfer row for consistency
+   (Phase 43f); contrast raised from the original faint Phase-42 tint. */
 .expenseRow:hover {
-  background: rgba(148, 163, 184, 0.1);
+  background: #2a3450;
   border-radius: 4px;
+}
+
+.incomeRow:hover,
+.transferRow:hover {
+  background: #2a3450;
 }
 
 .expenseNameCell {

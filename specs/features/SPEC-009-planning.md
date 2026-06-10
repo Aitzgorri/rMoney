@@ -1,7 +1,7 @@
 ---
 id: SPEC-009
 name: Planning
-status: in-progress
+status: done
 created: 2026-04-08
 ---
 
@@ -109,11 +109,11 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] For leaf items: percentage = (item monthly amount / total monthly expenses for same currency) × 100
 - [x] For parent items: percentage = (parent monthly sum / total monthly expenses for same currency) × 100
 - [x] Percentages are displayed to one decimal place (e.g. "14.3%")
-- [ ] The YR / QTR / MON value columns are formatted to two decimal places with a **comma decimal separator** and a narrow-space thousands separator (e.g. "1 234,00"), via `fmtAmt` from `src/utils/format.js` *(Phase 43 — switched from dot to comma per the app-wide formatting convention in SPEC-015)*
+- [x] The YR / QTR / MON value columns are formatted to two decimal places with a **comma decimal separator** and a narrow-space thousands separator (e.g. "1 234,00"), via `fmtAmt` from `src/utils/format.js` *(Phase 43g — landed automatically when 43h switched `fmtAmt` to comma; the columns already called `fmtAmt`)*
 - [x] On desktop, the value columns and actions column are wide enough that the out-of-sync indicator dot (`●`) never overlaps the MON value
 - [x] Each planned-expense row is **highlighted on mouse hover** (subtle full-row background) so that, on a wide desktop screen, the name on the left can be matched to its action buttons on the right. The hover highlight is overridden by the drag-and-drop drop-target backgrounds while dragging.
-- [ ] The same full-row hover highlight is applied to **planned-income rows** and the **one-time transfer row**, not only expense rows, so all planning rows behave consistently on a wide desktop screen *(Phase 43)*
-- [ ] The hover highlight is **clearly visible** against the row background (the Phase 42 expense-row tint was too subtle) *(Phase 43)*
+- [x] The same full-row hover highlight is applied to **planned-income rows** and the **one-time transfer row**, not only expense rows, so all planning rows behave consistently on a wide desktop screen *(Phase 43f)*
+- [x] The hover highlight is **clearly visible** against the row background (the Phase 42 expense-row tint was too subtle) *(Phase 43f — solid `#2a3450`, replacing the faint `rgba(148,163,184,0.1)`)*
 - [x] The expense form shows Yearly, Quarterly, and Monthly amount fields in a compact row with currency dropdown at the end
 
 ### Amount input behaviour fix

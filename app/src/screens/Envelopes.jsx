@@ -29,7 +29,7 @@ import { getDescendantIds } from '../utils/treeDnd'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import EnvelopeHistory from './EnvelopeHistory'
 import styles from './Envelopes.module.css'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, round2 } from '../utils/format'
 
 export default function Envelopes() {
   const isDesktop = useMediaQuery(DESKTOP)
@@ -96,6 +96,7 @@ export default function Envelopes() {
       <EnvelopeHistory
         envelope={historyEnvelope}
         onBack={() => { setView('list'); setHistoryEnvelope(null) }}
+        onDataChange={refresh}
       />
     )
   }
@@ -324,6 +325,7 @@ export default function Envelopes() {
               envelope={historyEnvelope}
               onBack={() => setHistoryEnvelope(null)}
               embedded
+              onDataChange={refresh}
             />
           ) : (
             <p className={styles.selectHint}>Select an envelope to view its details.</p>
@@ -336,6 +338,7 @@ export default function Envelopes() {
 
 function EnvelopeRow({ envelope, balance, isBuiltIn, isArchived, onClick, editing, onEditChange, onEditSave, onCancelEdit, onRename, onArchive }) {
   const isEditing = editing?.id === envelope.id
+  balance = round2(balance)
   return (
     <div className={`${styles.builtInRow} ${isArchived ? styles.archivedRow : ''}`}>
       {isEditing ? (
@@ -382,8 +385,8 @@ function EnvelopeNode({
   const isCollapsed = collapsed[envelope.id]
   const isEditing   = editing?.id === envelope.id
   const isAdding    = adding === envelope.id
-  const ownBalance  = getEnvelopeBalance(envelope.id)
-  const balance     = hasChildren ? getTotalEnvelopeBalance(envelope.id) : ownBalance
+  const ownBalance  = round2(getEnvelopeBalance(envelope.id))
+  const balance     = hasChildren ? round2(getTotalEnvelopeBalance(envelope.id)) : ownBalance
 
   // Drag-and-drop
   const { active } = useDndContext()
@@ -529,10 +532,10 @@ function EnvelopesGrandTotal({ mainCurrency, styles }) {
       if (c === null) { ok = false; break }
       sum += c
     }
-    if (ok) mainTotal = sum
+    if (ok) mainTotal = round2(sum)
   }
 
-  const nativeTotal = isSingleNative ? byCurrency[currencies[0]] : null
+  const nativeTotal = isSingleNative ? round2(byCurrency[currencies[0]]) : null
 
   return (
     <div className={styles.grandTotal}>

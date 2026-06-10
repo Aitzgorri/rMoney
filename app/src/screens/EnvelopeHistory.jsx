@@ -8,9 +8,9 @@ import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import styles from './EnvelopeHistory.module.css'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, round2 } from '../utils/format'
 
-export default function EnvelopeHistory({ envelope, onBack, embedded }) {
+export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChange }) {
   const [editing, setEditing]         = useState(null)  // { kind: 'tx'|'transfer'|'scheduled', record }
   const [creatingTransfer, setCreatingTransfer] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -30,7 +30,10 @@ export default function EnvelopeHistory({ envelope, onBack, embedded }) {
   const familyEnvelopes = [envelope, ...descendants]
   const familyIds       = new Set(familyEnvelopes.map(e => e.id))
 
-  function refresh() { setRefreshKey(k => k + 1) }
+  // Bump our own key to recompute this screen, and notify the parent (e.g. the
+  // desktop Envelopes tree) so its balances refresh too — without the user
+  // having to reselect an envelope (SPEC-007, Phase 43e).
+  function refresh() { setRefreshKey(k => k + 1); onDataChange?.() }
   function setFilter(field, value) { setFilters(prev => ({ ...prev, [field]: value })) }
   function clearFilters() {
     setFilters({ type:'', accountId:'', categoryId:'', payeeName:'', amountMin:'', amountMax:'', dateFrom:'', dateTo:'' })
@@ -157,7 +160,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded }) {
     )
   }
 
-  const balance = getTotalEnvelopeBalance(envelope.id)
+  const balance = round2(getTotalEnvelopeBalance(envelope.id))
 
   function envelopeName(id) {
     return allEnvelopes.find(e => e.id === id)?.name ?? '—'
@@ -400,7 +403,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded }) {
                     {isInternal ? '⇄' : isTransfer ? (isIn ? '+' : '−') : r.type === 'income' ? '+' : '−'}
                     {fmtAmt(amount)}
                   </span>
-                  <span className={styles.runningBal}>{fmtAmt(runBal)}</span>
+                  <span className={styles.runningBal}>{fmtAmt(round2(runBal))}</span>
                 </div>
               </div>
             )
