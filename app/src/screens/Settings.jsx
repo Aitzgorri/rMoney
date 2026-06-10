@@ -14,7 +14,7 @@ import { ISO3166, ISO3166_MAP } from '../utils/iso3166'
 import CountryDropdown from '../components/CountryDropdown'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
-import { getSecret, setSecret, deleteSecret } from '../utils/secrets'
+import { getSecret, setSecret, deleteSecret, getSecurityMode, isEncryptionAvailable, SECURITY_MODES } from '../utils/secrets'
 import { getBudgetWarningThreshold, setBudgetWarningThreshold } from '../data/budgets'
 import { getCsvTemplates, canDeleteCsvTemplate, deleteCsvTemplate, updateCsvTemplate, getTemplateUsers } from '../data/csvTemplates'
 import { getDefaultCsvDateFormat, setDefaultCsvDateFormat } from '../data/settings'
@@ -108,8 +108,29 @@ const TABS = [
   { id: 'investments', label: 'Investments' },
   { id: 'market-data', label: 'Market data' },
   { id: 'ai',          label: 'AI' },
+  { id: 'security',    label: 'Security' },
   { id: 'storage',     label: 'Storage' },
 ]
+
+// Access / password mode copy for the Security tab (SPEC-031 § Access modes).
+// Keys mirror SECURITY_MODES from secrets.js.
+const SECURITY_MODE_INFO = {
+  app: {
+    label: 'App password',
+    protects: 'The whole app — all data encrypted at rest',
+    desc: 'A passphrase is required every time you open rMoney. Your API keys and all financial data live in an encrypted vault and are decrypted only in memory while the app is open. Strongest protection — guards against a lost or imaged disk.',
+  },
+  keys: {
+    label: 'Keys-only password',
+    protects: 'API keys only',
+    desc: 'The app opens with no prompt. A passphrase protects only your market-data and AI API keys, requested the first time a key is needed. Your financial data is stored unencrypted on this device.',
+  },
+  none: {
+    label: 'No password',
+    protects: 'Nothing — lowest security',
+    desc: 'No passphrase anywhere. API keys are stored unencrypted on this device. Convenient, but anyone with access to this device can read your keys and data.',
+  },
+}
 
 // AI endpoint hostnames whitelisted by the static CSP in tauri.conf.json.
 // Adding a host here without also adding it to `connect-src` in the Tauri config
@@ -120,6 +141,10 @@ const AI_HOST_ALLOWLIST = ['api.anthropic.com', 'api.openai.com']
 
 export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [activeTab, setActiveTab] = useState(initialTab && TABS.some(t => t.id === initialTab) ? initialTab : 'general')
+
+  // Access / password mode (Phase 39b — read-only display; switching lands later)
+  const securityMode = getSecurityMode()
+  const encryptionAvailable = isEncryptionAvailable()
 
   const [startDay, setStartDay] = useState(() => getPlanningStartDay())
   const [warningThreshold, setWarningThreshold] = useState(() => getBudgetWarningThreshold())
@@ -1770,6 +1795,60 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             )}
           </div>
 
+        </>
+      )}
+
+      {activeTab === 'security' && (
+        <>
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>App access &amp; password</div>
+            <p className={styles.description}>
+              Choose how a passphrase protects rMoney — whether you are asked for a
+              password at all, and what that password protects.
+            </p>
+
+            {!encryptionAvailable && (
+              <div className={styles.preview}>
+                You are running the web/mobile build, where encrypted modes are not
+                available — Stronghold encryption requires the desktop app, so only
+                “No password” applies here.
+              </div>
+            )}
+
+            <div className={styles.securityModeList}>
+              {SECURITY_MODES.map(mode => {
+                const info = SECURITY_MODE_INFO[mode]
+                const isCurrent = mode === securityMode
+                const unavailable = !encryptionAvailable && mode !== 'none'
+                return (
+                  <div
+                    key={mode}
+                    className={`${styles.securityModeCard} ${isCurrent ? styles.securityModeCurrent : ''} ${unavailable ? styles.securityModeUnavailable : ''}`}
+                  >
+                    <div className={styles.securityModeHead}>
+                      <span className={styles.securityModeName}>{info.label}</span>
+                      {isCurrent && <span className={styles.securityModeBadge}>Current</span>}
+                      {unavailable && !isCurrent && <span className={styles.securityModeNa}>Desktop only</span>}
+                    </div>
+                    <div className={styles.securityModeProtects}>Protects: {info.protects}</div>
+                    <p className={styles.securityModeDesc}>{info.desc}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {securityMode === 'none' && (
+              <div className={styles.testError}>
+                Your keys and data are not encrypted on this device. Avoid storing
+                real API keys you care about while in this mode.
+              </div>
+            )}
+
+            <p className={styles.hint}>
+              Switching between modes — and setting or changing your passphrase —
+              will be available here in an upcoming update.
+            </p>
+          </div>
         </>
       )}
 

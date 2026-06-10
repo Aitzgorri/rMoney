@@ -699,6 +699,73 @@
   color: #f87171;
 }
 
+/* Security tab — access / password mode cards (Phase 39b) */
+.securityModeList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.securityModeCard {
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.securityModeCurrent {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.securityModeUnavailable {
+  opacity: 0.55;
+}
+
+.securityModeHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.securityModeName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.securityModeBadge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.securityModeNa {
+  font-size: 11px;
+  color: var(--text-faint);
+  border: 1px solid #2d3448;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.securityModeProtects {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.securityModeDesc {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
 .providerDeferred {
   font-size: 12px;
   color: var(--text-faint);

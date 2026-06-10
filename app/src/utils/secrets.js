@@ -13,8 +13,15 @@ import { remove, readFile, writeFile, mkdir, exists } from '@tauri-apps/plugin-f
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 const DEV_KEY = 'rmoney_dev_secrets'
 const VAULT_CREATED_FLAG = 'rmoney_vault_created'
+const SECURITY_MODE_KEY = 'rmoney_security_mode'
 const VAULT_FILE = 'vault.hold'
 const CLIENT_NAME = 'rmoney'
+
+// The access / password modes (SPEC-031 § Access and password modes, Phase 39):
+//   'app'  — passphrase protects the whole app; all data encrypted at rest.
+//   'keys' — passphrase protects API keys only; app opens freely.
+//   'none' — no passphrase; keys stored unencrypted.
+export const SECURITY_MODES = ['app', 'keys', 'none']
 
 let _stronghold = null
 let _store = null
@@ -26,6 +33,35 @@ async function getVaultPath() {
 
 export function vaultExists() {
   return !!localStorage.getItem(VAULT_CREATED_FLAG)
+}
+
+// ─── Access / password mode (Phase 39) ──────────────────────────────────────
+// Stored as a dedicated top-level localStorage flag — NOT inside rmoney_settings
+// — because App.jsx must read it before the appStorage store is hydrated, and in
+// 'app' mode the settings blob itself lives encrypted in the vault. It is a
+// non-secret flag, so plain localStorage is correct (same class as
+// rmoney_vault_created), and it is never routed through appStorage.
+
+export function getSecurityMode() {
+  const stored = localStorage.getItem(SECURITY_MODE_KEY)
+  if (SECURITY_MODES.includes(stored)) return stored
+  // Unset (pre-39 install or fresh start): infer from the environment so the UI
+  // and the startup gate keep behaving like today until the user makes an
+  // explicit choice (first-launch flow / mode switching land in later sub-phases).
+  //   Tauri build  → 'app'  — a vault + startup passphrase is today's behaviour.
+  //   Web/Capacitor → 'none' — no vault is possible; keys are plaintext today.
+  return IS_TAURI ? 'app' : 'none'
+}
+
+export function setSecurityMode(mode) {
+  if (!SECURITY_MODES.includes(mode)) throw new Error(`Invalid security mode: ${mode}`)
+  localStorage.setItem(SECURITY_MODE_KEY, mode)
+}
+
+// Whether the encrypted modes ('app' / 'keys') are possible on this build.
+// Stronghold is Tauri-only; the web/Capacitor builds can only use 'none'.
+export function isEncryptionAvailable() {
+  return IS_TAURI
 }
 
 // Open (or create) the vault with the given passphrase.
