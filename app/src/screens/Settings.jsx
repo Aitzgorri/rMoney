@@ -14,7 +14,7 @@ import { ISO3166, ISO3166_MAP } from '../utils/iso3166'
 import CountryDropdown from '../components/CountryDropdown'
 import { CANONICAL_EXCHANGES } from '../utils/marketDataExchanges'
 import { getActiveStockProfiles } from '../data/stockProfiles'
-import { getSecret, setSecret, deleteSecret, getSecurityMode, isEncryptionAvailable, SECURITY_MODES } from '../utils/secrets'
+import { getSecret, setSecret, deleteSecret, getSecurityMode, isEncryptionAvailable, SECURITY_MODES, SECURITY_MODE_INFO } from '../utils/secrets'
 import { getBudgetWarningThreshold, setBudgetWarningThreshold } from '../data/budgets'
 import { getCsvTemplates, canDeleteCsvTemplate, deleteCsvTemplate, updateCsvTemplate, getTemplateUsers } from '../data/csvTemplates'
 import { getDefaultCsvDateFormat, setDefaultCsvDateFormat } from '../data/settings'
@@ -112,25 +112,8 @@ const TABS = [
   { id: 'storage',     label: 'Storage' },
 ]
 
-// Access / password mode copy for the Security tab (SPEC-031 § Access modes).
-// Keys mirror SECURITY_MODES from secrets.js.
-const SECURITY_MODE_INFO = {
-  app: {
-    label: 'App password',
-    protects: 'The whole app — all data encrypted at rest',
-    desc: 'A passphrase is required every time you open rMoney. Your API keys and all financial data live in an encrypted vault and are decrypted only in memory while the app is open. Strongest protection — guards against a lost or imaged disk.',
-  },
-  keys: {
-    label: 'Keys-only password',
-    protects: 'API keys only',
-    desc: 'The app opens with no prompt. A passphrase protects only your market-data and AI API keys, requested the first time a key is needed. Your financial data is stored unencrypted on this device.',
-  },
-  none: {
-    label: 'No password',
-    protects: 'Nothing — lowest security',
-    desc: 'No passphrase anywhere. API keys are stored unencrypted on this device. Convenient, but anyone with access to this device can read your keys and data.',
-  },
-}
+// Access / password mode copy (SECURITY_MODE_INFO) is shared from secrets.js so
+// the Security tab and the first-launch mode-selection screen stay in sync.
 
 // AI endpoint hostnames whitelisted by the static CSP in tauri.conf.json.
 // Adding a host here without also adding it to `connect-src` in the Tauri config

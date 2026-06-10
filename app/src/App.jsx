@@ -3,7 +3,8 @@ import BottomNav from './components/BottomNav'
 import TopNav from './components/TopNav'
 import PassphraseSetup from './components/PassphraseSetup'
 import PassphraseUnlock from './components/PassphraseUnlock'
-import { vaultExists, readVaultBytes, writeVaultBytes } from './utils/secrets'
+import SecurityModeSelect from './components/SecurityModeSelect'
+import { vaultExists, readVaultBytes, writeVaultBytes, getSecurityMode, setSecurityMode, isSecurityModeSet } from './utils/secrets'
 import FullBackupPassphrasePrompt from './components/FullBackupPassphrasePrompt'
 import { useMediaQuery, DESKTOP } from './utils/mediaQuery'
 import { runDueScheduledTransfers } from './data/envelopes'
@@ -45,7 +46,7 @@ export default function App() {
   const [prevTab, setPrevTab] = useState(null)
   const [navParams, setNavParams] = useState({})
 
-  // Vault startup: 'checking' → 'setup' | 'unlock' | 'dev' → 'ready'
+  // Vault startup: 'checking' → 'mode-select' | 'setup' | 'unlock' | 'dev' → 'ready'
   const [vaultStatus, setVaultStatus] = useState('checking')
 
   const [saveBanner, setSaveBanner] = useState(null)    // { filename, redacted } or null
@@ -59,15 +60,31 @@ export default function App() {
   const [droppedDividends, setDroppedDividends] = useState([])
 
   useEffect(() => {
-    // Determine vault startup path
+    // Determine vault startup path (SPEC-031 § Access and password modes).
     if (!IS_TAURI) {
+      // Web/Capacitor: no Stronghold, keys are plaintext — always 'none' mode.
       setVaultStatus('dev')
     } else if (vaultExists()) {
+      // Existing vault (incl. pre-39 upgrade users defaulting to 'app'): unlock.
       setVaultStatus('unlock')
+    } else if (!isSecurityModeSet()) {
+      // Brand-new install: let the user choose how the app is protected.
+      setVaultStatus('mode-select')
+    } else if (getSecurityMode() === 'none') {
+      // 'none' chosen, no vault to open — go straight in.
+      setVaultStatus('ready')
     } else {
+      // 'app'/'keys' chosen but the vault was not created yet — create it.
       setVaultStatus('setup')
     }
   }, [])
+
+  // First-launch mode choice (Phase 39c): record the mode, then route. 'app' and
+  // 'keys' create a vault via PassphraseSetup; 'none' enters the app directly.
+  function handleModeChosen(mode) {
+    setSecurityMode(mode)
+    setVaultStatus(mode === 'none' ? 'ready' : 'setup')
+  }
 
   useEffect(() => {
     if (vaultStatus !== 'ready' && vaultStatus !== 'dev') return
@@ -210,6 +227,10 @@ export default function App() {
   }
 
   if (vaultStatus === 'checking') return null
+
+  if (vaultStatus === 'mode-select') {
+    return <SecurityModeSelect onChoose={handleModeChosen} />
+  }
 
   if (vaultStatus === 'setup') {
     return <PassphraseSetup onDone={() => setVaultStatus('ready')} />

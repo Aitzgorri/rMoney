@@ -23,6 +23,26 @@ const CLIENT_NAME = 'rmoney'
 //   'none' — no passphrase; keys stored unencrypted.
 export const SECURITY_MODES = ['app', 'keys', 'none']
 
+// Human-readable copy for each mode, shared by the Settings → Security tab and
+// the first-launch mode-selection screen (Phase 39c). Keys mirror SECURITY_MODES.
+export const SECURITY_MODE_INFO = {
+  app: {
+    label: 'App password',
+    protects: 'The whole app — all data encrypted at rest',
+    desc: 'A passphrase is required every time you open rMoney. Your API keys and all financial data live in an encrypted vault and are decrypted only in memory while the app is open. Strongest protection — guards against a lost or imaged disk.',
+  },
+  keys: {
+    label: 'Keys-only password',
+    protects: 'API keys only',
+    desc: 'The app opens with no prompt. A passphrase protects only your market-data and AI API keys, requested the first time a key is needed. Your financial data is stored unencrypted on this device.',
+  },
+  none: {
+    label: 'No password',
+    protects: 'Nothing — lowest security',
+    desc: 'No passphrase anywhere. API keys are stored unencrypted on this device. Convenient, but anyone with access to this device can read your keys and data.',
+  },
+}
+
 let _stronghold = null
 let _store = null
 
@@ -56,6 +76,14 @@ export function getSecurityMode() {
 export function setSecurityMode(mode) {
   if (!SECURITY_MODES.includes(mode)) throw new Error(`Invalid security mode: ${mode}`)
   localStorage.setItem(SECURITY_MODE_KEY, mode)
+}
+
+// Whether the user has made an explicit mode choice. False on a brand-new
+// install (and after a full reset), which is how the first-launch flow knows to
+// show the mode-selection screen instead of inferring a default. Distinct from
+// getSecurityMode(), which always returns a usable mode by inferring one.
+export function isSecurityModeSet() {
+  return SECURITY_MODES.includes(localStorage.getItem(SECURITY_MODE_KEY))
 }
 
 // Whether the encrypted modes ('app' / 'keys') are possible on this build.
