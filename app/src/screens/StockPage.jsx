@@ -18,7 +18,7 @@ import { refreshApiDividendHistory, isStaleForTicker, getApiDividendHistoryForTi
 import { getMainCurrency, getDividendEstimationRule } from '../data/settings'
 import { computeProjections, detectEffectiveDividendFrequency } from '../utils/dividendProjections'
 import { convertToMain, ensureRates, snapshotFxRates } from '../utils/currency'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, fmtPriceAmt } from '../utils/format'
 import { computeXirr } from '../utils/xirr'
 import { BuyForm, SellForm } from './InvestingAccountDetail'
 import MultiAccountDividendForm from '../components/MultiAccountDividendForm'
@@ -2175,9 +2175,7 @@ function YieldDetailDialog({ kind, ttmData, forwardData, price, avgCost, trading
   const denomLabel = isCost ? 'Avg cost per share (fee-incl.)' : 'Current price'
   const ccy        = tradingCurrency || ''
 
-  const fmt4 = n => n == null || !isFinite(n)
-    ? '—'
-    : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).replace(/,/g, ' ')
+  const fmt4 = n => fmtPriceAmt(n, 4)
 
   let title, body
   if (isForward) {

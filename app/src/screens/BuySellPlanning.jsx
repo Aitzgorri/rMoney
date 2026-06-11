@@ -24,6 +24,7 @@ import {
 } from '../utils/planningCalc'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { resetPageCaches } from '../utils/marketDataCache'
+import { fmtAmt, fmtSigned } from '../utils/format'
 import styles from './BuySellPlanning.module.css'
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
@@ -1834,7 +1835,7 @@ function LotPickerModal({ row, activeId, onClose, onSaved }) {
 
 function fmtNum(n) {
   if (n == null || !Number.isFinite(n)) return '—'
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return fmtAmt(n)
 }
 function fmtPct(n, withSign = false) {
   if (n == null || !Number.isFinite(n)) return '—'
@@ -1845,11 +1846,7 @@ function fmtRate(n) {
   if (n == null || !Number.isFinite(n)) return '—'
   return n.toFixed(4)
 }
-function fmtSigned(n) {
-  if (n == null || !Number.isFinite(n)) return '—'
-  const sign = n > 0 ? '+' : ''
-  return `${sign}${fmtNum(n)}`
-}
+// fmtSigned is imported from utils/format (shared, comma-formatted) — Phase 43i.
 // Aggregate yield with a "~" prefix when the weighting fell back to native trade
 // value because an FX rate to the main currency was missing (SPEC-034 Phase 38).
 function fmtPctAgg(agg, key) {
