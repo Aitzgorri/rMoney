@@ -9,7 +9,8 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt, getFavoriteCountries, setFavoriteCountries } from '../data/settings'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { ISO3166, ISO3166_MAP } from '../utils/iso3166'
 import CountryDropdown from '../components/CountryDropdown'
@@ -555,8 +556,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
       return
     }
     const feePercent = Number(draft.feePercent)
-    const minimumFee = Number(draft.minimumFee)
-    const maximumFeeRaw = draft.maximumFee !== '' && draft.maximumFee != null ? Number(draft.maximumFee) : null
+    const minimumFee = parseAmount(draft.minimumFee)
+    const maximumFeeRaw = draft.maximumFee !== "" && draft.maximumFee != null ? parseAmount(draft.maximumFee) : null
     if (!Number.isFinite(feePercent) || feePercent < 0) {
       setFeeRowError('Fee % must be 0 or more')
       return
@@ -686,27 +687,21 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
 
           <label className={styles.feeField}>
             <span className={styles.feeFieldLabel}>Minimum fee</span>
-            <input
+            <AmountInput
               className={styles.input}
-              type="number"
-              min={0}
-              step="0.01"
               value={draft.minimumFee ?? ''}
-              placeholder="0.00"
-              onChange={e => updateFeeDraft({ minimumFee: e.target.value })}
+              placeholder="0,00"
+              onChange={v => updateFeeDraft({ minimumFee: v })}
             />
           </label>
 
           <label className={styles.feeField}>
             <span className={styles.feeFieldLabel}>Maximum fee</span>
-            <input
+            <AmountInput
               className={styles.input}
-              type="number"
-              min={0}
-              step="0.01"
               value={draft.maximumFee ?? ''}
               placeholder="—"
-              onChange={e => updateFeeDraft({ maximumFee: e.target.value })}
+              onChange={v => updateFeeDraft({ maximumFee: v })}
             />
           </label>
         </div>

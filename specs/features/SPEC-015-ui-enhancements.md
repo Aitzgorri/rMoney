@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 name: UI Enhancements
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -54,7 +54,7 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 
 #### Amount entry — comma input *(Phase 45)*
 - [x] A shared **`AmountInput`** component (`type="text"` + `inputmode="decimal"`) accepts **either a comma or a dot** as the decimal separator regardless of OS/browser locale, shows the user's typed character, and rejects other non-numeric input. A shared **`parseAmount`** helper normalises its value (`Number(String(v).replace(',', '.'))`) for storage. *(Phase 45g)*
-- [ ] `AmountInput` **replaces `<input type="number">` for every monetary-amount field app-wide** (envelope transfer, planning expense/income, transactions, budgets, bills, investing/stock/dividend forms, etc.). Non-amount numeric inputs (share counts, percentages, day-of-month) are out of scope and may stay `type="number"`.
+- [x] `AmountInput` **replaces `<input type="number">` for every monetary-amount field app-wide** (envelope transfer, planning expense/income, transactions, budgets, bills, account starting balance, envelope-history amount filter, and the investing/stock/dividend/fee forms). Non-amount numeric inputs (share counts, coin quantities, percentages, FX rates, day-of-month) are out of scope and stay `type="number"`. *(Phase 45h — forms switched to `parseAmount` at submit; verified comma entry end-to-end on a transfer (stored 1234.56) and on the investing Buy form.)*
 - [x] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected). *(Phase 43k — `DividendPage` `fmtTick`/`fmtCompact` and `StockPage` `fmtPrice` now emit comma; Benchmarks ticks are `%` and stay dot.)*
 - [x] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.) *(Phase 43m — `CsvImport` `decimalSep` initial state `','`; selecting a saved template still applies that template's own separator.)*
 

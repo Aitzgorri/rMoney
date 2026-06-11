@@ -49,7 +49,8 @@ import { getActiveAccounts } from '../data/accounts'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { getStockProfile } from '../data/stockProfiles'
 import { getPortfolios, getAllPortfolioAssignments } from '../data/portfolios'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 import HybridFilterDropdown from '../components/HybridFilterDropdown'
 import { snapshotFxRates, convertToMain } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
@@ -1756,30 +1757,30 @@ function DepositForm({ balance, onSave, onCancel }) {
 
   const selectedAccount = accounts.find(a => a.id === budgetingAccountId)
   const isCrossCurrency = selectedAccount && selectedAccount.currency !== balance.currency
-  const exchangedAmount = Number(amount || 0) * Number(rate || 0)
+  const exchangedAmount = (parseAmount(amount) || 0) * Number(rate || 0)
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!amount || Number(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
+    if (!amount || parseAmount(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
     if (isCrossCurrency) {
       if (crossMode === 'auto-exchange' && Number(rate) <= 0) return
       onSave({
         date,
         cashBalanceId:      balance.id,
-        amount:             Number(amount),
+        amount:             parseAmount(amount),
         budgetingAccountId,
         budgetingEnvelopeId,
         crossCurrencyMode:  crossMode,
         budgetingCurrency:  selectedAccount.currency,
         exchangeRate:       Number(rate),
-        fxFeeAmount:        Number(fxFee || 0),
+        fxFeeAmount:        (parseAmount(fxFee) || 0),
       })
     } else {
       onSave({
         date,
         cashBalanceId:   balance.id,
-        amount:          Number(amount),
-        budgetingAmount: Number(amount),
+        amount:          parseAmount(amount),
+        budgetingAmount: parseAmount(amount),
         budgetingAccountId,
         budgetingEnvelopeId,
       })
@@ -1811,14 +1812,11 @@ function DepositForm({ balance, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Amount ({selectedAccount?.currency ?? ''})</label>
-        <input
+        <AmountInput
           className={styles.formInput}
-          type="number"
-          min="0.01"
-          step="0.01"
           value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="0.00"
+          onChange={v => setAmount(v)}
+          placeholder="0,00"
           autoFocus
         />
       </div>
@@ -1837,7 +1835,7 @@ function DepositForm({ balance, onSave, onCancel }) {
               </div>
               <div className={styles.formRow}>
                 <label className={styles.formLabel}>FX fee ({selectedAccount.currency}, optional)</label>
-                <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+                <AmountInput className={styles.formInput} value={fxFee} onChange={v => setFxFee(v)} />
               </div>
               {exchangedAmount > 0 && (
                 <p className={styles.ratePreview}>→ {fmtAmt(exchangedAmount)} {balance.currency} credited</p>
@@ -1855,7 +1853,7 @@ function DepositForm({ balance, onSave, onCancel }) {
         <button
           type="submit"
           className={styles.saveBtn}
-          disabled={!amount || Number(amount) <= 0 || (isCrossCurrency && crossMode === 'auto-exchange' && Number(rate) <= 0)}
+          disabled={!amount || parseAmount(amount) <= 0 || (isCrossCurrency && crossMode === 'auto-exchange' && Number(rate) <= 0)}
         >
           Deposit
         </button>
@@ -1880,30 +1878,30 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
 
   const selectedAccount  = accounts.find(a => a.id === budgetingAccountId)
   const isCrossCurrency  = selectedAccount && selectedAccount.currency !== balance.currency
-  const convertedAmount  = Number(amount || 0) * Number(rate || 0)  // balance.currency → budgeting currency
+  const convertedAmount  = (parseAmount(amount) || 0) * Number(rate || 0)  // balance.currency → budgeting currency
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!amount || Number(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
+    if (!amount || parseAmount(amount) <= 0 || !budgetingAccountId || !budgetingEnvelopeId) return
     if (isCrossCurrency) {
       if (Number(rate) <= 0) return
       onSave({
         date,
         cashBalanceId:      balance.id,
-        amount:             Number(amount),
+        amount:             parseAmount(amount),
         budgetingAccountId,
         budgetingEnvelopeId,
         crossCurrencyMode:  crossMode,
         budgetingCurrency:  selectedAccount.currency,
         exchangeRate:       Number(rate),
-        fxFeeAmount:        Number(fxFee || 0),
+        fxFeeAmount:        (parseAmount(fxFee) || 0),
       })
     } else {
       onSave({
         date,
         cashBalanceId:   balance.id,
-        amount:          Number(amount),
-        budgetingAmount: Number(amount),
+        amount:          parseAmount(amount),
+        budgetingAmount: parseAmount(amount),
         budgetingAccountId,
         budgetingEnvelopeId,
       })
@@ -1936,14 +1934,11 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Amount ({balance.currency})</label>
-        <input
+        <AmountInput
           className={styles.formInput}
-          type="number"
-          min="0.01"
-          step="0.01"
           value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="0.00"
+          onChange={v => setAmount(v)}
+          placeholder="0,00"
           autoFocus
         />
       </div>
@@ -1964,7 +1959,7 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>FX fee ({balance.currency}, optional)</label>
-            <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+            <AmountInput className={styles.formInput} value={fxFee} onChange={v => setFxFee(v)} />
           </div>
           {convertedAmount > 0 && crossMode === 'auto-exchange' && (
             <p className={styles.ratePreview}>→ {fmtAmt(convertedAmount)} {selectedAccount.currency} credited to account</p>
@@ -1976,7 +1971,7 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
       )}
       <div className={styles.formActions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!amount || Number(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)}>
+        <button type="submit" className={styles.saveBtn} disabled={!amount || parseAmount(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)}>
           {isCrossCurrency && crossMode === 'land-in-matching' ? 'Exchange' : 'Withdraw'}
         </button>
       </div>
@@ -2164,9 +2159,9 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
 
   const sourceBal     = balances.find(b => b.id === sourceBalanceId)
   const isCrossSource = sourceBal && sourceBal.currency !== currency
-  const total         = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
+  const total         = Number(shares || 0) * (parseAmount(price) || 0) + (parseAmount(fee) || 0)
   const fxSourceAmount = isCrossSource && Number(fxRate) > 0 ? total / Number(fxRate) : 0
-  const canSave = ticker.trim() && Number(shares) > 0 && Number(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
+  const canSave = ticker.trim() && Number(shares) > 0 && parseAmount(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
 
   function handleTickerBlur() {
     const t = ticker.trim().toUpperCase()
@@ -2200,12 +2195,12 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
     e.preventDefault()
     if (!canSave) return
     onSave({
-      date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), currency,
-      fee: Number(fee || 0), transactionExternalId: extId.trim() || null,
+      date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: parseAmount(price), currency,
+      fee: (parseAmount(fee) || 0), transactionExternalId: extId.trim() || null,
       sourceCashBalanceId: isCrossSource ? sourceBalanceId : null,
       fxExchangeRate: isCrossSource ? Number(fxRate) : null,
       fxSourceAmount: isCrossSource ? fxSourceAmount : null,
-      fxFeeAmount: isCrossSource ? Number(fxFee || 0) : null,
+      fxFeeAmount: isCrossSource ? (parseAmount(fxFee) || 0) : null,
     })
   }
 
@@ -2264,7 +2259,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Price per share</label>
-          <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="175.20" />
+          <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} placeholder="175.20" />
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Currency</label>
@@ -2272,7 +2267,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
         </div>
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Fee ({currency})</label>
-          <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+          <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
         </div>
         {balances.length > 0 && (
           <div className={styles.formRow}>
@@ -2295,7 +2290,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
             {fxSourceAmount > 0 && <p className={styles.ratePreview}>Source amount: {fmtAmt(fxSourceAmount)} {sourceBal.currency}</p>}
             <div className={styles.formRow}>
               <label className={styles.formLabel}>FX fee ({sourceBal.currency}, optional)</label>
-              <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+              <AmountInput className={styles.formInput} value={fxFee} onChange={v => setFxFee(v)} />
             </div>
           </div>
         )}
@@ -2430,7 +2425,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
     syncTaxPct(v, dividendPerShare, shareCount)
   }
 
-  const tbt          = Number(dividendPerShare || 0) * Number(shareCount || 0)
+  const tbt          = (parseAmount(dividendPerShare) || 0) * Number(shareCount || 0)
   const taxPctNum    = parseFloat(taxPctStr || '0')
   const taxAmtNum    = taxMode === 'pct' ? tbt * taxPctNum / 100 : parseFloat(taxAmtStr || '0')
   const netTotal     = tbt - taxAmtNum
@@ -2443,7 +2438,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
     return `${y} ${MONTHS[m - 1]} ${d}`
   }
 
-  const canSave = finalTicker && currency && Number(dividendPerShare) > 0 && Number(shareCount) > 0 && payoutDate
+  const canSave = finalTicker && currency && parseAmount(dividendPerShare) > 0 && Number(shareCount) > 0 && payoutDate
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -2457,7 +2452,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
       currency,
       exDividendDate,
       payoutDate,
-      dividendPerShare: Number(dividendPerShare),
+      dividendPerShare: parseAmount(dividendPerShare),
       shareCount: Number(shareCount),
       taxPercent,
       type: dividendType,
@@ -2528,7 +2523,7 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
       <div className={styles.formPairRow}>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Per share</label>
-          <input className={styles.formInput} type="number" min="0" step="any" value={dividendPerShare} onChange={e => handlePpsChange(e.target.value)} placeholder="0.25" autoFocus={positions.length > 0 && !isOther} />
+          <AmountInput className={styles.formInput} value={dividendPerShare} onChange={v => handlePpsChange(v)} placeholder="0.25" autoFocus={positions.length > 0 && !isOther} />
         </div>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Shares</label>
@@ -2694,9 +2689,9 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
 
   const sourceBal      = balances.find(b => b.id === sourceBalanceId)
   const isCrossSource  = sourceBal && sourceBal.currency !== currency
-  const total          = Number(quantity || 0) * Number(price || 0) + Number(fee || 0)
+  const total          = Number(quantity || 0) * (parseAmount(price) || 0) + (parseAmount(fee) || 0)
   const fxSourceAmount = isCrossSource && Number(fxRate) > 0 ? total / Number(fxRate) : 0
-  const canSave        = !!coin && Number(quantity) > 0 && Number(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
+  const canSave        = !!coin && Number(quantity) > 0 && parseAmount(price) > 0 && currency.trim() && (!isCrossSource || Number(fxRate) > 0)
 
   function handleCurrencyChange(c) {
     setCurrency(c)
@@ -2716,14 +2711,14 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
       wallet: wallet.trim() || null,
       stockExchange: null,
       shares: Number(quantity),
-      price: Number(price),
+      price: parseAmount(price),
       currency,
-      fee: Number(fee || 0),
+      fee: (parseAmount(fee) || 0),
       transactionExternalId: null,
       sourceCashBalanceId: isCrossSource ? sourceBalanceId : null,
       fxExchangeRate: isCrossSource ? Number(fxRate) : null,
       fxSourceAmount:  isCrossSource ? fxSourceAmount : null,
-      fxFeeAmount:     isCrossSource ? Number(fxFee || 0) : null,
+      fxFeeAmount:     isCrossSource ? (parseAmount(fxFee) || 0) : null,
     })
   }
 
@@ -2745,7 +2740,7 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per coin</label>
-        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="64000" />
+        <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} placeholder="64000" />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Currency</label>
@@ -2753,7 +2748,7 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee ({currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
       {balances.length > 0 && (
         <div className={styles.formRow}>
@@ -2776,7 +2771,7 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
           <p className={styles.ratePreview}>Pay: {fmtAmt(fxSourceAmount)} {sourceBal.currency}</p>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Exchange fee ({sourceBal.currency})</label>
-            <input className={styles.formInput} type="number" min="0" step="0.01" value={fxFee} onChange={e => setFxFee(e.target.value)} />
+            <AmountInput className={styles.formInput} value={fxFee} onChange={v => setFxFee(v)} />
           </div>
         </div>
       )}
@@ -2802,7 +2797,7 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
   const available = position.shares
   const qtyNum    = Number(quantity)
   const overSell  = qtyNum > available + 1e-9
-  const canSave   = qtyNum > 0 && !overSell && Number(price) > 0
+  const canSave   = qtyNum > 0 && !overSell && parseAmount(price) > 0
   const hasTradeBal = balances.some(b => b.currency === currency)
 
   function handleSubmit(e) {
@@ -2813,9 +2808,9 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
       date,
       ticker: position.ticker,
       shares: qtyNum,
-      price: Number(price),
+      price: parseAmount(price),
       currency,
-      fee: Number(fee || 0),
+      fee: (parseAmount(fee) || 0),
     })
   }
 
@@ -2834,11 +2829,11 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per coin ({currency})</label>
-        <input className={styles.formInput} type="number" min="0.00000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="64000" />
+        <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} placeholder="64000" />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee ({currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
       <p className={styles.formSubtitle}>Proceeds land in your {currency} cash balance{hasTradeBal ? '' : ' (it will be created)'}.</p>
       <div className={styles.formActions}>
@@ -2925,8 +2920,8 @@ function CryptoSwapForm({ position, cryptoTickers = [], initial = null, onSave, 
       fromPrice: fromP,
       toPrice: toP > 0 ? toP : null,
       currency,
-      fee: Number(fee || 0),            // crypto fee QUANTITY, in feeCoin
-      feeCoin: Number(fee) > 0 ? feeCoin : null,
+      fee: (parseAmount(fee) || 0),            // crypto fee QUANTITY, in feeCoin
+      feeCoin: parseAmount(fee) > 0 ? feeCoin : null,
     })
   }
 
@@ -2988,9 +2983,9 @@ function CryptoSwapForm({ position, cryptoTickers = [], initial = null, onSave, 
       <div className={styles.formPairRow}>
         <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
           <label className={styles.formLabel}>Fee quantity (crypto)</label>
-          <input className={styles.formInput} type="number" min="0" step="any" value={fee} onChange={e => setFee(e.target.value)} placeholder="0" />
+          <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} placeholder="0" />
         </div>
-        {Number(fee) > 0 && (
+        {parseAmount(fee) > 0 && (
           <div className={styles.formRow} style={{ flex: 1, minWidth: 0 }}>
             <label className={styles.formLabel}>Fee coin</label>
             <select className={styles.formSelect} value={feeCoin} onChange={e => setFeeCoin(e.target.value)}>
@@ -3166,7 +3161,7 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
   const openLots       = ticker ? getOpenLots(accountId, ticker) : []
   const proceedsBal    = balances.find(b => b.id === proceedsBalId)
   const isCrossProceeds = proceedsBal && proceedsBal.currency !== currency
-  const netProceeds    = Number(shares || 0) * Number(price || 0) - Number(fee || 0)
+  const netProceeds    = Number(shares || 0) * (parseAmount(price) || 0) - (parseAmount(fee) || 0)
 
   function handleTickerChange(t) {
     setTicker(t)
@@ -3227,8 +3222,8 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
   const lotTotal = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
   const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
   const maxShares = selectedPos?.shares ?? 0
-  const proceeds = Number(shares || 0) * Number(price || 0)
-  const canSave = ticker && Number(shares) > 0 && Number(price) > 0 && lotValid
+  const proceeds = Number(shares || 0) * (parseAmount(price) || 0)
+  const canSave = ticker && Number(shares) > 0 && parseAmount(price) > 0 && lotValid
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -3238,7 +3233,7 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
       : null
     onSave({
       date, ticker, stockExchange: stockExchange.trim() || null, shares: Number(shares),
-      price: Number(price), currency, fee: Number(fee || 0),
+      price: parseAmount(price), currency, fee: (parseAmount(fee) || 0),
       transactionExternalId: extId.trim() || null, lotAllocations,
       proceedsCashBalanceId: isCrossProceeds ? proceedsBalId : null,
       proceedsExchangeRate: isCrossProceeds ? Number(proceedsRate) : null,
@@ -3280,17 +3275,17 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share {currency && `(${currency})`}</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} placeholder="180.00" />
+        <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} placeholder="180.00" />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee {currency && `(${currency})`}</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Transaction ID (optional)</label>
         <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
       </div>
-      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - Number(fee || 0))} {currency}</p>}
+      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - (parseAmount(fee) || 0))} {currency}</p>}
       {openLots.length > 0 && (
         <div className={styles.lotPickerSection}>
           <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
@@ -3408,8 +3403,8 @@ function TransferForm({ accountId, positions, balances, defaultTicker, onSave, o
       destinationInvestingAccountId: destinationId,
       ticker,
       shares: Number(shares),
-      fee: Number(fee || 0),
-      feeCashBalanceId: Number(fee) > 0 ? feeBalanceId : null,
+      fee: (parseAmount(fee) || 0),
+      feeCashBalanceId: parseAmount(fee) > 0 ? feeBalanceId : null,
       transactionExternalId: extId.trim() || null,
       lotAllocations,
     })
@@ -3451,9 +3446,9 @@ function TransferForm({ accountId, positions, balances, defaultTicker, onSave, o
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee {feeBalance && `(${feeBalance.currency})`}</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
-      {Number(fee) > 0 && balances.length > 0 && (
+      {parseAmount(fee) > 0 && balances.length > 0 && (
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Fee paid from</label>
           <select className={styles.formSelect} value={feeBalanceId} onChange={e => setFeeBalanceId(e.target.value)}>
@@ -3587,8 +3582,8 @@ function TransferEditForm({ txn, balances, onSave, onCancel }) {
       date,
       destinationInvestingAccountId: txn.destinationInvestingAccountId,
       shares: Number(shares),
-      fee: Number(fee || 0),
-      feeCashBalanceId: Number(fee) > 0 ? feeBalanceId : null,
+      fee: (parseAmount(fee) || 0),
+      feeCashBalanceId: parseAmount(fee) > 0 ? feeBalanceId : null,
       transactionExternalId: extId.trim() || null,
       lotAllocations,
     })
@@ -3612,9 +3607,9 @@ function TransferEditForm({ txn, balances, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
-      {Number(fee) > 0 && balances.length > 0 && (
+      {parseAmount(fee) > 0 && balances.length > 0 && (
         <div className={styles.formRow}>
           <label className={styles.formLabel}>Fee paid from</label>
           <select className={styles.formSelect} value={feeBalanceId} onChange={e => setFeeBalanceId(e.target.value)}>

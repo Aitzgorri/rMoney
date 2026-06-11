@@ -7,6 +7,8 @@ import {
 import { createWatchlist } from '../data/watchlists'
 import { getStockProfile } from '../data/stockProfiles'
 import StockProfileResolutionDialog from '../components/StockProfileResolutionDialog'
+import AmountInput from '../components/AmountInput'
+import { parseAmount } from '../utils/format'
 import styles from './WatchlistDetail.module.css'
 
 function loadAlertsMap(entries) {
@@ -84,7 +86,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
   }
 
   function handleSaveAlert() {
-    const t = Number(alertThreshold)
+    const t = parseAmount(alertThreshold)
     if (!t || t <= 0) return
     createAlert(alertFormId, { direction: alertDir, threshold: t, currency: alertCurrency })
     setAlertFormId(null)
@@ -298,14 +300,11 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                         <input type="radio" name={`dir-${entry.id}`} value="below" checked={alertDir === 'below'} onChange={() => setAlertDir('below')} />
                         {' '}below ≤
                       </label>
-                      <input
+                      <AmountInput
                         className={styles.thresholdInput}
-                        type="number"
-                        min="0"
-                        step="any"
                         value={alertThreshold}
-                        onChange={e => setAlertThreshold(e.target.value)}
-                        placeholder="0.00"
+                        onChange={v => setAlertThreshold(v)}
+                        placeholder="0,00"
                       />
                       {alertCurrency && <span className={styles.alertCurrency}>{alertCurrency}</span>}
                     </div>
@@ -314,7 +313,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                       <button
                         className={styles.saveBtn}
                         onClick={handleSaveAlert}
-                        disabled={!alertThreshold || Number(alertThreshold) <= 0}
+                        disabled={!alertThreshold || parseAmount(alertThreshold) <= 0}
                       >
                         Save
                       </button>

@@ -19,7 +19,8 @@ import { detectEffectiveDividendFrequency } from '../utils/dividendProjections'
 import {
   getDividendChartPresets, createDividendChartPreset, updateDividendChartPreset, deleteDividendChartPreset,
 } from '../data/dividendChartPresets'
-import { fmtAmt, fmtPriceAmt } from '../utils/format'
+import { fmtAmt, fmtPriceAmt, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 import { resetPageCaches } from '../utils/marketDataCache'
 import MultiAccountDividendForm from '../components/MultiAccountDividendForm'
 import styles from './DividendPage.module.css'
@@ -771,7 +772,7 @@ function PendingTab({ records, accounts, onRefresh }) {
     setEditDraft({ dividendPerShare: r.dividendPerShare, taxPercent: r.taxPercent })
   }
   function handleEditSave(r) {
-    updateDividend(r.id, { dividendPerShare: editDraft.dividendPerShare, taxPercent: editDraft.taxPercent, type: r.type })
+    updateDividend(r.id, { dividendPerShare: parseAmount(editDraft.dividendPerShare), taxPercent: editDraft.taxPercent, type: r.type })
     setEditId(null)
     onRefresh()
   }
@@ -817,9 +818,9 @@ function PendingTab({ records, accounts, onRefresh }) {
                   {isEditing ? (
                     <>
                       <td className={styles.numTd}>
-                        <input type="number" step="0.0001" min="0" className={styles.editInput}
+                        <AmountInput className={styles.editInput}
                           value={editDraft.dividendPerShare}
-                          onChange={e => setEditDraft(prev => ({ ...prev, dividendPerShare: e.target.value }))} />
+                          onChange={v => setEditDraft(prev => ({ ...prev, dividendPerShare: v }))} />
                       </td>
                       <td className={styles.numTd}>{r.shareCount}</td>
                       <td className={styles.numTd}>
@@ -1205,7 +1206,7 @@ function EditDividendDialog({ dividend, onSave, onCancel }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    onSave({ dividendPerShare: Number(perShare), taxPercent: Number(taxPct), type })
+    onSave({ dividendPerShare: parseAmount(perShare), taxPercent: Number(taxPct), type })
   }
 
   return (
@@ -1216,8 +1217,8 @@ function EditDividendDialog({ dividend, onSave, onCancel }) {
         <form onSubmit={handleSubmit}>
           <div className={styles.dialogField}>
             <label className={styles.dialogLabel}>Per share</label>
-            <input className={styles.dialogInput} type="number" min="0" step="any"
-              value={perShare} onChange={e => setPerShare(e.target.value)} autoFocus />
+            <AmountInput className={styles.dialogInput}
+              value={perShare} onChange={v => setPerShare(v)} autoFocus />
           </div>
           <div className={styles.dialogRow}>
             <div className={styles.dialogField}>

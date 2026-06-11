@@ -24,7 +24,8 @@ import {
 } from '../utils/planningCalc'
 import ConfigurableTable from '../components/ConfigurableTable'
 import { resetPageCaches } from '../utils/marketDataCache'
-import { fmtAmt, fmtSigned } from '../utils/format'
+import { fmtAmt, fmtSigned, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 import styles from './BuySellPlanning.module.css'
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
@@ -448,7 +449,7 @@ export default function BuySellPlanning({ onNavigate }) {
 
   function handleSetTopUp(currency, value) {
     if (!active) return
-    setCashTopUp(active.id, currency, value)
+    setCashTopUp(active.id, currency, parseAmount(value))
     refresh()
   }
 
@@ -815,12 +816,10 @@ function OverviewBlock({
                   <td className={styles.ccyCol}>{ccy}</td>
                   <td className={`${styles.tdRight} ${ignoreBalances ? styles.balanceStruck : ''}`}>{fmtNum(balancesByCurrency[ccy])}</td>
                   <td className={styles.tdRight}>
-                    <input
+                    <AmountInput
                       className={styles.cellInputSm}
-                      type="number"
-                      step="any"
                       value={scenario.cashTopUps?.[ccy] ?? ''}
-                      onChange={e => onSetTopUp(ccy, e.target.value)}
+                      onChange={v => onSetTopUp(ccy, v)}
                       placeholder="0"
                     />
                   </td>
@@ -1099,7 +1098,7 @@ function buildSellColumns({
         <FeeCell
           value={r.manualFeeOverride}
           resolved={derived[r.id]?.feeAmount}
-          onChange={raw => onUpdateRow(r.id, { manualFeeOverride: raw === '' ? null : Number(raw) })}
+          onChange={raw => onUpdateRow(r.id, { manualFeeOverride: raw === '' ? null : parseAmount(raw) })}
           override={r.manualFeeOverride != null && r.manualFeeOverride !== ''}
         />
       ) },
@@ -1226,7 +1225,7 @@ function buildBuyColumns({
         <FeeCell
           value={r.manualFeeOverride}
           resolved={derived[r.id]?.feeAmount}
-          onChange={raw => onUpdateRow(r.id, { manualFeeOverride: raw === '' ? null : Number(raw) })}
+          onChange={raw => onUpdateRow(r.id, { manualFeeOverride: raw === '' ? null : parseAmount(raw) })}
           override={r.manualFeeOverride != null && r.manualFeeOverride !== ''}
         />
       ) },
@@ -1305,12 +1304,10 @@ function AdjustedPriceCell({ row, lastPrice, derivedPrice, onChange }) {
         />
       )}
       {rule === 'manual' && (
-        <input
-          type="number"
+        <AmountInput
           className={styles.cellInputSm}
-          step="any"
           value={row.adjustedPriceManual ?? ''}
-          onChange={e => onChange({ adjustedPriceManual: e.target.value === '' ? null : Number(e.target.value) })}
+          onChange={v => onChange({ adjustedPriceManual: v === '' ? null : parseAmount(v) })}
           placeholder={lastPrice != null ? String(lastPrice) : ''}
         />
       )}
@@ -1324,13 +1321,10 @@ function FeeCell({ value, resolved, onChange, override }) {
   const display = value != null && value !== '' ? value : (resolved ?? '')
   return (
     <div className={styles.feeCell} title="Defaults set in Settings → Investments → Trading fees. Edit per row to override for this scenario only.">
-      <input
-        type="number"
-        step="any"
-        min="0"
+      <AmountInput
         className={`${styles.cellInput} ${styles.feeInput}`}
         value={display}
-        onChange={e => onChange(e.target.value)}
+        onChange={v => onChange(v)}
         placeholder={resolved != null ? fmtNum(resolved) : '0'}
       />
       {override && <span className={styles.overrideDot} title="Manual override — click ↺ to revert" />}
@@ -1539,8 +1533,8 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
   const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
 
   const numShares = Number(shares || 0)
-  const numPrice  = Number(price  || 0)
-  const numFee    = Number(fee    || 0)
+  const numPrice  = (parseAmount(price) || 0)
+  const numFee    = (parseAmount(fee) || 0)
 
   // Balance preview
   const cashBal     = account ? getCashBalanceByCurrency(account.id, currency) : null
@@ -1662,11 +1656,11 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
             </div>
             <div className={styles.execField}>
               <span className={styles.execLabel}>Price per share</span>
-              <input className={styles.execInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
+              <AmountInput className={styles.execInput} value={price} onChange={v => setPrice(v)} />
             </div>
             <div className={styles.execField}>
               <span className={styles.execLabel}>Fee ({currency})</span>
-              <input className={styles.execInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+              <AmountInput className={styles.execInput} value={fee} onChange={v => setFee(v)} />
             </div>
             <div className={styles.execField}>
               <span className={styles.execLabel}>Transaction ID</span>

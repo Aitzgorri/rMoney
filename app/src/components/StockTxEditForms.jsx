@@ -7,7 +7,8 @@
 // module is the current home of the shared form styles; relocating them to a neutral shared CSS
 // is a future cleanup that doesn't change this component's API.
 import { useState } from 'react'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from './AmountInput'
 import { getOpenLots, computeFifoAllocations } from '../data/stockTransactions'
 import styles from '../screens/InvestingAccountDetail.module.css'
 
@@ -26,15 +27,15 @@ export function BuyEditForm({ txn, onSave, onCancel }) {
   const [saveError,     setSaveError]     = useState(null)
 
   const feeMismatch = txn.feeCurrency && txn.feeCurrency !== txn.currency
-  const total  = Number(shares || 0) * Number(price || 0) + Number(fee || 0)
-  const canSave = Number(shares) > 0 && Number(price) > 0 && !feeMismatch
+  const total  = Number(shares || 0) * Number(price || 0) + parseAmount(fee) || 0
+  const canSave = Number(shares) > 0 && parseAmount(price) > 0 && !feeMismatch
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSave) return
     setSaveError(null)
     try {
-      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null })
+      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: parseAmount(price), fee: parseAmount(fee) || 0, transactionExternalId: extId.trim() || null })
     } catch (err) {
       setSaveError(err.message)
     }
@@ -62,11 +63,11 @@ export function BuyEditForm({ txn, onSave, onCancel }) {
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
+        <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Transaction ID (optional)</label>
@@ -161,7 +162,7 @@ export function SellEditForm({ txn, accountId = txn.investingAccountId, onSave, 
   const lotTotal = Object.values(lotInputs).reduce((s, v) => s + Number(v || 0), 0)
   const lotValid = !showLots || Math.abs(lotTotal - Number(shares || 0)) < 0.000001
   const proceeds = Number(shares || 0) * Number(price || 0)
-  const canSave  = Number(shares) > 0 && Number(price) > 0 && lotValid && !feeMismatch
+  const canSave  = Number(shares) > 0 && parseAmount(price) > 0 && lotValid && !feeMismatch
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -171,7 +172,7 @@ export function SellEditForm({ txn, accountId = txn.investingAccountId, onSave, 
       const lotAllocations = showLots
         ? Object.entries(lotInputs).filter(([, v]) => Number(v) > 0).map(([sourceBuyId, v]) => ({ sourceBuyId, sharesFromLot: Number(v) }))
         : null
-      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: Number(price), fee: Number(fee || 0), transactionExternalId: extId.trim() || null, lotAllocations })
+      onSave({ date, stockExchange: stockExchange.trim() || null, shares: Number(shares), price: parseAmount(price), fee: parseAmount(fee) || 0, transactionExternalId: extId.trim() || null, lotAllocations })
     } catch (err) {
       setSaveError(err.message)
     }
@@ -199,17 +200,17 @@ export function SellEditForm({ txn, accountId = txn.investingAccountId, onSave, 
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Price per share ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0.000001" step="any" value={price} onChange={e => setPrice(e.target.value)} />
+        <AmountInput className={styles.formInput} value={price} onChange={v => setPrice(v)} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Fee ({txn.currency})</label>
-        <input className={styles.formInput} type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} />
+        <AmountInput className={styles.formInput} value={fee} onChange={v => setFee(v)} />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>Transaction ID (optional)</label>
         <input className={styles.formInput} value={extId} onChange={e => setExtId(e.target.value)} placeholder="Broker reference" />
       </div>
-      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - Number(fee || 0))} {txn.currency}</p>}
+      {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - parseAmount(fee) || 0)} {txn.currency}</p>}
       {lotsWithCredit.length > 0 && (
         <div className={styles.lotPickerSection}>
           <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>

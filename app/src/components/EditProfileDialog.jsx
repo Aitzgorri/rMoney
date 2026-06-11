@@ -3,7 +3,8 @@ import { getStockProfile, upsertStockProfile } from '../data/stockProfiles'
 import { getAiConnection } from '../data/settings'
 import { getSecret } from '../utils/secrets'
 import { searchSymbols, getLatestPrice, getMarketProfile } from '../data/marketDataClient'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from './AmountInput'
 import CurrencyDropdown from './CurrencyDropdown'
 import CountryDropdown from './CountryDropdown'
 import styles from './EditProfileDialog.module.css'
@@ -177,7 +178,7 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
       hqCountryOverride:    hqCountryOverride.trim() || null,
       dividendFrequency:    frequency,
       amountEstimationRule: estRule,
-      manualEstimatedAmount: estRule === 'manual' && manualAmt !== '' ? Number(manualAmt) : null,
+      manualEstimatedAmount: estRule === 'manual' && manualAmt !== '' ? parseAmount(manualAmt) : null,
       paysDividends: paysDividendsVal === 'false' ? false : paysDividendsVal === 'true' ? true : null,
     })
   }
@@ -322,14 +323,11 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
           {estRule === 'manual' && (
             <div className={styles.dialogField}>
               <label className={styles.dialogLabel}>Manual estimate (per share)</label>
-              <input
+              <AmountInput
                 className={styles.dialogInput}
-                type="number"
-                min="0"
-                step="any"
                 value={manualAmt}
-                onChange={e => setManualAmt(e.target.value)}
-                placeholder="0.25"
+                onChange={v => setManualAmt(v)}
+                placeholder="0,25"
               />
             </div>
           )}

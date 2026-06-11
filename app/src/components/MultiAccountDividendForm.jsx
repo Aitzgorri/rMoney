@@ -4,7 +4,8 @@ import { getOpenLots } from '../data/stockTransactions'
 import { createDividend, resolveDividendTaxPercent, computeDividendDerived, checkDuplicateDividend } from '../data/dividends'
 import { getStockProfile, upsertStockProfile } from '../data/stockProfiles'
 import CurrencyDropdown from './CurrencyDropdown'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from './AmountInput'
 import styles from './MultiAccountDividendForm.module.css'
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
@@ -155,7 +156,7 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
 
   const taxPctNum = parseFloat(taxPctStr || '0')
   const includedRows = accountRows.filter(r => r.include && Number(r.shares || 0) > 0)
-  const canSave = ticker && !noDivPrompt && currency && Number(perShare) > 0 && includedRows.length > 0 && payoutDate
+  const canSave = ticker && !noDivPrompt && currency && parseAmount(perShare) > 0 && includedRows.length > 0 && payoutDate
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -174,7 +175,7 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
         currency,
         exDividendDate,
         payoutDate,
-        dividendPerShare: Number(perShare),
+        dividendPerShare: parseAmount(perShare),
         shareCount: Number(row.shares),
         taxPercent,
         type: dividendType,
@@ -247,7 +248,7 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
             <div className={styles.pairRow}>
               <div className={styles.field}>
                 <label className={styles.label}>Per share ({currency})</label>
-                <input className={styles.input} type="number" min="0" step="any" value={perShare} onChange={e => setPerShare(e.target.value)} placeholder="0.25" autoFocus={tickerLocked} />
+                <AmountInput className={styles.input} value={perShare} onChange={v => setPerShare(v)} placeholder="0,25" autoFocus={tickerLocked} />
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>Tax %</label>
@@ -276,7 +277,7 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
                     <tbody>
                       {accountRows.map(row => {
                         const sc = Number(row.shares || 0)
-                        const tbt = Number(perShare || 0) * sc
+                        const tbt = (parseAmount(perShare) || 0) * sc
                         const net = tbt - tbt * taxPctNum / 100
                         return (
                           <tr key={row.accountId} className={!row.include ? styles.rowMuted : ''}>
@@ -304,7 +305,7 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
                               )}
                             </td>
                             <td className={styles.td + ' ' + styles.numTd}>
-                              {row.include && sc > 0 && Number(perShare) > 0
+                              {row.include && sc > 0 && parseAmount(perShare) > 0
                                 ? `${fmtAmt(net)} ${currency}`
                                 : '—'}
                             </td>
