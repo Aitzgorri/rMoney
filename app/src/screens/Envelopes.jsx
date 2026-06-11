@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
+import { useCollapseState } from '../utils/useCollapseState'
 import {
   getEnvelopes,
   getEnvelopesFlat,
@@ -43,7 +44,7 @@ export default function Envelopes() {
     return () => { cancelled = true }
   }, [mainCurrency])
   const [historyEnvelope, setHistoryEnvelope] = useState(null)
-  const [collapsed, setCollapsed]   = useState({})
+  const collapse = useCollapseState('rmoney_envelopes_collapsed')
   const [adding, setAdding]         = useState(null)   // parentId | 'root'
   const [newName, setNewName]       = useState('')
   const [editing, setEditing]       = useState(null)   // { id, name }
@@ -104,10 +105,6 @@ export default function Envelopes() {
   function openHistory(envelope) {
     setHistoryEnvelope(envelope)
     if (!isDesktop) setView('history')
-  }
-
-  function toggleCollapse(id) {
-    setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
   function startAdding(parentId) {
@@ -176,6 +173,10 @@ export default function Envelopes() {
   const builtIns = active.filter(e => e.isBuiltIn)
   const roots    = active.filter(e => !e.isBuiltIn && !e.parentId)
 
+  // Parent envelopes (have at least one child) — drive the Expand/Collapse-all toggle
+  const parentEnvelopeIds = active.filter(e => active.some(c => c.parentId === e.id)).map(e => e.id)
+  const allCollapsed = parentEnvelopeIds.length > 0 && parentEnvelopeIds.every(id => collapse.has(id))
+
   return (
     <div className={styles.screen}>
       {confirmDelete && (
@@ -242,9 +243,19 @@ export default function Envelopes() {
       <div className={styles.treePane}>
       <div className={styles.header}>
         <h1 className={styles.title}>Envelopes</h1>
-        <button className={styles.transferBtn} onClick={() => setView('transfer')}>
-          ⇄ Transfer
-        </button>
+        <div className={styles.headerActions}>
+          {parentEnvelopeIds.length > 0 && (
+            <button
+              className={styles.transferBtn}
+              onClick={() => allCollapsed ? collapse.clear() : collapse.setAll(parentEnvelopeIds)}
+            >
+              {allCollapsed ? 'Expand all' : 'Collapse all'}
+            </button>
+          )}
+          <button className={styles.transferBtn} onClick={() => setView('transfer')}>
+            ⇄ Transfer
+          </button>
+        </div>
       </div>
 
       {/* Built-in envelopes always at top */}
@@ -275,8 +286,7 @@ export default function Envelopes() {
               envelope={env}
               all={active}
               depth={0}
-              collapsed={collapsed}
-              onToggle={toggleCollapse}
+              collapse={collapse}
               adding={adding}
               newName={newName}
               onNewNameChange={setNewName}
@@ -375,15 +385,30 @@ function EnvelopeRow({ envelope, balance, isBuiltIn, isArchived, onClick, editin
 
 function EnvelopeNode({
   envelope, all, depth,
-  collapsed, onToggle,
+  collapse,
   adding, newName, onNewNameChange, onStartAdding, onAdd, onCancelAdd,
   editing, onStartEditing, onEditChange, onEditSave, onCancelEdit,
   onDeleteRequest, onArchive, onOpenHistory,
 }) {
   const children    = all.filter(e => e.parentId === envelope.id)
   const hasChildren = children.length > 0
-  const isCollapsed = collapsed[envelope.id]
+  const isCollapsed = collapse.has(envelope.id)
   const isEditing   = editing?.id === envelope.id
+  const clickTimer  = useRef(null)
+
+  // Row interaction (Phase 45a): single-click opens detail, double-click toggles
+  // collapse (parents). Ignore clicks that land on a button, an input, or the
+  // drag handle. A short delay lets a double-click cancel the pending single.
+  function handleRowClick(e) {
+    if (isEditing || e.target.closest('button, input, [data-rowignore]')) return
+    if (clickTimer.current) return
+    clickTimer.current = setTimeout(() => { clickTimer.current = null; onOpenHistory(envelope) }, 220)
+  }
+  function handleRowDoubleClick(e) {
+    if (isEditing || e.target.closest('button, input, [data-rowignore]')) return
+    if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null }
+    if (hasChildren) collapse.toggle(envelope.id); else onOpenHistory(envelope)
+  }
   const isAdding    = adding === envelope.id
   const ownBalance  = round2(getEnvelopeBalance(envelope.id))
   const balance     = hasChildren ? round2(getTotalEnvelopeBalance(envelope.id)) : ownBalance
@@ -408,13 +433,14 @@ function EnvelopeNode({
       className={`${styles.node} ${isDragging ? styles.dragging : ''} ${dropClass}`}
       style={{ marginLeft: depth * 16 }}
     >
-      <div className={styles.row}>
-        <span className={styles.dragHandle} {...listeners} {...attributes} title="Drag to reparent">≡</span>
+      <div className={styles.row} onClick={handleRowClick} onDoubleClick={handleRowDoubleClick}>
+        <span className={styles.dragHandle} data-rowignore="1" {...listeners} {...attributes} title="Drag to reparent">≡</span>
 
         <button
           className={styles.collapseBtn}
-          onClick={() => hasChildren && onToggle(envelope.id)}
+          onClick={() => hasChildren && collapse.toggle(envelope.id)}
           style={{ visibility: hasChildren ? 'visible' : 'hidden' }}
+          title={hasChildren ? (isCollapsed ? 'Expand' : 'Collapse') : undefined}
         >
           {isCollapsed ? '▶' : '▼'}
         </button>
@@ -431,7 +457,7 @@ function EnvelopeNode({
             <button type="button" className={styles.inlineCancel} onClick={onCancelEdit}>✕</button>
           </form>
         ) : (
-          <span className={styles.name} onClick={() => onOpenHistory(envelope)}>
+          <span className={styles.name}>
             {envelope.name}
           </span>
         )}
@@ -466,8 +492,7 @@ function EnvelopeNode({
           envelope={child}
           all={all}
           depth={depth + 1}
-          collapsed={collapsed}
-          onToggle={onToggle}
+          collapse={collapse}
           adding={adding}
           newName={newName}
           onNewNameChange={onNewNameChange}

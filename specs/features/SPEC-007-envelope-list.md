@@ -1,7 +1,7 @@
 ---
 id: SPEC-007
 name: Envelope List
-status: in-progress
+status: done
 created: 2026-04-03
 ---
 
@@ -62,10 +62,10 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] On the desktop split layout (tree pane + detail pane), adding, editing, or deleting a record in the right-hand detail pane immediately refreshes the **left-hand tree balances** — including parent/total sums — without the user having to select another envelope first *(Phase 43e; the detail pane signals the parent list via an `onDataChange` callback, wired from `Envelopes` to both `EnvelopeHistory` instances)*
 
 ### Collapse / expand interaction *(Phase 45)*
-- [ ] **Single-click** anywhere on an envelope row (except the action buttons) opens that envelope's detail/history — extended from the name-only click to the whole row.
-- [ ] **Double-click** a parent row, or click the **left chevron button**, toggles that envelope's collapse/expand. (Leaf rows have no chevron and no collapse.)
-- [ ] The collapsed/expanded state is **persisted** (localStorage) so returning to the page restores the prior state instead of fully expanding.
-- [ ] A header **Expand all / Collapse all** control toggles every parent envelope at once.
+- [x] **Single-click** anywhere on an envelope row (except the action buttons) opens that envelope's detail/history — extended from the name-only click to the whole row. *(Phase 45a — a short click-delay lets a double-click cancel the pending open.)*
+- [x] **Double-click** a parent row, or click the **left chevron button**, toggles that envelope's collapse/expand. (Leaf rows have no chevron and no collapse.) *(Phase 45a)*
+- [x] The collapsed/expanded state is **persisted** (localStorage `rmoney_envelopes_collapsed`) so returning to the page restores the prior state instead of fully expanding. *(Phase 45b — shared `useCollapseState` hook)*
+- [x] A header **Expand all / Collapse all** control toggles every parent envelope at once. *(Phase 45b)*
 
 ### Navigation
 - [x] A back button returns the user from envelope history to the envelope list

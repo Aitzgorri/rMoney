@@ -1,7 +1,7 @@
 ---
 id: SPEC-009
 name: Planning
-status: in-progress
+status: done
 created: 2026-04-08
 ---
 
@@ -117,9 +117,9 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] The expense form shows Yearly, Quarterly, and Monthly amount fields in a compact row with currency dropdown at the end
 
 ### Expense tree collapse / expand *(Phase 45)*
-- [ ] Clicking anywhere on a parent expense row (except the action buttons) toggles its collapse/expand — the whole row is the toggle target, not only the chevron.
-- [ ] The collapsed/expanded state is **persisted** (localStorage) so returning to the page restores the prior state instead of fully expanding.
-- [ ] A header **Expand all / Collapse all** control toggles every parent expense at once.
+- [x] Clicking anywhere on a parent expense row (except the action buttons) toggles its collapse/expand — the whole row is the toggle target, not only the chevron. *(Phase 45c)*
+- [x] The collapsed/expanded state is **persisted** (localStorage `rmoney_planning_expanded`) so returning to the page restores the prior state instead of fully expanding. *(Phase 45d — shared `useCollapseState` hook)*
+- [x] A header **Expand all / Collapse all** control toggles every parent expense at once. *(Phase 45d)*
 
 ### Amount input behaviour fix
 - [x] Typing a number in an amount field must not auto-format with decimals while the user is still typing

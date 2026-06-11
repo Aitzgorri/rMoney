@@ -1,7 +1,7 @@
 ---
 id: SPEC-018
 name: Investing Accounts
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -243,9 +243,9 @@ Notes on the movements model:
 - [x] Async data (latest price + previousClose from Yahoo, name, exchange from stock profile) is fetched on mount; cells show "—" while loading.
 
 ### Positions & movements polish *(Phase 45)*
-- [ ] Positions-table column labels are shortened to keep the table compact: **Latest price → "Latest Pr"**, **Shares → "Sh#"** (the full name remains available via the header tooltip below).
-- [ ] Every Positions-table column header shows a **tooltip on hover** giving the full column name / description. Implemented via shared `ConfigurableTable` `title` support (a `title` per column rendered on the `<th>`), so the tooltip capability is available to every `ConfigurableTable` in the app.
-- [ ] **Asset-movements** rows no longer produce a horizontal scrollbar on hover. (Root cause: the `.movementRowClickable:hover` negative-margin bleed (`margin: 0 -6px`) overflowed its container; fixed by absorbing the bleed in the list container's side padding / preventing horizontal overflow.)
+- [x] Positions-table column labels are shortened to keep the table compact: **Latest price → "Latest Pr"**, **Shares → "Sh#"** (the full name remains available via the header tooltip below). *(Phase 45e)*
+- [x] Every Positions-table column header shows a **tooltip on hover** giving the full column name / description. Implemented via shared `ConfigurableTable` `title` support (`title={col.title ?? col.label}` on the `<th>`), so the tooltip capability is available to every `ConfigurableTable` in the app. *(Phase 45e)*
+- [x] **Asset-movements** rows no longer produce a horizontal scrollbar on hover. (Root cause: the `.movementRowClickable:hover` negative-margin bleed (`margin: 0 -6px`) overflowed its container; fixed by removing the bleed so the highlight stays within the row's box.) *(Phase 45f — verified the movements container overflow stays 0 on hover.)*
 
 ### Cash movements UX — Phase 27c
 - [x] The cash-movements list has a max-height scrollable container. Records beyond the visible area are chunk-loaded (50 records per "Load more" click).

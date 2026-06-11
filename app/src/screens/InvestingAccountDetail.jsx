@@ -1009,22 +1009,22 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 defaultHidden: true,
               },
               {
-                id: 'latestPrice', label: 'Latest price', align: 'right',
+                id: 'latestPrice', label: 'Latest Pr', title: 'Latest price', align: 'right',
                 sortValue: p => p.latestPrice ?? -Infinity,
                 render: p => p.latestPrice != null ? `${fmtAmt(p.latestPrice)} ${p.currency}` : '—',
               },
               {
-                id: 'shares', label: 'Shares', align: 'right',
+                id: 'shares', label: 'Sh#', title: 'Shares held', align: 'right',
                 sortValue: p => p.shares,
                 render: p => trimDecimals(p.shares),
               },
               {
-                id: 'avgCostFee', label: 'Price/sh (w/ fee)', align: 'right',
+                id: 'avgCostFee', label: 'Price/sh (w/ fee)', title: 'Average cost per share (fee-inclusive)', align: 'right',
                 sortValue: p => p.avgCost,
                 render: p => `${fmtAmt(p.avgCost)} ${p.currency}`,
               },
               {
-                id: 'avgCostNoFee', label: 'Avg price', align: 'right',
+                id: 'avgCostNoFee', label: 'Avg price', title: 'Average cost per share (fee-exclusive)', align: 'right',
                 sortValue: p => p.avgCostNoFee ?? p.avgCost,
                 render: p => {
                   const v = p.avgCostNoFee ?? p.avgCost
@@ -1033,12 +1033,12 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 defaultHidden: true,
               },
               {
-                id: 'mvTrading', label: 'MV (trading)', align: 'right',
+                id: 'mvTrading', label: 'MV (trading)', title: 'Market value in the trading currency', align: 'right',
                 sortValue: p => p.mvTrading ?? -Infinity,
                 render: p => p.mvTrading != null ? `${fmtAmt(p.mvTrading)} ${p.currency}` : '—',
               },
               {
-                id: 'mvMain', label: 'MV (main)', align: 'right',
+                id: 'mvMain', label: 'MV (main)', title: 'Market value in your main currency', align: 'right',
                 sortValue: p => p.mvMain ?? -Infinity,
                 render: p => {
                   const mc = getMainCurrency()
@@ -1046,13 +1046,13 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 },
               },
               {
-                id: 'shareOnAccount', label: 'Share %', align: 'right',
+                id: 'shareOnAccount', label: 'Share %', title: "Share of this account's total value", align: 'right',
                 sortValue: p => p.shareOnAccount ?? -Infinity,
                 render: p => p.shareOnAccount != null ? `${p.shareOnAccount.toFixed(1)}%` : '—',
                 defaultHidden: true,
               },
               {
-                id: 'chgPct', label: "Change (%)", align: 'right',
+                id: 'chgPct', label: "Change (%)", title: "Today's change vs previous close (%)", align: 'right',
                 sortValue: p => p.chgPct ?? -Infinity,
                 render: p => {
                   if (p.chgPct == null) return '—'
@@ -1065,7 +1065,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 },
               },
               {
-                id: 'chgAmtTrading', label: "Change (trading)", align: 'right',
+                id: 'chgAmtTrading', label: "Change (trading)", title: "Today's value change (trading currency)", align: 'right',
                 sortValue: p => p.chgAmtTrading ?? -Infinity,
                 render: p => {
                   if (p.chgAmtTrading == null) return '—'
@@ -1078,7 +1078,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 },
               },
               {
-                id: 'chgAmtMain', label: "Change (main)", align: 'right',
+                id: 'chgAmtMain', label: "Change (main)", title: "Today's value change (main currency)", align: 'right',
                 sortValue: p => p.chgAmtMain ?? -Infinity,
                 render: p => {
                   const mc = getMainCurrency()

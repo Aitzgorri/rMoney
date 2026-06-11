@@ -240,17 +240,17 @@ Recommended sub-phase order (each is independently shippable / testable):
 >
 > **Suggested order:** 45e/45f (investing polish — small, isolated) → 45a–45d (collapse hook + both trees) → 45g then 45h (AmountInput foundation, then the app-wide rollout — the largest, do last).
 
-### SPEC-007 Envelope List
-45a. [ ] **Envelopes click model.** Single-click anywhere on a row (except action buttons) opens detail/history (extended from name-only); double-click a parent row **or** the left chevron toggles collapse.
-45b. [ ] **Persist + expand/collapse-all.** Persist the collapsed set to `localStorage` (restored on return); add a header Expand-all / Collapse-all control. Uses the shared `useCollapseState` hook.
+### SPEC-007 Envelope List ✓ done (SPEC-007 back to `done`)
+45a. ✓ **DONE** — **Envelopes click model.** Single-click anywhere on a row (except action buttons) opens detail/history (extended from name-only, with a click-delay so a double-click can cancel it); double-click a parent row **or** the left chevron toggles collapse.
+45b. ✓ **DONE** — **Persist + expand/collapse-all.** Collapsed set persisted to `localStorage` (`rmoney_envelopes_collapsed`) via the shared `useCollapseState` hook; header Expand-all / Collapse-all control.
 
-### SPEC-009 Planning
-45c. [ ] **Whole-row toggle.** Clicking anywhere on a parent expense row (except action buttons) toggles its collapse/expand.
-45d. [ ] **Persist + expand/collapse-all.** Persist expand state to `localStorage`; add an Expand-all / Collapse-all control. Shares `useCollapseState` with 45b.
+### SPEC-009 Planning ✓ done (SPEC-009 back to `done`)
+45c. ✓ **DONE** — **Whole-row toggle.** Clicking anywhere on a parent expense row (except action buttons) toggles its collapse/expand.
+45d. ✓ **DONE** — **Persist + expand/collapse-all.** Expanded set persisted (`rmoney_planning_expanded`) via `useCollapseState`; Expand-all / Collapse-all control.
 
-### SPEC-018 Investing Accounts
-45e. [ ] **Positions labels + header tooltips.** Shorten `Latest price`→`Latest Pr`, `Shares`→`Sh#`; add `title` per column and render it on the `<th>` in the shared `ConfigurableTable` (tooltips then available to all tables).
-45f. [ ] **Asset-movements hover overflow.** Fix `.movementRowClickable:hover` so the negative-margin bleed no longer overflows the container (no horizontal scrollbar on hover).
+### SPEC-018 Investing Accounts ✓ done (SPEC-018 back to `done`)
+45e. ✓ **DONE** — **Positions labels + header tooltips.** `Latest price`→`Latest Pr`, `Shares`→`Sh#`; `title` per column rendered on the `<th>` in shared `ConfigurableTable` (tooltips now available to all tables).
+45f. ✓ **DONE** — **Asset-movements hover overflow.** Removed the `.movementRowClickable:hover` negative-margin bleed; verified the movements container overflow stays 0 on hover.
 
 ### SPEC-015 UI Enhancements
 45g. [ ] **AmountInput + parseAmount.** Build the shared comma-or-dot money-entry control (`type="text"`, `inputmode="decimal"`) and the `parseAmount` normaliser.

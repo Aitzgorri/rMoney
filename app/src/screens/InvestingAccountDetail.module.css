@@ -366,12 +366,12 @@
   cursor: pointer;
 }
 
+/* Phase 45f: highlight stays within the row's box — the old `margin: 0 -6px`
+   bleed pushed the row 12px wider than its container on hover, which produced a
+   horizontal scrollbar. */
 .movementRowClickable:hover {
   background: #1e2535;
   border-radius: 6px;
-  margin: 0 -6px;
-  padding-left: 6px;
-  padding-right: 6px;
 }
 
 .expandIcon {

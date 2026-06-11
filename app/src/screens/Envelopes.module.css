@@ -84,6 +84,13 @@
   padding: 8px 4px;
   border-radius: 8px;
   transition: background 0.1s;
+  cursor: pointer;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .row:hover { background: #1e2535; }

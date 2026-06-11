@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
+import { useCollapseState } from '../utils/useCollapseState'
 import InlineFormRow from '../components/InlineFormRow'
 import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, createEnvelopeTransfer } from '../data/envelopes'
 import { getActiveAccounts } from '../data/accounts'
@@ -142,15 +143,11 @@ export default function Planning() {
   const [addTransfer, setAddTransfer]     = useState(false)
   const [pendingReparent, setPendingReparent] = useState(null) // null | { dragId, dragName, targetLeaf }
 
-  // Expense tree expand/collapse
-  const [expanded, setExpanded] = useState(new Set())
-  function toggleExpand(id) {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+  // Expense tree expand/collapse — persisted "expanded" id set (Phase 45c/45d)
+  const expand = useCollapseState('rmoney_planning_expanded')
+  // Parent expenses (have children) drive the Expand/Collapse-all toggle
+  const parentExpenseIds = expenses.filter(e => expenses.some(c => c.parentId === e.id)).map(e => e.id)
+  const allExpanded = parentExpenseIds.length > 0 && parentExpenseIds.every(id => expand.has(id))
 
   // ─── Totals ────────────────────────────────────────────────────────────────
   const totals = buildTotals(incomes, expenses, period)
@@ -507,7 +504,14 @@ export default function Planning() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionTitle}>Planned expenses</span>
-          <button className={styles.addBtn} onClick={() => isDesktop ? setExpenseInlineOpen(true) : setExpenseModal({ mode: 'new', parentId: null })}>+ Add</button>
+          <div className={styles.sectionHeaderActions}>
+            {parentExpenseIds.length > 0 && (
+              <button className={styles.addBtn} onClick={() => allExpanded ? expand.clear() : expand.setAll(parentExpenseIds)}>
+                {allExpanded ? 'Collapse all' : 'Expand all'}
+              </button>
+            )}
+            <button className={styles.addBtn} onClick={() => isDesktop ? setExpenseInlineOpen(true) : setExpenseModal({ mode: 'new', parentId: null })}>+ Add</button>
+          </div>
         </div>
 
         {isDesktop && (
@@ -553,8 +557,8 @@ export default function Planning() {
                     period={period}
                     expenseMonthlyTotals={expenseMonthlyTotals}
                     scheduledTransfers={scheduledTransfers}
-                    expanded={expanded}
-                    onToggleExpand={toggleExpand}
+                    expanded={expand}
+                    onToggleExpand={expand.toggle}
                     onApplySingle={handleApplySingleExpense}
                     onResetExpense={handleResetExpense}
                     onAdd={parentId => setExpenseModal({ mode: 'new', parentId })}
@@ -693,6 +697,13 @@ function ExpenseNode({
   const total = cur ? (expenseMonthlyTotals[cur] ?? 0) : 0
   const pct = amounts.monthly != null && total > 0 ? amounts.monthly / total * 100 : null
 
+  // Whole-row click toggles collapse for parents (Phase 45c); ignore clicks on
+  // the action buttons and the drag handle.
+  function handleExpenseRowClick(e) {
+    if (e.target.closest('button, input, [data-rowignore]')) return
+    if (isParent) onToggleExpand(item.id)
+  }
+
   // Long-press tooltip for sync buttons (mobile)
   const [tooltipText, setTooltipText] = useState(null)
   const longPressTimer = useRef(null)
@@ -726,9 +737,13 @@ function ExpenseNode({
 
   return (
     <div ref={mergedRef} className={wrapClass}>
-      <div className={`${styles.expenseRow} ${isDragging ? styles.dragging : ''}`} style={{ paddingLeft: `${8 + depth * 20}px` }}>
+      <div
+        className={`${styles.expenseRow} ${isDragging ? styles.dragging : ''} ${isParent ? styles.expenseRowParent : ''}`}
+        style={{ paddingLeft: `${8 + depth * 20}px` }}
+        onClick={handleExpenseRowClick}
+      >
         <div className={styles.expenseNameCell}>
-          <span className={styles.expenseDragHandle} {...listeners} {...attributes} title="Drag to reparent">≡</span>
+          <span className={styles.expenseDragHandle} data-rowignore="1" {...listeners} {...attributes} title="Drag to reparent">≡</span>
           {isParent && (
             <button className={styles.expandBtn} onClick={() => onToggleExpand(item.id)}>
               {isExpanded ? '▾' : '▸'}

@@ -11,7 +11,8 @@ import appStorage from '../utils/appStorage'
  * - Fullscreen expand button
  *
  * Props:
- *   columns        — [{ id, label, render, sortValue?, align?, minWidth?, defaultHidden? }]
+ *   columns        — [{ id, label, render, sortValue?, align?, minWidth?, defaultHidden?, title? }]
+ *                     title? — header tooltip (falls back to label) — Phase 45e
  *   rows           — any[]  (passed to column.render(row))
  *   rowKey         — (row) => string
  *   storageKey?    — appStorage key for persisting column config
@@ -112,6 +113,7 @@ export default function ConfigurableTable({
                 key={col.id}
                 className={`${styles.th} ${col.sortValue ? styles.sortable : ''} ${sortCol === col.id ? styles.sorted : ''}`}
                 style={{ minWidth: col.minWidth, textAlign: col.align ?? 'left' }}
+                title={col.title ?? col.label}
                 onClick={() => toggleSort(col.id)}
               >
                 {col.label}

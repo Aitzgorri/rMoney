@@ -236,6 +236,15 @@
   background: #2a3450;
 }
 
+/* Parent expense rows toggle collapse on click (Phase 45c) */
+.expenseRowParent { cursor: pointer; }
+
+.sectionHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .expenseNameCell {
   display: flex;
   align-items: center;
