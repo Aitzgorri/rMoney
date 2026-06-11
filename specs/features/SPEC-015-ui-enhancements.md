@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 name: UI Enhancements
-status: in-progress
+status: done
 created: 2026-04-23
 ---
 
@@ -23,7 +23,7 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] On viewports ≥ 1024px, the app removes the mobile-column fixed-width container; content stretches to fill the viewport with a sensible max-width guard (e.g. 1600px) to avoid absurdly wide lines.
 - [x] Dashboard: widgets render in a responsive CSS grid on desktop (2–3 columns depending on width). Mobile stays single-column.
 - [x] Envelope list: desktop layout = tree pane on the left + detail pane on the right (selected envelope's recent transactions, scheduled transfers, monthly totals). Mobile stays single-column.
-- [ ] On desktop the envelope **tree pane is 40% of the viewport width** (clamped with a sensible min/max, e.g. ~320–560px) rather than a fixed 380px; the detail pane fills the remainder *(Phase 43)*
+- [x] On desktop the envelope **tree pane is 40% of the viewport width** (clamped with a sensible min/max, e.g. ~320–560px) rather than a fixed 380px; the detail pane fills the remainder *(Phase 43l — `.treePane` `width: 40%; min-width: 320px; max-width: 560px`)*
 - [x] Transaction list: desktop layout = filters sidebar on the left + list on the right. Mobile stays single-column with filters accessed via a "Filter" button.
 - [x] Investment reports (SPEC-024): on desktop, charts and table sit side-by-side. Mobile stacks. (`InvestmentReports.jsx` uses `repeat(${isDesktop ? tilesPerRow : 1}, 1fr)` for the pie-charts grid; tiles wrap on narrow viewports.)
 - [x] Stock page (SPEC-021): on desktop, price chart + stock metadata row at the top, transactions + dividends below. Mobile stacks. (`StockPage.module.css` `@media (min-width: 768px)` switches `.body` to row layout with sticky right column.)
@@ -49,10 +49,10 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] All monetary amounts render via a **single central formatter** in `src/utils/format.js` (`fmtAmt` + `round2`/`fmtSigned`/`fmtPriceAmt`, sharing one `fmtFixed` core) that always produces **comma decimal + narrow-space (` `) thousands**, e.g. `1 234,56`, **regardless of browser/OS locale**. *(Phase 43h/43i — chart-axis tick labels are covered separately below.)*
 - [x] The per-screen duplicate formatters are consolidated to route through `src/utils/format.js`. No component formats an amount with its own `toLocaleString('en-US', …).replace(/,/g,' ')` or bare `toFixed(2)`. *(Phase 43i: `BuySellPlanning.fmtNum`→`fmtAmt` and its local `fmtSigned` replaced by the shared one; `StockPage.fmt4`→`fmtPriceAmt`. `DividendPage.fmtMC` and `InvestmentReports.fmtMC` already delegated to `fmtAmt`. `DividendPage.fmtCompact` + the chart tick formatters remain and are tracked under the chart-axis criterion below.)*
 - [x] A shared **`round2(n)`** helper snaps a value to two decimals and collapses negative-zero / sub-cent residue to `+0`, so no amount ever renders as `−0.00`. `fmtAmt` itself also guards against emitting `−0.00` as a backstop. *(Phase 43d/43h)*
-- [ ] **Percentages and FX rates keep the dot** decimal separator (they are ratios, not currency amounts) — e.g. `14.3%`, rate `1.0825`. Only currency amounts switch to comma.
+- [x] **Percentages and FX rates keep the dot** decimal separator (they are ratios, not currency amounts) — e.g. `14.3%`, rate `1.0825`. Only currency amounts switch to comma. *(Phase 43j — `fmtPct*`/`fmtRate` were never routed through `fmtAmt`; verified `0.00%` renders with a dot alongside comma amounts on Buy-Sell Planning.)*
 - [x] **Amount inputs are unchanged**: `<input type="number">` continues to be used for entry. The browser localizes the *displayed* separator per OS, and its `.value` is always dot-normalized, so existing `Number(value)` parsing keeps working — no input rewrite, no new parsing code. *(Phase 43h — confirmed: no input or parsing code touched)*
-- [ ] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected).
-- [ ] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.)
+- [x] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected). *(Phase 43k — `DividendPage` `fmtTick`/`fmtCompact` and `StockPage` `fmtPrice` now emit comma; Benchmarks ticks are `%` and stay dot.)*
+- [x] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.) *(Phase 43m — `CsvImport` `decimalSep` initial state `','`; selecting a saved template still applies that template's own separator.)*
 
 ## UI / Screens
 Desktop Dashboard (text sketch):

@@ -418,7 +418,9 @@
   }
 
   .treePane {
-    width: 380px;
+    width: 40%;
+    min-width: 320px;
+    max-width: 560px;
     flex-shrink: 0;
     padding: 16px;
     border-right: 1px solid #2d3448;

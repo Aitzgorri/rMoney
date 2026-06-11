@@ -9,6 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt, getFavoriteCountries, setFavoriteCountries } from '../data/settings'
+import { fmtAmt } from '../utils/format'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
 import { ISO3166, ISO3166_MAP } from '../utils/iso3166'
 import CountryDropdown from '../components/CountryDropdown'
@@ -1309,9 +1310,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       </div>
                       <span className={styles.feeBadge}>{rule.currency}</span>
                       <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
-                      <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      <span className={styles.feeRowVal}>min {fmtAmt(rule.minimumFee)}</span>
                       {rule.maximumFee != null && (
-                        <span className={styles.feeRowVal}>max {Number(rule.maximumFee).toFixed(2)}</span>
+                        <span className={styles.feeRowVal}>max {fmtAmt(rule.maximumFee)}</span>
                       )}
                       <button className={styles.btnSm} onClick={() => startEditExchangeFee(i)}>Edit</button>
                       <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('exchange', i)}>Delete</button>
@@ -1353,9 +1354,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       </div>
                       <span className={styles.feeBadge}>{rule.currency}</span>
                       <span className={styles.feeRowVal}>{Number(rule.feePercent).toFixed(4)} %</span>
-                      <span className={styles.feeRowVal}>min {Number(rule.minimumFee).toFixed(2)}</span>
+                      <span className={styles.feeRowVal}>min {fmtAmt(rule.minimumFee)}</span>
                       {rule.maximumFee != null && (
-                        <span className={styles.feeRowVal}>max {Number(rule.maximumFee).toFixed(2)}</span>
+                        <span className={styles.feeRowVal}>max {fmtAmt(rule.maximumFee)}</span>
                       )}
                       <button className={styles.btnSm} onClick={() => startEditStockFee(i)}>Edit</button>
                       <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('stock', i)}>Delete</button>
@@ -1371,7 +1372,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             {/* Resolution preview */}
             {(tradingFees.exchanges.length > 0 || tradingFees.stocks.length > 0) && (
               <div className={styles.preview}>
-                Example: a 1,000 trade with the matching rule would charge <strong>
+                Example: a 1 000 trade with the matching rule would charge <strong>
                   {(() => {
                     const sample = tradingFees.stocks[0] ?? tradingFees.exchanges[0]
                     const { feeAmount, source } = resolveTradingFee(
@@ -1379,7 +1380,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       sample.mic ?? null,
                       1000,
                     )
-                    return `${feeAmount.toFixed(2)} ${sample.currency} (${source})`
+                    return `${fmtAmt(feeAmount)} ${sample.currency} (${source})`
                   })()}
                 </strong>.
               </div>

@@ -48,7 +48,7 @@
 | 37 — Selective reset + responsive header | ✓ shipped in v0.35.0 | 37a Reset data (SPEC-016), 37b responsive Stock page (SPEC-021) |
 | 38 — June 2026 adjustments | ✓ shipped in v0.36.0 | 430–439 batch + Buy-Sell cash-impact follow-up; backup → rmoney-data-v4 |
 | 39 — Access / password modes | planned | SPEC-031 ext: app / keys-only / none modes + Settings → Security tab + `appStorage` wrapper (Strategy B full at-rest encryption) |
-| 43 — Envelope transfer correctness + comma number format + UI polish | planned | From the 10 Jun 2026 notes — see Phase 43 section below |
+| 43 — Envelope transfer correctness + comma number format + UI polish | ✓ done (unreleased) | From the 10 Jun 2026 notes — all of 43a–43m shipped; see Phase 43 section below |
 | 44 — Payees: report + management + autocomplete upgrade | planned | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
@@ -195,10 +195,10 @@ Recommended sub-phase order (each is independently shippable / testable):
 ### SPEC-015 UI Enhancements
 43h. ✓ **DONE** — **Central comma formatter** (pulled forward to unblock 43g). `fmtAmt` now outputs comma decimal + narrow no-break space (U+202F) thousands always; `round2(n)` added (snap to 2dp, collapse `−0`/sub-cent to `+0`); `fmtAmt` guards against `−0.00` (rounds + `Number.isFinite` fallback). Also fixed the long-standing `no-irregular-whitespace` lint error in `format.js`. **Deferred to 43i:** the `fmtSigned` helper (lands when the per-screen formatters are consolidated and can consume it).
 43i. ✓ **DONE** — **Consolidate duplicate formatters.** Added shared `fmtSigned` + `fmtPriceAmt` (and an internal `fmtFixed` core) to `format.js`. `BuySellPlanning.fmtNum`→`fmtAmt`; its local `fmtSigned` deleted in favour of the shared one; `StockPage.fmt4`→`fmtPriceAmt(n,4)`. `DividendPage.fmtMC` and `InvestmentReports.fmtMC` were already delegating to `fmtAmt`. No component reimplements the comma logic now. Build + lint clean (0 new errors vs HEAD). **Remaining (43k):** `DividendPage.fmtCompact`/`fmtTick`, `StockPage.fmtPrice` chart formatters still produce dot.
-43j. [ ] **Ratios stay dot.** Percentages and FX rates keep the dot decimal; only currency amounts switch to comma.
-43k. [ ] **Chart money ticks.** Axis tick labels that show monetary amounts use the comma formatting (date/ratio ticks unaffected).
-43l. [ ] **Envelope tree pane 40%.** `.treePane` in `Envelopes.module.css`: `width: 380px` → `width: 40%` + min/max clamp (~320–560px); detail pane keeps `flex: 1`.
-43m. [ ] **CSV import default separator.** Default the investment import wizard's decimal-separator selector to comma to match the app format (parsing already supports both via `parseNumber` — no parser change).
+43j. ✓ **DONE** — **Ratios stay dot.** No code change needed: `fmtPct*`/`fmtRate` were never routed through `fmtAmt`. Verified `0.00%` renders with a dot next to comma amounts on Buy-Sell Planning.
+43k. ✓ **DONE** — **Chart money ticks + lingering bare-`toFixed` money cells.** `DividendPage` `fmtTick`/`fmtCompact` and `StockPage` `fmtPrice` now emit comma decimals (+ narrow-space thousands for `fmtPrice` ≥1000). Benchmarks ticks are `%` and stay dot. **Verification (seeded DividendPage) surfaced extra dot-decimal money cells that were also fixed:** the dividend records table (`dividendPerShare`/`netTotal`), the Calendar→Table per-share, the day-popup per-share/net, and the Settings → Investments trading-fee min/max/sample amounts — all routed through `fmtPriceAmt`/`fmtAmt` (the percent/`feePercent` cells stay dot).
+43l. ✓ **DONE** — **Envelope tree pane 40%.** `.treePane`: `width: 40%; min-width: 320px; max-width: 560px`; detail pane keeps `flex: 1`.
+43m. ✓ **DONE** — **CSV import default separator.** `CsvImport` `decimalSep` now defaults to `','`; template selection still applies the template's own separator.
 
 ---
 

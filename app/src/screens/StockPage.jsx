@@ -2526,9 +2526,10 @@ function PriceChart({ data, status, isIntraday = false, isNarrow = false }) {
   const lineColor = positive ? '#34d399' : '#f87171'
 
   function fmtPrice(v) {
-    if (v >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })
-    if (v >= 10)   return v.toFixed(2)
-    return v.toFixed(3)
+    // Chart price labels — comma decimal + narrow-space thousands (Phase 43k)
+    if (v >= 1000) return v.toLocaleString('en-US', { maximumFractionDigits: 0 }).replace(/,/g, ' ')
+    if (v >= 10)   return v.toFixed(2).replace('.', ',')
+    return v.toFixed(3).replace('.', ',')
   }
 
   function fmtDateShort(iso) {

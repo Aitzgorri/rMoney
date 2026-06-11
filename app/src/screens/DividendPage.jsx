@@ -19,7 +19,7 @@ import { detectEffectiveDividendFrequency } from '../utils/dividendProjections'
 import {
   getDividendChartPresets, createDividendChartPreset, updateDividendChartPreset, deleteDividendChartPreset,
 } from '../data/dividendChartPresets'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, fmtPriceAmt } from '../utils/format'
 import { resetPageCaches } from '../utils/marketDataCache'
 import MultiAccountDividendForm from '../components/MultiAccountDividendForm'
 import styles from './DividendPage.module.css'
@@ -135,9 +135,10 @@ function fmtMC(n, mc) {
 
 function fmtCompact(n) {
   if (n == null || !isFinite(n)) return '—'
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}K`
-  if (Math.abs(n) >= 10)   return n.toFixed(2)
-  return n.toFixed(4).replace(/\.?0+$/, '') || '0'
+  // Compact money display — comma decimal to match the app format (Phase 43k)
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1).replace('.', ',')}K`
+  if (Math.abs(n) >= 10)   return n.toFixed(2).replace('.', ',')
+  return (n.toFixed(4).replace(/\.?0+$/, '') || '0').replace('.', ',')
 }
 
 // Merge apiDividendHistory + user dividends; user records win on (ticker, exDate).
@@ -830,10 +831,10 @@ function PendingTab({ records, accounts, onRefresh }) {
                     </>
                   ) : (
                     <>
-                      <td className={styles.numTd}>{r.dividendPerShare.toFixed(4)} {r.currency}</td>
+                      <td className={styles.numTd}>{fmtPriceAmt(r.dividendPerShare, 4)} {r.currency}</td>
                       <td className={styles.numTd}>{r.shareCount}</td>
                       <td className={styles.numTd}>{r.taxPercent}%</td>
-                      <td className={styles.numTd}>{netTotal.toFixed(2)} {r.currency}</td>
+                      <td className={styles.numTd}>{fmtAmt(netTotal)} {r.currency}</td>
                     </>
                   )}
                   <td>
@@ -1031,7 +1032,7 @@ function DayPopup({ events, onClose }) {
           <span className={styles.popupTicker}>{e.ticker}</span>
           <span className={styles.popupName}>{e.name}</span>
           <span className={styles.popupKind}>{e.kind === 'pay' ? 'Pay' : 'Ex-div'}</span>
-          {e.perShare != null && <span className={styles.popupAmt}>{e.perShare.toFixed(4)} {e.currency}/sh</span>}
+          {e.perShare != null && <span className={styles.popupAmt}>{fmtPriceAmt(e.perShare, 4)} {e.currency}/sh</span>}
           <span className={`${styles.popupState} ${e.state === 'estimated' ? styles.stateEstimated : ''}`}>{e.state}</span>
         </div>
       ))}
@@ -1137,7 +1138,7 @@ function CalendarTable({ records, calMonth, onNavigate, onRecordChange }) {
                   </button>
                 </td>
                 <td>{r.name}</td>
-                <td className={styles.numTd}>{r.perShare != null ? `${r.perShare.toFixed(4)} ${r.currency}` : '—'}</td>
+                <td className={styles.numTd}>{r.perShare != null ? `${fmtPriceAmt(r.perShare, 4)} ${r.currency}` : '—'}</td>
                 <td>
                   <span className={r.dividendType === 'special' ? styles.typeSpecial : styles.typeRegular}>
                     {r.dividendType === 'special' ? 'Special' : 'Regular'}
@@ -1257,7 +1258,7 @@ function DeleteDividendConfirm({ dividend, onConfirm, onCancel }) {
           {dividend.payoutDate ? ` · Pay: ${dividend.payoutDate}` : ''}
         </p>
         <p className={styles.dialogNote}>
-          {Number(dividend.dividendPerShare).toFixed(4)} {dividend.currency}/sh × {dividend.shareCount} shares → net {netTotal.toFixed(2)} {dividend.currency}
+          {fmtPriceAmt(dividend.dividendPerShare, 4)} {dividend.currency}/sh × {dividend.shareCount} shares → net {fmtAmt(netTotal)} {dividend.currency}
         </p>
         {isReceived && (
           <p className={styles.dialogWarning}>
@@ -1771,7 +1772,7 @@ function DividendChart({ data, preset }) {
   }
 
   function fmtTick(v) {
-    if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`
+    if (v >= 1000000) return `${(v / 1000000).toFixed(1).replace('.', ',')}M`
     if (v >= 1000)    return `${(v / 1000).toFixed(0)}K`
     return v.toFixed(0)
   }

@@ -38,7 +38,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
   // ── Map step ───────────────────────────────────────────────────────────────
   const [colMapping,   setColMapping]   = useState({})  // { colHeader: appField }
   const [dateFormat,   setDateFormat]   = useState(() => getDefaultCsvDateFormat())
-  const [decimalSep,   setDecimalSep]   = useState('.')
+  const [decimalSep,   setDecimalSep]   = useState(',')  // default to comma to match the app number format (SPEC-015 / Phase 43m); user can switch per import, and selecting a saved template still applies its own separator
   const [defaultType,  setDefaultType]  = useState('')
   const [typeValMap,   setTypeValMap]   = useState({})  // { csvTypeValue: appType }
   const [saveTemplate, setSaveTemplate] = useState(false)
