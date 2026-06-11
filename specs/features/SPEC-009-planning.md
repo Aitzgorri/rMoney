@@ -1,7 +1,7 @@
 ---
 id: SPEC-009
 name: Planning
-status: done
+status: in-progress
 created: 2026-04-08
 ---
 
@@ -115,6 +115,11 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] The same full-row hover highlight is applied to **planned-income rows** and the **one-time transfer row**, not only expense rows, so all planning rows behave consistently on a wide desktop screen *(Phase 43f)*
 - [x] The hover highlight is **clearly visible** against the row background (the Phase 42 expense-row tint was too subtle) *(Phase 43f — solid `#2a3450`, replacing the faint `rgba(148,163,184,0.1)`)*
 - [x] The expense form shows Yearly, Quarterly, and Monthly amount fields in a compact row with currency dropdown at the end
+
+### Expense tree collapse / expand *(Phase 45)*
+- [ ] Clicking anywhere on a parent expense row (except the action buttons) toggles its collapse/expand — the whole row is the toggle target, not only the chevron.
+- [ ] The collapsed/expanded state is **persisted** (localStorage) so returning to the page restores the prior state instead of fully expanding.
+- [ ] A header **Expand all / Collapse all** control toggles every parent expense at once.
 
 ### Amount input behaviour fix
 - [x] Typing a number in an amount field must not auto-format with decimals while the user is still typing

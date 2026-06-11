@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 name: UI Enhancements
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
@@ -50,7 +50,11 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] The per-screen duplicate formatters are consolidated to route through `src/utils/format.js`. No component formats an amount with its own `toLocaleString('en-US', …).replace(/,/g,' ')` or bare `toFixed(2)`. *(Phase 43i: `BuySellPlanning.fmtNum`→`fmtAmt` and its local `fmtSigned` replaced by the shared one; `StockPage.fmt4`→`fmtPriceAmt`. `DividendPage.fmtMC` and `InvestmentReports.fmtMC` already delegated to `fmtAmt`. `DividendPage.fmtCompact` + the chart tick formatters remain and are tracked under the chart-axis criterion below.)*
 - [x] A shared **`round2(n)`** helper snaps a value to two decimals and collapses negative-zero / sub-cent residue to `+0`, so no amount ever renders as `−0.00`. `fmtAmt` itself also guards against emitting `−0.00` as a backstop. *(Phase 43d/43h)*
 - [x] **Percentages and FX rates keep the dot** decimal separator (they are ratios, not currency amounts) — e.g. `14.3%`, rate `1.0825`. Only currency amounts switch to comma. *(Phase 43j — `fmtPct*`/`fmtRate` were never routed through `fmtAmt`; verified `0.00%` renders with a dot alongside comma amounts on Buy-Sell Planning.)*
-- [x] **Amount inputs are unchanged**: `<input type="number">` continues to be used for entry. The browser localizes the *displayed* separator per OS, and its `.value` is always dot-normalized, so existing `Number(value)` parsing keeps working — no input rewrite, no new parsing code. *(Phase 43h — confirmed: no input or parsing code touched)*
+- [x] ~~**Amount inputs are unchanged**: `<input type="number">` continues to be used for entry...~~ *(Phase 43h Tier-2 decision — **superseded by Phase 45 below.** `type="number"` rejects a comma key on a dot-locale browser, so users could see comma but not type it.)*
+
+#### Amount entry — comma input *(Phase 45)*
+- [ ] A shared **`AmountInput`** component (`type="text"` + `inputmode="decimal"`) accepts **either a comma or a dot** as the decimal separator regardless of OS/browser locale, shows the user's typed character, and rejects other non-numeric input. A shared **`parseAmount`** helper normalises its value (`Number(String(v).replace(',', '.'))`) for storage.
+- [ ] `AmountInput` **replaces `<input type="number">` for every monetary-amount field app-wide** (envelope transfer, planning expense/income, transactions, budgets, bills, investing/stock/dividend forms, etc.). Non-amount numeric inputs (share counts, percentages, day-of-month) are out of scope and may stay `type="number"`.
 - [x] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected). *(Phase 43k — `DividendPage` `fmtTick`/`fmtCompact` and `StockPage` `fmtPrice` now emit comma; Benchmarks ticks are `%` and stay dot.)*
 - [x] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.) *(Phase 43m — `CsvImport` `decimalSep` initial state `','`; selecting a saved template still applies that template's own separator.)*
 

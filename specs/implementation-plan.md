@@ -50,6 +50,7 @@
 | 39 — Access / password modes | planned | SPEC-031 ext: app / keys-only / none modes + Settings → Security tab + `appStorage` wrapper (Strategy B full at-rest encryption) |
 | 43 — Envelope transfer correctness + comma number format + UI polish | ✓ done (unreleased) | From the 10 Jun 2026 notes — all of 43a–43m shipped; see Phase 43 section below |
 | 44 — Payees: report + management + autocomplete upgrade | planned | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
+| 45 — Tree collapse UX + investing-table polish + comma amount input | planned | From the 11 Jun 2026 notes — SPEC-007/009/018/015; see Phase 45 section below |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -223,6 +224,37 @@ Recommended sub-phase order (each is independently shippable / testable):
 44f. [ ] Per-payee **summary** (total paid/received, count, last-used, per currency) + **sort/search** + **click a transaction to edit** it (reuses SPEC-005 edit form).
 44g. [ ] Payee **management**: rename (rewrites transactions + planned items + registry); rename-collision → **merge** with confirmation; **delete** → payee-less transactions + planned items (records kept) with confirmation; `"Unspecified payee"` not renamable/deletable.
 44h. [ ] Add a **Payees card** to Settings → Storage (SPEC-026) for the existing `rmoney_payees` collection.
+
+---
+
+## Phase 45 — Tree collapse UX + investing-table polish + comma amount input (planned)
+
+> From the **11 June 2026** scratch notes. Decisions locked 2026-06-11: **Envelopes** list = single-click row opens detail, double-click + left chevron toggle collapse; **Planning** expense tree = whole parent row toggles collapse; comma amount input = **full rollout** (shared component everywhere). Specs touched (each moved to `in-progress`): SPEC-007, SPEC-009, SPEC-018, SPEC-015.
+>
+> **Shared code — build once, reuse:**
+> - **`useCollapseState(storageKey)`** hook — collapse/expand set + persistence + expand-all/collapse-all; powers both the Envelopes tree (45a/45b) and the Planning expense tree (45c/45d).
+> - **`AmountInput` + `parseAmount`** (`src/components` / `src/utils/format.js`) — `type="text"` + `inputmode="decimal"`, accepts comma or dot; the single money-entry control for the whole app (45g/45h). `parseAmount` replaces ad-hoc `Number(form.amount)` for amount fields.
+> - **`ConfigurableTable` `title` support** — `<th title={col.title}>`; benefits every table that uses it (45e).
+>
+> **Release/backup note:** display/UX + input only. The new persisted UI-pref keys (`rmoney_envelopes_collapsed`, `rmoney_planning_expanded`) are tiny prefs (like the existing per-table column configs) — **no backup-format bump**, and Storage-tab cards are optional (decide during 45b/45d).
+>
+> **Suggested order:** 45e/45f (investing polish — small, isolated) → 45a–45d (collapse hook + both trees) → 45g then 45h (AmountInput foundation, then the app-wide rollout — the largest, do last).
+
+### SPEC-007 Envelope List
+45a. [ ] **Envelopes click model.** Single-click anywhere on a row (except action buttons) opens detail/history (extended from name-only); double-click a parent row **or** the left chevron toggles collapse.
+45b. [ ] **Persist + expand/collapse-all.** Persist the collapsed set to `localStorage` (restored on return); add a header Expand-all / Collapse-all control. Uses the shared `useCollapseState` hook.
+
+### SPEC-009 Planning
+45c. [ ] **Whole-row toggle.** Clicking anywhere on a parent expense row (except action buttons) toggles its collapse/expand.
+45d. [ ] **Persist + expand/collapse-all.** Persist expand state to `localStorage`; add an Expand-all / Collapse-all control. Shares `useCollapseState` with 45b.
+
+### SPEC-018 Investing Accounts
+45e. [ ] **Positions labels + header tooltips.** Shorten `Latest price`→`Latest Pr`, `Shares`→`Sh#`; add `title` per column and render it on the `<th>` in the shared `ConfigurableTable` (tooltips then available to all tables).
+45f. [ ] **Asset-movements hover overflow.** Fix `.movementRowClickable:hover` so the negative-margin bleed no longer overflows the container (no horizontal scrollbar on hover).
+
+### SPEC-015 UI Enhancements
+45g. [ ] **AmountInput + parseAmount.** Build the shared comma-or-dot money-entry control (`type="text"`, `inputmode="decimal"`) and the `parseAmount` normaliser.
+45h. [ ] **Roll out app-wide.** Replace `<input type="number">` for every monetary field with `AmountInput`; switch the forms' amount parsing to `parseAmount`. Non-amount numeric inputs (shares, %, day-of-month) stay `type="number"`.
 
 ---
 

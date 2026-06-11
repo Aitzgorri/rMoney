@@ -1,7 +1,7 @@
 ---
 id: SPEC-018
 name: Investing Accounts
-status: done
+status: in-progress
 created: 2026-04-23
 ---
 
@@ -241,6 +241,11 @@ Notes on the movements model:
 - [x] **Action-modal z-index above fullscreen overlay (Phase 32 / item 369):** when the user clicks a row action (Sell / Dividend / row detail) on the Positions table while the table is in fullscreen, the action's modal renders **above** the fullscreen overlay so the user can interact with it. `InvestingAccountDetail.module.css` bumps `.overlay` and `.txOverlay` to `z-index: 600`, strictly above `ConfigurableTable.fullscreenOverlay` (500) and `.movementsFullscreenSection` (300). Same convention applies anywhere `ConfigurableTable` is used (future Reports table tab in Phase 29d): any action-modal overlay rendered by the host screen must use `z-index ≥ 600`.
 - [x] Today's session change is shown in three separate columns: **Change (%)** (percentage of previous close), **Change (trading)** (total position value change in trading currency = `(price − prevClose) × shares`), **Change (main)** (same converted to main currency). All three show "—" when previousClose is unavailable. All three are visible by default.
 - [x] Async data (latest price + previousClose from Yahoo, name, exchange from stock profile) is fetched on mount; cells show "—" while loading.
+
+### Positions & movements polish *(Phase 45)*
+- [ ] Positions-table column labels are shortened to keep the table compact: **Latest price → "Latest Pr"**, **Shares → "Sh#"** (the full name remains available via the header tooltip below).
+- [ ] Every Positions-table column header shows a **tooltip on hover** giving the full column name / description. Implemented via shared `ConfigurableTable` `title` support (a `title` per column rendered on the `<th>`), so the tooltip capability is available to every `ConfigurableTable` in the app.
+- [ ] **Asset-movements** rows no longer produce a horizontal scrollbar on hover. (Root cause: the `.movementRowClickable:hover` negative-margin bleed (`margin: 0 -6px`) overflowed its container; fixed by absorbing the bleed in the list container's side padding / preventing horizontal overflow.)
 
 ### Cash movements UX — Phase 27c
 - [x] The cash-movements list has a max-height scrollable container. Records beyond the visible area are chunk-loaded (50 records per "Load more" click).
