@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import CurrencyDropdown from './CurrencyDropdown'
+import AmountInput from './AmountInput'
+import { parseAmount } from '../utils/format'
 import styles from './AccountForm.module.css'
 
 const ACCOUNT_TYPES = [
@@ -27,7 +29,7 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.accountName.trim()) return
-    onSave(form)
+    onSave({ ...form, startingBalance: parseAmount(form.startingBalance) || 0 })
   }
 
   const isEdit = !!initial
@@ -85,13 +87,11 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
         </div>
         <div className={styles.field} style={{ flex: 2 }}>
           <label className={styles.label}>Starting Balance</label>
-          <input
+          <AmountInput
             className={styles.input}
-            type="number"
-            step="0.01"
             value={form.startingBalance}
-            onChange={e => set('startingBalance', e.target.value)}
-            placeholder="0.00"
+            onChange={v => set('startingBalance', v)}
+            placeholder="0,00"
           />
         </div>
       </div>

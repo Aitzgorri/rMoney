@@ -253,8 +253,8 @@ Recommended sub-phase order (each is independently shippable / testable):
 45f. ✓ **DONE** — **Asset-movements hover overflow.** Removed the `.movementRowClickable:hover` negative-margin bleed; verified the movements container overflow stays 0 on hover.
 
 ### SPEC-015 UI Enhancements
-45g. [ ] **AmountInput + parseAmount.** Build the shared comma-or-dot money-entry control (`type="text"`, `inputmode="decimal"`) and the `parseAmount` normaliser.
-45h. [ ] **Roll out app-wide.** Replace `<input type="number">` for every monetary field with `AmountInput`; switch the forms' amount parsing to `parseAmount`. Non-amount numeric inputs (shares, %, day-of-month) stay `type="number"`.
+45g. ✓ **DONE** — **AmountInput + parseAmount.** Built `src/components/AmountInput.jsx` (`type="text"`, `inputmode="decimal"`, accepts comma or dot, sanitises input) and `parseAmount` in `format.js`. Verified end-to-end (typed `1234,56` → stored `1234.56`).
+45h. [ ] **Roll out app-wide.** Replace `<input type="number">` for every monetary field with `AmountInput`; switch the forms' amount parsing to `parseAmount`. Non-amount numeric inputs (shares, %, rates, day-of-month) stay `type="number"`. **Part 1 done (budgeting):** EnvelopeTransferForm, TransactionForm, Planning (income + expense cross-calc), Budgets, BillsAndIncome, AccountForm, EnvelopeHistory amount filter. **Remaining (investing):** InvestingAccountDetail, StockTxEditForms, MultiAccountDividendForm, DividendPage, BuySellPlanning, EditProfileDialog, WatchlistDetail, Settings fee min/max.
 
 ---
 

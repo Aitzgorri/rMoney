@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
 import { useCollapseState } from '../utils/useCollapseState'
+import { parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 import InlineFormRow from '../components/InlineFormRow'
 import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, createEnvelopeTransfer } from '../data/envelopes'
 import { getActiveAccounts } from '../data/accounts'
@@ -829,7 +831,7 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.amount) return
-    onSave({ ...form, ...(initial ? { id: initial.id } : {}) })
+    onSave({ ...form, amount: parseAmount(form.amount), ...(initial ? { id: initial.id } : {}) })
   }
 
   const isOneTime = form.frequency === 'one-time'
@@ -846,7 +848,7 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
 
             <div className={styles.row}>
               <label className={styles.label} style={{ flex: 1 }}>Amount
-                <input className={styles.input} type="number" min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} required />
+                <AmountInput className={styles.input} value={form.amount} onChange={v => set('amount', v)} required />
               </label>
               <label className={styles.label} style={{ width: 100 }}>Currency
                 <CurrencyDropdown className={styles.input} value={form.currency} onChange={v => set('currency', v)} />
@@ -922,9 +924,9 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
     if (!initial) return base
     const amounts = initial.amount != null
       ? {
-          yearly:    convertAmount(initial.amount, initial.amountBasis, 'yearly').toFixed(2),
-          quarterly: convertAmount(initial.amount, initial.amountBasis, 'quarterly').toFixed(2),
-          monthly:   convertAmount(initial.amount, initial.amountBasis, 'monthly').toFixed(2),
+          yearly:    convertAmount(initial.amount, initial.amountBasis, 'yearly').toFixed(2).replace('.', ','),
+          quarterly: convertAmount(initial.amount, initial.amountBasis, 'quarterly').toFixed(2).replace('.', ','),
+          monthly:   convertAmount(initial.amount, initial.amountBasis, 'monthly').toFixed(2).replace('.', ','),
         }
       : { yearly: '', quarterly: '', monthly: '' }
     return { ...base, ...initial, ...amounts }
@@ -949,7 +951,7 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
   function handleAmountBlur(field) {
     const raw = form[field]
     if (raw === '' || raw == null) return
-    const num = parseFloat(raw)
+    const num = parseAmount(raw)
     if (isNaN(num)) return
     const yearly    = field === 'yearly'    ? num : convertAmount(num, field, 'yearly')
     const quarterly = field === 'quarterly' ? num : convertAmount(num, field, 'quarterly')
@@ -957,9 +959,9 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
     setForm(prev => ({
       ...prev,
       amountBasis: field,
-      yearly:    yearly.toFixed(2),
-      quarterly: quarterly.toFixed(2),
-      monthly:   monthly.toFixed(2),
+      yearly:    yearly.toFixed(2).replace('.', ','),
+      quarterly: quarterly.toFixed(2).replace('.', ','),
+      monthly:   monthly.toFixed(2).replace('.', ','),
     }))
   }
 
@@ -989,7 +991,7 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
       ...form,
       parentId:        form.parentId || null,
       envelopeId:      form.envelopeId || null,
-      amount:          rawAmount !== '' ? Number(rawAmount) : null,
+      amount:          rawAmount !== '' ? parseAmount(rawAmount) : null,
       ...(initial ? { id: initial.id, linkedScheduledTransferId: initial.linkedScheduledTransferId } : {}),
     })
   }
@@ -1059,13 +1061,13 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
 
                 <div className={styles.amountRow}>
                   <label className={styles.amountLabel}>YR
-                    <input className={styles.amountInput} type="number" min="0" step="0.01" value={form.yearly} onChange={e => handleAmountChange('yearly', e.target.value)} onBlur={() => handleAmountBlur('yearly')} />
+                    <AmountInput className={styles.amountInput} value={form.yearly} onChange={v => handleAmountChange('yearly', v)} onBlur={() => handleAmountBlur('yearly')} />
                   </label>
                   <label className={styles.amountLabel}>QTR
-                    <input className={styles.amountInput} type="number" min="0" step="0.01" value={form.quarterly} onChange={e => handleAmountChange('quarterly', e.target.value)} onBlur={() => handleAmountBlur('quarterly')} />
+                    <AmountInput className={styles.amountInput} value={form.quarterly} onChange={v => handleAmountChange('quarterly', v)} onBlur={() => handleAmountBlur('quarterly')} />
                   </label>
                   <label className={styles.amountLabel}>MON
-                    <input className={styles.amountInput} type="number" min="0" step="0.01" value={form.monthly} onChange={e => handleAmountChange('monthly', e.target.value)} onBlur={() => handleAmountBlur('monthly')} />
+                    <AmountInput className={styles.amountInput} value={form.monthly} onChange={v => handleAmountChange('monthly', v)} onBlur={() => handleAmountBlur('monthly')} />
                   </label>
                   <label className={styles.amountLabel}>
                     <CurrencyDropdown className={styles.currencySelect} value={form.currency} onChange={v => set('currency', v)} />

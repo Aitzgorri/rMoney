@@ -9,6 +9,8 @@ import {
   updateScheduledTransfer,
 } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
+import { parseAmount } from '../utils/format'
+import AmountInput from './AmountInput'
 import styles from './EnvelopeTransferForm.module.css'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -74,7 +76,7 @@ export default function EnvelopeTransferForm({
       const data = {
         fromEnvelopeId: form.fromEnvelopeId,
         toEnvelopeId:   form.toEnvelopeId,
-        amount:         Number(form.amount),
+        amount:         parseAmount(form.amount),
         date:           form.date,
         note:           form.note,
       }
@@ -87,7 +89,7 @@ export default function EnvelopeTransferForm({
       const data = {
         fromEnvelopeId: form.fromEnvelopeId,
         toEnvelopeId:   form.toEnvelopeId,
-        amount:         Number(form.amount),
+        amount:         parseAmount(form.amount),
         frequency:      form.frequency,
         dayOfExecution: Number(form.dayOfExecution),
         note:           form.note,
@@ -181,14 +183,11 @@ export default function EnvelopeTransferForm({
 
       <div className={styles.field}>
         <label className={styles.label}>Amount <span className={styles.required}>*</span></label>
-        <input
+        <AmountInput
           className={styles.input}
-          type="number"
-          step="0.01"
-          min="0.01"
           value={form.amount}
-          onChange={e => set('amount', e.target.value)}
-          placeholder="0.00"
+          onChange={v => set('amount', v)}
+          placeholder="0,00"
           required
         />
       </div>

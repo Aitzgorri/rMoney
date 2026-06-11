@@ -16,7 +16,8 @@ import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Budgets.module.css'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 
 const PERIOD_SHORT = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
 
@@ -355,11 +356,11 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!categoryId || !amount || Number(amount) <= 0) return
+    if (!categoryId || !amount || parseAmount(amount) <= 0) return
     if (initial) {
-      updateBudget(initial.id, { categoryId, amount: Number(amount), currency, period })
+      updateBudget(initial.id, { categoryId, amount: parseAmount(amount), currency, period })
     } else {
-      createBudget({ categoryId, amount: Number(amount), currency, period })
+      createBudget({ categoryId, amount: parseAmount(amount), currency, period })
     }
     onSave()
   }
@@ -381,7 +382,7 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
         <div className={styles.amountRow}>
           <div className={`${styles.field} ${styles.fieldGrow}`}>
             <label className={styles.label}>Amount</label>
-            <input className={styles.input} type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" required />
+            <AmountInput className={styles.input} value={amount} onChange={v => setAmount(v)} placeholder="0,00" required />
           </div>
           <div className={styles.field}>
             <label className={styles.label}>Currency</label>
@@ -398,7 +399,7 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
         </div>
         <div className={styles.formActions}>
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || Number(amount) <= 0}>Save</button>
+          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || parseAmount(amount) <= 0}>Save</button>
         </div>
       </form>
     )
@@ -438,14 +439,11 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
         <div className={styles.amountRow}>
           <div className={`${styles.field} ${styles.fieldGrow}`}>
             <label className={styles.label}>Amount</label>
-            <input
+            <AmountInput
               className={styles.input}
-              type="number"
-              min="0.01"
-              step="0.01"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="0.00"
+              onChange={v => setAmount(v)}
+              placeholder="0,00"
               required
             />
           </div>
@@ -487,7 +485,7 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
           <button
             type="submit"
             className={styles.saveBtn}
-            disabled={!categoryId || !amount || Number(amount) <= 0}
+            disabled={!categoryId || !amount || parseAmount(amount) <= 0}
           >
             Save
           </button>

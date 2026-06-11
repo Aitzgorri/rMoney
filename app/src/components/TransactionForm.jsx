@@ -5,6 +5,8 @@ import { getActiveEnvelopes, getEnvelopesFlat, getDefaultIncomeEnvelope, getDefa
 import { getPayees, createTransaction, updateTransaction } from '../data/transactions'
 import { createPlannedItem } from '../data/bills'
 import { INDENT } from '../utils/hierarchy'
+import { parseAmount } from '../utils/format'
+import AmountInput from './AmountInput'
 import styles from './TransactionForm.module.css'
 
 const FREQUENCIES = ['monthly', 'weekly', 'yearly']
@@ -73,6 +75,14 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
   function handleSubmit(e) {
     e.preventDefault()
     const data = { ...form, type }
+
+    // Normalise money fields — AmountInput stores raw strings (comma or dot) — Phase 45h
+    data.amount = parseAmount(form.amount)
+    data.transferFee = parseAmount(form.transferFee) || 0
+    if (type === 'transfer') {
+      data.sourceAmount = parseAmount(form.sourceAmount)
+      data.destinationAmount = parseAmount(form.destinationAmount)
+    }
 
     // Prevent transferring to the same account
     if (type === 'transfer' && data.sourceAccountId === data.destinationAccountId) {
@@ -181,9 +191,9 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
           <div className={styles.row}>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>Amount *</label>
-              <input className={styles.input} type="number" step="0.01" min="0.01"
-                value={form.amount} onChange={e => set('amount', e.target.value)}
-                placeholder="0.00" required />
+              <AmountInput className={styles.input}
+                value={form.amount} onChange={v => set('amount', v)}
+                placeholder="0,00" required />
             </div>
             <div className={styles.field} style={{ flex: 1 }}>
               <label className={styles.label}>Currency</label>
@@ -258,9 +268,9 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
             <div className={styles.row}>
               <div className={styles.field} style={{ flex: 2 }}>
                 <label className={styles.label}>Sent *</label>
-                <input className={styles.input} type="number" step="0.01" min="0.01"
-                  value={form.sourceAmount} onChange={e => set('sourceAmount', e.target.value)}
-                  placeholder="0.00" required />
+                <AmountInput className={styles.input}
+                  value={form.sourceAmount} onChange={v => set('sourceAmount', v)}
+                  placeholder="0,00" required />
               </div>
               <div className={styles.field} style={{ flex: 1 }}>
                 <label className={styles.label}>Currency</label>
@@ -271,9 +281,9 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
 
           <div className={styles.field}>
             <label className={styles.label}>Fee (optional)</label>
-            <input className={styles.input} type="number" step="0.01" min="0"
-              value={form.transferFee} onChange={e => set('transferFee', e.target.value)}
-              placeholder="0.00" />
+            <AmountInput className={styles.input}
+              value={form.transferFee} onChange={v => set('transferFee', v)}
+              placeholder="0,00" />
           </div>
 
           <div className={styles.field}>
@@ -289,12 +299,12 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
           <div className={styles.row}>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>{isCrossCurrency ? 'Received *' : 'Amount *'}</label>
-              <input className={styles.input} type="number" step="0.01" min="0.01"
+              <AmountInput className={styles.input}
                 value={isCrossCurrency ? form.destinationAmount : form.sourceAmount}
-                onChange={e => isCrossCurrency
-                  ? set('destinationAmount', e.target.value)
-                  : set('sourceAmount', e.target.value)}
-                placeholder="0.00" required />
+                onChange={v => isCrossCurrency
+                  ? set('destinationAmount', v)
+                  : set('sourceAmount', v)}
+                placeholder="0,00" required />
             </div>
             <div className={styles.field} style={{ flex: 1 }}>
               <label className={styles.label}>Currency</label>
@@ -302,9 +312,9 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
             </div>
           </div>
 
-          {isCrossCurrency && Number(form.sourceAmount) > 0 && Number(form.destinationAmount) > 0 && (
+          {isCrossCurrency && parseAmount(form.sourceAmount) > 0 && parseAmount(form.destinationAmount) > 0 && (
             <div className={styles.rateInfo}>
-              Rate: 1 {srcAccount.currency} = {(Number(form.destinationAmount) / Number(form.sourceAmount)).toFixed(4)} {destAccount.currency}
+              Rate: 1 {srcAccount.currency} = {(parseAmount(form.destinationAmount) / parseAmount(form.sourceAmount)).toFixed(4)} {destAccount.currency}
             </div>
           )}
         </>

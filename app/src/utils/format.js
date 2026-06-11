@@ -21,8 +21,8 @@ function fmtFixed(n, minDp, maxDp) {
 // Formats a monetary amount with 2 decimals, comma decimal + narrow no-break
 // space thousands, regardless of locale (e.g. 2440.75 -> "2 440,75"). Near-zero
 // / -0 collapses to "0,00" (never "-0.00"); the sign is preserved for genuine
-// negatives. This is the single source of truth for amount display (SPEC-015
-// Tier 2). Percentages and FX rates keep the dot separator and must NOT use this.
+// negatives. Single source of truth for amount display (SPEC-015 Tier 2).
+// Percentages and FX rates keep the dot separator and must NOT use this.
 export function fmtAmt(n) {
   return fmtFixed(round2(n), 2, 2)
 }
@@ -41,4 +41,16 @@ export function fmtSigned(n) {
 export function fmtPriceAmt(n, maxDp = 4) {
   if (n == null || !Number.isFinite(Number(n))) return '—'
   return fmtFixed(n, 2, maxDp)
+}
+
+// Parses a user-entered amount that may use a COMMA or a dot decimal separator
+// (Phase 45g — the `AmountInput` companion). Strips whitespace / thousands
+// separators, treats the first comma as the decimal point, and returns a Number
+// — or NaN for empty/invalid input (callers guard as they did with `Number`).
+// A numeric input is returned unchanged.
+export function parseAmount(v) {
+  if (typeof v === 'number') return v
+  if (v == null) return NaN
+  const s = String(v).replace(/\s/g, '').replace(',', '.')
+  return s === '' ? NaN : Number(s)
 }

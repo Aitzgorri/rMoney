@@ -18,7 +18,8 @@ import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './BillsAndIncome.module.css'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 
 const FREQUENCIES = [
   { value: 'one-time',   label: 'One-time' },
@@ -120,8 +121,8 @@ export default function BillsAndIncome({ onBack }) {
   function handleBulkConfirm() {
     for (const p of enrichedPending) {
       const edit = getEdit(p)
-      if (!Number(edit.amount)) continue
-      confirmOccurrence(p.id, Number(edit.amount), {
+      if (!parseAmount(edit.amount)) continue
+      confirmOccurrence(p.id, parseAmount(edit.amount), {
         type:       p.item.type,
         accountId:  p.item.accountId,
         currency:   p.item.currency,
@@ -221,18 +222,15 @@ export default function BillsAndIncome({ onBack }) {
                     value={edit.date}
                     onChange={e => setEdit(p.id, 'date', e.target.value)}
                   />
-                  <input
+                  <AmountInput
                     className={`${styles.pendingInput} ${styles.pendingInputAmount}`}
-                    type="number"
-                    min="0"
-                    step="0.01"
                     value={edit.amount}
-                    onChange={e => setEdit(p.id, 'amount', e.target.value)}
+                    onChange={v => setEdit(p.id, 'amount', v)}
                   />
                   <span className={styles.pendingCurrency}>{p.item.currency}</span>
                   <button
                     className={styles.confirmBtn}
-                    onClick={() => handleConfirmOccurrence(p, Number(edit.amount), edit.date)}
+                    onClick={() => handleConfirmOccurrence(p, parseAmount(edit.amount), edit.date)}
                     disabled={!edit.amount}
                   >Confirm</button>
                   <button className={styles.skipBtn} onClick={() => handleSkip(p.id)}>Skip</button>
@@ -393,7 +391,7 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
     if (!form.name.trim() || !form.amount || !form.accountId) return
     onSave({
       ...form,
-      amount:     Number(form.amount),
+      amount:     parseAmount(form.amount),
       categoryId: form.categoryId || null,
       envelopeId: form.envelopeId || null,
       payee:      form.payee || null,
@@ -431,8 +429,8 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
 
           <div className={styles.row}>
             <label className={styles.label} style={{ flex: 1 }}>Amount
-              <input className={styles.input} type="number" min="0" step="0.01" value={form.amount}
-                onChange={e => set('amount', e.target.value)} required />
+              <AmountInput className={styles.input} value={form.amount}
+                onChange={v => set('amount', v)} required />
             </label>
             <label className={styles.label} style={{ width: 100 }}>Currency
               <CurrencyDropdown className={styles.input} value={form.currency} onChange={v => set('currency', v)} />
@@ -554,13 +552,10 @@ function ConfirmOccurrenceDialog({ occurrence, item, onConfirm, onSkip, onCancel
         </div>
         <label className={styles.label}>Actual amount
           <div className={styles.row}>
-            <input
+            <AmountInput
               className={styles.input}
-              type="number"
-              min="0"
-              step="0.01"
               value={actualAmount}
-              onChange={e => setActualAmount(e.target.value)}
+              onChange={v => setActualAmount(v)}
               style={{ flex: 1 }}
             />
             <span className={styles.currencyLabel}>{item.currency}</span>
@@ -571,7 +566,7 @@ function ConfirmOccurrenceDialog({ occurrence, item, onConfirm, onSkip, onCancel
         <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         <button className={styles.skipBtn2} onClick={onSkip}>Skip</button>
         <button className={styles.saveBtn}
-          onClick={() => onConfirm(occurrence, Number(actualAmount))}
+          onClick={() => onConfirm(occurrence, parseAmount(actualAmount))}
           disabled={!actualAmount}>
           Confirm
         </button>

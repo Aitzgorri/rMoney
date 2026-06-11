@@ -8,7 +8,8 @@ import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import styles from './EnvelopeHistory.module.css'
-import { fmtAmt, round2 } from '../utils/format'
+import { fmtAmt, round2, parseAmount } from '../utils/format'
+import AmountInput from '../components/AmountInput'
 
 export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChange }) {
   const [editing, setEditing]         = useState(null)  // { kind: 'tx'|'transfer'|'scheduled', record }
@@ -80,8 +81,8 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
     if (filters.accountId && r._kind === 'tx' && r.accountId !== filters.accountId) return false
     if (filters.categoryId && r._kind === 'tx' && r.categoryId !== filters.categoryId) return false
     if (filters.payeeName && r._kind === 'tx' && r.payeeName !== filters.payeeName) return false
-    if (filters.amountMin && Number(r.amount) < Number(filters.amountMin)) return false
-    if (filters.amountMax && Number(r.amount) > Number(filters.amountMax)) return false
+    if (filters.amountMin && Number(r.amount) < parseAmount(filters.amountMin)) return false
+    if (filters.amountMax && Number(r.amount) > parseAmount(filters.amountMax)) return false
     if (filters.dateFrom && r.date < filters.dateFrom) return false
     if (filters.dateTo   && r.date > filters.dateTo)   return false
     if (search && !r.note?.toLowerCase().includes(search.toLowerCase())) return false
@@ -334,10 +335,10 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
               value={filters.payeeName} onChange={e => setFilter('payeeName', e.target.value)} />
           </div>
           <div className={styles.filterRow}>
-            <input className={styles.filterInput} type="number" placeholder="Min amount"
-              value={filters.amountMin} onChange={e => setFilter('amountMin', e.target.value)} />
-            <input className={styles.filterInput} type="number" placeholder="Max amount"
-              value={filters.amountMax} onChange={e => setFilter('amountMax', e.target.value)} />
+            <AmountInput className={styles.filterInput} placeholder="Min amount"
+              value={filters.amountMin} onChange={v => setFilter('amountMin', v)} />
+            <AmountInput className={styles.filterInput} placeholder="Max amount"
+              value={filters.amountMax} onChange={v => setFilter('amountMax', v)} />
           </div>
           <div className={styles.filterRow}>
             <input className={styles.filterInput} type="date" value={filters.dateFrom}
