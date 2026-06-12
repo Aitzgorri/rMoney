@@ -10,11 +10,9 @@ import {
 } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
 import { parseAmount } from '../utils/format'
+import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import AmountInput from './AmountInput'
 import styles from './EnvelopeTransferForm.module.css'
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 
 export default function EnvelopeTransferForm({
   initial,
@@ -64,7 +62,11 @@ export default function EnvelopeTransferForm({
   }
 
   function handleFrequencyChange(freq) {
-    setForm(prev => ({ ...prev, frequency: freq, dayOfExecution: 1 }))
+    setForm(prev => ({
+      ...prev,
+      frequency: freq,
+      dayOfExecution: dayPickerKind(prev.frequency) !== dayPickerKind(freq) ? 1 : prev.dayOfExecution,
+    }))
   }
 
   function handleSubmit(e) {
@@ -198,20 +200,21 @@ export default function EnvelopeTransferForm({
             <label className={styles.label}>Frequency</label>
             <select className={styles.input} value={form.frequency}
               onChange={e => handleFrequencyChange(e.target.value)}>
-              <option value="monthly">Monthly</option>
-              <option value="weekly">Weekly</option>
+              {RECURRING_FREQUENCIES.map(f => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
             </select>
           </div>
 
           <div className={styles.field}>
             <label className={styles.label}>
-              {form.frequency === 'monthly' ? 'Day of month' : 'Day of week'}
+              {dayPickerKind(form.frequency) === 'weekday' ? 'Day of week' : 'Day of month'}
             </label>
             <select className={styles.input} value={form.dayOfExecution}
               onChange={e => set('dayOfExecution', Number(e.target.value))}>
-              {form.frequency === 'monthly'
-                ? MONTH_DAYS.map(d => <option key={d} value={d}>{d}</option>)
-                : WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)
+              {dayPickerKind(form.frequency) === 'weekday'
+                ? WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)
+                : MONTH_DAYS.map(d => <option key={d} value={d}>{d}</option>)
               }
             </select>
           </div>

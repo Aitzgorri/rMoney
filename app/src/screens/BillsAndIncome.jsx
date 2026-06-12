@@ -16,21 +16,11 @@ import { getCategoriesFlat } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
+import { FREQUENCIES, FREQUENCY_LABELS, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './BillsAndIncome.module.css'
 import { fmtAmt, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
-
-const FREQUENCIES = [
-  { value: 'one-time',   label: 'One-time' },
-  { value: 'weekly',     label: 'Weekly' },
-  { value: 'monthly',    label: 'Monthly' },
-  { value: 'quarterly',  label: 'Quarterly' },
-  { value: 'yearly',     label: 'Yearly' },
-]
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 
 const TODAY = new Date().toISOString().split('T')[0]
 
@@ -340,7 +330,7 @@ export default function BillsAndIncome({ onBack }) {
 
 function ItemRow({ item, accountMap, isOutstanding, onClick }) {
   const next = getNextOccurrenceDate(item)
-  const freq = FREQUENCIES.find(f => f.value === item.frequency)?.label ?? item.frequency
+  const freq = FREQUENCY_LABELS[item.frequency] ?? item.frequency
   return (
     <button className={styles.itemRow} onClick={onClick}>
       <div className={styles.itemInfo}>
@@ -463,7 +453,11 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
           </label>
 
           <label className={styles.label}>Frequency
-            <select className={styles.select} value={form.frequency} onChange={e => set('frequency', e.target.value)}>
+            <select className={styles.select} value={form.frequency} onChange={e => setForm(prev => ({
+              ...prev,
+              frequency: e.target.value,
+              dayOfExecution: dayPickerKind(prev.frequency) !== dayPickerKind(e.target.value) ? 1 : prev.dayOfExecution,
+            }))}>
               {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
             </select>
           </label>
@@ -475,10 +469,10 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
           ) : (
             <>
               <label className={styles.label}>
-                {form.frequency === 'weekly' ? 'Day of week' : 'Day of month'}
+                {dayPickerKind(form.frequency) === 'weekday' ? 'Day of week' : 'Day of month'}
                 <select className={styles.select} value={form.dayOfExecution}
                   onChange={e => set('dayOfExecution', Number(e.target.value))}>
-                  {form.frequency === 'weekly'
+                  {dayPickerKind(form.frequency) === 'weekday'
                     ? WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)
                     : MONTH_DAYS.map(d => <option key={d} value={d}>{d}</option>)
                   }

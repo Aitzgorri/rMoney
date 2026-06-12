@@ -20,6 +20,7 @@ Give the user a single place to see and manage **all scheduled envelope transfer
 - [x] Page is reachable from the **More menu** as **"Scheduled transfers"**
 - [x] The page lists **every** scheduled envelope transfer in the app, regardless of where it was created
 - [x] Each row shows: source envelope, destination envelope, amount, frequency, day of execution, and an indicator showing whether it was generated from a planning-tool item or created manually
+- [x] Scheduled (regular) transfers support the shared frequency set (Phase 47): **weekly, bi-weekly, monthly, quarterly, yearly** — created via the SPEC-004 transfer form, which reads its options from `utils/frequency.js`. The execution engine (`runDueScheduledTransfers`) fires each frequency on the correct day: weekday for weekly/bi-weekly, day-of-month for monthly/quarterly/yearly. **Bi-weekly, quarterly and yearly anchor on the rule's `createdAt`** (scheduled transfers carry no start date): bi-weekly fires every 14 days from the first matching weekday on/after creation; quarterly/yearly fire on the day-of-month every 3rd / 12th month from the creation month. The due-date check uses the **local** calendar date (no UTC `toISOString` shift)
 - [x] If a row was generated from a planning item, the row shows (or links to) the planning item that drives it
 - [x] User can sort the list by: **next execution date** (default), amount, or source envelope name
 - [x] Tapping a row opens it for editing using the scheduled-transfer form from SPEC-004

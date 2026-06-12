@@ -7,11 +7,10 @@ import PayeeAutocomplete from './PayeeAutocomplete'
 import { createPlannedItem } from '../data/bills'
 import { INDENT } from '../utils/hierarchy'
 import { parseAmount } from '../utils/format'
+import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import AmountInput from './AmountInput'
 import styles from './TransactionForm.module.css'
 
-const FREQUENCIES = ['monthly', 'weekly', 'yearly']
-const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 const TODAY = new Date().toISOString().split('T')[0]
 
 
@@ -66,6 +65,16 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
     if (showRecurring && form.recurringName === (form.payeeName ?? '')) {
       set('recurringName', value)
     }
+  }
+
+  // Switching between a weekday picker and a day-of-month picker invalidates the
+  // stored dayOfExecution, so reset it to a safe default when the kind changes.
+  function handleFrequencyChange(freq) {
+    setForm(prev => ({
+      ...prev,
+      frequency: freq,
+      dayOfExecution: dayPickerKind(prev.frequency) !== dayPickerKind(freq) ? 1 : prev.dayOfExecution,
+    }))
   }
 
   function handleSubmit(e) {
@@ -337,15 +346,22 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
                 <div className={styles.field} style={{ flex: 1 }}>
                   <label className={styles.label}>Frequency</label>
                   <select className={styles.input} value={form.frequency}
-                    onChange={e => set('frequency', e.target.value)}>
-                    {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+                    onChange={e => handleFrequencyChange(e.target.value)}>
+                    {RECURRING_FREQUENCIES.map(f => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div className={styles.field} style={{ flex: 1 }}>
-                  <label className={styles.label}>Day</label>
+                  <label className={styles.label}>
+                    {dayPickerKind(form.frequency) === 'weekday' ? 'Day of week' : 'Day of month'}
+                  </label>
                   <select className={styles.input} value={form.dayOfExecution}
                     onChange={e => set('dayOfExecution', Number(e.target.value))}>
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {dayPickerKind(form.frequency) === 'weekday'
+                      ? WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)
+                      : MONTH_DAYS.map(d => <option key={d} value={d}>{d}</option>)
+                    }
                   </select>
                 </div>
               </div>

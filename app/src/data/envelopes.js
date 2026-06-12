@@ -1,4 +1,5 @@
 import appStorage from '../utils/appStorage'
+import { localDateStr } from '../utils/dates'
 
 const KEY_ENVELOPES  = 'rmoney_envelopes'
 const KEY_TRANSFERS  = 'rmoney_envelope_transfers'
@@ -291,11 +292,55 @@ export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, 
   return item
 }
 
+// Local midnight for a date (strips time-of-day).
+function atMidnight(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+// Whole months between two dates (anchor → today), used to space out the
+// quarterly (every 3) and yearly (every 12) cadences from the rule's anchor.
+function monthsBetween(anchor, today) {
+  return (today.getFullYear() - anchor.getFullYear()) * 12 + (today.getMonth() - anchor.getMonth())
+}
+
+// Does a scheduled transfer fall due on `today`?
+//   weekly    → matching weekday
+//   biweekly  → matching weekday AND an even number of weeks from the anchor
+//               (first matching weekday on/after createdAt)
+//   monthly   → matching day-of-month (1–28, so no month-length clamping needed)
+//   quarterly → matching day-of-month, in a month 0/3/6/9 from the anchor month
+//   yearly    → matching day-of-month, in the anchor month
+// Quarterly/yearly/biz anchor on `createdAt` (scheduled transfers have no
+// startDate field); monthly/weekly need no anchor.
+function isScheduledTransferDueToday(s, today) {
+  const dow = today.getDay()
+  const dom = today.getDate()
+  switch (s.frequency) {
+    case 'weekly':
+      return dow === s.dayOfExecution
+    case 'biweekly': {
+      if (dow !== s.dayOfExecution) return false
+      const created = atMidnight(new Date(s.createdAt))
+      const daysUntil = (s.dayOfExecution - created.getDay() + 7) % 7
+      const anchor = new Date(created)
+      anchor.setDate(anchor.getDate() + daysUntil)
+      const diffDays = Math.round((atMidnight(today) - anchor) / 86400000)
+      return diffDays >= 0 && diffDays % 14 === 0
+    }
+    case 'monthly':
+      return dom === s.dayOfExecution
+    case 'quarterly':
+      return dom === s.dayOfExecution && monthsBetween(new Date(s.createdAt), today) % 3 === 0
+    case 'yearly':
+      return dom === s.dayOfExecution && monthsBetween(new Date(s.createdAt), today) % 12 === 0
+    default:
+      return false
+  }
+}
+
 export function runDueScheduledTransfers() {
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
-  const todayDayOfMonth = today.getDate()
-  const todayDayOfWeek = today.getDay()  // 0=Sun, 1=Mon, …, 6=Sat
+  const todayStr = localDateStr(today)
 
   const scheduled = load(KEY_SCHEDULED)
   const transfers = load(KEY_TRANSFERS)
@@ -305,11 +350,7 @@ export function runDueScheduledTransfers() {
     if (!s.isActive) return s
     if (s.lastExecutedDate === todayStr) return s  // already ran today
 
-    const isDue = s.frequency === 'monthly'
-      ? todayDayOfMonth === s.dayOfExecution
-      : todayDayOfWeek === s.dayOfExecution
-
-    if (!isDue) return s
+    if (!isScheduledTransferDueToday(s, today)) return s
 
     newTransfers.push({
       id: generateId(),

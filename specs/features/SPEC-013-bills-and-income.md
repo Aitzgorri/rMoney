@@ -31,7 +31,8 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 ## Acceptance Criteria
 
 ### Planned item management
-- [x] User can create a planned item with: type (income | expense), name, amount, currency, account, category (optional), envelope (optional), payee (optional), frequency (one-time | weekly | monthly | quarterly | yearly), day of execution (for regular), date (for one-time), start date (for regular — when it becomes active), end date (for regular — optional), application mode (auto-apply | outstanding)
+- [x] User can create a planned item with: type (income | expense), name, amount, currency, account, category (optional), envelope (optional), payee (optional), frequency (one-time | weekly | **bi-weekly** | monthly | quarterly | yearly), day of execution (for regular), date (for one-time), start date (for regular — when it becomes active), end date (for regular — optional), application mode (auto-apply | outstanding)
+- [x] **Frequency options come from the shared `utils/frequency.js` module** (Phase 47) so the same set appears here, in the transaction-recurrence box (SPEC-005) and in regular envelope transfers (SPEC-012). The day-of-execution picker is chosen by `dayPickerKind(frequency)`: a **weekday** picker for weekly/bi-weekly, a **day-of-month (1–28)** picker for monthly/quarterly/yearly. **Bi-weekly = fortnightly** on the chosen weekday: anchored to the first matching weekday on/after the start date, then every 14 days (honouring any end date)
 - [x] Account is **required** — each planned item is linked to a specific account
 - [x] Category, envelope, and payee follow the same defaults as transaction entry (SPEC-005): built-in defaults when not specified
 - [ ] The category dropdown shows **only income categories** when the planned item type is Income, and **only expense categories** when the type is Expense — cross-type categories are never shown
@@ -157,8 +158,8 @@ Planned account transaction:
 - categoryId: id of category (optional, uses built-in default if not set)
 - envelopeId: id of envelope (optional, uses built-in default if not set)
 - payeeId: id of payee (optional)
-- frequency: one-time | weekly | monthly | quarterly | yearly
-- dayOfExecution: number (for regular — e.g. 5 means the 5th)
+- frequency: one-time | weekly | biweekly | monthly | quarterly | yearly
+- dayOfExecution: number — a weekday 0–6 (Sun–Sat) for weekly/biweekly, or a day-of-month 1–28 for monthly/quarterly/yearly
 - startDate: date (for regular — when this becomes active)
 - endDate: date | null (for regular — when to stop, optional)
 - date: date (for one-time)

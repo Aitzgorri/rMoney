@@ -62,7 +62,7 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 
 ### Recurring transactions
 Recurring transactions are **planned items** managed by SPEC-013 (Bills & Income). The transaction form provides a convenient shortcut to create them.
-- [x] User can mark a transaction as recurring with: frequency and day of execution
+- [x] User can mark a transaction as recurring with: frequency and day of execution. Frequency options come from the shared `utils/frequency.js` module (Phase 47) — the recurring set **weekly, bi-weekly, monthly, quarterly, yearly** — matching Bills & Income (SPEC-013) and scheduled transfers (SPEC-012). The day picker is a **weekday** selector for weekly/bi-weekly and a **day-of-month (1–28)** selector for monthly/quarterly/yearly (`dayPickerKind`), and resets when the picker kind changes
 - [x] The recurring section includes a Name field, prepopulated with the payee name, editable by the user
 - [x] Saving a recurring transaction creates a planned item (SPEC-013) with auto-apply mode
 - [x] The shared recurring engine (SPEC-013) auto-creates transactions on the scheduled day, backfilling any missed occurrences on app open

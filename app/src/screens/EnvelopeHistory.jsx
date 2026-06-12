@@ -7,6 +7,7 @@ import TransactionForm from '../components/TransactionForm'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
+import { dayLabel as freqDayLabel, FREQUENCY_LABELS } from '../utils/frequency'
 import styles from './EnvelopeHistory.module.css'
 import { fmtAmt, round2, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
@@ -267,9 +268,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         ) : (
           scheduledTransfers.map(s => {
             const isIncoming = s.toEnvelopeId === envelope.id
-            const dayLabel = s.frequency === 'monthly'
-              ? `${s.dayOfExecution}th`
-              : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.dayOfExecution]
+            const dayStr = freqDayLabel(s.frequency, s.dayOfExecution)
             return (
               <div key={s.id} className={styles.scheduledRow}
                 onClick={() => setEditing({ kind: 'scheduled', record: s })}>
@@ -278,7 +277,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
                     {isIncoming ? '+' : '−'}{fmtAmt(s.amount)}
                   </span>
                   <span className={styles.scheduledMeta}>
-                    {s.frequency} · {dayLabel}
+                    {FREQUENCY_LABELS[s.frequency] ?? s.frequency} · {dayStr}
                   </span>
                   <span className={styles.scheduledMeta}>
                     {isIncoming ? `← from ${envelopeName(s.fromEnvelopeId)}` : `→ to ${envelopeName(s.toEnvelopeId)}`}

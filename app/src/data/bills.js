@@ -3,6 +3,7 @@
 
 import { createTransaction } from './transactions'
 import appStorage from '../utils/appStorage'
+import { localDateStr } from '../utils/dates'
 
 const KEY_ITEMS    = 'rmoney_bill_items'
 const KEY_PENDING  = 'rmoney_bill_pending'
@@ -10,15 +11,6 @@ const KEY_PENDING  = 'rmoney_bill_pending'
 function generateId() { return `bill_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
 function load(key)     { try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] } }
 function save(key, v)  { appStorage.setItem(key, JSON.stringify(v)) }
-
-// Always use the LOCAL calendar date (not UTC) so that midnight local time
-// doesn't flip to the previous date when serialized via toISOString().
-function localDateStr(d = new Date()) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 // ── Planned items CRUD ───────────────────────────────────────────────────────
 
@@ -118,7 +110,11 @@ function getDueDates(item, untilDate) {
       d = new Date(nextYear, nm, clampDay(nextYear, nm, day))
     }
 
-  } else if (item.frequency === 'weekly') {
+  } else if (item.frequency === 'weekly' || item.frequency === 'biweekly') {
+    // Bi-weekly = fortnightly: same as weekly but step 14 days. Anchored to the
+    // first matching weekday on/after startDate so the parity (which week) is
+    // deterministic.
+    const step = item.frequency === 'biweekly' ? 14 : 7
     const [sy, sm, sd2] = startDate.split('-').map(Number)
     let d = new Date(sy, sm - 1, sd2)
     const targetDay = item.dayOfExecution // 0=Sun … 6=Sat
@@ -127,7 +123,7 @@ function getDueDates(item, untilDate) {
     while (localDateStr(d) <= cap) {
       dates.push(localDateStr(d))
       d = new Date(d)
-      d.setDate(d.getDate() + 7)
+      d.setDate(d.getDate() + step)
     }
 
   } else if (item.frequency === 'quarterly') {
@@ -189,6 +185,22 @@ export function getNextOccurrenceDate(item) {
     const daysUntil = (targetDay - today.getDay() + 7) % 7 || 7
     const d = new Date(today)
     d.setDate(d.getDate() + daysUntil)
+    if (item.endDate && localDateStr(d) > item.endDate) return null
+    return localDateStr(d)
+  }
+
+  if (item.frequency === 'biweekly') {
+    // Walk the fortnightly series from its anchor (first matching weekday
+    // on/after startDate) until strictly after today, so the parity matches
+    // getDueDates exactly.
+    const [sy, sm, sd2] = item.startDate.split('-').map(Number)
+    let d = new Date(sy, sm - 1, sd2)
+    const daysUntil = (item.dayOfExecution - d.getDay() + 7) % 7
+    d.setDate(d.getDate() + daysUntil)
+    while (localDateStr(d) <= todayStr) {
+      d = new Date(d)
+      d.setDate(d.getDate() + 14)
+    }
     if (item.endDate && localDateStr(d) > item.endDate) return null
     return localDateStr(d)
   }
