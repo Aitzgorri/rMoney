@@ -57,6 +57,7 @@
 | 49 — Small correctness wins (tx ordering, day-bug, Bills payee, envelope path) | ✓ done (unreleased) | From the 12 Jun 2026 notes — tx date+time order, frequency-aware scheduled next-date (fixes 16→15), Bills payee autocomplete + filter, envelope full-path in tx list (A5); SPEC-006/012/013 |
 | 50 — Envelopes scheduled-transfers display + Scheduled filters | ✓ done (unreleased) | From the 12 Jun 2026 notes — collapse (default-collapsed)/day-order/one-row/projections-one-row + From/To filters; SPEC-007/012 |
 | 51 — Transaction form overhaul | ✓ done (unreleased) | From the 12 Jun 2026 notes — responsive layout, favorites-in-dropdowns, account prefill, inline category create, payee→category memory, envelope full-path under dropdown (A5); 2 commits; SPEC-005/003 |
+| 52 — Envelope projection overhaul | planned | From a 12 Jun 2026 follow-up — forecast from recurring scheduled (transfers + planned items) + 3-month unscheduled average + one-time future items, over envelope + descendants; SPEC-007/013 |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -363,6 +364,34 @@ Recommended sub-phase order (each is independently shippable / testable):
 51f. ✓ **DONE** (commit 2) — **Payee → category memory (#26).** New `getRecentCategoriesForPayee` (derived from transaction history, no new storage): on payee entry with no category chosen, prefill the **last** category used for that payee (exact-name match only, so partial typing never prefills); the payee's **last 3 distinct** categories show in a "Recent for this payee" `<optgroup>` above the Favorites group. (SPEC-005)
 51g. ✓ **DONE** (commit 1) — **Recurrence row + quarterly (#20).** The recurrence block already uses the Phase-47 shared options (quarterly + bi-weekly); now Name · Frequency · Day lay out on one desktop row. (SPEC-005)
 51h. ✓ **DONE** (commit 2) — **Envelope full-path below the dropdown (A5).** A helper line under the envelope `<select>` shows the selected envelope's full ancestor path via `envelopePathLabel(id, '›', allEnvelopes)` — restoring the parent context a collapsed native `<select>` hides. (SPEC-005)
+
+---
+
+## Phase 52 — Envelope projection overhaul (planned)
+
+> From a **12 June 2026** follow-up request. Scope confirmed with the user 2026-06-12: the envelope detail-pane **Projection** should forecast each month from **all** flows that move the envelope balance, not just scheduled transfers. **Decision (user):** "scheduled" income/expense includes **both** scheduled envelope transfers (in/out) **and** recurring Bills & Income planned items tagged to the envelope. Specs touched: **SPEC-007** (projection calculation), **SPEC-013** (tag confirmed occurrences). When this phase starts, those specs flip `done`→`in-progress`.
+>
+> **Today's behaviour (the bug/limitation):** `EnvelopeHistory.buildProjection` nets only **scheduled envelope transfers** (and with a latent bug — `s.amount * 52/12` treats every non-monthly frequency as weekly), ignores planned Bills & Income items + all past actuals, and looks only at the envelope itself even though the projected `balance` is `getTotalEnvelopeBalance` (envelope **+ descendants**).
+>
+> **Target model** (per projected month *N*, B₀ = current total balance):
+> ```
+> B(N) = B(N-1) + R + A + O(N)
+> ```
+> - **R — recurring scheduled monthly net** (applied every month): Σ over active *recurring* scheduled transfers touching the scope (+in / −out) **and** active *recurring* planned Bills & Income items tagged to the scope (+income / −expense), each converted to a **monthly equivalent** (`weekly ×52/12`, `bi-weekly ×26/12`, `monthly ×1`, `quarterly ÷3`, `yearly ÷12`).
+> - **A — average unscheduled monthly net** (applied every month): over the **3 most recent complete calendar months**, sum the *actual* flows touching the scope that were **not** schedule-generated (excludes `isScheduled` transfers, `isPlanned` auto-applied tx, and confirmed-occurrence tx once tagged — see 52a), as (Σ unscheduled inflow − Σ unscheduled outflow) ÷ months-available (≤3, noted in the UI).
+> - **O(N) — one-time scheduled items dated in month N** (that month only): future-dated *one-time* planned items tagged to the scope (+in / −out) and future-dated *one-time* envelope transfers (+in / −out).
+> - **Scope** = envelope **+ all descendants**, matching `getTotalEnvelopeBalance`.
+>
+> Worked example (start 40; recurring sched +100/−50; avg unscheduled +10/−30; one-time −15 in month 2): May 40+100−50+10−30 = **70**; June 70+…−15 = **85**; July 85+… = **115**. ✓
+>
+> **Release/backup note:** compute/display only, **except 52a** which adds `isPlanned: true` to transactions created on confirm — additive, no backup-format bump.
+
+52a. **Tag confirmed occurrences.** `confirmOccurrence` (and the Bills & Income bulk-confirm path) set `isPlanned: true` on the transaction they create, so manually-confirmed recurring bills can be excluded from the unscheduled average (today only auto-apply sets it → confirmed bills would leak in and double-count). (SPEC-013)
+52b. **Monthly-equivalent helper.** Add a `monthlyEquivalent(amount, frequency)` to `utils/frequency.js` (the table above), replacing the `52/12`-for-everything bug. Reusable by the projection and any future budgeting math. (SPEC cross-spec)
+52c. **Projection engine.** Replace `netMonthlyAmount`/`buildProjection` in `EnvelopeHistory` with the R + A + O(N) model over the envelope + descendants, pulling scheduled transfers, planned items (`data/bills.js`), and past actuals (`data/transactions.js` + `getEnvelopeTransfers`). Keep the 6-month horizon. (SPEC-007)
+52d. **Explainable UI.** Caption under the projection — e.g. "scheduled net +50/mo · avg unscheduled −20/mo · based on 3 mo" — plus a "based on N months" note when <3 months of history exist. (SPEC-007)
+
+> **Suggested order:** 52a (data tag) → 52b (helper) → 52c (engine) → 52d (caption). 52a should ship even before the rest, since the average's accuracy depends on it and the tag is only applied going forward.
 
 ---
 
