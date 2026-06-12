@@ -20,8 +20,9 @@ This is the primary screen for reviewing what has been recorded and understandin
 ## Acceptance Criteria
 
 ### List display
-- [x] Transactions are shown in a flat list, newest first by default
+- [x] Transactions are shown in a flat list, newest first by default. **Within the same date, the most recently entered transaction sorts first** (date desc, then `createdAt` desc — Phase 49a), so the last entry for a date appears at the top of that date
 - [x] Each transaction row shows: date, type icon (income/expense/transfer), amount, currency, account, category, payee
+- [x] Non-transfer rows also show the transaction's **envelope as its full ancestor path** (`◇ Household › Food › Groceries`, separator `›` — Phase 49e), resolved even for archived envelopes
 - [x] Income is shown in green, expenses in red, transfers in neutral colour
 - [x] Tapping a transaction row opens it for editing (uses Transaction Entry form)
 - [x] On desktop, rows highlight on hover with pointer cursor to indicate they are tappable

@@ -18,6 +18,7 @@ import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import { FREQUENCIES, FREQUENCY_LABELS, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
+import PayeeAutocomplete from '../components/PayeeAutocomplete'
 import styles from './BillsAndIncome.module.css'
 import { fmtAmt, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
@@ -37,6 +38,7 @@ export default function BillsAndIncome({ onBack }) {
   const [editItem,     setEditItem]    = useState(null)     // null | 'new-income' | 'new-expense' | item
   const [deleteTarget, setDeleteTarget] = useState(null)   // null | item
   const [filterType,   setFilterType]  = useState('all')    // 'all' | 'income' | 'expense'
+  const [filterPayee,  setFilterPayee] = useState('')       // free-text payee filter (Phase 49d)
   const [sortBy,       setSortBy]      = useState('name')   // 'name' | 'amount' | 'next'
   const [pendingEdits, setPendingEdits] = useState({})      // { [occId]: { amount, date } }
   const [_tick,        setTick]         = useState(0)        // bumped after any mutation to force re-render
@@ -159,7 +161,11 @@ export default function BillsAndIncome({ onBack }) {
   // Items that have a pending occurrence whose due date has arrived = outstanding
   const outstandingItemIds = new Set(enrichedPending.map(p => p.plannedItemId))
 
-  const filtered = items.filter(i => filterType === 'all' || i.type === filterType)
+  const payeeQuery = filterPayee.trim().toLowerCase()
+  const filtered = items.filter(i =>
+    (filterType === 'all' || i.type === filterType) &&
+    (!payeeQuery || (i.payee ?? '').toLowerCase().includes(payeeQuery))
+  )
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'amount') return b.amount - a.amount
     if (sortBy === 'next') {
@@ -262,6 +268,17 @@ export default function BillsAndIncome({ onBack }) {
                   onClick={() => setFilterType(t)}
                 >{t.charAt(0).toUpperCase() + t.slice(1)}</button>
               ))}
+            </div>
+            <div className={styles.payeeFilter}>
+              <PayeeAutocomplete
+                className={styles.payeeFilterInput}
+                value={filterPayee}
+                onChange={setFilterPayee}
+                placeholder="Filter by payee…"
+              />
+              {filterPayee && (
+                <button className={styles.payeeFilterClear} onClick={() => setFilterPayee('')} title="Clear payee filter">×</button>
+              )}
             </div>
             <select
               className={styles.sortSelect}
@@ -449,7 +466,7 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
           </label>
 
           <label className={styles.label}>Payee (optional)
-            <input className={styles.input} value={form.payee ?? ''} onChange={e => set('payee', e.target.value)} />
+            <PayeeAutocomplete className={styles.input} value={form.payee ?? ''} onChange={v => set('payee', v)} />
           </label>
 
           <label className={styles.label}>Frequency

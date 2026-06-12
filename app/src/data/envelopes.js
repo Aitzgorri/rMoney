@@ -57,6 +57,29 @@ export function getDescendants(id, all) {
   return children.flatMap(child => [child, ...getDescendants(child.id, all)])
 }
 
+// Returns the ancestor path (root → leaf) of envelope NAMES for an id, e.g.
+// ['Household', 'Food', 'Groceries'] (Phase 49e). `all` may include archived
+// envelopes so historical transactions still resolve their full path. Pass an
+// already-loaded list to avoid re-reading storage per call.
+export function getEnvelopePath(id, all = getEnvelopes()) {
+  const byId = new Map(all.map(e => [e.id, e]))
+  const names = []
+  let cur = byId.get(id)
+  let guard = 0
+  while (cur && guard++ < 100) {
+    names.unshift(cur.name)
+    cur = cur.parentId ? byId.get(cur.parentId) : null
+  }
+  return names
+}
+
+// "Household › Food › Groceries" — the full path joined with the given separator
+// (default the right-angle quote, surrounded by spaces). Empty string if the id
+// resolves to nothing.
+export function envelopePathLabel(id, sep = '›', all) {
+  return getEnvelopePath(id, all).join(` ${sep} `)
+}
+
 // ─── Envelopes ───────────────────────────────────────────────────────────────
 
 export function getEnvelopes() {
@@ -336,6 +359,21 @@ function isScheduledTransferDueToday(s, today) {
     default:
       return false
   }
+}
+
+// The next date (local YYYY-MM-DD) on or after `fromDate` on which a scheduled
+// transfer fires, across every frequency. Rather than re-deriving per-frequency
+// next-date math, it scans forward day-by-day reusing the same due-check the
+// engine uses — so what the list shows as "next" always matches what actually
+// fires. Returns null only for an unrecognised frequency. (Phase 49b)
+export function nextScheduledOccurrence(s, fromDate = new Date()) {
+  const start = atMidnight(fromDate)
+  for (let i = 0; i < 800; i++) {   // 800 days > any single-frequency gap (yearly)
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    if (isScheduledTransferDueToday(s, d)) return localDateStr(d)
+  }
+  return null
 }
 
 export function runDueScheduledTransfers() {

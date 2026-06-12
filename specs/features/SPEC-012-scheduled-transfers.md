@@ -53,7 +53,7 @@ Sources:
 - Planning items that generated transfers (SPEC-009) — used to display the link/source indicator
 
 Derived:
-- nextExecutionDate: computed from frequency + dayOfExecution + today
+- nextExecutionDate: the soonest date on/after today on which the rule fires, via `nextScheduledOccurrence` (Phase 49b) — frequency-aware for all of weekly/bi-weekly/monthly/quarterly/yearly, and computed on the **local** calendar so a day-16 rule shows the 16th (not the 15th, the old UTC `toISOString` bug)
 - source indicator: "plan" if the transfer is linked to a planning item, "manual" otherwise
 
 ## Out of Scope

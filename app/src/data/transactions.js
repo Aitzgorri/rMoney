@@ -21,7 +21,13 @@ function generateId() {
 // ─── Transactions ────────────────────────────────────────────────────────────
 
 export function getTransactions() {
-  return load(KEY_TRANSACTIONS).sort((a, b) => new Date(b.date) - new Date(a.date))
+  // Newest first by date, then by entry time within the same date so the last
+  // transaction entered for a given date sits at the top of that date (Phase 49a).
+  return load(KEY_TRANSACTIONS).sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date)
+    if (dateDiff !== 0) return dateDiff
+    return new Date(b.createdAt) - new Date(a.createdAt)
+  })
 }
 
 export function createTransaction(fields) {

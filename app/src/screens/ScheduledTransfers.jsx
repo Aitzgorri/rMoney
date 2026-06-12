@@ -4,6 +4,7 @@ import {
   getActiveEnvelopes,
   getEnvelopesFlat,
   deleteScheduledTransfer,
+  nextScheduledOccurrence,
 } from '../data/envelopes'
 import { getPlannedExpenses, updatePlannedExpense } from '../data/planning'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
@@ -18,23 +19,6 @@ const SORT_OPTIONS = [
   { value: 'amount',   label: 'Amount' },
   { value: 'source',   label: 'Source envelope' },
 ]
-
-// Compute the next execution date (day of month) relative to today.
-function nextExecutionDate(transfer) {
-  const today = new Date()
-  const day = transfer.dayOfExecution ?? 1
-  // For monthly: find the next occurrence of this day-of-month on or after today
-  const year  = today.getFullYear()
-  const month = today.getMonth()
-  const todayDay = today.getDate()
-  let next
-  if (day >= todayDay) {
-    next = new Date(year, month, day)
-  } else {
-    next = new Date(year, month + 1, day)
-  }
-  return next.toISOString().split('T')[0]
-}
 
 export default function ScheduledTransfers({ onBack }) {
   const isDesktop = useMediaQuery(DESKTOP)
@@ -63,7 +47,7 @@ export default function ScheduledTransfers({ onBack }) {
     ...t,
     fromName: envelopeMap[t.fromEnvelopeId]?.name ?? '(unknown)',
     toName:   envelopeMap[t.toEnvelopeId]?.name   ?? '(unknown)',
-    nextDate: nextExecutionDate(t),
+    nextDate: nextScheduledOccurrence(t) ?? '9999-12-31',
     planLink: planLinkMap[t.id] ?? null,
   }))
 

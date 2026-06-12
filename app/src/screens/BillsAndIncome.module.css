@@ -241,6 +241,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 8px 16px;
   border-bottom: 1px solid #1a2030;
 }
@@ -249,6 +251,40 @@
   display: flex;
   gap: 4px;
 }
+
+/* Payee filter (Phase 49d) — sits between the type buttons and the sort select. */
+.payeeFilter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.payeeFilterInput {
+  width: 100%;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.payeeFilterClear {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.payeeFilterClear:hover { color: #f1f5f9; }
 
 .filterBtn {
   background: #1e2535;

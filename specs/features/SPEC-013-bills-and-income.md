@@ -35,6 +35,7 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] **Frequency options come from the shared `utils/frequency.js` module** (Phase 47) so the same set appears here, in the transaction-recurrence box (SPEC-005) and in regular envelope transfers (SPEC-012). The day-of-execution picker is chosen by `dayPickerKind(frequency)`: a **weekday** picker for weekly/bi-weekly, a **day-of-month (1–28)** picker for monthly/quarterly/yearly. **Bi-weekly = fortnightly** on the chosen weekday: anchored to the first matching weekday on/after the start date, then every 14 days (honouring any end date)
 - [x] Account is **required** — each planned item is linked to a specific account
 - [x] Category, envelope, and payee follow the same defaults as transaction entry (SPEC-005): built-in defaults when not specified
+- [x] The payee field uses the shared **`PayeeAutocomplete`** control (Phase 49c), aligned with the transaction form — ranked suggestions, keyboard nav, freely editable
 - [ ] The category dropdown shows **only income categories** when the planned item type is Income, and **only expense categories** when the type is Expense — cross-type categories are never shown
 - [x] User can edit any field of a planned item
 - [x] User can delete a planned item
@@ -61,7 +62,7 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] Below the pending section, the page shows all planned items grouped by type: **Income** and **Expenses**
 - [x] Items currently shown in the pending section are **not duplicated** in the list below
 - [x] Each row shows: name, amount, frequency, account, next occurrence date, and a status badge: **upcoming** (the next occurrence is in the future)
-- [x] User can filter by: type (income/expense), account, frequency, application mode
+- [x] User can filter by: type (income/expense), account, frequency, application mode, **and payee** (Phase 49d — a `PayeeAutocomplete` filter beside the type buttons, case-insensitive substring match, with a clear ×)
 - [x] User can sort by: name, amount, next occurrence date
 
 ### Upcoming view

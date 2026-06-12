@@ -6,7 +6,7 @@ import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import { fmtAmt } from '../utils/format'
 import { getCategoriesFlat, getDescendants as getCategoryDescendants } from '../data/categories'
-import { getEnvelopes, getEnvelopesFlat, getDescendants as getEnvelopeDescendants } from '../data/envelopes'
+import { getEnvelopes, getEnvelopesFlat, getDescendants as getEnvelopeDescendants, envelopePathLabel } from '../data/envelopes'
 import TransactionForm from '../components/TransactionForm'
 import InlineFormRow from '../components/InlineFormRow'
 import { INDENT } from '../utils/hierarchy'
@@ -67,6 +67,13 @@ export default function Transactions({ initialAccountId, openInline }) {
   const payees          = getPayees()
   const categoriesFlat  = getCategoriesFlat()
   const envelopesFlat   = getEnvelopesFlat(getEnvelopes().filter(e => !e.isArchived))
+
+  // Envelope full-path labels for the list rows (Phase 49e). Built once from
+  // ALL envelopes (incl. archived) so historical transactions still resolve.
+  const allEnvelopesForPath = getEnvelopes()
+  const envPathById = Object.fromEntries(
+    allEnvelopesForPath.map(e => [e.id, envelopePathLabel(e.id, '›', allEnvelopesForPath)])
+  )
 
   // For the category filter dropdown — split by type for type-aware rendering
   const filterCatsIncome  = categoriesFlat.filter(c => c.type === 'income')
@@ -433,6 +440,9 @@ export default function Transactions({ initialAccountId, openInline }) {
                         <span className={styles.rowMeta}>{accountName(tx.accountId)}</span>
                         {categoryName(tx.categoryId) && (
                           <span className={styles.rowMeta}>· {categoryName(tx.categoryId)}</span>
+                        )}
+                        {tx.envelopeId && envPathById[tx.envelopeId] && (
+                          <span className={styles.rowMeta}>◇ {envPathById[tx.envelopeId]}</span>
                         )}
                       </>
                     ) : (
