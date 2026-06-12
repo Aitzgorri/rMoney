@@ -7,6 +7,8 @@ created: 2026-04-03
 
 # Categories
 
+> **Phase 46 (2026-06-12):** the standalone **Categories page was removed** — it only duplicated the category tree shown on Category Budgets. All category **management UI** (create / rename / delete / add-subcategory / drag-reparent / archive-built-in) now lives on the merged **Categories & budgets** screen ([SPEC-011](SPEC-011-budgets.md)). This spec remains the source of truth for the **category data model, default/built-in categories, and the hierarchical/type-filtered dropdown conventions** (all unchanged); only the page that hosted the management UI moved. No information was lost.
+
 ## Goal
 Allow the user to classify every transaction by what it was for (expense) or where it came from (income).
 Categories are hierarchical and user-defined, giving flexible organisation without any forced structure.

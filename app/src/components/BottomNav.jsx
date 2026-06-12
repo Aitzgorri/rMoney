@@ -25,11 +25,10 @@ const tabs = [
 
 const moreItems = [
   { id: 'planning',            label: 'Envelope planning',   icon: '📊' },
-  { id: 'budgets',             label: 'Category budgets',    icon: '🎯' },
+  { id: 'budgets',             label: 'Categories & budgets', icon: '🎯' },
   { id: 'scheduled-transfers', label: 'Scheduled transfers', icon: '🔁' },
   { id: 'bills',               label: 'Bills & Income',      icon: '💳' },
   { id: 'payees',              label: 'Payees',              icon: '🧾' },
-  { id: 'categories',          label: 'Categories',          icon: '🏷️' },
   { id: 'stock-inventory',     label: 'Stock inventory',     icon: '📋' },
   { id: 'settings',            label: 'Settings',            icon: '⚙️' },
   { id: 'save-to-file',        label: 'Save to file',        icon: '💾', action: 'save' },

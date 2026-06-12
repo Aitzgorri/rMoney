@@ -22,11 +22,10 @@ const primaryTabs = [
 
 const MORE_NAV_TABS = [
   { id: 'planning',             label: 'Planning' },
-  { id: 'budgets',              label: 'Category Budgets' },
+  { id: 'budgets',              label: 'Categories & budgets' },
   { id: 'scheduled-transfers',  label: 'Scheduled Transfers' },
   { id: 'bills',                label: 'Bills & Income' },
   { id: 'payees',               label: 'Payees' },
-  { id: 'categories',           label: 'Categories' },
   { id: 'stock-inventory',      label: 'Stock inventory' },
   { id: 'settings',             label: 'Settings' },
 ]

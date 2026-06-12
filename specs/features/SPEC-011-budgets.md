@@ -1,6 +1,6 @@
 ---
 id: SPEC-011
-name: Category Budgets
+name: Categories & budgets
 status: done
 created: 2026-04-08
 ---
@@ -47,7 +47,17 @@ A category budget says: "I want to spend at most 300 EUR/month on Groceries." Th
 ### Budgets screen
 - [x] A dedicated Budgets screen lists all active category budgets
 - [x] User can add, edit, and delete budgets from this screen
-- [x] Reachable from the **More menu** as **"Category budgets"** (the name explicitly contains "Category" so it cannot be confused with envelope-level concepts or other future planning features)
+- [x] Reachable from the **More menu** as **"Categories & budgets"** *(renamed in Phase 46 — this screen now also manages the category tree; see below)*
+
+### Merged category management *(Phase 46 — absorbed the standalone Categories page, SPEC-003)*
+This screen is now the single place to manage **both** the category tree and budgets; the separate Categories page was removed (it only duplicated the tree).
+- [x] Each category row has **action buttons with tooltips**: **✎ Rename** (inline edit), **＋ Add subcategory**, and **✕ Delete** (user categories) / **⊘ Archive** (built-in default categories, with a successor picker).
+- [x] **Clicking a parent row** (anywhere except the buttons / drag handle) toggles its collapse/expand — renaming moved off the row onto the ✎ button.
+- [x] **Clicking a leaf row** opens the budget form for that category (set / edit its budget) — unchanged primary action.
+- [x] A **＋ Add {type} category** control creates a root category for the active tab.
+- [x] Categories can be **drag-reparented** (onto another category of the same type, or onto the root drop-zone) — ported from the old Categories page.
+- [x] Deleting a category cascades to its descendants (with a confirmation listing them) and removes their budgets; built-in defaults are archived (with a successor) rather than deleted.
+- [x] The tree's collapse/expand state is **persisted** across navigation via the shared `useCollapseState` hook (key `rmoney_budgets_collapsed`), plus an Expand-all / Collapse-all control. *(Phase 46)*
 
 ## UI / Screens
 

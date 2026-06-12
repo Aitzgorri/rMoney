@@ -51,6 +51,7 @@
 | 43 — Envelope transfer correctness + comma number format + UI polish | ✓ done (unreleased) | From the 10 Jun 2026 notes — all of 43a–43m shipped; see Phase 43 section below |
 | 44 — Payees: report + management + autocomplete upgrade | ✓ done (unreleased) | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
 | 45 — Tree collapse UX + investing-table polish + comma amount input | ✓ done (unreleased) | From the 11 Jun 2026 notes — all 45a–45h shipped; SPEC-007/009/018/015 all done |
+| 46 — Merge Categories into "Categories & budgets" | ✓ done (unreleased) | Removed the duplicate Categories page (lossless); category management moved onto SPEC-011; SPEC-003 now data-only |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -255,6 +256,19 @@ Recommended sub-phase order (each is independently shippable / testable):
 ### SPEC-015 UI Enhancements
 45g. ✓ **DONE** — **AmountInput + parseAmount.** Built `src/components/AmountInput.jsx` (`type="text"`, `inputmode="decimal"`, accepts comma or dot, sanitises input) and `parseAmount` in `format.js`. Verified end-to-end (typed `1234,56` → stored `1234.56`).
 45h. ✓ **DONE** — **Roll out app-wide.** `AmountInput` replaces `<input type="number">` for every monetary field; forms parse with `parseAmount`. Non-amount inputs (shares, coin qty, %, FX rates, day-of-month) stay `type="number"`. **Part 1 (budgeting):** EnvelopeTransferForm, TransactionForm, Planning (income + expense cross-calc), Budgets, BillsAndIncome, AccountForm, EnvelopeHistory amount filter. **Part 2 (investing):** StockTxEditForms, MultiAccountDividendForm, EditProfileDialog, DividendPage, WatchlistDetail, Settings fee min/max, BuySellPlanning (cash top-up, manual adjusted price, fee cell, execute modal), InvestingAccountDetail (deposit/withdraw/exchange/buy/sell/dividend/crypto forms). Verified: comma entry stores as a Number on the transfer form and renders on the investing Buy form; build + lint clean (0 new errors across all files).
+
+---
+
+## Phase 46 — Merge Categories into "Categories & budgets" (done, unreleased)
+
+> From the **12 June 2026** request: the Categories page and Category Budgets page showed the same tree. Review confirmed the only things unique to the Categories page were category **management** (create/rename/delete/add-subcategory/**drag-reparent**/**archive-built-in**). Decision (user, 2026-06-12): **move all of it** into Category Budgets so removal is lossless, then delete the Categories page.
+>
+> - **Category Budgets → "Categories & budgets"** (renamed everywhere): the budget tree gained per-row action buttons (✎ rename inline, ＋ add subcategory, ✕ delete / ⊘ archive built-in with successor), drag-to-reparent (+ root drop-zone), and an "+ Add {type} category" control. **Row click** = collapse/expand for parents, open the budget form for leaves. `archiveBuiltInCategory` is now reachable again from this screen.
+> - **Removed** `screens/Categories.jsx` + `.module.css` and the standalone "Categories" entry from `BottomNav` / `TopNav` / `App.jsx`. The `categories.js` **data layer is untouched** (still powers every category dropdown).
+> - The tree's collapse state is now **persisted** via the shared `useCollapseState` hook (`rmoney_budgets_collapsed`) — the enhancement suggested in the review.
+> - Specs: SPEC-011 renamed + absorbed the management criteria; SPEC-003 keeps the data model / defaults / dropdown conventions and notes the page move. No backup-format change.
+>
+> Verified end-to-end (Playwright): standalone Categories tab gone; rename via ✎ updates the category; parent row-click collapses; leaf row-click opens the budget form; built-in rows show ⊘ archive; "+ Add expense category" present. Build + lint clean.
 
 ---
 

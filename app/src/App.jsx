@@ -19,7 +19,6 @@ import ResetDataDialog from './components/ResetDataDialog'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
 import AddTransaction from './screens/AddTransaction'
-import Categories from './screens/Categories'
 import Transactions from './screens/Transactions'
 import Accounts from './screens/Accounts'
 import Settings from './screens/Settings'
@@ -256,7 +255,6 @@ export default function App() {
       case 'dashboard':           return <Dashboard onNavigate={navigate} />
       case 'envelopes':          return <Envelopes />
       case 'add':                return <AddTransaction onClose={() => setActiveTab('dashboard')} />
-      case 'categories':         return <Categories />
       case 'transactions':       return <Transactions initialAccountId={navParams.accountId} openInline={navParams.openInline} />
       case 'accounts':           return <Accounts onBack={goBack} />
       case 'settings':           return <Settings initialTab={navParams.tab} focusPromptId={navParams.focusPromptId} onNavigate={navigate} />

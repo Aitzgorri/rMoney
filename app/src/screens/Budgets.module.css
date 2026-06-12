@@ -426,3 +426,88 @@
   cursor: pointer;
 }
 .deleteConfirmBtn:hover { background: #dc2626; }
+
+/* ── Merged category management (Phase 46) ──────────────────────────────────── */
+.node { display: flex; flex-direction: column; }
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.treeRow:hover { background: #1a2030; }
+
+.treeName { flex: 1; font-size: 14px; color: #e2e8f0; }
+
+.dragHandle {
+  cursor: grab;
+  color: #3d4558;
+  font-size: 14px;
+  padding: 0 2px;
+  flex-shrink: 0;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  touch-action: none;
+}
+.treeRow:hover .dragHandle { opacity: 1; }
+.dragHandle:active { cursor: grabbing; }
+.dragHandleHidden { width: 18px; flex-shrink: 0; }
+
+.dragging { opacity: 0.4; }
+.dropValid > .treeRow { background: rgba(59,130,246,0.15); border-radius: 8px; outline: 1px solid rgba(59,130,246,0.4); }
+.dropInvalid > .treeRow { background: rgba(248,113,113,0.1); border-radius: 8px; outline: 1px solid rgba(248,113,113,0.3); }
+
+.actions { display: flex; gap: 4px; flex-shrink: 0; }
+.actionBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.actionBtn:hover { background: #3d4558; color: #f1f5f9; }
+.actionBtnDelete { composes: actionBtn; font-size: 16px; }
+.actionBtnDelete:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+
+.inlineForm, .addForm { display: flex; align-items: center; gap: 6px; flex: 1; }
+.addForm { padding: 4px 0 4px 22px; }
+.inlineInput {
+  flex: 1;
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+.inlineInput:focus { outline: none; }
+.inlineSave { background: #3b82f6; border: none; border-radius: 6px; color: white; width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+.inlineCancel { background: #2d3448; border: none; border-radius: 6px; color: var(--text-muted); width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+
+.addRoot {
+  background: none;
+  border: 1px dashed #2d3448;
+  border-radius: 10px;
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 10px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 4px;
+  text-align: left;
+}
+.addRoot:hover { color: var(--text-muted); border-color: #3d4558; }
+
+.rootDropZone { margin-top: 8px; padding: 10px; border: 1px dashed #2d3448; border-radius: 8px; color: #fbbf24; font-size: 12px; text-align: center; transition: all 0.15s; }
+.rootDropZoneOver { border-color: #3b82f6; background: rgba(59,130,246,0.1); color: #93c5fd; }
