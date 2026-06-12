@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { getActiveAccounts } from '../data/accounts'
-import { getCategoriesFlat, getDefaultCategoryId } from '../data/categories'
-import { getActiveEnvelopes, getEnvelopesFlat, getDefaultIncomeEnvelope, getDefaultExpenseEnvelope } from '../data/envelopes'
-import { createTransaction, updateTransaction } from '../data/transactions'
+import { getCategoriesFlat, getDefaultCategoryId, createCategory } from '../data/categories'
+import { getActiveEnvelopes, getEnvelopesFlat, getEnvelopes, envelopePathLabel, getDefaultIncomeEnvelope, getDefaultExpenseEnvelope } from '../data/envelopes'
+import { createTransaction, updateTransaction, getRecentCategoriesForPayee } from '../data/transactions'
+import { getFavoriteAccounts, getFavoriteIncomeCategories, getFavoriteExpenseCategories, getFavoriteEnvelopes } from '../data/settings'
 import PayeeAutocomplete from './PayeeAutocomplete'
 import { createPlannedItem } from '../data/bills'
 import { INDENT } from '../utils/hierarchy'
+import { splitFavorites } from '../utils/favorites'
 import { parseAmount } from '../utils/format'
 import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import AmountInput from './AmountInput'
 import styles from './TransactionForm.module.css'
 
 const TODAY = new Date().toISOString().split('T')[0]
+const NEW_CATEGORY = '__new__'   // sentinel option value for inline category create (51e)
+const DIVIDER = '─────────'      // disabled separator between favorites/recents and the tree
 
 
-export default function TransactionForm({ initial, onSave, onCancel, onDelete, inline = false }) {
+export default function TransactionForm({ initial, defaultAccountId, onSave, onCancel, onDelete, inline = false }) {
   const [type, setType] = useState(initial?.type ?? 'expense')
 
   const accounts  = getActiveAccounts()
@@ -22,10 +26,19 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
 
   const categories = getCategoriesFlat(type === 'income' ? 'income' : 'expense')
 
+  // Prefill the account from the caller (left-column filter or last-used) when
+  // creating; fall back to the first account (Phase 51d).
+  const defaultAccount = (defaultAccountId && accounts.find(a => a.id === defaultAccountId)) || accounts[0]
+
+  // Inline category creation (Phase 51e)
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatParent, setNewCatParent] = useState('')
+
   const [form, setForm] = useState(() => initial ?? {
     amount:              '',
-    currency:            accounts[0]?.currency ?? 'EUR',
-    accountId:           accounts[0]?.id ?? '',
+    currency:            defaultAccount?.currency ?? 'EUR',
+    accountId:           defaultAccount?.id ?? '',
     categoryId:          '',
     envelopeId:          '',
     payeeName:           '',
@@ -65,6 +78,30 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
     if (showRecurring && form.recurringName === (form.payeeName ?? '')) {
       set('recurringName', value)
     }
+    // Phase 51f: when no category is chosen yet, prefill the last category used
+    // for this payee. getRecentCategoriesForPayee matches by exact (normalized)
+    // name, so partial typing returns nothing — only a complete payee prefills.
+    if (type !== 'transfer' && !form.categoryId) {
+      const recent = getRecentCategoriesForPayee(value, type, 1)
+      if (recent[0]) set('categoryId', recent[0])
+    }
+  }
+
+  // Category dropdown change — the sentinel option opens the inline create row
+  // instead of selecting a category (Phase 51e).
+  function handleCategorySelect(value) {
+    if (value === NEW_CATEGORY) { setShowNewCategory(true); return }
+    set('categoryId', value)
+  }
+
+  function handleCreateCategory() {
+    const name = newCatName.trim()
+    if (!name) return
+    const cat = createCategory({ type, name, parentId: newCatParent || null })
+    set('categoryId', cat.id)
+    setNewCatName('')
+    setNewCatParent('')
+    setShowNewCategory(false)
   }
 
   // Switching between a weekday picker and a day-of-month picker invalidates the
@@ -165,6 +202,35 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
 
   const isEdit = !!initial
 
+  // ── Favorites-aware dropdown data (Phase 51c/51f/51h) ──────────────────────
+  // Accounts (flat): favorites first, then a divider, then the rest (no dup).
+  const { favorites: favAccts, rest: restAccts } = splitFavorites(accounts, getFavoriteAccounts())
+
+  // Categories (hierarchical): payee-recents block, then favorites block, then
+  // the FULL indented tree below (A1 — favorites are a shortcut, the tree stays
+  // complete). Recents/favorites de-duplicated against each other.
+  const catById = new Map(categories.map(c => [c.id, c]))
+  const recentCats = (type !== 'transfer' ? getRecentCategoriesForPayee(form.payeeName, type, 3) : [])
+    .map(id => catById.get(id)).filter(Boolean)
+  const recentCatSet = new Set(recentCats.map(c => c.id))
+  const favCatIds = type === 'income' ? getFavoriteIncomeCategories() : getFavoriteExpenseCategories()
+  const favCats = favCatIds.map(id => catById.get(id)).filter(Boolean).filter(c => !recentCatSet.has(c.id))
+
+  // Envelopes (hierarchical): favorites block, then the full tree.
+  const envById = new Map(envelopes.map(e => [e.id, e]))
+  const favEnvs = getFavoriteEnvelopes().map(id => envById.get(id)).filter(Boolean)
+  const allEnvelopes = getEnvelopes()   // incl. archived, for the path label
+
+  // Reused by all three account dropdowns (account / from / to): favorites ★
+  // first, a divider, then the rest.
+  const accountOptions = () => (
+    <>
+      {favAccts.map(a => <option key={`f${a.id}`} value={a.id}>★ {a.accountName} ({a.currency})</option>)}
+      {favAccts.length > 0 && <option disabled>{DIVIDER}</option>}
+      {restAccts.map(a => <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>)}
+    </>
+  )
+
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       {!inline && (
@@ -204,9 +270,7 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
               <label className={styles.label}>Account *</label>
               <select className={styles.input} value={form.accountId}
                 onChange={e => set('accountId', e.target.value)} required>
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-                ))}
+                {accountOptions()}
               </select>
             </div>
             <div className={styles.field} style={{ flex: 2 }}>
@@ -221,22 +285,61 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>Category</label>
               <select className={styles.input} value={form.categoryId}
-                onChange={e => set('categoryId', e.target.value)}>
+                onChange={e => handleCategorySelect(e.target.value)}>
                 <option value="">— Uncategorized —</option>
+                {recentCats.length > 0 && (
+                  <optgroup label="Recent for this payee">
+                    {recentCats.map(c => <option key={`r${c.id}`} value={c.id}>↻ {c.name}</option>)}
+                  </optgroup>
+                )}
+                {favCats.length > 0 && (
+                  <optgroup label="Favorites">
+                    {favCats.map(c => <option key={`fav${c.id}`} value={c.id}>★ {c.name}</option>)}
+                  </optgroup>
+                )}
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
                 ))}
+                <option value={NEW_CATEGORY}>＋ New category…</option>
               </select>
+              {showNewCategory && (
+                <div className={styles.newCatBox}>
+                  <input className={styles.input} value={newCatName} autoFocus
+                    onChange={e => setNewCatName(e.target.value)}
+                    placeholder={`New ${type} category name`}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCategory() } }} />
+                  <select className={styles.input} value={newCatParent}
+                    onChange={e => setNewCatParent(e.target.value)}>
+                    <option value="">（top level）</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
+                    ))}
+                  </select>
+                  <div className={styles.newCatActions}>
+                    <button type="button" className={styles.newCatAdd} onClick={handleCreateCategory}>Add</button>
+                    <button type="button" className={styles.newCatCancel}
+                      onClick={() => { setShowNewCategory(false); setNewCatName('') }}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>Envelope</label>
               <select className={styles.input} value={form.envelopeId}
                 onChange={e => set('envelopeId', e.target.value)}>
                 <option value="">— Default —</option>
+                {favEnvs.length > 0 && (
+                  <optgroup label="Favorites">
+                    {favEnvs.map(e => <option key={`fav${e.id}`} value={e.id}>★ {e.name}</option>)}
+                  </optgroup>
+                )}
                 {envelopes.map(e => (
                   <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
                 ))}
               </select>
+              {form.envelopeId && (
+                <span className={styles.envPath}>{envelopePathLabel(form.envelopeId, '›', allEnvelopes)}</span>
+              )}
             </div>
             <div className={styles.field} style={{ flex: 1 }}>
               <label className={styles.label}>Amount *</label>
@@ -272,18 +375,14 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
               <label className={styles.label}>From account *</label>
               <select className={styles.input} value={form.sourceAccountId}
                 onChange={e => set('sourceAccountId', e.target.value)} required>
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-                ))}
+                {accountOptions()}
               </select>
             </div>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>To account *</label>
               <select className={styles.input} value={form.destinationAccountId}
                 onChange={e => set('destinationAccountId', e.target.value)} required>
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-                ))}
+                {accountOptions()}
               </select>
             </div>
           </div>

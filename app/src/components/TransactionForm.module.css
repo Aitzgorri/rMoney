@@ -78,6 +78,47 @@
   padding: 2px 2px 0;
 }
 
+/* Inline "new category" mini-form under the category dropdown (Phase 51e). */
+.newCatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+}
+
+.newCatActions {
+  display: flex;
+  gap: 8px;
+}
+
+.newCatAdd {
+  flex: 1;
+  background: #3b82f6;
+  border: none;
+  border-radius: 10px;
+  padding: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.newCatCancel {
+  flex: 1;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 10px;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .label {
   font-size: 12px;
   font-weight: 600;

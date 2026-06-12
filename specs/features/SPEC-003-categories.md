@@ -21,7 +21,7 @@ Categories are hierarchical and user-defined, giving flexible organisation witho
 
 ## Acceptance Criteria
 - [x] Categories are strictly separated into two independent trees: Income and Expense
-- [x] A category can be created at the root level or under any existing category of the same type
+- [x] A category can be created at the root level or under any existing category of the same type. Besides the Categories & budgets screen, a category can also be created **inline from the transaction form** (Phase 51e — `＋ New category…`, type taken from the transaction context)
 - [x] Nesting is unlimited in depth (e.g. Car / Charges / Highway / Toll A)
 - [x] User can edit the name of any category
 - [x] Deleting a category that has sub-categories shows a warning listing all affected sub-categories

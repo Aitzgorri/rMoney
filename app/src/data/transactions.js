@@ -92,6 +92,27 @@ export function getPayeesRanked() {
   )
 }
 
+// The distinct categories most recently used for a given payee (Phase 51f),
+// newest first, limited to `limit`. Matches the payee by normalized name and
+// filters to a transaction type (so an income form only sees income categories).
+// Derived from transaction history — no new storage.
+export function getRecentCategoriesForPayee(payeeName, type, limit = 3) {
+  const key = payeeName?.trim().toLowerCase()
+  if (!key) return []
+  const rows = load(KEY_TRANSACTIONS)
+    .filter(t => t.type === type && t.categoryId && t.payeeName?.trim().toLowerCase() === key)
+    .sort((a, b) => {
+      const d = new Date(b.date) - new Date(a.date)
+      return d !== 0 ? d : new Date(b.createdAt) - new Date(a.createdAt)
+    })
+  const seen = []
+  for (const t of rows) {
+    if (!seen.includes(t.categoryId)) seen.push(t.categoryId)
+    if (seen.length >= limit) break
+  }
+  return seen
+}
+
 function savePayee(name) {
   const payees = load(KEY_PAYEES)
   if (payees.some(p => p.name.toLowerCase() === name.toLowerCase())) return

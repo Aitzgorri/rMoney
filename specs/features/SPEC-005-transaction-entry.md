@@ -48,6 +48,14 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] Account Transfer: **row 1** = Date · From account · To account, **row 2** = Amount/Received · Fee · Currency, **row 3** = Note (the cross-currency "Sent + source currency" row appears between rows 1 and 2 when the accounts differ)
 - [x] The recurring block lays out Name · Frequency · Day on one row at computer width
 
+### Smart dropdowns *(Phase 51c–h)*
+- [x] **Favorite accounts** (SPEC-002) appear at the top of every account select (account, transfer From, transfer To) — favorites first, a divider, then the rest — via the shared `splitFavorites` helper
+- [x] **Favorite categories** (type-scoped to the form's income/expense context, SPEC-003) and **favorite envelopes** (SPEC-004) appear as a **Favorites** group at the top of their dropdowns, above the full indented tree (which stays complete)
+- [x] **Account prepopulation:** when creating a transaction on the Transactions page, the account defaults to the account filtered in the left column; if none is filtered, the most-recently-used account (`defaultAccountId` prop)
+- [x] **Inline category creation:** a `＋ New category…` option in the category dropdown opens an inline mini-form (name + optional parent, type from context) that creates the category and selects it without leaving the form
+- [x] **Payee → category memory:** selecting a payee with no category chosen prefills the last category used for that payee; the payee's last 3 distinct categories appear in a "Recent for this payee" group at the top of the category dropdown. Derived from transaction history (no new storage)
+- [x] The selected envelope's **full ancestor path** (`Household › Food › Groceries`) is shown as a helper line directly under the envelope dropdown
+
 ### Built-in categories
 - [x] App ships with two built-in categories: "Uncategorized income" (income type) and "Uncategorized expense" (expense type)
 - [x] Built-in categories can be renamed but NOT deleted

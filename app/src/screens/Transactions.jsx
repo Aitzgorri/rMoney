@@ -404,6 +404,7 @@ export default function Transactions({ initialAccountId, openInline }) {
             {onCollapse => (
               <TransactionForm
                 inline
+                defaultAccountId={filters.accountId || txs.find(t => t.accountId)?.accountId}
                 onSave={() => { refresh(); onCollapse() }}
                 onCancel={onCollapse}
               />
