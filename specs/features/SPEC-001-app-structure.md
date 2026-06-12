@@ -16,12 +16,12 @@ This is the skeleton everything else is built on.
 - As a user, I can navigate to any main section from anywhere in the app
 
 ## Acceptance Criteria
-- [x] App has a persistent bottom navigation bar with 5 items: Dashboard, Envelopes, [+], Transactions, More
+- [x] App has a persistent bottom navigation bar with 5 items: Dashboard, Envelopes, **[+]**, Investments, More. (The **Investments** group occupies the slot the standalone Transactions tab once held; the desktop top-nav still shows Transactions as a primary tab, and on mobile it is reached through the [+] menu — see below.)
 - [x] Dashboard screen shows: account balances, expense summary, upcoming expenses
 - [x] Dashboard has a link/button to the full Accounts screen
 - [x] Envelopes screen shows envelope balances; plans and budgets live here too
 - [x] Transactions screen shows history of past transactions
-- [x] [+] button in the center of the bottom nav opens the Add Transaction form from any screen
+- [x] The center **[+]** button opens a small menu with two items — **New transaction** (the Add Transaction form) and **Transactions list** (the full ledger) — so the transactions list stays reachable on mobile despite having no dedicated bottom-nav tab. The menu closes on backdrop tap or when any other nav button is pressed
 - [x] "More" button opens a popup menu containing secondary destinations
 - [x] More menu closes when tapping the backdrop, any other nav button, or [+]
 - [x] More menu contains: Categories, Settings

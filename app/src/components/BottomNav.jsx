@@ -23,6 +23,13 @@ const tabs = [
   { id: 'more',         label: 'More',         icon: '⋯',  isMore: true },
 ]
 
+// The center + button opens this little menu (Transactions has no other mobile
+// entry point — the bar has no room for a 6th tab).
+const addItems = [
+  { id: 'add',          label: 'New transaction',   icon: '＋' },
+  { id: 'transactions', label: 'Transactions list', icon: '📒' },
+]
+
 const moreItems = [
   { id: 'planning',            label: 'Envelope planning',   icon: '📊' },
   { id: 'budgets',             label: 'Categories & budgets', icon: '🎯' },
@@ -39,6 +46,7 @@ const moreItems = [
 export default function BottomNav({ activeTab, onTabChange, onAction }) {
   const [moreOpen,    setMoreOpen]    = useState(false)
   const [investOpen,  setInvestOpen]  = useState(false)
+  const [addOpen,     setAddOpen]     = useState(false)
   const alertBadge      = getTriggeredAlertCount()
   const pendingDivBadge = getPendingConfirmationCount()
 
@@ -56,11 +64,33 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
     onTabChange(item.id)
   }
 
+  function handleAddSelect(item) {
+    setAddOpen(false)
+    onTabChange(item.id)
+  }
+
   const moreActive = moreItems.filter(i => !i.action).some(i => i.id === activeTab)
   const investActive = INVESTMENTS_IDS.has(activeTab)
 
   return (
     <>
+      {addOpen && (
+        <div className={styles.backdrop} onClick={() => setAddOpen(false)}>
+          <div className={styles.moreMenu} onClick={e => e.stopPropagation()}>
+            {addItems.map(item => (
+              <button
+                key={item.id}
+                className={`${styles.moreItem} ${activeTab === item.id ? styles.moreItemActive : ''}`}
+                onClick={() => handleAddSelect(item)}
+              >
+                <span className={styles.moreIcon}>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {moreOpen && (
         <div className={styles.backdrop} onClick={() => setMoreOpen(false)}>
           <div className={styles.moreMenu} onClick={e => e.stopPropagation()}>
@@ -113,8 +143,8 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
               <button
                 key={tab.id}
                 className={styles.addBtn}
-                onClick={() => { setMoreOpen(false); setInvestOpen(false); onTabChange('add') }}
-                aria-label="Add transaction"
+                onClick={() => { setMoreOpen(false); setInvestOpen(false); setAddOpen(o => !o) }}
+                aria-label="Add or view transactions"
               >
                 +
               </button>
@@ -125,7 +155,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
               <button
                 key={tab.id}
                 className={`${styles.tab} ${moreActive ? styles.active : ''}`}
-                onClick={() => { setInvestOpen(false); setMoreOpen(o => !o) }}
+                onClick={() => { setInvestOpen(false); setAddOpen(false); setMoreOpen(o => !o) }}
               >
                 <span className={styles.icon}>{tab.icon}</span>
                 <span className={styles.label}>{tab.label}</span>
@@ -137,7 +167,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
               <button
                 key={tab.id}
                 className={`${styles.tab} ${investActive ? styles.active : ''}`}
-                onClick={() => { setMoreOpen(false); setInvestOpen(o => !o) }}
+                onClick={() => { setMoreOpen(false); setAddOpen(false); setInvestOpen(o => !o) }}
               >
                 <span className={styles.iconWrap}>
                   <span className={styles.icon}>{tab.icon}</span>
@@ -151,7 +181,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
             <button
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
-              onClick={() => { setMoreOpen(false); setInvestOpen(false); onTabChange(tab.id) }}
+              onClick={() => { setMoreOpen(false); setInvestOpen(false); setAddOpen(false); onTabChange(tab.id) }}
             >
               <span className={styles.icon}>{tab.icon}</span>
               <span className={styles.label}>{tab.label}</span>
