@@ -36,6 +36,21 @@ export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
 export const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 
+// Convert a recurring amount at a given frequency to its monthly equivalent
+// (Phase 52b). 'one-time' and unknown frequencies return 0 — one-time items are
+// projected into their specific month, not averaged across months.
+export function monthlyEquivalent(amount, frequency) {
+  const n = Number(amount) || 0
+  switch (frequency) {
+    case 'weekly':    return n * 52 / 12
+    case 'biweekly':  return n * 26 / 12
+    case 'monthly':   return n
+    case 'quarterly': return n / 3
+    case 'yearly':    return n / 12
+    default:          return 0
+  }
+}
+
 // Human label for a stored (frequency, dayOfExecution) pair — e.g.
 // "Tuesday" for weekday pickers, "15th" for month-day pickers.
 export function dayLabel(frequency, dayOfExecution) {

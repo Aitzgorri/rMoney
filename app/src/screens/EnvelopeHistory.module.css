@@ -421,3 +421,9 @@
   font-size: 14px;
   font-weight: 700;
 }
+
+/* Explainable breakdown caption under the projection grid (Phase 52d). */
+.projectionNote {
+  font-size: 11px;
+  color: var(--text-faint);
+}

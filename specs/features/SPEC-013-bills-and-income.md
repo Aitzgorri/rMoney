@@ -45,7 +45,7 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] **Auto-apply**: on the defined day, the app automatically creates a transaction (SPEC-005) with the planned amount and all configured fields (account, category, envelope, payee). If the app was not opened on the defined day, all missed occurrences are backfilled on next app open.
 - [x] **Outstanding**: on the defined day (or when the app is opened after that day), the item appears as **pending** in an outstanding items list
 - [x] Pending items show the planned amount as a pre-filled suggestion, but the user can adjust the actual amount before confirming
-- [x] User confirms a pending item to create the actual transaction — or dismisses it if the payment didn't happen (e.g. bill was waived)
+- [x] User confirms a pending item to create the actual transaction — or dismisses it if the payment didn't happen (e.g. bill was waived). The created transaction is tagged `isPlanned: true` (like auto-applied ones, Phase 52a) so schedule-generated actuals can be excluded from the envelope projection's unscheduled average (SPEC-007)
 - [x] Dismissed items are marked as skipped for that occurrence, not deleted — the next occurrence still fires on schedule
 - [x] User can switch an item between auto-apply and outstanding at any time
 

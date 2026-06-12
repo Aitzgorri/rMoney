@@ -8,6 +8,7 @@ import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import { dayLabel as freqDayLabel, FREQUENCY_LABELS, dayPickerKind } from '../utils/frequency'
+import { buildEnvelopeProjection } from '../utils/envelopeProjection'
 import { useCollapseState } from '../utils/useCollapseState'
 import styles from './EnvelopeHistory.module.css'
 import { fmtAmt, round2, parseAmount } from '../utils/format'
@@ -191,35 +192,10 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
 
   const schedExpanded = schedCollapse.has('scheduled')
 
-  // Savings projection: next 6 months
-  // Net monthly amount = incoming monthly - outgoing monthly
-  //   Monthly scheduled: ±amount/month
-  //   Weekly scheduled:  ±amount × 4.33/month
-  function netMonthlyAmount() {
-    return getScheduledTransfers()
-      .filter(s => s.isActive)
-      .reduce((sum, s) => {
-        const monthlyAmount = s.frequency === 'monthly' ? s.amount : s.amount * (52 / 12)
-        if (s.toEnvelopeId === envelope.id)   return sum + monthlyAmount
-        if (s.fromEnvelopeId === envelope.id) return sum - monthlyAmount
-        return sum
-      }, 0)
-  }
-
-  function buildProjection() {
-    const net = netMonthlyAmount()
-    if (net === 0) return []
-    const today = new Date()
-    const result = []
-    for (let i = 1; i <= 6; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() + i, 1)
-      const label = d.toLocaleString('default', { month: 'short', year: 'numeric' })
-      result.push({ label, amount: balance + net * i })
-    }
-    return result
-  }
-
-  const projection = buildProjection()
+  // Balance projection: next 6 months (Phase 52). Forecasts from recurring
+  // scheduled flows (transfers + planned items) + a 3-month unscheduled average
+  // + one-time future scheduled items, over this envelope and its descendants.
+  const { series: projection, recurringNet, avgUnscheduledNet, monthsUsed } = buildEnvelopeProjection(envelope.id, 6)
 
   function accountName(id) {
     return accounts.find(a => a.id === id)?.accountName ?? '—'
@@ -311,7 +287,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         )}
       </div>
 
-      {/* Projection section — one row on desktop (Phase 50d) */}
+      {/* Projection section — one row on desktop (Phase 50d / 52) */}
       {projection.length > 0 && (
         <div className={styles.projectionSection}>
           <span className={styles.sectionTitle}>Projection</span>
@@ -328,6 +304,16 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
               )
             })}
           </div>
+          {/* Explainable breakdown (Phase 52d) */}
+          <span className={styles.projectionNote}>
+            {(() => {
+              const sched = round2(recurringNet)
+              const unsch = round2(avgUnscheduledNet)
+              const fmtSigned = n => `${n < 0 ? '−' : '+'}${fmtAmt(Math.abs(n))}`
+              return `scheduled net ${fmtSigned(sched)}/mo · avg unscheduled ${fmtSigned(unsch)}/mo` +
+                (monthsUsed > 0 ? ` · based on ${monthsUsed} mo` : '')
+            })()}
+          </span>
         </div>
       )}
 

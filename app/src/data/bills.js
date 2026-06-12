@@ -46,6 +46,7 @@ export function confirmOccurrence(occId, actualAmount, itemFields) {
   const tx = createTransaction({
     ...itemFields,
     amount: actualAmount,
+    isPlanned: true,   // Phase 52a: mark so it's excluded from the unscheduled projection average
   })
   save(KEY_PENDING, pending.map(p =>
     p.id === occId

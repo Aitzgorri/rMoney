@@ -57,7 +57,7 @@
 | 49 — Small correctness wins (tx ordering, day-bug, Bills payee, envelope path) | ✓ done (unreleased) | From the 12 Jun 2026 notes — tx date+time order, frequency-aware scheduled next-date (fixes 16→15), Bills payee autocomplete + filter, envelope full-path in tx list (A5); SPEC-006/012/013 |
 | 50 — Envelopes scheduled-transfers display + Scheduled filters | ✓ done (unreleased) | From the 12 Jun 2026 notes — collapse (default-collapsed)/day-order/one-row/projections-one-row + From/To filters; SPEC-007/012 |
 | 51 — Transaction form overhaul | ✓ done (unreleased) | From the 12 Jun 2026 notes — responsive layout, favorites-in-dropdowns, account prefill, inline category create, payee→category memory, envelope full-path under dropdown (A5); 2 commits; SPEC-005/003 |
-| 52 — Envelope projection overhaul | planned | From a 12 Jun 2026 follow-up — forecast from recurring scheduled (transfers + planned items) + 3-month unscheduled average + one-time future items, over envelope + descendants; SPEC-007/013 |
+| 52 — Envelope projection overhaul | ✓ done (unreleased) | From a 12 Jun 2026 follow-up — forecast from recurring scheduled (transfers + planned items) + 3-month unscheduled average + one-time future items, over envelope + descendants; verified vs the worked example; SPEC-007/013 |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -386,12 +386,10 @@ Recommended sub-phase order (each is independently shippable / testable):
 >
 > **Release/backup note:** compute/display only, **except 52a** which adds `isPlanned: true` to transactions created on confirm — additive, no backup-format bump.
 
-52a. **Tag confirmed occurrences.** `confirmOccurrence` (and the Bills & Income bulk-confirm path) set `isPlanned: true` on the transaction they create, so manually-confirmed recurring bills can be excluded from the unscheduled average (today only auto-apply sets it → confirmed bills would leak in and double-count). (SPEC-013)
-52b. **Monthly-equivalent helper.** Add a `monthlyEquivalent(amount, frequency)` to `utils/frequency.js` (the table above), replacing the `52/12`-for-everything bug. Reusable by the projection and any future budgeting math. (SPEC cross-spec)
-52c. **Projection engine.** Replace `netMonthlyAmount`/`buildProjection` in `EnvelopeHistory` with the R + A + O(N) model over the envelope + descendants, pulling scheduled transfers, planned items (`data/bills.js`), and past actuals (`data/transactions.js` + `getEnvelopeTransfers`). Keep the 6-month horizon. (SPEC-007)
-52d. **Explainable UI.** Caption under the projection — e.g. "scheduled net +50/mo · avg unscheduled −20/mo · based on 3 mo" — plus a "based on N months" note when <3 months of history exist. (SPEC-007)
-
-> **Suggested order:** 52a (data tag) → 52b (helper) → 52c (engine) → 52d (caption). 52a should ship even before the rest, since the average's accuracy depends on it and the tag is only applied going forward.
+52a. ✓ **DONE** — **Tag confirmed occurrences.** `confirmOccurrence` (which both the single- and bulk-confirm paths in Bills & Income call) now sets `isPlanned: true` on the transaction it creates, so manually-confirmed recurring bills are excluded from the unscheduled average (applies to occurrences confirmed from now on). (SPEC-013)
+52b. ✓ **DONE** — **Monthly-equivalent helper.** `monthlyEquivalent(amount, frequency)` added to `utils/frequency.js` (weekly ×52/12, bi-weekly ×26/12, monthly ×1, quarterly ÷3, yearly ÷12; one-time/unknown → 0), replacing the `52/12`-for-everything bug. (SPEC cross-spec)
+52c. ✓ **DONE** — **Projection engine.** New `utils/envelopeProjection.js` `buildEnvelopeProjection(envelopeId, months=6)` implements the R + A + O(N) model over the envelope **+ descendants**, pulling scheduled transfers + planned items (`data/bills.js`) for R/O, and past actuals (`data/transactions.js`) + one-time envelope transfers for A/O. Returns `{ series, recurringNet, avgUnscheduledNet, monthsUsed }`; empty series when there is nothing to project. `EnvelopeHistory` consumes it (replacing `netMonthlyAmount`/`buildProjection`). **Verified against the user's worked example: 70 / 85 / 115.** (SPEC-007)
+52d. ✓ **DONE** — **Explainable UI.** Caption under the projection grid: "scheduled net ±X/mo · avg unscheduled ±Y/mo · based on N mo" (N = months of history actually used). (SPEC-007)
 
 ---
 

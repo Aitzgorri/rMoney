@@ -72,6 +72,11 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] Scheduled rows are **ordered by scheduled day**: day-of-month rules (monthly/quarterly/yearly) first by day 1–28 — so the 1st appears at the top regardless of frequency — then weekday rules (weekly/bi-weekly) by weekday *(Phase 50b)*
 - [x] Each row reads **Day · Frequency · Amount · counterpart-envelope · ›**, on a single row on desktop (wraps on narrow screens) *(Phase 50c)*
 - [x] The 6-month **projection** figures lay out on **one row on desktop** (wrapping on mobile) and render through the central `fmtAmt` formatter *(Phase 50d)*
+- [x] **Projection calculation (Phase 52):** each month is forecast as `B(N) = B(N-1) + R + A + O(N)`, over the envelope **and its descendants** (matching the displayed total balance):
+  - **R** — recurring scheduled monthly net: scheduled envelope transfers (in/out) **and** recurring Bills & Income planned items tagged to the scope, each converted to a **monthly equivalent** (`weekly ×52/12`, `bi-weekly ×26/12`, `monthly ×1`, `quarterly ÷3`, `yearly ÷12`)
+  - **A** — average of **unscheduled** actual flows over the **last 3 complete calendar months** (÷ the months of history available, capped at 3); schedule-generated actuals (`isScheduled` transfers, `isPlanned` transactions — incl. confirmed occurrences per SPEC-013) are excluded so nothing is double-counted
+  - **O(N)** — one-time future scheduled items (future-dated one-time planned items + one-time envelope transfers) placed in their specific month
+- [x] A caption under the projection explains it: "scheduled net ±X/mo · avg unscheduled ±Y/mo · based on N mo". The panel hides when there is nothing to project *(Phase 52d)*
 
 ### Navigation
 - [x] A back button returns the user from envelope history to the envelope list
