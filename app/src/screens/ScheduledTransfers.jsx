@@ -11,6 +11,7 @@ import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import InlineFormRow from '../components/InlineFormRow'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
 import { formatDate } from '../utils/dates'
+import { INDENT } from '../utils/hierarchy'
 import styles from './ScheduledTransfers.module.css'
 import { fmtAmt } from '../utils/format'
 
@@ -23,6 +24,8 @@ const SORT_OPTIONS = [
 export default function ScheduledTransfers({ onBack }) {
   const isDesktop = useMediaQuery(DESKTOP)
   const [sort, setSort] = useState('nextDate')
+  const [filterFrom, setFilterFrom] = useState('')        // '' | fromEnvelopeId (Phase 50e)
+  const [filterTo, setFilterTo] = useState('')            // '' | toEnvelopeId (Phase 50e)
   const [editTransfer, setEditTransfer] = useState(null)  // null | 'new' | transfer object
   const [deleteTarget, setDeleteTarget] = useState(null)  // null | transfer object
   const [inlineOpen, setInlineOpen] = useState(false)
@@ -51,8 +54,14 @@ export default function ScheduledTransfers({ onBack }) {
     planLink: planLinkMap[t.id] ?? null,
   }))
 
+  // Filter by source / destination envelope (Phase 50e)
+  const filtered = enriched.filter(t =>
+    (!filterFrom || t.fromEnvelopeId === filterFrom) &&
+    (!filterTo   || t.toEnvelopeId   === filterTo)
+  )
+
   // Sort
-  const sorted = [...enriched].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     if (sort === 'amount')   return b.amount - a.amount
     if (sort === 'source')   return a.fromName.localeCompare(b.fromName)
     return a.nextDate.localeCompare(b.nextDate)  // nextDate (default)
@@ -146,6 +155,25 @@ export default function ScheduledTransfers({ onBack }) {
         ))}
       </div>
 
+      {/* From / To envelope filters (Phase 50e) */}
+      <div className={styles.filterRow}>
+        <select className={styles.filterSelect} value={filterFrom} onChange={e => setFilterFrom(e.target.value)}>
+          <option value="">From: all source envelopes</option>
+          {envelopesFlat.map(e => (
+            <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
+          ))}
+        </select>
+        <select className={styles.filterSelect} value={filterTo} onChange={e => setFilterTo(e.target.value)}>
+          <option value="">To: all destination envelopes</option>
+          {envelopesFlat.map(e => (
+            <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
+          ))}
+        </select>
+        {(filterFrom || filterTo) && (
+          <button className={styles.filterClear} onClick={() => { setFilterFrom(''); setFilterTo('') }}>Clear</button>
+        )}
+      </div>
+
       {isDesktop && (
         <InlineFormRow label="Add scheduled transfer" open={inlineOpen} onOpenChange={setInlineOpen}>
           {onCollapse => (
@@ -160,7 +188,11 @@ export default function ScheduledTransfers({ onBack }) {
       )}
 
       {sorted.length === 0 ? (
-        <p className={styles.empty}>No scheduled transfers yet. Create one from here or from the Planning screen.</p>
+        <p className={styles.empty}>
+          {filterFrom || filterTo
+            ? 'No scheduled transfers match the selected envelope filter.'
+            : 'No scheduled transfers yet. Create one from here or from the Planning screen.'}
+        </p>
       ) : (
         <div className={styles.list}>
           <div className={styles.listHeader}>

@@ -289,7 +289,30 @@
 .scheduledHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chevron {
+  font-size: 11px;
+  color: var(--text-faint);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.schedCount {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: #2d3448;
+  border-radius: 10px;
+  padding: 1px 8px;
 }
 
 .sectionTitle {
@@ -319,10 +342,13 @@
   margin: 0;
 }
 
+/* One row per scheduled transfer: Day · Frequency · Amount · Envelope · ›
+   (Phase 50c). Single row on desktop; wraps on narrow screens. */
 .scheduledRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
   padding: 8px 0;
   border-top: 1px solid #2d3448;
   cursor: pointer;
@@ -330,23 +356,33 @@
 
 .scheduledRow:hover { opacity: 0.8; }
 
-.scheduledInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.schedDay {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 60px;
+  flex-shrink: 0;
 }
 
-.scheduledAmount {
+.schedFreq {
+  font-size: 12px;
+  color: var(--text-faint);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.schedAmount {
   font-size: 15px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
-.scheduledMeta {
+.schedEnv {
   font-size: 12px;
   color: var(--text-faint);
 }
 
 .scheduledEdit {
+  margin-left: auto;
   font-size: 18px;
   color: var(--text-faint);
 }
@@ -363,9 +399,10 @@
   gap: 10px;
 }
 
+/* One row on desktop (6 months fit), wrapping on narrow screens (Phase 50d). */
 .projectionGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 8px;
 }
 

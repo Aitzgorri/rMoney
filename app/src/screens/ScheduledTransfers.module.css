@@ -85,6 +85,42 @@
   color: white;
 }
 
+/* ── Envelope filters (Phase 50e) ───────────────────────────────────────────── */
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  border-bottom: 1px solid #1a2030;
+}
+
+.filterSelect {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.filterClear {
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.filterClear:hover { color: #f1f5f9; }
+
 /* ── List ──────────────────────────────────────────────────────────────────── */
 
 .empty {

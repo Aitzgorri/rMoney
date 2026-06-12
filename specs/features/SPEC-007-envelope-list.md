@@ -67,6 +67,12 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] The collapsed/expanded state is **persisted** (localStorage `rmoney_envelopes_collapsed`) so returning to the page restores the prior state instead of fully expanding. *(Phase 45b — shared `useCollapseState` hook)*
 - [x] A header **Expand all / Collapse all** control toggles every parent envelope at once. *(Phase 45b)*
 
+### Scheduled transfers + projection panel *(Phase 50)*
+- [x] The envelope detail pane lists the **scheduled transfers** touching this envelope (incoming or outgoing). The section header is a **collapse toggle** (chevron + count badge); it is **collapsed by default** and the state persists globally (`rmoney_envelopes_scheduled_expanded`, via the shared `useCollapseState` hook) *(Phase 50a)*
+- [x] Scheduled rows are **ordered by scheduled day**: day-of-month rules (monthly/quarterly/yearly) first by day 1–28 — so the 1st appears at the top regardless of frequency — then weekday rules (weekly/bi-weekly) by weekday *(Phase 50b)*
+- [x] Each row reads **Day · Frequency · Amount · counterpart-envelope · ›**, on a single row on desktop (wraps on narrow screens) *(Phase 50c)*
+- [x] The 6-month **projection** figures lay out on **one row on desktop** (wrapping on mobile) and render through the central `fmtAmt` formatter *(Phase 50d)*
+
 ### Navigation
 - [x] A back button returns the user from envelope history to the envelope list
 - [x] Bottom nav remains visible throughout

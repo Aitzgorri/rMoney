@@ -7,11 +7,19 @@ import TransactionForm from '../components/TransactionForm'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
-import { dayLabel as freqDayLabel, FREQUENCY_LABELS } from '../utils/frequency'
+import { dayLabel as freqDayLabel, FREQUENCY_LABELS, dayPickerKind } from '../utils/frequency'
+import { useCollapseState } from '../utils/useCollapseState'
 import styles from './EnvelopeHistory.module.css'
 import { fmtAmt, round2, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
 import PayeeAutocomplete from '../components/PayeeAutocomplete'
+
+// Sort key for the scheduled-transfers list (Phase 50b): day-of-month rules
+// first (group 0, ordered by day 1–28), then weekday rules (group 1, by weekday).
+function schedSortKey(s) {
+  const group = dayPickerKind(s.frequency) === 'weekday' ? 1 : 0
+  return group * 1000 + (s.dayOfExecution ?? 0)
+}
 
 export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChange }) {
   const [editing, setEditing]         = useState(null)  // { kind: 'tx'|'transfer'|'scheduled', record }
@@ -24,6 +32,10 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
   const [filters, setFilters]         = useState({
     type: '', accountId: '', categoryId: '', payeeName: '', amountMin: '', amountMax: '', dateFrom: '', dateTo: '',
   })
+  // Scheduled-transfers section collapse — default collapsed, persisted globally
+  // (Phase 50a). The hook stores the *expanded* ids, so an empty set = collapsed.
+  // Must be called before any early return (rules-of-hooks).
+  const schedCollapse = useCollapseState('rmoney_envelopes_scheduled_expanded')
 
   const accounts        = getAccounts()
   const categories      = getCategoriesFlat()
@@ -169,10 +181,15 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
     return allEnvelopes.find(e => e.id === id)?.name ?? '—'
   }
 
-  // Scheduled transfers for this envelope (incoming or outgoing)
-  const scheduledTransfers = getScheduledTransfers().filter(s =>
-    s.isActive && (s.fromEnvelopeId === envelope.id || s.toEnvelopeId === envelope.id)
-  )
+  // Scheduled transfers for this envelope (incoming or outgoing), ordered by
+  // scheduled day (Phase 50b): day-of-month rules (monthly/quarterly/yearly)
+  // first — so the 1st floats to the top regardless of frequency — then weekday
+  // rules (weekly/bi-weekly) after, by weekday.
+  const scheduledTransfers = getScheduledTransfers()
+    .filter(s => s.isActive && (s.fromEnvelopeId === envelope.id || s.toEnvelopeId === envelope.id))
+    .sort((a, b) => schedSortKey(a) - schedSortKey(b))
+
+  const schedExpanded = schedCollapse.has('scheduled')
 
   // Savings projection: next 6 months
   // Net monthly amount = incoming monthly - outgoing monthly
@@ -258,51 +275,58 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         </span>
       </div>
 
-      {/* Scheduled transfers section */}
+      {/* Scheduled transfers section — collapsible, default collapsed (Phase 50) */}
       <div className={styles.scheduledSection}>
-        <div className={styles.scheduledHeader}>
+        <button type="button" className={styles.scheduledHeader}
+          onClick={() => schedCollapse.toggle('scheduled')}>
+          <span className={styles.chevron}>{schedExpanded ? '▾' : '▸'}</span>
           <span className={styles.sectionTitle}>Scheduled transfers</span>
-        </div>
-        {scheduledTransfers.length === 0 ? (
-          <p className={styles.scheduledEmpty}>No scheduled transfers.</p>
-        ) : (
-          scheduledTransfers.map(s => {
-            const isIncoming = s.toEnvelopeId === envelope.id
-            const dayStr = freqDayLabel(s.frequency, s.dayOfExecution)
-            return (
-              <div key={s.id} className={styles.scheduledRow}
-                onClick={() => setEditing({ kind: 'scheduled', record: s })}>
-                <div className={styles.scheduledInfo}>
-                  <span className={`${styles.scheduledAmount} ${isIncoming ? styles.positive : styles.negative}`}>
+          {scheduledTransfers.length > 0 && (
+            <span className={styles.schedCount}>{scheduledTransfers.length}</span>
+          )}
+        </button>
+        {schedExpanded && (
+          scheduledTransfers.length === 0 ? (
+            <p className={styles.scheduledEmpty}>No scheduled transfers.</p>
+          ) : (
+            scheduledTransfers.map(s => {
+              const isIncoming = s.toEnvelopeId === envelope.id
+              const dayStr = freqDayLabel(s.frequency, s.dayOfExecution)
+              return (
+                <div key={s.id} className={styles.scheduledRow}
+                  onClick={() => setEditing({ kind: 'scheduled', record: s })}>
+                  <span className={styles.schedDay}>{dayStr}</span>
+                  <span className={styles.schedFreq}>{FREQUENCY_LABELS[s.frequency] ?? s.frequency}</span>
+                  <span className={`${styles.schedAmount} ${isIncoming ? styles.positive : styles.negative}`}>
                     {isIncoming ? '+' : '−'}{fmtAmt(s.amount)}
                   </span>
-                  <span className={styles.scheduledMeta}>
-                    {FREQUENCY_LABELS[s.frequency] ?? s.frequency} · {dayStr}
+                  <span className={styles.schedEnv}>
+                    {isIncoming ? `← ${envelopeName(s.fromEnvelopeId)}` : `→ ${envelopeName(s.toEnvelopeId)}`}
                   </span>
-                  <span className={styles.scheduledMeta}>
-                    {isIncoming ? `← from ${envelopeName(s.fromEnvelopeId)}` : `→ to ${envelopeName(s.toEnvelopeId)}`}
-                  </span>
+                  <span className={styles.scheduledEdit}>›</span>
                 </div>
-                <span className={styles.scheduledEdit}>›</span>
-              </div>
-            )
-          })
+              )
+            })
+          )
         )}
       </div>
 
-      {/* Projection section */}
+      {/* Projection section — one row on desktop (Phase 50d) */}
       {projection.length > 0 && (
         <div className={styles.projectionSection}>
           <span className={styles.sectionTitle}>Projection</span>
           <div className={styles.projectionGrid}>
-            {projection.map(p => (
-              <div key={p.label} className={styles.projectionItem}>
-                <span className={styles.projectionLabel}>{p.label}</span>
-                <span className={`${styles.projectionAmount} ${p.amount < 0 ? styles.negative : styles.positive}`}>
-                  {p.amount < 0 ? '−' : ''}{Math.abs(p.amount).toFixed(0)}
-                </span>
-              </div>
-            ))}
+            {projection.map(p => {
+              const v = round2(p.amount)
+              return (
+                <div key={p.label} className={styles.projectionItem}>
+                  <span className={styles.projectionLabel}>{p.label}</span>
+                  <span className={`${styles.projectionAmount} ${v < 0 ? styles.negative : styles.positive}`}>
+                    {v < 0 ? '−' : ''}{fmtAmt(Math.abs(v))}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
