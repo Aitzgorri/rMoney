@@ -193,8 +193,52 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
 
       {type !== 'transfer' ? (
         <>
+          {/* Row 1 (desktop): Date · Account · Payee */}
+          <div className={styles.row}>
+            <div className={styles.field} style={{ flex: 1 }}>
+              <label className={styles.label}>Date</label>
+              <input className={styles.input} type="date" value={form.date}
+                onChange={e => set('date', e.target.value)} />
+            </div>
+            <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>Account *</label>
+              <select className={styles.input} value={form.accountId}
+                onChange={e => set('accountId', e.target.value)} required>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>Payee</label>
+              <PayeeAutocomplete className={styles.input} value={form.payeeName}
+                onChange={handlePayeeInput} placeholder="e.g. Gas Station XYZ" />
+            </div>
+          </div>
+
+          {/* Row 2 (desktop): Category · Envelope · Amount · Currency */}
           <div className={styles.row}>
             <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>Category</label>
+              <select className={styles.input} value={form.categoryId}
+                onChange={e => set('categoryId', e.target.value)}>
+                <option value="">— Uncategorized —</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>Envelope</label>
+              <select className={styles.input} value={form.envelopeId}
+                onChange={e => set('envelopeId', e.target.value)}>
+                <option value="">— Default —</option>
+                {envelopes.map(e => (
+                  <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.field} style={{ flex: 1 }}>
               <label className={styles.label}>Amount *</label>
               <AmountInput className={styles.input}
                 value={form.amount} onChange={v => set('amount', v)}
@@ -208,56 +252,43 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
             </div>
           </div>
 
+          {/* Row 3: Note */}
           <div className={styles.field}>
-            <label className={styles.label}>Account *</label>
-            <select className={styles.input} value={form.accountId}
-              onChange={e => set('accountId', e.target.value)} required>
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Category</label>
-            <select className={styles.input} value={form.categoryId}
-              onChange={e => set('categoryId', e.target.value)}>
-              <option value="">— Uncategorized —</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Envelope</label>
-            <select className={styles.input} value={form.envelopeId}
-              onChange={e => set('envelopeId', e.target.value)}>
-              <option value="">— Default —</option>
-              {envelopes.map(e => (
-                <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Payee</label>
-            <PayeeAutocomplete className={styles.input} value={form.payeeName}
-              onChange={handlePayeeInput} placeholder="e.g. Gas Station XYZ" />
+            <label className={styles.label}>Note</label>
+            <input className={styles.input} value={form.note}
+              onChange={e => set('note', e.target.value)} placeholder="Optional" />
           </div>
         </>
       ) : (
         <>
-          <div className={styles.field}>
-            <label className={styles.label}>From account *</label>
-            <select className={styles.input} value={form.sourceAccountId}
-              onChange={e => set('sourceAccountId', e.target.value)} required>
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-              ))}
-            </select>
+          {/* Row 1 (desktop): Date · From account · To account */}
+          <div className={styles.row}>
+            <div className={styles.field} style={{ flex: 1 }}>
+              <label className={styles.label}>Date</label>
+              <input className={styles.input} type="date" value={form.date}
+                onChange={e => set('date', e.target.value)} />
+            </div>
+            <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>From account *</label>
+              <select className={styles.input} value={form.sourceAccountId}
+                onChange={e => set('sourceAccountId', e.target.value)} required>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.field} style={{ flex: 2 }}>
+              <label className={styles.label}>To account *</label>
+              <select className={styles.input} value={form.destinationAccountId}
+                onChange={e => set('destinationAccountId', e.target.value)} required>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
+          {/* Cross-currency only: amount sent in the source currency */}
           {isCrossCurrency && (
             <div className={styles.row}>
               <div className={styles.field} style={{ flex: 2 }}>
@@ -273,23 +304,7 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
             </div>
           )}
 
-          <div className={styles.field}>
-            <label className={styles.label}>Fee (optional)</label>
-            <AmountInput className={styles.input}
-              value={form.transferFee} onChange={v => set('transferFee', v)}
-              placeholder="0,00" />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>To account *</label>
-            <select className={styles.input} value={form.destinationAccountId}
-              onChange={e => set('destinationAccountId', e.target.value)} required>
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>
-              ))}
-            </select>
-          </div>
-
+          {/* Row 2 (desktop): Amount/Received · Fee · Currency */}
           <div className={styles.row}>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>{isCrossCurrency ? 'Received *' : 'Amount *'}</label>
@@ -299,6 +314,12 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
                   ? set('destinationAmount', v)
                   : set('sourceAmount', v)}
                 placeholder="0,00" required />
+            </div>
+            <div className={styles.field} style={{ flex: 1 }}>
+              <label className={styles.label}>Fee</label>
+              <AmountInput className={styles.input}
+                value={form.transferFee} onChange={v => set('transferFee', v)}
+                placeholder="0,00" />
             </div>
             <div className={styles.field} style={{ flex: 1 }}>
               <label className={styles.label}>Currency</label>
@@ -311,20 +332,15 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
               Rate: 1 {srcAccount.currency} = {(parseAmount(form.destinationAmount) / parseAmount(form.sourceAmount)).toFixed(4)} {destAccount.currency}
             </div>
           )}
+
+          {/* Row 3: Note */}
+          <div className={styles.field}>
+            <label className={styles.label}>Note</label>
+            <input className={styles.input} value={form.note}
+              onChange={e => set('note', e.target.value)} placeholder="Optional" />
+          </div>
         </>
       )}
-
-      <div className={styles.field}>
-        <label className={styles.label}>Date</label>
-        <input className={styles.input} type="date" value={form.date}
-          onChange={e => set('date', e.target.value)} />
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label}>Note</label>
-        <input className={styles.input} value={form.note}
-          onChange={e => set('note', e.target.value)} placeholder="Optional" />
-      </div>
 
       {/* Recurring — only for income/expense */}
       {type !== 'transfer' && (
@@ -336,13 +352,14 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
           </label>
           {showRecurring && (
             <div className={styles.recurringBox}>
-              <div className={styles.field}>
-                <label className={styles.label}>Name</label>
-                <input className={styles.input} value={form.recurringName}
-                  onChange={e => set('recurringName', e.target.value)}
-                  placeholder="e.g. Monthly rent" />
-              </div>
+              {/* One row on desktop: Name · Frequency · Day */}
               <div className={styles.row}>
+                <div className={styles.field} style={{ flex: 2 }}>
+                  <label className={styles.label}>Name</label>
+                  <input className={styles.input} value={form.recurringName}
+                    onChange={e => set('recurringName', e.target.value)}
+                    placeholder="e.g. Monthly rent" />
+                </div>
                 <div className={styles.field} style={{ flex: 1 }}>
                   <label className={styles.label}>Frequency</label>
                   <select className={styles.input} value={form.frequency}

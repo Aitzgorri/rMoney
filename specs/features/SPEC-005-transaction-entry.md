@@ -43,6 +43,11 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] Account transfers do NOT require category, envelope, or payee
 - [x] Date defaults to today
 
+### Form layout *(Phase 51a/b/g)*
+- [x] On **computer width (≥1024px)** the form lays out in rows; below that it is a single column. Income/Expense: **row 1** = Date (narrow) · Account · Payee, **row 2** = Category · Envelope · Amount (narrow) · Currency (narrow), **row 3** = Note
+- [x] Account Transfer: **row 1** = Date · From account · To account, **row 2** = Amount/Received · Fee · Currency, **row 3** = Note (the cross-currency "Sent + source currency" row appears between rows 1 and 2 when the accounts differ)
+- [x] The recurring block lays out Name · Frequency · Day on one row at computer width
+
 ### Built-in categories
 - [x] App ships with two built-in categories: "Uncategorized income" (income type) and "Uncategorized expense" (expense type)
 - [x] Built-in categories can be renamed but NOT deleted

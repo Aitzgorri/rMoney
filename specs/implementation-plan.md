@@ -355,13 +355,13 @@ Recommended sub-phase order (each is independently shippable / testable):
 
 > **Largest; consumes both foundations.** #11–26 from the notes. Depends on Phase 47 (recurrence frequencies) + Phase 48 (favorites helper).
 
-51a. **Responsive multi-row layout (#15–20).** Desktop: row 1 = Date (narrow) · Account · Payee; row 2 = Category · Envelope · Amount (narrow) · Currency (narrow); row 3 = Notes; then the recurrence block on one row (Frequency + Day narrower, leaving space for Name). Mobile keeps the current single column. (SPEC-005)
-51b. **Transfer form layout (#22–25).** Desktop: row 1 = Date · From account · To account; row 2 = Amount · Fee · Currency; row 3 = Note. (SPEC-005)
+51a. ✓ **DONE** (commit 1) — **Responsive multi-row layout (#15–20).** Desktop (≥1024px): row 1 = Date (narrow) · Account · Payee; row 2 = Category · Envelope · Amount (narrow) · Currency (narrow); row 3 = Note. The shared `.row` class is now column below 1024px (single-column mobile) and flex-row above; field width ratios via inline `flex`. (SPEC-005)
+51b. ✓ **DONE** (commit 1) — **Transfer form layout (#22–25).** Desktop: row 1 = Date · From · To; row 2 = Amount/Received · Fee · Currency; row 3 = Note; the cross-currency "Sent + source currency" row stays between rows 1 and 2. (SPEC-005)
 51c. **Favorites in the account / category / envelope dropdowns (#12, #21).** Use the Phase-48 `splitFavorites` helper + the favorites-at-top convention (A1) in all three transaction-form dropdowns. (SPEC-005)
 51d. **Account prepopulation (#13).** Add a `defaultAccountId` prop to `TransactionForm`; the new-transaction launcher in `Transactions.jsx` passes the left-column `filters.accountId` when set, else the most-recent transaction's account (derived — no new storage). (SPEC-005)
 51e. **Inline category creation (#14).** "+ New category…" sentinel option (assumption A3) that creates a category (type from context) and selects it without leaving the page. (SPEC-005/003)
 51f. **Payee → category memory (#26).** On payee select with no category chosen, prefill the **last** category used for that payee; surface the payee's **last 3 distinct** categories at the very top of the category dropdown (above favorites, with a separator) — all derived from transaction history, no new storage. (SPEC-005)
-51g. **Recurrence row + quarterly (#20).** The recurrence block uses the Phase-47 shared options (so it now offers quarterly + bi-weekly) and lays out on one desktop row. (SPEC-005)
+51g. ✓ **DONE** (commit 1) — **Recurrence row + quarterly (#20).** The recurrence block already uses the Phase-47 shared options (quarterly + bi-weekly); now Name · Frequency · Day lay out on one desktop row. (SPEC-005)
 51h. **Envelope full-path below the dropdown (A5).** Reuse the Phase-49 `envelopePathLabel` helper to render a helper line directly under the envelope `<select>` showing the selected envelope's full ancestor path — a native `<select>` only shows the leaf option when collapsed, so this restores the parent context the dropdown's indentation provides only while open. (SPEC-005)
 
 ---

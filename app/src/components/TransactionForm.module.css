@@ -56,9 +56,26 @@
   position: relative;
 }
 
+/* Single column on phone/tablet; multi-column from "computer width" (Phase 51a/b).
+   Field width ratios are set with inline flex on each child .field. */
 .row {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 1024px) {
+  .row {
+    flex-direction: row;
+    gap: 10px;
+  }
+}
+
+/* Full-path of the selected envelope, shown under its dropdown (Phase 51h). */
+.envPath {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 2px 2px 0;
 }
 
 .label {
