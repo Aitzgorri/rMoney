@@ -25,6 +25,7 @@ const MORE_NAV_TABS = [
   { id: 'budgets',              label: 'Category Budgets' },
   { id: 'scheduled-transfers',  label: 'Scheduled Transfers' },
   { id: 'bills',                label: 'Bills & Income' },
+  { id: 'payees',               label: 'Payees' },
   { id: 'categories',           label: 'Categories' },
   { id: 'stock-inventory',      label: 'Stock inventory' },
   { id: 'settings',             label: 'Settings' },

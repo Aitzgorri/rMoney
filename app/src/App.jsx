@@ -26,6 +26,7 @@ import Settings from './screens/Settings'
 import Planning from './screens/Planning'
 import ScheduledTransfers from './screens/ScheduledTransfers'
 import BillsAndIncome from './screens/BillsAndIncome'
+import Payees from './screens/Payees'
 import Budgets from './screens/Budgets'
 import Investments from './screens/Investments'
 import Portfolios from './screens/Portfolios'
@@ -262,6 +263,7 @@ export default function App() {
       case 'planning':           return <Planning />
       case 'scheduled-transfers':return <ScheduledTransfers onBack={goBack} />
       case 'bills':              return <BillsAndIncome onBack={goBack} />
+      case 'payees':             return <Payees />
       case 'budgets':            return <Budgets onBack={goBack} />
       case 'investments':        return <Investments onNavigate={navigate} />
       case 'portfolios':         return <Portfolios onBack={() => navigate('investments')} />

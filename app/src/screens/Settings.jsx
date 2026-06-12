@@ -37,6 +37,7 @@ import { getDismissedSplits, getDismissedSplitsStorageBytes, deleteAllDismissedS
 import { getCryptoProfiles, getCryptoProfilesStorageBytes, deleteAllCryptoProfiles } from '../data/cryptoProfiles'
 import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
 import { getTradingScenariosStats, deleteAllTradingScenarios } from '../data/tradingScenarios'
+import { getPayeesStats } from '../data/payees'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -185,6 +186,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [manualPricesStats, setManualPricesStats] = useState(() => getManualPricesStats())
   const [manualPricesDeleteConfirm, setManualPricesDeleteConfirm] = useState(false)
   const [tradingScenariosStats, setTradingScenariosStats] = useState(() => getTradingScenariosStats())
+  const [payeesStats] = useState(() => getPayeesStats())
   const [tradingScenariosDeleteConfirm, setTradingScenariosDeleteConfirm] = useState(false)
   const [cryptoProfiles,      setCryptoProfiles]      = useState(() => getCryptoProfiles())
   const [cryptoProfilesBytes, setCryptoProfilesBytes] = useState(() => getCryptoProfilesStorageBytes())
@@ -2466,6 +2468,23 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Payees */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Payees</div>
+            <p className={styles.description}>
+              The saved payee lookup (names you've used). Rename, merge or delete payees in More → Payees.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Payees</span>
+                  <span className={styles.storageCount}>{payeesStats.count} payee{payeesStats.count !== 1 ? 's' : ''}</span>
+                  <span className={styles.storageBytes}>{fmtBytes(payeesStats.bytes)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Dividend chart presets */}

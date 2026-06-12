@@ -1,7 +1,7 @@
 ---
 id: SPEC-037
 name: Payees
-status: ready
+status: done
 created: 2026-06-10
 ---
 
@@ -23,39 +23,39 @@ Payees are stored as a free-text `payeeName` **string** on each transaction (SPE
 ## Acceptance Criteria
 
 ### Navigation & screen
-- [ ] A new **Payees** entry appears under "More" in both navigations: the mobile `BottomNav` more-menu and the desktop `TopNav` More sub-row (per SPEC-015). Selecting it opens the Payees screen via a new `payees` route in `App.jsx`.
-- [ ] The screen widens to fill the desktop container (no multi-column rework required); mobile is single-column.
+- [x] A new **Payees** entry appears under "More" in both navigations: the mobile `BottomNav` more-menu and the desktop `TopNav` More sub-row (per SPEC-015). Selecting it opens the Payees screen via a new `payees` route in `App.jsx`.
+- [x] The screen widens to fill the desktop container (no multi-column rework required); mobile is single-column.
 
 ### Payee report — list & filters
-- [ ] The report defaults to the **last 12 months** of transactions.
-- [ ] Filters: **date from / until**, **amount range** (min / max), **currency**, **envelope**, **account**, **category**. Multiple filters combine; a "Clear filters" affordance shows when any filter is active.
-- [ ] Envelope and category filter dropdowns are **hierarchical** (`getEnvelopesFlat` / `getCategoriesFlat` + `INDENT`). Because the report spans income and expense, the category filter is a both-type context and shows disabled **Income** / **Expense** section headers (per the CLAUDE.md dropdown conventions).
-- [ ] The amount-range filter acts on the raw transaction amount; combined with the currency filter it is unambiguous across currencies.
-- [ ] The report lists **all payees** found in the (filtered) transactions. Payees are grouped by a **normalized key** (trimmed + case-insensitive); the displayed name is the most common original spelling for that key.
-- [ ] Only income/expense transactions are considered (transfers have no payee and are excluded).
-- [ ] Transactions with an empty payee are grouped under a **"(no payee)"** bucket; the system default **"Unspecified payee"** appears as its own bucket.
-- [ ] Each payee row is **expandable / collapsible** to reveal its transactions (date, type, amount + currency, account, category, note), newest first.
+- [x] The report defaults to the **last 12 months** of transactions.
+- [x] Filters: **date from / until**, **amount range** (min / max), **currency**, **envelope**, **account**, **category**. Multiple filters combine; a "Clear filters" affordance shows when any filter is active.
+- [x] Envelope and category filter dropdowns are **hierarchical** (`getEnvelopesFlat` / `getCategoriesFlat` + `INDENT`). Because the report spans income and expense, the category filter is a both-type context and shows disabled **Income** / **Expense** section headers (per the CLAUDE.md dropdown conventions).
+- [x] The amount-range filter acts on the raw transaction amount; combined with the currency filter it is unambiguous across currencies.
+- [x] The report lists **all payees** found in the (filtered) transactions. Payees are grouped by a **normalized key** (trimmed + case-insensitive); the displayed name is the most common original spelling for that key.
+- [x] Only income/expense transactions are considered (transfers have no payee and are excluded).
+- [x] Transactions with an empty payee are grouped under a **"(no payee)"** bucket; the system default **"Unspecified payee"** appears as its own bucket.
+- [x] Each payee row is **expandable / collapsible** to reveal its transactions (date, type, amount + currency, account, category, note), newest first.
 
 ### Per-payee summary *(enhancement E1)*
-- [ ] Each payee row shows summary figures: **total paid**, **total received**, **transaction count**, and **last-used date**, broken down per currency. (Delivers the SPEC-005 "total received from / total paid to a payee" criterion, which had no UI.)
+- [x] Each payee row shows summary figures: **total paid**, **total received**, **transaction count**, and **last-used date**, broken down per currency. (Delivers the SPEC-005 "total received from / total paid to a payee" criterion, which had no UI.)
 
 ### Sort & search *(enhancement E4)*
-- [ ] The report has a **search box** to filter the payee list by name and a **sort** control (most spent / most frequent / name).
+- [x] The report has a **search box** to filter the payee list by name and a **sort** control (most spent / most frequent / name).
 
 ### Edit a transaction from the report *(enhancement E2)*
-- [ ] Clicking a transaction inside an expanded payee opens it in the standard transaction edit form (SPEC-005), including its Delete action. On save/delete the report refreshes.
+- [x] Clicking a transaction inside an expanded payee opens it in the standard transaction edit form (SPEC-005), including its Delete action. On save/delete the report refreshes.
 
 ### Payee management — rename / merge / delete
-- [ ] The user can **rename** a payee. On save, the change is applied to the `rmoney_payees` record, every transaction whose payee matches (normalized), **and** every Bills & Income planned item whose payee matches.
-- [ ] If the new name matches an existing payee (normalized), the app **warns that the two payees will be merged** and requires approval. On approval it **merges**: all transactions and planned items under the old name are rewritten to the target name and the old registry record is removed.
-- [ ] The user can **delete** a payee. A confirmation warning is shown and the user must approve. On approval, every matching transaction and planned item is left **payee-less** (empty payee — the records are **not** deleted), and the registry record is removed.
-- [ ] The system default **"Unspecified payee"** bucket cannot be renamed or deleted.
+- [x] The user can **rename** a payee. On save, the change is applied to the `rmoney_payees` record, every transaction whose payee matches (normalized), **and** every Bills & Income planned item whose payee matches.
+- [x] If the new name matches an existing payee (normalized), the app **warns that the two payees will be merged** and requires approval. On approval it **merges**: all transactions and planned items under the old name are rewritten to the target name and the old registry record is removed.
+- [x] The user can **delete** a payee. A confirmation warning is shown and the user must approve. On approval, every matching transaction and planned item is left **payee-less** (empty payee — the records are **not** deleted), and the registry record is removed.
+- [x] The system default **"Unspecified payee"** bucket cannot be renamed or deleted.
 
 ### Shared autocomplete component *(enhancement E3)*
-- [ ] The payee autocomplete (SPEC-005) is extracted into a single reusable component and used by: the transaction form, the report's payee-related inputs, and the Envelope History payee filter (SPEC-007).
+- [x] The payee autocomplete (SPEC-005) is extracted into a single reusable component and used by: the transaction form, the report's payee-related inputs, and the Envelope History payee filter (SPEC-007).
 
 ### Storage registration
-- [ ] A **Payees** card is added to **Settings → Storage** (SPEC-026) showing the `rmoney_payees` size and count (closing a pre-existing gap; this collection was never registered).
+- [x] A **Payees** card is added to **Settings → Storage** (SPEC-026) showing the `rmoney_payees` size and count (closing a pre-existing gap; this collection was never registered).
 
 ## UI / Screens
 

@@ -49,7 +49,7 @@
 | 38 — June 2026 adjustments | ✓ shipped in v0.36.0 | 430–439 batch + Buy-Sell cash-impact follow-up; backup → rmoney-data-v4 |
 | 39 — Access / password modes | planned | SPEC-031 ext: app / keys-only / none modes + Settings → Security tab + `appStorage` wrapper (Strategy B full at-rest encryption) |
 | 43 — Envelope transfer correctness + comma number format + UI polish | ✓ done (unreleased) | From the 10 Jun 2026 notes — all of 43a–43m shipped; see Phase 43 section below |
-| 44 — Payees: report + management + autocomplete upgrade | planned | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
+| 44 — Payees: report + management + autocomplete upgrade | ✓ done (unreleased) | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
 | 45 — Tree collapse UX + investing-table polish + comma amount input | ✓ done (unreleased) | From the 11 Jun 2026 notes — all 45a–45h shipped; SPEC-007/009/018/015 all done |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
@@ -218,12 +218,12 @@ Recommended sub-phase order (each is independently shippable / testable):
 44b. ✓ **DONE** — Extracted to shared `components/PayeeAutocomplete.jsx`, used by the transaction form and the Envelope History payee filter (and the SPEC-037 report filter when built). SPEC-005 data-model doc already corrected to `payeeName` in the Phase 44 planning commit.
 
 ### SPEC-037 Payees — report + management
-44c. [ ] New **Payees** screen + `payees` route in `App.jsx`; entries in `BottomNav` more-menu and `TopNav` More sub-row; desktop-wide / mobile single-column.
-44d. [ ] Report **filters**: last-12-months default + date from/until, amount range, currency, envelope, account, category — hierarchical envelope/category dropdowns with Income/Expense headers; combine + clear-filters.
-44e. [ ] Payee **list**: derived from transaction payee strings, normalized grouping (trim + case-fold), income/expense only, `"(no payee)"` and `"Unspecified payee"` buckets, expandable/collapsible per-payee transaction lists.
-44f. [ ] Per-payee **summary** (total paid/received, count, last-used, per currency) + **sort/search** + **click a transaction to edit** it (reuses SPEC-005 edit form).
-44g. [ ] Payee **management**: rename (rewrites transactions + planned items + registry); rename-collision → **merge** with confirmation; **delete** → payee-less transactions + planned items (records kept) with confirmation; `"Unspecified payee"` not renamable/deletable.
-44h. [ ] Add a **Payees card** to Settings → Storage (SPEC-026) for the existing `rmoney_payees` collection.
+44c. ✓ **DONE** — New **Payees** screen + `payees` route in `App.jsx`; entries in `BottomNav` more-menu and `TopNav` More sub-row; desktop-wide / mobile single-column.
+44d. ✓ **DONE** — Report **filters**: last-12-months default + date from/until, amount range, currency, envelope, account, category — hierarchical envelope/category dropdowns with Income/Expense headers; combine + clear-filters.
+44e. ✓ **DONE** — Payee **list**: derived from transaction payee strings, normalized grouping (trim + case-fold), income/expense only, `"(no payee)"` and `"Unspecified payee"` buckets, expandable/collapsible per-payee transaction lists.
+44f. ✓ **DONE** — Per-payee **summary** (total paid/received, count, last-used, per currency) + **sort/search** + **click a transaction to edit** it (reuses SPEC-005 edit form).
+44g. ✓ **DONE** — Payee **management**: rename (rewrites transactions + planned items + registry); rename-collision → **merge** with confirmation; **delete** → payee-less transactions + planned items (records kept) with confirmation; `"Unspecified payee"` not renamable/deletable.
+44h. ✓ **DONE** — Add a **Payees card** to Settings → Storage (SPEC-026) for the existing `rmoney_payees` collection.
 
 ---
 

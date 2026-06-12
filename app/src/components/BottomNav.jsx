@@ -28,6 +28,7 @@ const moreItems = [
   { id: 'budgets',             label: 'Category budgets',    icon: '🎯' },
   { id: 'scheduled-transfers', label: 'Scheduled transfers', icon: '🔁' },
   { id: 'bills',               label: 'Bills & Income',      icon: '💳' },
+  { id: 'payees',              label: 'Payees',              icon: '🧾' },
   { id: 'categories',          label: 'Categories',          icon: '🏷️' },
   { id: 'stock-inventory',     label: 'Stock inventory',     icon: '📋' },
   { id: 'settings',            label: 'Settings',            icon: '⚙️' },
