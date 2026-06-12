@@ -6,7 +6,7 @@
 
 **Last shipped: v0.36.0** — bundles Phase 38 (June 2026 adjustments): the 430–439 review batch (SPEC-020 dividend tweaks, SPEC-034 cash-impact header alignment, SPEC-017 currency conversion, SPEC-029 ticker resolution, SPEC-021 responsive polish) plus the same-day Buy-Sell Planning cash-impact follow-up (FX triangulation, two-column overspend, global-pass cascade ordering, held-balance currency display, End sub-cent snap). Backup format advanced to `rmoney-data-v4` (`settings.favoriteCountries`). The earlier v0.35.0 bundled Phase 34a (transaction-edit correctness), Phase 35a (cross-currency fee model), Phase 36a–g (Finnhub/Stooq adapters, API-detected splits, stock-exchange selector, default CSV template, standalone lot picker), and Phase 37a–b — backup `rmoney-data-v3`. Full sub-phase breakdown lives in `RELEASE.md` and the git history; line-by-line acceptance criteria are removed from this plan once a release is closed.
 
-**Next up:** Phase 20 continues with the next asset class — **Crypto is shipped ([SPEC-036](features/SPEC-036-crypto-holdings.md), `done`)**; bonds → metals → options remain sketches in SPEC-035 (each graduates to its own spec before code). (Phase 21b Mobile Investments parity shipped 2026-06-02; deferred mobile items 228a/228b live in SPEC-030.)
+**Next up:** **Phases 47–51** — the 12 June 2026 scratch-notes batch (budgeting-side UX: frequency unification, favorites, transaction-form overhaul, scheduled-transfer display + fixes). Build order is foundational-first: **47 (frequency) → 48 (favorites) → 49 (small wins) → 50 (envelopes scheduled list) → 51 (transaction form)**; see the Phase 47–51 sections below. On the investing track, Phase 20 continues with the next asset class — **Crypto is shipped ([SPEC-036](features/SPEC-036-crypto-holdings.md), `done`)**; bonds → metals → options remain sketches in SPEC-035 (each graduates to its own spec before code). (Phase 21b Mobile Investments parity shipped 2026-06-02; deferred mobile items 228a/228b live in SPEC-030.)
 
 ---
 
@@ -52,6 +52,11 @@
 | 44 — Payees: report + management + autocomplete upgrade | ✓ done (unreleased) | From the 10 Jun 2026 notes (Payees chapter) — SPEC-037 (new) + SPEC-005 ext; see Phase 44 section below |
 | 45 — Tree collapse UX + investing-table polish + comma amount input | ✓ done (unreleased) | From the 11 Jun 2026 notes — all 45a–45h shipped; SPEC-007/009/018/015 all done |
 | 46 — Merge Categories into "Categories & budgets" | ✓ done (unreleased) | Removed the duplicate Categories page (lossless); category management moved onto SPEC-011; SPEC-003 now data-only |
+| 47 — Frequency unification (+ quarterly & bi-weekly everywhere) | planned | From the 12 Jun 2026 notes — one shared frequency module; all 3 recurrence engines learn quarterly + fortnightly bi-weekly; SPEC-005/012/013 |
+| 48 — Favorites for accounts / categories / envelopes | planned | From the 12 Jun 2026 notes — mirrors `favoriteCurrencies`; feeds Dashboard list + all dropdowns; SPEC-002/003/004/008/016 |
+| 49 — Small correctness wins (tx ordering, day-bug, Bills payee, envelope path) | planned | From the 12 Jun 2026 notes — independent + cheap; adds envelope full-path to the tx list (A5); SPEC-006/012/013 |
+| 50 — Envelopes scheduled-transfers display + Scheduled filters | planned | From the 12 Jun 2026 notes — collapse/order/one-row/projections + From/To filters; SPEC-007/012 |
+| 51 — Transaction form overhaul | planned | From the 12 Jun 2026 notes — responsive layout, favorites-in-dropdowns, account prefill, inline category create, payee→category memory, envelope full-path under dropdown (A5); SPEC-005/003 |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -269,6 +274,95 @@ Recommended sub-phase order (each is independently shippable / testable):
 > - Specs: SPEC-011 renamed + absorbed the management criteria; SPEC-003 keeps the data model / defaults / dropdown conventions and notes the page move. No backup-format change.
 >
 > Verified end-to-end (Playwright): standalone Categories tab gone; rename via ✎ updates the category; parent row-click collapses; leaf row-click opens the budget form; built-in rows show ⊘ archive; "+ Add expense category" present. Build + lint clean.
+
+---
+
+# Phases 47–51 — the 12 June 2026 scratch-notes batch (planned)
+
+> Source: `scratch_notes/notes 12June2026.md`. Dependencies traced in code, scope analysed 2026-06-12. **One decision locked with the user (2026-06-12):** bi-weekly = **fortnightly on a chosen weekday, anchored to the start date** (every 14 days — *not* "Nth weekday of month").
+>
+> **Build order is foundational-first** so shared code is built once and reused: **47 (frequency) → 48 (favorites)** are the two foundations; **49** is independent cheap wins; **50** is self-contained; **51** is the largest and consumes both foundations. Per the project workflow, each phase's specs flip `done`→`in-progress` (and its criteria get ticked) **when that phase starts** — they are kept accurate (not pre-flipped) while these phases are still `planned`.
+>
+> **Open assumptions still to confirm during build (flagged, not blocking):**
+> - **A1 — Favorites in hierarchical/type-filtered category & envelope `<select>`s:** render favorites as a **flat block at the top** (full name, type-matched, disabled `<option>` divider), then the normal indented type-filtered tree below — same "favorites + separator line" shape as `CurrencyDropdown`. Honours both MANDATORY conventions (hierarchy + type filter).
+> - **A2 — Scheduled-transfer ordering (#5):** primary sort = day-of-month ascending for monthly/quarterly/yearly (so "1st" floats to top regardless of frequency); weekly/bi-weekly (which carry a weekday, not a day-of-month) sort among themselves by weekday and sit after the day-of-month group.
+> - **A3 — Inline category creation (#14):** a "+ New category…" sentinel `<option>` that expands a tiny inline row (name + parent, type pre-set from context) and auto-selects the result — a form cannot live inside a native `<select>`.
+> - **A4 — Scheduled-transfers filters (#34):** add **both** From- and To-envelope filters (no source filter exists today to sit "next to").
+> - **A5 — Envelope full-path display (12 Jun 2026 follow-up request, decisions confirmed 2026-06-12):** show the selected/related envelope's full ancestor path ("Household › Food › Groceries") in the **transaction list** and as a helper line **below the envelope dropdown** in the transaction form. **Separator `›` (confirmed).** Note the transaction list does **not** show the envelope at all today (only account · category · note), so this is additive. Build one shared helper — `getEnvelopePath(id)` (root→leaf name array) + `envelopePathLabel(id, sep='›')` in `utils/hierarchy.js` (or `data/envelopes.js`, reusing `parentId`) — used by both surfaces. **Scope confirmed: envelopes only for now** — categories keep their current single-name display (the same helper could extend to them later if wanted).
+
+---
+
+## Phase 47 — Frequency unification (+ quarterly & bi-weekly everywhere) (planned)
+
+> **Why first:** #20 (quarterly), #32 (bi-weekly), #36 (align options), #37 (weekday-based weekly/bi-weekly) all collapse into one job. Today there are **four divergent frequency lists** (TransactionForm `[monthly,weekly,yearly]`, EnvelopeTransferForm `[monthly,weekly]`, BillsAndIncome `[one-time,weekly,monthly,quarterly,yearly]`, `utils/frequency.js` `[monthly,quarterly,yearly]`). Everything downstream (#20 recurrence row, #32 bills bi-weekly) depends on this landing first.
+>
+> **Shared-code note:** grow `src/utils/frequency.js` into the single source of truth — export one ordered `FREQUENCIES` list (value + label + which day-picker it uses) and the recurrence helpers. **Three engines** must consume it, not just the dropdowns:
+> 1. `data/bills.js` `getDueDates` / `getNextOccurrenceDate` (has quarterly; **add bi-weekly**),
+> 2. `data/envelopes.js` `runDueScheduledTransfers` (today only understands monthly/weekly — **add quarterly + bi-weekly**, else those scheduled transfers silently never fire),
+> 3. the transaction-recurrence path that seeds planned items from `TransactionForm`.
+>
+> **Bi-weekly model (locked):** `frequency:'biweekly'`, `dayOfExecution:0–6` (weekday) + an anchor = the item's `startDate` (first matching weekday on/after start, then +14 days). No new persisted field beyond reusing `dayOfExecution` for the weekday.
+>
+> **Release/backup note:** no new persisted field, no backup bump. Existing records keep their current `frequency`/`dayOfExecution` shape.
+
+47a. **Shared frequency module.** Replace the per-form `FREQUENCIES` arrays + `WEEKDAYS`/`MONTH_DAYS` constants with one exported set in `utils/frequency.js`: `FREQUENCIES` (ordered: one-time, weekly, bi-weekly, monthly, quarterly, yearly), `FREQUENCY_LABELS`, `WEEKDAYS`, `MONTH_DAYS`, and a `dayPickerKind(freq)` → `'weekday' | 'month-day' | 'none'`. Delete the dead, UTC-buggy `getNextOccurrenceDate(dayOfExecution)` in `frequency.js` (nothing imports it). (SPEC-005/012/013)
+47b. **Bi-weekly recurrence math.** Add the `biweekly` branch to `data/bills.js` `getDueDates` + `getNextOccurrenceDate` (anchor on first matching weekday ≥ `startDate`, step +14 days, honour `endDate`). (SPEC-013)
+47c. **Scheduled-transfer engine.** Extend `data/envelopes.js` `runDueScheduledTransfers` to fire `quarterly` + `biweekly` (currently only monthly/weekly); switch its `today` key to the local-date helper for consistency with 49b. (SPEC-012)
+47d. **Roll the shared options into every frequency dropdown:** `TransactionForm` recurrence (gains quarterly + bi-weekly), `EnvelopeTransferForm` (gains quarterly + bi-weekly), `BillsAndIncome` `PlannedItemForm` (gains bi-weekly). Each switches its day-picker by `dayPickerKind`. (SPEC-005/012/013)
+
+---
+
+## Phase 48 — Favorites for accounts / categories / envelopes (planned)
+
+> **Why second:** #10 (Dashboard favorite accounts), #12 (favorite accounts atop the transaction account dropdown), #21 (favorite categories + envelopes atop their dropdowns) are one mechanism. Built once, it feeds the Dashboard **and** every Phase-51 dropdown. Mirrors the shipped `favoriteCurrencies` pattern exactly ([settings.js:64](../app/src/data/settings.js), Settings drag-reorder card, backup inclusion).
+>
+> **Data-model note:** three ordered **ID** lists in `rmoney_settings` — `favoriteAccounts`, `favoriteCategories`, `favoriteEnvelopes`. Unlike currencies/countries they seed **empty** (`[]`) — favorites are user-specific entities, no sensible default. Getters/setters + a boot migration that defaults missing keys to `[]`; the backup loader tolerates absence. **Likely `rmoney-data-v5`** (settings gains three fields) — confirm + bump when built. No new Storage-tab collection (they live inside the already-carded `rmoney_settings`).
+>
+> **Shared-code note:** build one helper — `splitFavorites(items, favIds)` → `{ favorites, rest }` preserving favorite order — and one dropdown-rendering convention so accounts (flat) and categories/envelopes (per assumption A1) render consistently.
+
+48a. **Settings data layer.** `getFavoriteAccounts/Categories/Envelopes` + setters + `migrate…` (default `[]`) in `data/settings.js`; wire migrations into `main.jsx` boot alongside the existing favorite migrations; add the three fields to the backup migrate-up + `rmoney-data-v5` bump (SPEC-016). (SPEC-002/003/004/016)
+48b. **Settings management cards.** Three "Favorite accounts / categories / envelopes" cards in Settings — drag-to-reorder + add (from the app's own entities, not an ISO list) + remove — modelled on the Favorite-currencies card. (SPEC-002/003/004)
+48c. **Dashboard account list (#10).** Reorder the Account Balances list so favorites (in favorite order) come first, then a separator line, then the rest. (SPEC-008)
+48d. **Shared favorites-at-top helper** (`splitFavorites` + the disabled-`<option>` divider convention) ready for Phase 51 to consume. (SPEC-002/003/004)
+
+---
+
+## Phase 49 — Small correctness wins (planned)
+
+> Independent, cheap, low-risk — bundled so they ship without waiting on the bigger phases.
+
+49a. **Transaction date+time ordering (#1).** `data/transactions.js` `getTransactions` → sort by `date` desc **then `createdAt` desc**, so the last transaction entered for a date sits at the top of that date. The `sortAsc` toggle in `Transactions.jsx` flips both keys. (SPEC-006)
+49b. **Scheduled-transfer "16→15" day bug (#28).** Root cause: `ScheduledTransfers.jsx` `nextExecutionDate` builds the date with `new Date(y,m,day).toISOString()`, which shifts back a day in any positive-UTC timezone. Fix: derive the next-date string from the local calendar (reuse the `localDateStr` logic from `bills.js`; extract to `utils/dates.js` if cleaner). (SPEC-012)
+49c. **Bills payee → autocomplete (#30).** Replace the plain `<input>` in `BillsAndIncome.jsx` `PlannedItemForm` with the shared `PayeeAutocomplete` (built in Phase 44). (SPEC-013)
+49d. **Bills payee filter (#31).** Add a payee filter (using `PayeeAutocomplete`) next to the All / Income / Expense buttons on the Bills & Income list. (SPEC-013)
+49e. **Envelope full-path in the transaction list (A5).** Build the shared `getEnvelopePath` / `envelopePathLabel` helper and render each transaction's envelope as its full ancestor path (`◇ Household › Food › Groceries`) in the row meta line — the envelope is not shown in the list today, so this is additive. (SPEC-006)
+
+---
+
+## Phase 50 — Envelopes scheduled-transfers display + Scheduled-transfers filters (planned)
+
+> Self-contained UI work on the envelope detail pane ([EnvelopeHistory.jsx:260](../app/src/screens/EnvelopeHistory.jsx)) and the Scheduled-transfers screen.
+
+50a. **Collapse/expand the scheduled list (#4).** Wrap the "Scheduled transfers" section in a collapse toggle — **default collapsed**, persisted via the shared `useCollapseState` hook (built in Phase 45). (SPEC-007/012)
+50b. **Order by scheduled day (#5).** Sort the per-envelope scheduled rows per assumption A2 (day-of-month asc; weekly/bi-weekly after). (SPEC-007/012)
+50c. **Day before frequency + desktop one-row layout (#6, #7).** Reorder each row to **Day-of-recurrence · Frequency · Amount · To-envelope**; on desktop render the whole record on a single row. (SPEC-007/012)
+50d. **Desktop projections on one row (#8).** Lay the projection figures out horizontally on desktop; route the values through `fmtAmt` (they use bare `.toFixed(0)` today — fixes a format-convention violation in passing). (SPEC-007)
+50e. **Scheduled-transfers From/To filters (#34).** Add From-envelope + To-envelope filters to the Scheduled-transfers page (assumption A4), using the hierarchical envelope dropdown convention. (SPEC-012)
+
+---
+
+## Phase 51 — Transaction form overhaul (planned)
+
+> **Largest; consumes both foundations.** #11–26 from the notes. Depends on Phase 47 (recurrence frequencies) + Phase 48 (favorites helper).
+
+51a. **Responsive multi-row layout (#15–20).** Desktop: row 1 = Date (narrow) · Account · Payee; row 2 = Category · Envelope · Amount (narrow) · Currency (narrow); row 3 = Notes; then the recurrence block on one row (Frequency + Day narrower, leaving space for Name). Mobile keeps the current single column. (SPEC-005)
+51b. **Transfer form layout (#22–25).** Desktop: row 1 = Date · From account · To account; row 2 = Amount · Fee · Currency; row 3 = Note. (SPEC-005)
+51c. **Favorites in the account / category / envelope dropdowns (#12, #21).** Use the Phase-48 `splitFavorites` helper + the favorites-at-top convention (A1) in all three transaction-form dropdowns. (SPEC-005)
+51d. **Account prepopulation (#13).** Add a `defaultAccountId` prop to `TransactionForm`; the new-transaction launcher in `Transactions.jsx` passes the left-column `filters.accountId` when set, else the most-recent transaction's account (derived — no new storage). (SPEC-005)
+51e. **Inline category creation (#14).** "+ New category…" sentinel option (assumption A3) that creates a category (type from context) and selects it without leaving the page. (SPEC-005/003)
+51f. **Payee → category memory (#26).** On payee select with no category chosen, prefill the **last** category used for that payee; surface the payee's **last 3 distinct** categories at the very top of the category dropdown (above favorites, with a separator) — all derived from transaction history, no new storage. (SPEC-005)
+51g. **Recurrence row + quarterly (#20).** The recurrence block uses the Phase-47 shared options (so it now offers quarterly + bi-weekly) and lays out on one desktop row. (SPEC-005)
+51h. **Envelope full-path below the dropdown (A5).** Reuse the Phase-49 `envelopePathLabel` helper to render a helper line directly under the envelope `<select>` showing the selected envelope's full ancestor path — a native `<select>` only shows the leaf option when collapsed, so this restores the parent context the dropdown's indentation provides only while open. (SPEC-005)
 
 ---
 
