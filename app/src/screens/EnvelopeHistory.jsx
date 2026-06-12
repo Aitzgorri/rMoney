@@ -10,6 +10,7 @@ import { formatDate } from '../utils/dates'
 import styles from './EnvelopeHistory.module.css'
 import { fmtAmt, round2, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
+import PayeeAutocomplete from '../components/PayeeAutocomplete'
 
 export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChange }) {
   const [editing, setEditing]         = useState(null)  // { kind: 'tx'|'transfer'|'scheduled', record }
@@ -331,8 +332,8 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
             </select>
           </div>
           <div className={styles.filterRow}>
-            <input className={styles.filterInput} placeholder="Payee"
-              value={filters.payeeName} onChange={e => setFilter('payeeName', e.target.value)} />
+            <PayeeAutocomplete className={styles.filterInput} placeholder="Payee"
+              value={filters.payeeName} onChange={v => setFilter('payeeName', v)} />
           </div>
           <div className={styles.filterRow}>
             <AmountInput className={styles.filterInput} placeholder="Min amount"

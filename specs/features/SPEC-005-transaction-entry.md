@@ -1,7 +1,7 @@
 ---
 id: SPEC-005
 name: Transaction Entry
-status: in-progress
+status: done
 created: 2026-04-03
 ---
 
@@ -54,11 +54,11 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] Payees can be used for reporting (total received from / total paid to a payee) — the report UI lives in **SPEC-037 (Payees)**
 
 #### Payee autocomplete behaviour *(Phase 44)*
-- [ ] The suggestion list shows up to **10** payees (raised from 5), ranked by **most-used** (number of transactions), tie-broken by most-recent use
-- [ ] When the payee field is **focused while empty**, the top-10 most-used payees are shown as the baseline list (not only after the user starts typing)
-- [ ] The list is keyboard-navigable: **↑ / ↓** move the highlight, **Enter or Tab** selects the highlighted payee, **Esc** dismisses the list; mouse click still selects
-- [ ] The field stays **freely editable** — choosing a suggestion only fills the text; the user can keep typing a brand-new payee that isn't in the list
-- [ ] The autocomplete is implemented as a **shared, reusable component** (also consumed by SPEC-037's report filter and the SPEC-007 Envelope History payee filter)
+- [x] The suggestion list shows up to **10** payees (raised from 5), ranked by **most-used** (number of transactions), tie-broken by most-recent use *(Phase 44a — `getPayeesRanked` in `data/transactions.js`)*
+- [x] When the payee field is **focused while empty**, the top-10 most-used payees are shown as the baseline list (not only after the user starts typing) *(Phase 44a)*
+- [x] The list is keyboard-navigable: **↑ / ↓** move the highlight, **Enter or Tab** selects the highlighted payee, **Esc** dismisses the list; mouse click still selects *(Phase 44a)*
+- [x] The field stays **freely editable** — choosing a suggestion only fills the text; the user can keep typing a brand-new payee that isn't in the list (Enter with no highlight keeps the typed text) *(Phase 44a)*
+- [x] The autocomplete is implemented as a **shared, reusable component** (`components/PayeeAutocomplete.jsx`), consumed by the transaction form and the SPEC-007 Envelope History payee filter; the SPEC-037 report filter consumes it too when built (44c–f). *(Phase 44b)*
 
 ### Recurring transactions
 Recurring transactions are **planned items** managed by SPEC-013 (Bills & Income). The transaction form provides a convenient shortcut to create them.

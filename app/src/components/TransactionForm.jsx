@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat, getDefaultCategoryId } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat, getDefaultIncomeEnvelope, getDefaultExpenseEnvelope } from '../data/envelopes'
-import { getPayees, createTransaction, updateTransaction } from '../data/transactions'
+import { createTransaction, updateTransaction } from '../data/transactions'
+import PayeeAutocomplete from './PayeeAutocomplete'
 import { createPlannedItem } from '../data/bills'
 import { INDENT } from '../utils/hierarchy'
 import { parseAmount } from '../utils/format'
@@ -18,7 +19,6 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
   const [type, setType] = useState(initial?.type ?? 'expense')
 
   const accounts  = getActiveAccounts()
-  const payees    = getPayees()
   const envelopes = getEnvelopesFlat(getActiveEnvelopes())
 
   const categories = getCategoriesFlat(type === 'income' ? 'income' : 'expense')
@@ -46,7 +46,6 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
     applicationMode:      'auto-apply',
   })
 
-  const [payeeSuggestions, setPayeeSuggestions] = useState([])
   const [showRecurring, setShowRecurring] = useState(initial?.isRecurring ?? false)
 
   function handleRecurringToggle(checked) {
@@ -67,9 +66,6 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
     if (showRecurring && form.recurringName === (form.payeeName ?? '')) {
       set('recurringName', value)
     }
-    if (value.length < 1) { setPayeeSuggestions([]); return }
-    const q = value.toLowerCase()
-    setPayeeSuggestions(payees.filter(p => p.name.toLowerCase().includes(q)).slice(0, 5))
   }
 
   function handleSubmit(e) {
@@ -237,19 +233,8 @@ export default function TransactionForm({ initial, onSave, onCancel, onDelete, i
 
           <div className={styles.field}>
             <label className={styles.label}>Payee</label>
-            <input className={styles.input} value={form.payeeName}
-              onChange={e => handlePayeeInput(e.target.value)}
-              placeholder="e.g. Gas Station XYZ" autoComplete="off" />
-            {payeeSuggestions.length > 0 && (
-              <div className={styles.suggestions}>
-                {payeeSuggestions.map(p => (
-                  <button key={p.id} type="button" className={styles.suggestion}
-                    onClick={() => { set('payeeName', p.name); setPayeeSuggestions([]) }}>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
+            <PayeeAutocomplete className={styles.input} value={form.payeeName}
+              onChange={handlePayeeInput} placeholder="e.g. Gas Station XYZ" />
           </div>
         </>
       ) : (

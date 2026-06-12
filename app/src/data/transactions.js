@@ -58,6 +58,34 @@ export function getPayees() {
   return load(KEY_PAYEES).sort((a, b) => a.name.localeCompare(b.name))
 }
 
+// Payees ranked for autocomplete (Phase 44a): by transaction frequency (most
+// used first), tie-broken by most-recent use, then alphabetically. Folds in
+// registry payees never used in a transaction (count 0). Grouped by normalized
+// (trimmed, lower-cased) name so case/whitespace variants count together; the
+// most-recently-seen original spelling is the display name.
+export function getPayeesRanked() {
+  const stats = new Map()  // normKey -> { name, count, lastUsed }
+  for (const t of load(KEY_TRANSACTIONS)) {
+    const name = t.payeeName?.trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    const cur = stats.get(key) ?? { name, count: 0, lastUsed: '' }
+    cur.count += 1
+    const d = t.date ?? ''
+    if (d >= cur.lastUsed) { cur.lastUsed = d; cur.name = name }
+    stats.set(key, cur)
+  }
+  for (const p of load(KEY_PAYEES)) {
+    const key = p.name.trim().toLowerCase()
+    if (!stats.has(key)) stats.set(key, { name: p.name, count: 0, lastUsed: '' })
+  }
+  return [...stats.values()].sort((a, b) =>
+    b.count - a.count ||
+    (a.lastUsed < b.lastUsed ? 1 : a.lastUsed > b.lastUsed ? -1 : 0) ||
+    a.name.localeCompare(b.name)
+  )
+}
+
 function savePayee(name) {
   const payees = load(KEY_PAYEES)
   if (payees.some(p => p.name.toLowerCase() === name.toLowerCase())) return

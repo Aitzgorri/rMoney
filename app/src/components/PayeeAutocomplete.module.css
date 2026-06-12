@@ -1,0 +1,35 @@
+.wrap {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1e2535;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 50;
+  margin-top: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  color: #e2e8f0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.suggestion:hover,
+.active {
+  background: #2d3448;
+}

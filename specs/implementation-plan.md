@@ -213,9 +213,9 @@ Recommended sub-phase order (each is independently shippable / testable):
 >
 > **Suggested order:** 44a–44b (autocomplete, smallest + independent) → 44c–44f (report) → 44g (management, the riskiest) → 44h (storage card).
 
-### SPEC-005 Transaction Entry — payee autocomplete upgrade
-44a. [ ] Upgrade the payee autocomplete: top-10 ranked by most-used (tie-break recent), shown on empty focus, full keyboard nav (↑/↓ move, Enter/Tab select, Esc close, click still works), field stays freely editable.
-44b. [ ] Extract the autocomplete into a **shared reusable component** (consumed by the transaction form, the SPEC-037 report filter, and the SPEC-007 Envelope History payee filter); correct the SPEC-005 data-model doc to `payeeName` (string).
+### SPEC-005 Transaction Entry — payee autocomplete upgrade ✓ done (SPEC-005 back to `done`)
+44a. ✓ **DONE** — Payee autocomplete upgraded: `getPayeesRanked()` (most-used, tie-break recent); top-10 shown on empty focus; full keyboard nav (↑/↓, Enter/Tab select highlighted, Esc close, click); stays freely editable (Enter with no highlight keeps the typed text). Verified end-to-end.
+44b. ✓ **DONE** — Extracted to shared `components/PayeeAutocomplete.jsx`, used by the transaction form and the Envelope History payee filter (and the SPEC-037 report filter when built). SPEC-005 data-model doc already corrected to `payeeName` in the Phase 44 planning commit.
 
 ### SPEC-037 Payees — report + management
 44c. [ ] New **Payees** screen + `payees` route in `App.jsx`; entries in `BottomNav` more-menu and `TopNav` More sub-row; desktop-wide / mobile single-column.
