@@ -29,6 +29,7 @@ Every transaction is linked to an account, so accounts must exist before any rec
 - [x] Accounts screen accessible from Dashboard via "See all" link
 - [x] Each account shows its currency alongside the balance
 - [x] Credit card balances are shown as negative numbers (money owed is a liability)
+- [x] **Favorite accounts (Phase 48):** the user can mark accounts as favorites and order them in **Settings → General → Favorite accounts** (drag-to-reorder + search-to-add + remove). The ordered list is stored as account IDs in `rmoney_settings.favoriteAccounts` and surfaces favorites at the top of the Dashboard balances list (SPEC-008) and every account picker (SPEC-005, Phase 51)
 
 ## UI / Screens
 

@@ -110,6 +110,50 @@ export function migrateFavoriteCountries() {
   }
 }
 
+// ─── Favorite accounts / categories / envelopes (Phase 48) ───────────────────
+//
+// Ordered lists of entity IDs the user pins to the top of the relevant pickers
+// (and, for accounts, the Dashboard balances list). Unlike favorite currencies /
+// countries these seed EMPTY — a favorite account is user-specific, there is no
+// sensible default — so no boot migration is needed: the getters default to []
+// when the key is absent, and the keys ride inside the existing `rmoney_settings`
+// blob (already exported/imported by SPEC-016, so no backup-format change).
+
+export function getFavoriteAccounts() {
+  return getSetting('favoriteAccounts', null) ?? []
+}
+
+export function setFavoriteAccounts(ids) {
+  setSetting('favoriteAccounts', ids)
+}
+
+// Categories are strictly split into income and expense trees (SPEC-003), so
+// favorite categories are kept as two independent ordered lists — the type-
+// filtered category pickers (Phase 51) each read only their own type's list.
+export function getFavoriteIncomeCategories() {
+  return getSetting('favoriteIncomeCategories', null) ?? []
+}
+
+export function setFavoriteIncomeCategories(ids) {
+  setSetting('favoriteIncomeCategories', ids)
+}
+
+export function getFavoriteExpenseCategories() {
+  return getSetting('favoriteExpenseCategories', null) ?? []
+}
+
+export function setFavoriteExpenseCategories(ids) {
+  setSetting('favoriteExpenseCategories', ids)
+}
+
+export function getFavoriteEnvelopes() {
+  return getSetting('favoriteEnvelopes', null) ?? []
+}
+
+export function setFavoriteEnvelopes(ids) {
+  setSetting('favoriteEnvelopes', ids)
+}
+
 // ─── CSV import defaults ─────────────────────────────────────────────────────
 
 export function getDefaultCsvDateFormat() {

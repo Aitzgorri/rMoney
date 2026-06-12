@@ -30,6 +30,7 @@ Categories are hierarchical and user-defined, giving flexible organisation witho
 - [x] Categories screen shows Income and Expense trees in two separate tabs or sections
 - [x] Each tree is expandable/collapsible per parent category
 - [x] A category with no parent is a root category (e.g. "Car", "Employment")
+- [x] **Favorite categories (Phase 48):** because categories are strictly split by type, favorites are managed as **two separate lists** — **Settings → General → Favorite income categories** and **Favorite expense categories** (each drag-to-reorder + search-to-add + remove, scoped to its type's tree). Stored as category IDs in `rmoney_settings.favoriteIncomeCategories` / `favoriteExpenseCategories`; in Phase 51 each list surfaces at the top of the matching type's category picker, never mixing income and expense (consistent with the cross-spec type-filtering rule below)
 
 ### Category type filtering in dropdowns (cross-spec rule)
 - [ ] Any dropdown or select that lists categories **must only show categories matching the context type** — income categories for income contexts, expense categories for expense contexts

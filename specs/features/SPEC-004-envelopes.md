@@ -32,6 +32,7 @@ Envelopes are primarily a savings-tracking tool: the user distributes income int
 - [x] Deleting an envelope removes it and all its sub-envelopes
 - [x] Archived envelopes are viewable in a separate "Archived" section
 - [x] Envelopes screen shows an expandable/collapsible tree
+- [x] **Favorite envelopes (Phase 48):** the user can mark envelopes as favorites and order them in **Settings → General → Favorite envelopes** (drag-to-reorder + search-to-add + remove). Stored as envelope IDs in `rmoney_settings.favoriteEnvelopes`; favorites surface at the top of every envelope picker in Phase 51
 
 ### Built-in default envelopes
 - [x] App ships with two built-in envelopes: "Undistributed income" and "Unassigned expenses"

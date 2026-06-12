@@ -34,6 +34,7 @@ It is also the home for user-configurable widgets.
 - [x] Each total row label shows the currency abbreviation (e.g. "Total EUR")
 - [x] A "See all" link navigates to the full Accounts screen
 - [x] Individual account balances are shown under the total
+- [x] **Favorite accounts (Phase 48) appear first**, in the user's favorite order, separated from the remaining accounts by a divider line. Favorites are configured in Settings → General (SPEC-002); ordering uses the shared `splitFavorites` helper
 - [x] Clicking an individual account row navigates to the Transaction list pre-filtered by that account
 
 ### Period summary

@@ -8,7 +8,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt, getFavoriteCountries, setFavoriteCountries } from '../data/settings'
+import { getPlanningStartDay, setPlanningStartDay, getMainCurrency, setMainCurrency, getCurrencyDisplay, setCurrencyDisplay, getDividendDefaultTaxPercent, setDividendDefaultTaxPercent, getDividendEstimationRule, setDividendEstimationRule, getAiConnection, setAiConnection, getMarketDataProviders, setMarketDataProviders, getTradingFees, setTradingFees, resolveTradingFee, getFavoriteCurrencies, setFavoriteCurrencies, getApiCacheTtl, setApiCacheTtl, getPerCountryDividendTax, setPerCountryDividendTax, getConfirmReceipt, setConfirmReceipt, getFavoriteCountries, setFavoriteCountries, getFavoriteAccounts, setFavoriteAccounts, getFavoriteIncomeCategories, setFavoriteIncomeCategories, getFavoriteExpenseCategories, setFavoriteExpenseCategories, getFavoriteEnvelopes, setFavoriteEnvelopes } from '../data/settings'
+import { getActiveAccounts } from '../data/accounts'
+import { getCategoriesFlat } from '../data/categories'
+import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { fmtAmt, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
 import { ISO4217, ISO4217_MAP } from '../utils/iso4217'
@@ -102,6 +105,112 @@ function FavCountryRow({ code, name, onRemove }) {
   )
 }
 
+// One draggable row for the entity-favorites managers (accounts / categories /
+// envelopes). `code` is an optional short tag shown before the name (e.g. the
+// account currency); omitted for entities that have none (envelopes).
+function FavEntityRow({ id, code, name, onRemove }) {
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id })
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id })
+
+  return (
+    <div
+      ref={node => { setDragRef(node); setDropRef(node) }}
+      className={[
+        styles.favRow,
+        isDragging ? styles.dragging : '',
+        isOver && !isDragging ? styles.dragOver : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <span className={styles.dragHandle} {...listeners} {...attributes}>⠿</span>
+      {code ? <span className={styles.favCode}>{code}</span> : null}
+      <span className={styles.favName}>{name}</span>
+      <button className={styles.favRemoveBtn} title={`Remove ${name}`} onClick={onRemove}>×</button>
+    </div>
+  )
+}
+
+// Generic "favorites at the top" manager — drag-to-reorder + remove + search-to-
+// add — reused for favorite accounts, categories and envelopes (Phase 48). The
+// entity pool (`entities`: [{ id, code, name }]) supplies both the display
+// lookup and the add picker; `favIds` is the ordered list of favorite IDs.
+function FavoriteManager({ title, description, favIds, entities, onChange, addPlaceholder }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+
+  const byId = Object.fromEntries(entities.map(e => [e.id, e]))
+  // Only render favorites whose entity still exists (archived/deleted IDs are
+  // kept in storage but hidden here).
+  const liveFavIds = favIds.filter(id => byId[id])
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
+  )
+
+  function reorder({ active, over }) {
+    if (!over || active.id === over.id) return
+    const from = favIds.indexOf(active.id)
+    const to   = favIds.indexOf(over.id)
+    if (from === -1 || to === -1) return
+    const next = [...favIds]
+    next.splice(to, 0, next.splice(from, 1)[0])
+    onChange(next)
+  }
+
+  function remove(id) { onChange(favIds.filter(x => x !== id)) }
+
+  function add(id) {
+    if (!id || favIds.includes(id)) return
+    onChange([...favIds, id])
+    setQuery('')
+    setOpen(false)
+  }
+
+  const q = query.trim().toLowerCase()
+  const matches = q
+    ? entities.filter(e => e.name.toLowerCase().includes(q) || (e.code ?? '').toLowerCase().includes(q)).slice(0, 12)
+    : []
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardTitle}>{title}</div>
+      <p className={styles.description}>{description}</p>
+      {liveFavIds.length === 0 && <p className={styles.description}>None yet — add one below.</p>}
+      <DndContext sensors={sensors} onDragEnd={reorder}>
+        <div className={styles.favList}>
+          {liveFavIds.map(id => (
+            <FavEntityRow key={id} id={id} code={byId[id].code} name={byId[id].name} onRemove={() => remove(id)} />
+          ))}
+        </div>
+      </DndContext>
+      <div className={styles.addCurrencyRow}>
+        <input
+          className={styles.addCurrencyInput}
+          placeholder={addPlaceholder}
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+        />
+      </div>
+      {open && matches.length > 0 && (
+        <div className={styles.addCurrencySuggestions}>
+          {matches.map(e => (
+            <div
+              key={e.id}
+              className={`${styles.addCurrencySuggestion}${favIds.includes(e.id) ? ` ${styles.alreadyFav}` : ''}`}
+              onMouseDown={() => add(e.id)}
+            >
+              {e.code ? <span className={styles.suggCode}>{e.code}</span> : null}
+              <span className={styles.suggName}>{e.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function fmtLogTime(iso) {
   if (!iso) return ''
   return iso.replace('T', ' ').slice(0, 19)
@@ -145,6 +254,10 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [favCountries, setFavCountriesState] = useState(() => getFavoriteCountries())
   const [favCountryAddQuery, setFavCountryAddQuery] = useState('')
   const [favCountryAddOpen, setFavCountryAddOpen] = useState(false)
+  const [favAccounts, setFavAccountsState]   = useState(() => getFavoriteAccounts())
+  const [favIncomeCategories, setFavIncomeCategoriesState]   = useState(() => getFavoriteIncomeCategories())
+  const [favExpenseCategories, setFavExpenseCategoriesState] = useState(() => getFavoriteExpenseCategories())
+  const [favEnvelopes, setFavEnvelopesState] = useState(() => getFavoriteEnvelopes())
   const [dividendTaxPct,      setDividendTaxPctState]      = useState(() => getDividendDefaultTaxPercent())
   const [dividendEstRule,     setDividendEstRuleState]     = useState(() => getDividendEstimationRule())
   const [perCountryTax,       setPerCountryTaxState]       = useState(() => getPerCountryDividendTax())
@@ -323,6 +436,13 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
   )
+
+  // Entity pools for the favorite-accounts/categories/envelopes managers (Phase 48).
+  const accountEntities  = getActiveAccounts().map(a => ({ id: a.id, code: a.currency, name: a.accountName }))
+  const allCategoriesFlat = getCategoriesFlat()
+  const incomeCategoryEntities  = allCategoriesFlat.filter(c => c.type === 'income').map(c => ({ id: c.id, code: '', name: c.name }))
+  const expenseCategoryEntities = allCategoriesFlat.filter(c => c.type === 'expense').map(c => ({ id: c.id, code: '', name: c.name }))
+  const envelopeEntities = getEnvelopesFlat(getActiveEnvelopes()).map(e => ({ id: e.id, code: '', name: e.name }))
 
   function handleCurrencyDisplayChange(mode) {
     setCurrencyDisplayState(mode)
@@ -1001,6 +1121,42 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               ) : null
             })()}
           </div>
+
+          <FavoriteManager
+            title="Favorite accounts"
+            description="These appear at the top of every account picker and at the top of the Dashboard balances list. Drag to reorder."
+            favIds={favAccounts}
+            entities={accountEntities}
+            addPlaceholder="Search account to add…"
+            onChange={ids => { setFavAccountsState(ids); setFavoriteAccounts(ids) }}
+          />
+
+          <FavoriteManager
+            title="Favorite income categories"
+            description="These appear at the top of every income category picker. Drag to reorder."
+            favIds={favIncomeCategories}
+            entities={incomeCategoryEntities}
+            addPlaceholder="Search income category to add…"
+            onChange={ids => { setFavIncomeCategoriesState(ids); setFavoriteIncomeCategories(ids) }}
+          />
+
+          <FavoriteManager
+            title="Favorite expense categories"
+            description="These appear at the top of every expense category picker. Drag to reorder."
+            favIds={favExpenseCategories}
+            entities={expenseCategoryEntities}
+            addPlaceholder="Search expense category to add…"
+            onChange={ids => { setFavExpenseCategoriesState(ids); setFavoriteExpenseCategories(ids) }}
+          />
+
+          <FavoriteManager
+            title="Favorite envelopes"
+            description="These appear at the top of every envelope picker. Drag to reorder."
+            favIds={favEnvelopes}
+            entities={envelopeEntities}
+            addPlaceholder="Search envelope to add…"
+            onChange={ids => { setFavEnvelopesState(ids); setFavoriteEnvelopes(ids) }}
+          />
 
           <div className={styles.card}>
             <div className={styles.cardTitle}>Category Budgets</div>

@@ -90,6 +90,13 @@
   margin: 8px 0;
 }
 
+/* Subtle separator between favorite accounts and the rest (Phase 48). */
+.favDivider {
+  height: 1px;
+  background: #232a3d;
+  margin: 4px 12px;
+}
+
 .accountRow {
   display: flex;
   justify-content: space-between;

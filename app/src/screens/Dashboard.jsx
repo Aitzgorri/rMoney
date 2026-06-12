@@ -3,7 +3,8 @@ import { getActiveAccounts } from '../data/accounts'
 import { getAccountBalance, getTransactions } from '../data/transactions'
 import { getActiveEnvelopes, getEnvelopes, getEnvelopesFlat, getTotalEnvelopeBalance } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
-import { getWidgets, addWidget, removeWidget, reorderWidgets, getMainCurrency, getCurrencyDisplay } from '../data/settings'
+import { getWidgets, addWidget, removeWidget, reorderWidgets, getMainCurrency, getCurrencyDisplay, getFavoriteAccounts } from '../data/settings'
+import { splitFavorites } from '../utils/favorites'
 import { getCurrentPeriod, isInCurrentPeriod, daysRemaining } from '../utils/planningPeriod'
 import { getUpcomingOccurrences } from '../data/bills'
 import { getCategories } from '../data/categories'
@@ -217,36 +218,48 @@ export default function Dashboard({ onNavigate }) {
 
             <div className={styles.divider} />
 
-            {accountsWithBalance.map(account => {
-              const approx = account.currency !== mainCurrency
-                ? convertToMain(account.balance, account.currency, mainCurrency)
-                : null
-              return (
-                <div
-                  key={account.id}
-                  className={`${styles.accountRow} ${styles.accountRowClickable}`}
-                  onClick={() => onNavigate('transactions', { accountId: account.id })}
-                >
-                  <div className={styles.accountLeft}>
-                    <span className={styles.accountIcon}>{TYPE_ICON[account.type]}</span>
-                    <span className={styles.accountName}>
-                      {account.accountName}
-                      {account.companyName ? ` · ${account.companyName}` : ''}
-                    </span>
-                  </div>
-                  <div className={styles.accountRight}>
-                    <span className={account.balance < 0 ? styles.negative : styles.positive}>
-                      {account.balance < 0 ? '−' : ''}{fmtAmt(Math.abs(account.balance))} {account.currency}
-                    </span>
-                    {approx !== null && (
-                      <span className={styles.approxHint}>
-                        ≈ {approx < 0 ? '−' : ''}{fmtAmt(Math.abs(approx))} {mainCurrency}
+            {(() => {
+              // Favorite accounts (Phase 48) float to the top in the user's
+              // favorite order, separated from the rest by a divider line.
+              const { favorites, rest } = splitFavorites(accountsWithBalance, getFavoriteAccounts())
+              const renderRow = account => {
+                const approx = account.currency !== mainCurrency
+                  ? convertToMain(account.balance, account.currency, mainCurrency)
+                  : null
+                return (
+                  <div
+                    key={account.id}
+                    className={`${styles.accountRow} ${styles.accountRowClickable}`}
+                    onClick={() => onNavigate('transactions', { accountId: account.id })}
+                  >
+                    <div className={styles.accountLeft}>
+                      <span className={styles.accountIcon}>{TYPE_ICON[account.type]}</span>
+                      <span className={styles.accountName}>
+                        {account.accountName}
+                        {account.companyName ? ` · ${account.companyName}` : ''}
                       </span>
-                    )}
+                    </div>
+                    <div className={styles.accountRight}>
+                      <span className={account.balance < 0 ? styles.negative : styles.positive}>
+                        {account.balance < 0 ? '−' : ''}{fmtAmt(Math.abs(account.balance))} {account.currency}
+                      </span>
+                      {approx !== null && (
+                        <span className={styles.approxHint}>
+                          ≈ {approx < 0 ? '−' : ''}{fmtAmt(Math.abs(approx))} {mainCurrency}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )
+              }
+              return (
+                <>
+                  {favorites.map(renderRow)}
+                  {favorites.length > 0 && rest.length > 0 && <div className={styles.favDivider} />}
+                  {rest.map(renderRow)}
+                </>
               )
-            })}
+            })()}
           </>
         )}
       </div>
