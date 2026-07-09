@@ -8,8 +8,11 @@ import {
   confirmOccurrence,
   skipOccurrence,
   getNextOccurrenceDate,
+  getDueDates,
   getUpcomingOccurrences,
   checkAndGeneratePending,
+  countPastConfirmedOccurrences,
+  applyAmountToPastOccurrences,
 } from '../data/bills'
 import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
@@ -39,6 +42,7 @@ export default function BillsAndIncome({ onBack }) {
   const [view,         setView]        = useState('list')   // 'list' | 'upcoming'
   const [editItem,     setEditItem]    = useState(null)     // null | 'new-income' | 'new-expense' | item
   const [deleteTarget, setDeleteTarget] = useState(null)   // null | item
+  const [scopeDialog,  setScopeDialog]  = useState(null)   // null | { fields, count, since } (Phase 55a)
   const [filterType,   setFilterType]  = useState('all')    // 'all' | 'income' | 'expense'
   const [filterPayee,  setFilterPayee] = useState('')       // free-text payee filter (Phase 49d)
   const [sortBy,       setSortBy]      = useState('name')   // 'name' | 'amount' | 'next'
@@ -75,11 +79,33 @@ export default function BillsAndIncome({ onBack }) {
 
   function handleSaveItem(fields) {
     if (fields.id) {
-      updatePlannedItem(fields.id, fields)
+      // Phase 55a: editing a recurring item whose amount changed offers the
+      // opt-in "also change past records" scope (amount only) when linked
+      // history exists — otherwise edits always apply "from now on".
+      const prev = items.find(i => i.id === fields.id)
+      if (prev && fields.frequency !== 'one-time' && Number(fields.amount) !== Number(prev.amount)) {
+        const { count, since } = countPastConfirmedOccurrences(fields.id)
+        if (count > 0) {
+          setScopeDialog({ fields, count, since })
+          return
+        }
+      }
+      saveEdit(fields, false)
     } else {
       createPlannedItem(fields)
+      checkAndGeneratePending()   // a NEW item backfills from its start date (intended)
+      setEditItem(null)
     }
-    checkAndGeneratePending()   // generate any past-due occurrences for the saved item
+  }
+
+  // Phase 55a: every edit re-anchors generation to the edit day (`generatedFrom`),
+  // so a schedule change never backfills transactions — a transaction is created
+  // on save only if the newly chosen recurrence day is today.
+  function saveEdit(fields, alsoPast) {
+    updatePlannedItem(fields.id, { ...fields, generatedFrom: localDateStr() })
+    if (alsoPast) applyAmountToPastOccurrences(fields.id, Number(fields.amount))
+    checkAndGeneratePending()
+    setScopeDialog(null)
     setEditItem(null)
   }
 
@@ -154,6 +180,32 @@ export default function BillsAndIncome({ onBack }) {
             onConfirm={handleDeleteItem}
             onCancel={() => setDeleteTarget(null)}
           />
+        )}
+        {scopeDialog && (
+          <div className={styles.dialogBackdrop}>
+            <div className={styles.dialog}>
+              <h3 className={styles.dialogTitle}>Apply the new amount to past records too?</h3>
+              <p className={styles.dialogText}>
+                This item has <strong>{scopeDialog.count}</strong> already-recorded transaction{scopeDialog.count === 1 ? '' : 's'} (since {formatDate(scopeDialog.since)}).
+              </p>
+              <p className={styles.dialogText}>
+                Updating them changes <strong>only their amounts</strong> — their dates, accounts,
+                categories, envelopes and payees stay unchanged.
+              </p>
+              <div className={styles.dialogActions}>
+                <button className={styles.cancelBtn} onClick={() => setScopeDialog(null)}
+                  title="Go back to the form without saving">Cancel</button>
+                <button className={styles.cancelBtn} onClick={() => saveEdit(scopeDialog.fields, true)}
+                  title={`Also set the amount on the ${scopeDialog.count} past transaction(s) — amounts only, nothing else changes`}>
+                  Also update {scopeDialog.count} past record{scopeDialog.count === 1 ? '' : 's'}
+                </button>
+                <button className={styles.saveBtn} onClick={() => saveEdit(scopeDialog.fields, false)}
+                  title="Save the edit for future occurrences only — past records stay as they are">
+                  From now on
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     )
@@ -537,6 +589,27 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
                     onChange={e => set('endDate', e.target.value)} />
                 </label>
               </div>
+
+              {/* Phase 55a: live feedback — when this schedule will next fire.
+                  Edits apply "from now on"; only a today-due schedule records on save. */}
+              {(() => {
+                const preview = {
+                  frequency: form.frequency, dayOfExecution: Number(form.dayOfExecution),
+                  startDate: form.startDate, endDate: form.endDate || null,
+                }
+                const dueDates = form.startDate ? getDueDates(preview, TODAY) : []
+                const dueToday = dueDates[dueDates.length - 1] === TODAY
+                const next = getNextOccurrenceDate(preview)
+                return (
+                  <p className={styles.nextOccNote}>
+                    {dueToday
+                      ? `Due today — will be ${form.applicationMode === 'auto-apply' ? 'recorded as a transaction' : 'shown as pending'} on save (unless already handled today). Next after that: ${next ? formatDate(next) : '—'}`
+                      : next
+                        ? `Next occurrence: ${formatDate(next)}`
+                        : 'No future occurrence — check the start and end dates'}
+                  </p>
+                )
+              })()}
             </>
           )}
 

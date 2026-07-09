@@ -1,7 +1,7 @@
 ---
 id: SPEC-013
 name: Bills & Income
-status: done
+status: in-progress
 created: 2026-04-09
 ---
 
@@ -41,6 +41,13 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] **Payee → category memory** *(Phase 53e)*: entering a payee with no category chosen prefills the payee's last-used category (type-matched, exact-name match), and the payee's last 3 distinct categories appear in a "Recent for this payee" optgroup above Favorites — same behaviour as the transaction form (`getRecentCategoriesForPayee`)
 - [x] User can edit any field of a planned item
 - [x] User can delete a planned item
+
+### Editing semantics *(Phase 55a — decisions D1 locked 2026-07-08)*
+- [x] **Edits apply "from now on" by default**: saving an edit re-anchors generation via an additive `generatedFrom` field (= the edit day), which suppresses every due date before it — a schedule-affecting edit can never backfill transactions on save (the pre-55a bug where editing an auto-apply item immediately created a today-dated transaction; regression-tested)
+- [x] A due date **on** the edit day still fires — the user chose today's day intentionally (auto-apply → transaction; outstanding → pending). New items are unaffected: creation still backfills from the start date by design
+- [x] The form shows a **live "Next occurrence: {date}" line** while editing the schedule, switching to "Due today — will be recorded as a transaction / shown as pending on save" when the chosen schedule hits today
+- [x] **Opt-in past rewrite (amount only)**: when an edit changes the amount of a recurring item that has recorded history, a dialog offers **"From now on"** (default) vs **"Also update N past records (since {date})"** — the label states explicitly that only the amounts of the linked transactions change; their dates, accounts, categories, envelopes and payees stay untouched (`applyAmountToPastOccurrences`, which also stamps the occurrences' `actualAmount`). Preview count/date come from `countPastConfirmedOccurrences` (confirmed occurrences holding a `transactionId`)
+- [x] No backup-format bump: `generatedFrom` is additive (absent = legacy behaviour)
 - [x] Deleting a regular planned item asks: delete only future occurrences, or also remove already-created transactions? User chooses.
 
 ### Application modes

@@ -1,7 +1,7 @@
 // Bills & Income — planned account transactions + pending occurrences.
 // SPEC-013
 
-import { createTransaction } from './transactions'
+import { createTransaction, updateTransaction } from './transactions'
 import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
 
@@ -59,6 +59,36 @@ export function confirmOccurrence(occId, actualAmount, itemFields) {
 export function skipOccurrence(occId) {
   const pending = load(KEY_PENDING)
   save(KEY_PENDING, pending.map(p => p.id === occId ? { ...p, status: 'skipped' } : p))
+}
+
+// ── Past-records rewrite (Phase 55a — opt-in edit scope) ─────────────────────
+// The item's already-recorded history: confirmed occurrences that hold a link
+// to the transaction they created. Used to preview ("N records since {date}")
+// and to apply an amount edit retroactively.
+
+export function countPastConfirmedOccurrences(itemId) {
+  const linked = load(KEY_PENDING)
+    .filter(p => p.plannedItemId === itemId && p.status === 'confirmed' && p.transactionId)
+  const since = linked.length > 0
+    ? linked.map(p => p.dueDate).sort()[0]
+    : null
+  return { count: linked.length, since }
+}
+
+// Rewrites ONLY the amount (locked decision 2026-07-08): the linked
+// transactions keep their dates, accounts, categories, envelopes and payees.
+// Returns the number of transactions updated.
+export function applyAmountToPastOccurrences(itemId, amount) {
+  const pending = load(KEY_PENDING)
+  const linked = pending.filter(p => p.plannedItemId === itemId && p.status === 'confirmed' && p.transactionId)
+  for (const occ of linked) {
+    updateTransaction(occ.transactionId, { amount })
+  }
+  if (linked.length > 0) {
+    const linkedIds = new Set(linked.map(p => p.id))
+    save(KEY_PENDING, pending.map(p => linkedIds.has(p.id) ? { ...p, actualAmount: amount } : p))
+  }
+  return linked.length
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -272,7 +302,12 @@ export function checkAndGeneratePending() {
   const newPendingForConfirm = [] // auto-apply items needing immediate transaction creation
 
   for (const item of items) {
+    // Phase 55a: an edited item re-anchors generation — `generatedFrom` (set by
+    // the edit form to the edit day) suppresses every due date before it, so a
+    // schedule-affecting edit can never backfill transactions. A due date ON
+    // generatedFrom still fires (the user chose today intentionally).
     const dueDates = getDueDates(item, todayStr)
+      .filter(d => !item.generatedFrom || d >= item.generatedFrom)
     for (const dueDate of dueDates) {
       const key = `${item.id}__${dueDate}`
       if (handled.has(key)) continue
