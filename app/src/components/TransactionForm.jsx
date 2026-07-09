@@ -344,6 +344,16 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
             <input className={styles.input} value={form.note}
               onChange={e => set('note', e.target.value)} placeholder="Optional" />
           </div>
+
+          {/* Income only: per-transaction next-period attribution (Phase 55f) */}
+          {type === 'income' && (
+            <label className={styles.recurringToggle}
+              title="Count this income toward the FOLLOWING planning period's summary (for money received shortly before a new period starts)">
+              <input type="checkbox" checked={form.periodShift === 'next'}
+                onChange={e => set('periodShift', e.target.checked ? 'next' : null)} />
+              Count in the next planning period
+            </label>
+          )}
         </>
       ) : (
         <>

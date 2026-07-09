@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   checkAndGeneratePending, getPendingOccurrences,
   countPastConfirmedOccurrences, applyAmountToPastOccurrences,
-  getDuePendingOccurrences,
+  getDuePendingOccurrences, getNextEffectiveOccurrence, applyOccurrenceOverride,
+  getPlannedItems,
 } from './bills'
 import { getTransactions } from './transactions'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
@@ -61,6 +62,96 @@ describe('checkAndGeneratePending with generatedFrom (Phase 55a)', () => {
     checkAndGeneratePending()
     expect(getPendingOccurrences()).toEqual([])
     expect(getTransactions()).toEqual([])
+  })
+})
+
+describe('occurrence overrides (Phase 55d — one-time edits, skip, D4 immediate record)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 6, 9, 12, 0, 0)) // Thu 9 Jul 2026
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    resetStorage()
+  })
+
+  // Recurring on the 20th — next original occurrence is in the future.
+  const item = (extra = {}) => ({
+    id: 'i1', isActive: true, type: 'expense', name: 'Insurance',
+    accountId: 'acc-1', amount: 50, currency: 'EUR',
+    frequency: 'monthly', dayOfExecution: 20, startDate: '2026-07-01',
+    applicationMode: 'outstanding', ...extra,
+  })
+
+  it('a date override pulled to today records IMMEDIATELY — even in outstanding mode (D4)', () => {
+    seedStorage({ rmoney_bill_items: [item({ overrides: { '2026-07-20': { date: '2026-07-09', amount: 55 } } })] })
+    checkAndGeneratePending()
+    const txs = getTransactions()
+    expect(txs).toHaveLength(1)
+    expect(txs[0].date).toBe('2026-07-09')
+    expect(txs[0].amount).toBe(55)
+    const occ = getPendingOccurrences()[0]
+    expect(occ.status).toBe('confirmed')
+    expect(occ.seriesDate).toBe('2026-07-20')  // dedupe key = original schedule date
+    expect(occ.dueDate).toBe('2026-07-09')     // effective date
+    // The override is consumed (one-shot) …
+    expect(getPlannedItems()[0].overrides).toEqual({})
+    // … and a second run creates nothing new.
+    checkAndGeneratePending()
+    expect(getTransactions()).toHaveLength(1)
+  })
+
+  it('a date override pushed later delays generation past the original due date', () => {
+    seedStorage({ rmoney_bill_items: [item({ dayOfExecution: 5, applicationMode: 'auto-apply', overrides: { '2026-07-05': { date: '2026-07-25' } } })] })
+    checkAndGeneratePending()
+    expect(getTransactions()).toEqual([])       // Jul 5 arrived, but moved to Jul 25
+    expect(getPendingOccurrences()).toEqual([])
+  })
+
+  it('skip: recorded as skipped, no transaction, series continues', () => {
+    seedStorage({ rmoney_bill_items: [item({ dayOfExecution: 5, applicationMode: 'auto-apply', overrides: { '2026-07-05': { skipped: true } } })] })
+    checkAndGeneratePending()
+    expect(getTransactions()).toEqual([])
+    const occ = getPendingOccurrences()[0]
+    expect(occ.status).toBe('skipped')
+    expect(occ.seriesDate).toBe('2026-07-05')
+    expect(getPlannedItems()[0].overrides).toEqual({})   // consumed
+    // Next effective occurrence is the following month, untouched.
+    expect(getNextEffectiveOccurrence(getPlannedItems()[0]).date).toBe('2026-08-05')
+  })
+
+  it('an amount-only override keeps the item mode (outstanding stays pending)', () => {
+    seedStorage({ rmoney_bill_items: [item({ dayOfExecution: 5, overrides: { '2026-07-05': { amount: 42 } } })] })
+    checkAndGeneratePending()
+    expect(getTransactions()).toEqual([])          // no explicit date choice → no immediate record
+    const occ = getPendingOccurrences()[0]
+    expect(occ.status).toBe('pending')
+    expect(occ.plannedAmount).toBe(42)
+  })
+
+  it('getNextEffectiveOccurrence reflects date/amount overrides and passes over skips', () => {
+    const i = item({ overrides: {
+      '2026-07-20': { skipped: true },
+      '2026-08-20': { date: '2026-08-15', amount: 60 },
+    } })
+    expect(getNextEffectiveOccurrence(i)).toMatchObject(
+      { date: '2026-08-15', seriesDate: '2026-08-20', amount: 60, overridden: true })
+  })
+
+  it('applyOccurrenceOverride stores the delta and runs the engine at once', () => {
+    seedStorage({ rmoney_bill_items: [item()] })
+    applyOccurrenceOverride('i1', '2026-07-20', { date: '2026-07-09', amount: 48 })
+    // Date chosen = today → recorded immediately (outstanding mode notwithstanding).
+    const txs = getTransactions()
+    expect(txs).toHaveLength(1)
+    expect(txs[0].amount).toBe(48)
+    expect(txs[0].date).toBe('2026-07-09')
+  })
+
+  it('applyOccurrenceOverride with no effective change clears a prior override', () => {
+    seedStorage({ rmoney_bill_items: [item({ overrides: { '2026-07-20': { amount: 99 } } })] })
+    applyOccurrenceOverride('i1', '2026-07-20', { date: '2026-07-20', amount: 50 })  // back to item values
+    expect(getPlannedItems()[0].overrides).toEqual({})
   })
 })
 

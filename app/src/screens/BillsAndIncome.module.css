@@ -726,3 +726,14 @@
   color: var(--text-faint);
   margin: 2px 0 0;
 }
+
+/* Phase 55d: upcoming rows are clickable (one-time occurrence edits) */
+button.upcomingRowBtn {
+  background: none;
+  border: none;
+  font: inherit;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+button.upcomingRowBtn:hover { background: rgba(59, 130, 246, 0.08); border-radius: 8px; }

@@ -261,6 +261,64 @@ export function getNextOccurrenceDate(item) {
   return null
 }
 
+// ── Occurrence overrides (Phase 55d — one-time edits + skip) ─────────────────
+// A recurring item may carry `overrides: { [seriesDate]: {date?, amount?, note?, skipped?} }`
+// — a one-shot change to the single occurrence whose ORIGINAL schedule date is
+// the key. The series itself is untouched; the engine consumes (prunes) an
+// override once its occurrence is generated or skipped.
+
+// The next occurrence the user will actually see for an item, with any override
+// applied: skipped ones are passed over, date/amount/note overrides shine through.
+// Returns { date, seriesDate, amount, note, overridden } or null.
+export function getNextEffectiveOccurrence(item) {
+  const todayStr = localDateStr()
+  if (item.frequency === 'one-time') {
+    return item.date && item.date > todayStr
+      ? { date: item.date, seriesDate: item.date, amount: item.amount, note: null, overridden: false }
+      : null
+  }
+  const ov = item.overrides ?? {}
+  const horizonD = new Date()
+  horizonD.setFullYear(horizonD.getFullYear() + 2)   // ≥1 occurrence even for yearly
+  const candidates = getDueDates(item, localDateStr(horizonD))
+    .filter(seriesDate => !ov[seriesDate]?.skipped)
+    .map(seriesDate => ({
+      seriesDate,
+      date:       ov[seriesDate]?.date ?? seriesDate,
+      amount:     ov[seriesDate]?.amount ?? item.amount,
+      note:       ov[seriesDate]?.note ?? null,
+      overridden: !!ov[seriesDate],
+    }))
+    .filter(c => c.date > todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  return candidates[0] ?? null
+}
+
+// Store (or clear) the one-time override for one occurrence, then run the
+// engine so an override whose chosen date has already arrived records at once
+// (D4: intentional date choice = no second confirmation, regardless of mode).
+export function applyOccurrenceOverride(itemId, seriesDate, { date, amount, note, skipped } = {}) {
+  const items = load(KEY_ITEMS)
+  const item = items.find(i => i.id === itemId)
+  if (!item) return
+
+  const clean = {}
+  if (skipped) {
+    clean.skipped = true
+  } else {
+    if (date && date !== seriesDate) clean.date = date
+    if (amount != null && Number(amount) !== Number(item.amount)) clean.amount = Number(amount)
+    if (note != null && note.trim() !== '') clean.note = note.trim()
+  }
+
+  const overrides = { ...(item.overrides ?? {}) }
+  if (Object.keys(clean).length === 0) delete overrides[seriesDate]   // no-op edit clears any prior override
+  else overrides[seriesDate] = clean
+  save(KEY_ITEMS, items.map(i => i.id === itemId ? { ...i, overrides } : i))
+
+  checkAndGeneratePending()
+}
+
 // Pending occurrences whose due date has arrived, enriched with their (active)
 // item, oldest first — the "waiting for confirmation" list. Shared by the
 // Bills & Income pending section and the Dashboard upcoming card (Phase 55c).
@@ -292,9 +350,11 @@ export function getUpcomingOccurrences() {
     // Skip items with an outstanding pending occurrence
     if (pendingItemIds.has(item.id)) continue
 
-    const next = getNextOccurrenceDate(item)
-    if (next && next > todayStr) {
-      occurrences.push({ date: next, item })
+    // Phase 55d: overrides shine through — a moved/adjusted occurrence shows its
+    // effective date and amount; a skipped one is passed over.
+    const next = getNextEffectiveOccurrence(item)
+    if (next && next.date > todayStr) {
+      occurrences.push({ date: next.date, item, seriesDate: next.seriesDate, amount: next.amount, overridden: next.overridden })
     }
   }
 
@@ -308,60 +368,106 @@ export function checkAndGeneratePending() {
   const items    = load(KEY_ITEMS).filter(i => i.isActive)
   const pending  = load(KEY_PENDING)
 
-  // Build a set of (plannedItemId, dueDate) pairs already handled
-  const handled = new Set(pending.map(p => `${p.plannedItemId}__${p.dueDate}`))
+  // A set of (plannedItemId, series date) pairs already handled. Occurrences
+  // carry `seriesDate` (the original schedule date — the dedupe key) since
+  // Phase 55d; older records fall back to their dueDate.
+  const handled = new Set(pending.map(p => `${p.plannedItemId}__${p.seriesDate ?? p.dueDate}`))
 
   const newPending = []
-  const newPendingForConfirm = [] // auto-apply items needing immediate transaction creation
+  const newPendingForConfirm = [] // occurrences needing immediate transaction creation
+  const consumedOverrides = {}    // itemId → [seriesDate] — overrides consumed this run
 
   for (const item of items) {
-    // Phase 55a: an edited item re-anchors generation — `generatedFrom` (set by
-    // the edit form to the edit day) suppresses every due date before it, so a
-    // schedule-affecting edit can never backfill transactions. A due date ON
-    // generatedFrom still fires (the user chose today intentionally).
-    const dueDates = getDueDates(item, todayStr)
+    const ov = (item.frequency !== 'one-time' && item.overrides) || {}
+    // Scan the raw series far enough to catch overrides that PULL a future
+    // occurrence earlier (its original date may lie beyond today).
+    const horizon = Object.keys(ov).reduce((m, k) => (k > m ? k : m), todayStr)
+    // Phase 55a: `generatedFrom` (stamped by the edit form) suppresses every
+    // series date before it — edits never backfill. A date ON it still fires.
+    const seriesDates = getDueDates(item, horizon)
       .filter(d => !item.generatedFrom || d >= item.generatedFrom)
-    for (const dueDate of dueDates) {
-      const key = `${item.id}__${dueDate}`
+
+    for (const seriesDate of seriesDates) {
+      const key = `${item.id}__${seriesDate}`
       if (handled.has(key)) continue
+
+      const o = ov[seriesDate]
+
+      // Phase 55d: a skipped occurrence is recorded (so it never re-fires) but
+      // creates no transaction; the series continues unchanged.
+      if (o?.skipped) {
+        newPending.push({
+          id: `occ_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          plannedItemId: item.id, seriesDate, dueDate: seriesDate,
+          plannedAmount: item.amount, actualAmount: null,
+          status: 'skipped', confirmedAt: null, transactionId: null,
+        })
+        ;(consumedOverrides[item.id] ??= []).push(seriesDate)
+        continue
+      }
+
+      const effDate   = o?.date ?? seriesDate
+      const effAmount = o?.amount ?? item.amount
+      const effNote   = o?.note ?? item.name
+      if (effDate > todayStr) continue   // not due yet (possibly pushed later)
+
+      // D4 (locked 2026-07-08): an override with an explicitly chosen date that
+      // has arrived records immediately in BOTH modes — the user picked the
+      // date intentionally, no second confirmation. Otherwise the item's mode rules.
+      const immediate = item.applicationMode === 'auto-apply' || (o?.date != null)
 
       const occ = {
         id:            `occ_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         plannedItemId: item.id,
-        dueDate,
-        plannedAmount: item.amount,
+        seriesDate,
+        dueDate:       effDate,
+        plannedAmount: effAmount,
         actualAmount:  null,
-        status:        item.applicationMode === 'auto-apply' ? 'confirmed' : 'pending',
-        confirmedAt:   item.applicationMode === 'auto-apply' ? new Date().toISOString() : null,
+        status:        immediate ? 'confirmed' : 'pending',
+        confirmedAt:   immediate ? new Date().toISOString() : null,
         transactionId: null,
       }
 
-      if (item.applicationMode === 'auto-apply') {
-        newPendingForConfirm.push({ occ, item, dueDate })
+      if (o) (consumedOverrides[item.id] ??= []).push(seriesDate)
+
+      if (immediate) {
+        newPendingForConfirm.push({ occ, item, date: effDate, amount: effAmount, note: effNote })
       } else {
         newPending.push(occ)
       }
     }
   }
 
-  // Create transactions for auto-apply items
-  for (const { occ, item, dueDate } of newPendingForConfirm) {
+  // Create transactions for immediately-recorded occurrences
+  for (const { occ, item, date, amount, note } of newPendingForConfirm) {
     const tx = createTransaction({
       type:        item.type,
       accountId:   item.accountId,
-      amount:      item.amount,
+      amount,
       currency:    item.currency,
       categoryId:  item.categoryId ?? null,
       envelopeId:  item.envelopeId ?? null,
       payeeName:   item.payee ?? '',
-      note:        item.name,
-      date:        dueDate,
+      note,
+      date,
       isPlanned:   true,
+      ...(item.countInNextPeriod ? { periodShift: 'next' } : {}),   // Phase 55f
     })
     newPending.push({ ...occ, transactionId: tx.id })
   }
 
   if (newPending.length > 0) {
     save(KEY_PENDING, [...pending, ...newPending])
+  }
+
+  // Consumed overrides are pruned from their items (one-shot by design).
+  if (Object.keys(consumedOverrides).length > 0) {
+    save(KEY_ITEMS, load(KEY_ITEMS).map(i => {
+      const used = consumedOverrides[i.id]
+      if (!used) return i
+      const overrides = { ...(i.overrides ?? {}) }
+      for (const k of used) delete overrides[k]
+      return { ...i, overrides }
+    }))
   }
 }

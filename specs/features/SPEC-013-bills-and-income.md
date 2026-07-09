@@ -1,7 +1,7 @@
 ---
 id: SPEC-013
 name: Bills & Income
-status: in-progress
+status: done
 created: 2026-04-09
 ---
 
@@ -48,6 +48,19 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] The form shows a **live "Next occurrence: {date}" line** while editing the schedule, switching to "Due today — will be recorded as a transaction / shown as pending on save" when the chosen schedule hits today
 - [x] **Opt-in past rewrite (amount only)**: when an edit changes the amount of a recurring item that has recorded history, a dialog offers **"From now on"** (default) vs **"Also update N past records (since {date})"** — the label states explicitly that only the amounts of the linked transactions change; their dates, accounts, categories, envelopes and payees stay untouched (`applyAmountToPastOccurrences`, which also stamps the occurrences' `actualAmount`). Preview count/date come from `countPastConfirmedOccurrences` (confirmed occurrences holding a `transactionId`)
 - [x] No backup-format bump: `generatedFrom` is additive (absent = legacy behaviour)
+
+### Occurrence overrides — one-time edits, skip, early confirm *(Phase 55d/55e — decision D4 locked 2026-07-08)*
+- [x] Clicking an **upcoming occurrence** (Dashboard Upcoming card or the Bills & Income Upcoming view; recurring items only) opens a one-time edit dialog: change that occurrence's **date, amount and/or note**, **skip it**, or jump to **editing the series** (55a). The series keeps its original schedule
+- [x] Overrides are stored on the item as `overrides: { [seriesDate]: { date?, amount?, note?, skipped? } }` (additive, no backup bump) keyed by the ORIGINAL schedule date; occurrences carry `seriesDate` as their dedupe key so a moved occurrence can never double-fire. The engine **consumes (prunes) an override** once its occurrence is generated or skipped
+- [x] **A chosen date that has arrived records the transaction immediately in BOTH application modes** — the user picked the date intentionally, no second confirmation (D4). An override moving an occurrence **later** delays generation past the original due date; a **skipped** occurrence is recorded as skipped (no transaction) and the series continues
+- [x] **Early confirmation** *(55e)*: the dialog's **"Record now"** button (and any date ≤ today) confirms the occurrence before its planned date with an editable amount — covering "executed Friday because the due day falls on Sunday" and paid-sooner-than-estimated cases
+- [x] Upcoming lists and next-occurrence displays are **override-aware** (`getNextEffectiveOccurrence`): they show the effective date and amount (marked ↻), pass over skipped occurrences, and advance to the next original-schedule occurrence after an override is consumed
+- [x] An amount-only override (no date chosen) keeps the item's application mode — an outstanding item still surfaces as pending with the overridden amount
+
+### Next-period income attribution *(Phase 55f)*
+- [x] Income planned items have a **"Count in the next planning period"** flag; transactions generated from them (auto-apply, single/bulk/Dashboard confirm) carry `periodShift: 'next'` (additive field)
+- [x] The Dashboard period summary attributes such transactions to the period AFTER the one their date falls in (`selectPeriodTransactions` in `utils/planningPeriod.js` — in-period without shift + previous-period with shift; unit-tested against the "wage on the 7th, period starts the 10th" example) and shows a note when carried-in income contributes
+- [x] One-off incomes can set the same flag per transaction in the transaction form (SPEC-005)
 - [x] Deleting a regular planned item asks: delete only future occurrences, or also remove already-created transactions? User chooses.
 
 ### Application modes

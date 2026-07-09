@@ -7,6 +7,7 @@ import {
   confirmOccurrence,
   skipOccurrence,
   getNextOccurrenceDate,
+  getNextEffectiveOccurrence,
   getDueDates,
   getUpcomingOccurrences,
   checkAndGeneratePending,
@@ -24,6 +25,7 @@ import { formatDate, localDateStr } from '../utils/dates'
 import { FREQUENCIES, FREQUENCY_LABELS, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import PayeeAutocomplete from '../components/PayeeAutocomplete'
+import OccurrenceOverrideDialog from '../components/OccurrenceOverrideDialog'
 import styles from './BillsAndIncome.module.css'
 import { fmtAmt, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
@@ -43,6 +45,7 @@ export default function BillsAndIncome({ onBack }) {
   const [editItem,     setEditItem]    = useState(null)     // null | 'new-income' | 'new-expense' | item
   const [deleteTarget, setDeleteTarget] = useState(null)   // null | item
   const [scopeDialog,  setScopeDialog]  = useState(null)   // null | { fields, count, since } (Phase 55a)
+  const [overrideEntry, setOverrideEntry] = useState(null) // null | upcoming entry (Phase 55d)
   const [filterType,   setFilterType]  = useState('all')    // 'all' | 'income' | 'expense'
   const [filterPayee,  setFilterPayee] = useState('')       // free-text payee filter (Phase 49d)
   const [sortBy,       setSortBy]      = useState('name')   // 'name' | 'amount' | 'next'
@@ -125,6 +128,7 @@ export default function BillsAndIncome({ onBack }) {
       payeeName:  item.payee ?? '',
       note:       item.name,
       date:       actualDate ?? occ.dueDate,
+      ...(item.countInNextPeriod ? { periodShift: 'next' } : {}),   // Phase 55f
     })
     setTick(t => t + 1)
   }
@@ -147,6 +151,7 @@ export default function BillsAndIncome({ onBack }) {
         payeeName:  p.item.payee ?? '',
         note:       p.item.name,
         date:       edit.date,
+        ...(p.item.countInNextPeriod ? { periodShift: 'next' } : {}),   // Phase 55f
       })
     }
     confirmedRef.current = new Set()
@@ -219,8 +224,8 @@ export default function BillsAndIncome({ onBack }) {
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'amount') return b.amount - a.amount
     if (sortBy === 'next') {
-      const an = getNextOccurrenceDate(a) ?? '9999'
-      const bn = getNextOccurrenceDate(b) ?? '9999'
+      const an = getNextEffectiveOccurrence(a)?.date ?? '9999'
+      const bn = getNextEffectiveOccurrence(b)?.date ?? '9999'
       return an.localeCompare(bn)
     }
     return a.name.localeCompare(b.name)
@@ -375,23 +380,38 @@ export default function BillsAndIncome({ onBack }) {
           {upcoming.length === 0 ? (
             <p className={styles.empty}>No upcoming occurrences found.</p>
           ) : (
-            upcoming.map(({ date, item }, i) => (
-              <div key={i} className={styles.upcomingRow}>
-                <span className={styles.upcomingDate}>{formatDate(date)}</span>
-                <div className={styles.upcomingInfo}>
-                  <span className={styles.upcomingName}>{item.name}</span>
-                  <span className={styles.upcomingAccount}>{accountMap[item.accountId]?.accountName ?? '—'}</span>
-                </div>
-                <div className={styles.upcomingRight}>
-                  <span className={`${styles.upcomingAmount} ${item.type === 'income' ? styles.incomeColor : styles.expenseColor}`}>
-                    {item.type === 'income' ? '+' : '-'}{fmtAmt(item.amount)} {item.currency}
-                  </span>
-                  <span className={`${styles.modeTag} ${styles.modeUpcoming}`}>upcoming</span>
-                </div>
-              </div>
-            ))
+            upcoming.map((entry, i) => {
+              const { date, item, amount, overridden } = entry
+              const recurring = item.frequency !== 'one-time'
+              const Row = recurring ? 'button' : 'div'
+              return (
+                <Row key={i} className={`${styles.upcomingRow} ${recurring ? styles.upcomingRowBtn : ''}`}
+                  {...(recurring ? { onClick: () => setOverrideEntry(entry), title: 'Edit this occurrence — one-time change, skip, or record early' } : {})}>
+                  <span className={styles.upcomingDate}>{overridden ? '↻ ' : ''}{formatDate(date)}</span>
+                  <div className={styles.upcomingInfo}>
+                    <span className={styles.upcomingName}>{item.name}</span>
+                    <span className={styles.upcomingAccount}>{accountMap[item.accountId]?.accountName ?? '—'}</span>
+                  </div>
+                  <div className={styles.upcomingRight}>
+                    <span className={`${styles.upcomingAmount} ${item.type === 'income' ? styles.incomeColor : styles.expenseColor}`}>
+                      {item.type === 'income' ? '+' : '-'}{fmtAmt(amount ?? item.amount)} {item.currency}
+                    </span>
+                    <span className={`${styles.modeTag} ${styles.modeUpcoming}`}>upcoming</span>
+                  </div>
+                </Row>
+              )
+            })
           )}
         </div>
+      )}
+
+      {overrideEntry && (
+        <OccurrenceOverrideDialog
+          entry={overrideEntry}
+          onEditSeries={() => { const it = overrideEntry.item; setOverrideEntry(null); setEditItem(it) }}
+          onClose={() => setOverrideEntry(null)}
+          onSaved={() => { setOverrideEntry(null); setTick(t => t + 1) }}
+        />
       )}
     </div>
   )
@@ -400,7 +420,7 @@ export default function BillsAndIncome({ onBack }) {
 // ── Item row ─────────────────────────────────────────────────────────────────
 
 function ItemRow({ item, accountMap, isOutstanding, onClick }) {
-  const next = getNextOccurrenceDate(item)
+  const next = getNextEffectiveOccurrence(item)?.date ?? null   // override-aware (55d)
   const freq = FREQUENCY_LABELS[item.frequency] ?? item.frequency
   return (
     <button className={styles.itemRow} onClick={onClick} title="Edit this planned item">
@@ -441,6 +461,7 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
     endDate:         '',
     date:            TODAY,
     applicationMode: 'auto-apply',
+    countInNextPeriod: false,   // income only (Phase 55f)
   })
 
   function set(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
@@ -622,6 +643,15 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
               Outstanding — I confirm the actual amount
             </label>
           </div>
+
+          {form.type === 'income' && (
+            <label className={styles.radioLabel}
+              title="For income received shortly before a new planning period starts (e.g. a wage on the 7th when the period begins on the 10th): its transactions count toward the FOLLOWING period's summary">
+              <input type="checkbox" checked={!!form.countInNextPeriod}
+                onChange={e => set('countInNextPeriod', e.target.checked)} />
+              Count in the next planning period
+            </label>
+          )}
 
         </form>
       </div>

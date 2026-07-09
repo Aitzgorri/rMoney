@@ -59,6 +59,9 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] **Payee → envelope memory** *(Phase 53g)*: the same behaviour for envelopes — entering a payee with no envelope chosen prefills the payee's last-used envelope, and the last 3 distinct envelopes appear in a "Recent for this payee" group above Favorites in the envelope dropdown (`getRecentEnvelopesForPayee`, sharing one derivation with the category memory; type-filtered, exact-name match, no new storage)
 - [x] The selected envelope's **full ancestor path** (`Household › Food › Groceries`) is shown as a helper line directly under the envelope dropdown
 
+### Period attribution (income only)
+- [x] An income transaction can be flagged **"Count in the next planning period"** (stores `periodShift: 'next'`) — for money received shortly before a new period starts; the Dashboard period summary attributes it accordingly (SPEC-008/013, Phase 55f)
+
 ### Built-in categories
 - [x] App ships with two built-in categories: "Uncategorized income" (income type) and "Uncategorized expense" (expense type)
 - [x] Built-in categories can be renamed but NOT deleted

@@ -1,0 +1,104 @@
+/* One-time occurrence edit dialog (Phase 55d) — palette matches the
+   Bills & Income dialogs. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.dialog {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 4px;
+}
+.subtitle {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0 0 14px;
+}
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.input {
+  background: #0f1520;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+.hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 4px 0 12px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.skipBtn {
+  background: none;
+  border: 1px solid #b45309;
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: #f59e0b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: auto;
+}
+.skipBtn:hover { background: rgba(180, 83, 9, 0.15); }
+.cancelBtn {
+  background: #2d3448;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cancelBtn:hover { background: #3d4558; color: #f1f5f9; }
+.saveBtn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.saveBtn:hover { background: #2563eb; }
+.editSeries {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.editSeries:hover { text-decoration: underline; }

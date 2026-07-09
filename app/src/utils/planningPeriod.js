@@ -45,6 +45,37 @@ export function isInCurrentPeriod(dateStr, today = new Date()) {
   return d >= start && d <= end
 }
 
+// The period immediately before the current one (Phase 55f).
+export function getPreviousPeriod(today = new Date()) {
+  const { start } = getCurrentPeriod(today)
+  const dayBefore = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1)
+  return getCurrentPeriod(dayBefore)
+}
+
+// Returns true if a date string falls within an explicit { start, end } period.
+export function isInPeriod(dateStr, period) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d >= period.start && d <= period.end
+}
+
+// The transactions attributed to the CURRENT planning period (Phase 55f).
+// Attribution is by date, except that a transaction carrying
+// `periodShift: 'next'` (income received late in a period but meant to fund
+// the following one — e.g. a wage on the 7th when the period starts on the
+// 10th) counts in the period AFTER the one its date falls in:
+//   • in-period transactions without the shift count here;
+//   • previous-period transactions WITH the shift count here instead.
+// Transfers are excluded, as before.
+export function selectPeriodTransactions(transactions, today = new Date()) {
+  const prev = getPreviousPeriod(today)
+  return transactions.filter(t =>
+    t.type !== 'transfer' && (
+      (isInCurrentPeriod(t.date, today) && t.periodShift !== 'next') ||
+      (isInPeriod(t.date, prev) && t.periodShift === 'next')
+    )
+  )
+}
+
 function formatRange(start, end) {
   const fmt = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   return `${fmt(start)} — ${fmt(end)}`

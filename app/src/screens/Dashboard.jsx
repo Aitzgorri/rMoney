@@ -5,8 +5,9 @@ import { getActiveEnvelopes, getEnvelopes, getEnvelopesFlat, getTotalEnvelopeBal
 import { INDENT } from '../utils/hierarchy'
 import { getWidgets, addWidget, removeWidget, reorderWidgets, getMainCurrency, getCurrencyDisplay, getFavoriteAccounts } from '../data/settings'
 import { splitFavorites } from '../utils/favorites'
-import { getCurrentPeriod, isInCurrentPeriod, daysRemaining } from '../utils/planningPeriod'
+import { getCurrentPeriod, daysRemaining, selectPeriodTransactions } from '../utils/planningPeriod'
 import { getUpcomingOccurrences, getDuePendingOccurrences, confirmOccurrence } from '../data/bills'
+import OccurrenceOverrideDialog from '../components/OccurrenceOverrideDialog'
 import { getCategories } from '../data/categories'
 import { ensureRates, convertToMain, getRatesLastFetchedAt, formatRatesTimestamp } from '../utils/currency'
 import styles from './Dashboard.module.css'
@@ -49,6 +50,7 @@ export default function Dashboard({ onNavigate }) {
   // here — getUpcomingOccurrences excludes their items entirely. Show them at the
   // top of the Upcoming card with an inline Confirm (same semantics as Bills & Income).
   const [, bumpTick] = useState(0)
+  const [overrideEntry, setOverrideEntry] = useState(null)   // Phase 55d: one-time occurrence edit
   const upcoming = getUpcomingOccurrences()
   const duePending = getDuePendingOccurrences()
   const categoriesById = Object.fromEntries(getCategories().map(c => [c.id, c]))
@@ -63,6 +65,7 @@ export default function Dashboard({ onNavigate }) {
       payeeName:  p.item.payee ?? '',
       note:       p.item.name,
       date:       p.dueDate,
+      ...(p.item.countInNextPeriod ? { periodShift: 'next' } : {}),   // Phase 55f
     })
     bumpTick(t => t + 1)
   }
@@ -128,10 +131,12 @@ export default function Dashboard({ onNavigate }) {
     }
   }
 
-  // Period summary: income and expenses within current planning period
-  const periodTxs = getTransactions().filter(t =>
-    t.type !== 'transfer' && isInCurrentPeriod(t.date)
-  )
+  // Period summary: income and expenses attributed to the current planning
+  // period. Attribution is by date, except transactions flagged
+  // `periodShift: 'next'` count in the following period (Phase 55f — e.g. a
+  // wage received on the 7th funding the period that starts on the 10th).
+  const periodTxs = selectPeriodTransactions(getTransactions())
+  const carriedIn = periodTxs.filter(t => t.periodShift === 'next')
 
   const periodSummary = periodTxs.reduce((acc, t) => {
     const cur = t.currency || '?'
@@ -318,6 +323,11 @@ export default function Dashboard({ onNavigate }) {
             )
           })
         )}
+        {carriedIn.length > 0 && (
+          <p className={styles.carriedNote}>
+            Includes {carriedIn.length} income record{carriedIn.length === 1 ? '' : 's'} received last period but counted here (next-period income).
+          </p>
+        )}
       </div>
 
       {/* Upcoming card */}
@@ -355,21 +365,36 @@ export default function Dashboard({ onNavigate }) {
           <p className={styles.empty}>No upcoming items.</p>
         ) : upcoming.length === 0 ? null : (
           <div className={styles.upcomingList}>
-            {(showAllUpcoming ? upcoming : upcoming.slice(0, 5)).map(({ date, item }) => (
-              <div key={item.id + date} className={styles.upcomingRow}>
-                <span className={styles.upcomingDate}>{formatUpcomingDate(date)}</span>
-                <span className={item.type === 'income' ? styles.upcomingTypeIncome : styles.upcomingTypeExpense}>
-                  {item.type === 'income' ? 'Income' : 'Expense'}
-                </span>
-                <span className={item.type === 'income' ? styles.positive : styles.negative}>
-                  {item.type === 'income' ? '+' : '-'}{fmtAmt(item.amount)} {item.currency}
-                </span>
-                <span className={styles.upcomingName}>{getDisplayName(item, categoriesById)}</span>
-              </div>
-            ))}
+            {(showAllUpcoming ? upcoming : upcoming.slice(0, 5)).map(entry => {
+              const { date, item, amount, overridden } = entry
+              const recurring = item.frequency !== 'one-time'
+              const Row = recurring ? 'button' : 'div'
+              return (
+                <Row key={item.id + date} className={`${styles.upcomingRow} ${recurring ? styles.upcomingRowBtn : ''}`}
+                  {...(recurring ? { onClick: () => setOverrideEntry(entry), title: 'Edit this occurrence — one-time change, skip, or record early' } : {})}>
+                  <span className={styles.upcomingDate}>{overridden ? '↻ ' : ''}{formatUpcomingDate(date)}</span>
+                  <span className={item.type === 'income' ? styles.upcomingTypeIncome : styles.upcomingTypeExpense}>
+                    {item.type === 'income' ? 'Income' : 'Expense'}
+                  </span>
+                  <span className={item.type === 'income' ? styles.positive : styles.negative}>
+                    {item.type === 'income' ? '+' : '-'}{fmtAmt(amount ?? item.amount)} {item.currency}
+                  </span>
+                  <span className={styles.upcomingName}>{getDisplayName(item, categoriesById)}</span>
+                </Row>
+              )
+            })}
           </div>
         )}
       </div>
+
+      {overrideEntry && (
+        <OccurrenceOverrideDialog
+          entry={overrideEntry}
+          onEditSeries={() => { setOverrideEntry(null); onNavigate?.('bills') }}
+          onClose={() => setOverrideEntry(null)}
+          onSaved={() => { setOverrideEntry(null); bumpTick(t => t + 1) }}
+        />
+      )}
 
       {/* Widgets section */}
       <div className={styles.widgetSection}>

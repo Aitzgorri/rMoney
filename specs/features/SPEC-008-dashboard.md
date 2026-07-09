@@ -46,6 +46,8 @@ It is also the home for user-configurable widgets.
 - [x] A card shows the next upcoming recurring incomes and expenses
 - [x] Each entry shows: date, type (income/expense), amount, payee or category
 - [x] Shows the next 5 upcoming by default (with option to see all)
+- [x] **Upcoming rows are clickable** *(Phase 55d)*: a recurring occurrence opens the one-time edit dialog (change date/amount/note, skip, record now, or jump to editing the series via the Bills & Income page); rows show the override-aware effective date and amount (↻ marks an overridden occurrence)
+- [x] The **period summary** attributes `periodShift: 'next'` income to the following period and shows a "counted here from last period" note when such income contributes *(Phase 55f)*
 - [x] **Due-pending occurrences appear at the top of the card** *(Phase 55c)* — outstanding bills whose due date has arrived were previously invisible here (the upcoming derivation excludes their items entirely). They render with distinct styling (a "due" tag) and an inline **Confirm** button that creates the transaction with the planned amount and due date — same `confirmOccurrence` semantics as the Bills & Income page (which remains the place to adjust the amount/date before confirming). Shared derivation: `getDuePendingOccurrences()` in `data/bills.js`, also consumed by the Bills & Income pending section
 
 ### Widgets
