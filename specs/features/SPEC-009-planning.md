@@ -86,10 +86,9 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] An **action bar** at the bottom of the planning page (below the expense tree) contains two buttons: **"Reset all"** and **"Apply all transfers"**
 - [x] **"Apply all transfers"** processes every out-of-sync planned **expense** in one click: creates new scheduled envelope transfers where none exist, and updates existing ones where amounts differ. Planned incomes are skipped entirely.
 - [x] **"Reset all"** clears the amount on any unapplied expense and reverts any out-of-sync expense to the current transfer amount. Planned incomes are skipped entirely.
-- [x] Before applying, the user is asked once: **"Update the next occurrence only, or the whole series?"** — the chosen option applies to all existing transfers being updated in this batch
-- [x] "Next only" creates an override on the next occurrence of each affected transfer and leaves the recurring rules unchanged
-- [x] "Whole series" updates each recurring rule from this point forward
-- [x] The user can also trigger create/update on a **single expense row** by clicking its sync indicator — the same "next only / whole series" choice is offered for that individual item
+- [x] **Applying never records a transfer immediately** *(Phase 55b — same rule as SPEC-013 editing)*: apply creates/updates the scheduled **rule** only; the transfer fires when the rule's day is due (which may be today, if today IS the chosen day). Previously the "next occurrence only" scope created an envelope transfer dated **today** regardless of the recurrence day — that scope choice is **removed** (its two options had converged to the same rule-update anyway, differing only by the buggy immediate transfer; the old spec text describing a one-occurrence override was never what the code did)
+- [x] The apply dialog lists each affected item with **when the change takes effect** — "takes effect today" / "takes effect {date}" (the rule's next occurrence with the item's chosen day) — and states "Nothing is recorded now — each transfer fires on its scheduled day"
+- [x] The user can also trigger create/update on a **single expense row** by clicking its sync indicator — same dialog, same semantics
 - [x] After applying, all sync indicators clear
 
 ### Creating parent expense items directly

@@ -46,6 +46,7 @@ It is also the home for user-configurable widgets.
 - [x] A card shows the next upcoming recurring incomes and expenses
 - [x] Each entry shows: date, type (income/expense), amount, payee or category
 - [x] Shows the next 5 upcoming by default (with option to see all)
+- [x] **Due-pending occurrences appear at the top of the card** *(Phase 55c)* — outstanding bills whose due date has arrived were previously invisible here (the upcoming derivation excludes their items entirely). They render with distinct styling (a "due" tag) and an inline **Confirm** button that creates the transaction with the planned amount and due date — same `confirmOccurrence` semantics as the Bills & Income page (which remains the place to adjust the amount/date before confirming). Shared derivation: `getDuePendingOccurrences()` in `data/bills.js`, also consumed by the Bills & Income pending section
 
 ### Widgets
 - [x] Dashboard supports a widget area where widgets are displayed in a user-defined order

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   checkAndGeneratePending, getPendingOccurrences,
   countPastConfirmedOccurrences, applyAmountToPastOccurrences,
+  getDuePendingOccurrences,
 } from './bills'
 import { getTransactions } from './transactions'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
@@ -60,6 +61,37 @@ describe('checkAndGeneratePending with generatedFrom (Phase 55a)', () => {
     checkAndGeneratePending()
     expect(getPendingOccurrences()).toEqual([])
     expect(getTransactions()).toEqual([])
+  })
+})
+
+describe('getDuePendingOccurrences (Phase 55c — the Dashboard confirm surface)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 6, 9, 12, 0, 0))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    resetStorage()
+  })
+
+  it('returns only pending occurrences whose due date has arrived, enriched + oldest-first', () => {
+    seedStorage({
+      rmoney_bill_items: [
+        { id: 'i1', isActive: true,  name: 'Rent',    type: 'expense' },
+        { id: 'i2', isActive: false, name: 'Old gym', type: 'expense' },   // inactive → excluded
+      ],
+      rmoney_bill_pending: [
+        { id: 'p1', plannedItemId: 'i1', dueDate: '2026-07-09', status: 'pending' },   // due today ✓
+        { id: 'p2', plannedItemId: 'i1', dueDate: '2026-07-01', status: 'pending' },   // overdue ✓
+        { id: 'p3', plannedItemId: 'i1', dueDate: '2026-07-20', status: 'pending' },   // future ✗
+        { id: 'p4', plannedItemId: 'i1', dueDate: '2026-07-05', status: 'confirmed' }, // handled ✗
+        { id: 'p5', plannedItemId: 'i2', dueDate: '2026-07-01', status: 'pending' },   // inactive item ✗
+        { id: 'p6', plannedItemId: 'gone', dueDate: '2026-07-01', status: 'pending' }, // orphan ✗
+      ],
+    })
+    const due = getDuePendingOccurrences()
+    expect(due.map(p => p.id)).toEqual(['p2', 'p1'])
+    expect(due[0].item.name).toBe('Rent')
   })
 })
 

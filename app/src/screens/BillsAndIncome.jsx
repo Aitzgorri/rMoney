@@ -4,7 +4,6 @@ import {
   createPlannedItem,
   updatePlannedItem,
   deletePlannedItem,
-  getPendingOccurrences,
   confirmOccurrence,
   skipOccurrence,
   getNextOccurrenceDate,
@@ -13,6 +12,7 @@ import {
   checkAndGeneratePending,
   countPastConfirmedOccurrences,
   applyAmountToPastOccurrences,
+  getDuePendingOccurrences,
 } from '../data/bills'
 import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
@@ -51,17 +51,13 @@ export default function BillsAndIncome({ onBack }) {
   const confirmedRef = useRef(new Set())                     // sync guard: IDs confirmed this render cycle
 
   const items      = getPlannedItems().filter(i => i.isActive)
-  const pending    = getPendingOccurrences().filter(p => p.status === 'pending')
   const accounts   = getActiveAccounts()
   const catsFlat   = getCategoriesFlat()
   const envsFlat   = getEnvelopesFlat(getActiveEnvelopes())
 
-  // Enrich pending items with their parent planned item
-  const todayStr = localDateStr()
-  const enrichedPending = pending
-    .map(p => ({ ...p, item: items.find(i => i.id === p.plannedItemId) }))
-    .filter(p => p.item && p.dueDate <= todayStr)   // only show if the due date has arrived
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  // Pending items whose due date has arrived, enriched with their planned item
+  // (shared derivation with the Dashboard upcoming card — Phase 55c).
+  const enrichedPending = getDuePendingOccurrences()
 
   function getEdit(p) {
     const e = pendingEdits[p.id]

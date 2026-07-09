@@ -6,7 +6,7 @@ import { INDENT } from '../utils/hierarchy'
 import { getWidgets, addWidget, removeWidget, reorderWidgets, getMainCurrency, getCurrencyDisplay, getFavoriteAccounts } from '../data/settings'
 import { splitFavorites } from '../utils/favorites'
 import { getCurrentPeriod, isInCurrentPeriod, daysRemaining } from '../utils/planningPeriod'
-import { getUpcomingOccurrences } from '../data/bills'
+import { getUpcomingOccurrences, getDuePendingOccurrences, confirmOccurrence } from '../data/bills'
 import { getCategories } from '../data/categories'
 import { ensureRates, convertToMain, getRatesLastFetchedAt, formatRatesTimestamp } from '../utils/currency'
 import styles from './Dashboard.module.css'
@@ -45,8 +45,27 @@ export default function Dashboard({ onNavigate }) {
   const [ratesError, setRatesError] = useState(null)
   const [ratesTimestamp, setRatesTimestamp] = useState(() => getRatesLastFetchedAt())
 
+  // Phase 55c: due-pending occurrences (waiting for confirmation) were invisible
+  // here — getUpcomingOccurrences excludes their items entirely. Show them at the
+  // top of the Upcoming card with an inline Confirm (same semantics as Bills & Income).
+  const [, bumpTick] = useState(0)
   const upcoming = getUpcomingOccurrences()
+  const duePending = getDuePendingOccurrences()
   const categoriesById = Object.fromEntries(getCategories().map(c => [c.id, c]))
+
+  function handleConfirmDue(p) {
+    confirmOccurrence(p.id, p.plannedAmount, {
+      type:       p.item.type,
+      accountId:  p.item.accountId,
+      currency:   p.item.currency,
+      categoryId: p.item.categoryId ?? null,
+      envelopeId: p.item.envelopeId ?? null,
+      payeeName:  p.item.payee ?? '',
+      note:       p.item.name,
+      date:       p.dueDate,
+    })
+    bumpTick(t => t + 1)
+  }
 
   const envelopes = getActiveEnvelopes()
   const envelopesFlat = getEnvelopesFlat(envelopes)
@@ -312,9 +331,29 @@ export default function Dashboard({ onNavigate }) {
           )}
         </div>
 
-        {upcoming.length === 0 ? (
+        {/* Due & waiting for confirmation — confirmable right here (Phase 55c) */}
+        {duePending.length > 0 && (
+          <div className={styles.upcomingList}>
+            {duePending.map(p => (
+              <div key={p.id} className={`${styles.upcomingRow} ${styles.dueRow}`}>
+                <span className={styles.upcomingDate}>{formatUpcomingDate(p.dueDate)}</span>
+                <span className={styles.dueTag}>due</span>
+                <span className={p.item.type === 'income' ? styles.positive : styles.negative}>
+                  {p.item.type === 'income' ? '+' : '-'}{fmtAmt(p.plannedAmount)} {p.item.currency}
+                </span>
+                <span className={styles.upcomingName}>{getDisplayName(p.item, categoriesById)}</span>
+                <button className={styles.confirmDueBtn} onClick={() => handleConfirmDue(p)}
+                  title={`Confirm with the planned amount and due date — creates the transaction (adjust amount/date on the Bills & Income page instead if needed)`}>
+                  Confirm
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {upcoming.length === 0 && duePending.length === 0 ? (
           <p className={styles.empty}>No upcoming items.</p>
-        ) : (
+        ) : upcoming.length === 0 ? null : (
           <div className={styles.upcomingList}>
             {(showAllUpcoming ? upcoming : upcoming.slice(0, 5)).map(({ date, item }) => (
               <div key={item.id + date} className={styles.upcomingRow}>

@@ -4,7 +4,7 @@ import { useCollapseState } from '../utils/useCollapseState'
 import { parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
 import InlineFormRow from '../components/InlineFormRow'
-import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, createEnvelopeTransfer } from '../data/envelopes'
+import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, nextScheduledOccurrence } from '../data/envelopes'
 import { getActiveAccounts } from '../data/accounts'
 import {
   getPlannedIncomes, createPlannedIncome, updatePlannedIncome, deletePlannedIncome,
@@ -143,7 +143,7 @@ export default function Planning() {
   const [incomeInlineOpen, setIncomeInlineOpen]   = useState(false)
   const [expenseInlineOpen, setExpenseInlineOpen] = useState(false)
   const [convertDialog, setConvertDialog] = useState(null) // null | { leafItem, newChildData }
-  const [applyDialog, setApplyDialog]   = useState(null)  // null | { items, scope }
+  const [applyDialog, setApplyDialog]   = useState(null)  // null | { items } (scope removed in Phase 55b)
   const [deleteConfirm, setDeleteConfirm] = useState(null) // null | { type, item, descendants? }
   const [addTransfer, setAddTransfer]     = useState(false)
   const [pendingReparent, setPendingReparent] = useState(null) // null | { dragId, dragName, targetLeaf }
@@ -339,27 +339,24 @@ export default function Planning() {
   function handleApplyAll() {
     const outOfSync = gatherOutOfSync()
     if (outOfSync.length === 0) return
-    setApplyDialog({ items: outOfSync, scope: 'whole' })
+    setApplyDialog({ items: outOfSync })
   }
 
   function handleApplySingleExpense(expense) {
     const status = expenseSyncStatus(expense, scheduledTransfers)
     if (status === 'in-sync') return
-    setApplyDialog({ items: [{ kind: 'expense', item: expense, status }], scope: 'whole' })
+    setApplyDialog({ items: [{ kind: 'expense', item: expense, status }] })
   }
 
   function handleConfirmApply() {
-    const { items, scope } = applyDialog
-    const hasExisting = items.some(i => i.status === 'out-of-sync')
-
-    for (const { item, status } of items) {
-      applyExpense(item, status, scope, hasExisting)
+    for (const { item, status } of applyDialog.items) {
+      applyExpense(item, status)
     }
     setApplyDialog(null)
     refresh()
   }
 
-  function applyExpense(expense, status, scope) {
+  function applyExpense(expense, status) {
     // Round the computed monthly figure BEFORE it is persisted (Phase 54a):
     // a yearly target ÷ 12 (e.g. 51.66 → 4.305) must never be stored with
     // sub-cent precision — stored sums then disagree with the rounded display.
@@ -367,6 +364,11 @@ export default function Planning() {
 
     const day = expense.dayOfExecution ?? 1
 
+    // Phase 55b: applying only creates/updates the RULE — nothing is recorded
+    // at apply time. The scheduled engine fires the transfer when its day is
+    // due (which may be today, if the chosen day IS today — the 55a rule).
+    // Previously the "next occurrence" scope created an envelope transfer
+    // dated today regardless of the recurrence day.
     if (status === 'not-applied') {
       const t = createScheduledTransfer({
         fromEnvelopeId: expense.sourceEnvelopeId,
@@ -377,12 +379,7 @@ export default function Planning() {
       })
       updatePlannedExpense(expense.id, { linkedScheduledTransferId: t.id })
     } else {
-      if (scope === 'next') {
-        createEnvelopeTransfer({ fromEnvelopeId: expense.sourceEnvelopeId, toEnvelopeId: expense.envelopeId, amount: monthlyAmount, date: TODAY, note: 'Planning: next occurrence' })
-        updateScheduledTransfer(expense.linkedScheduledTransferId, { amount: monthlyAmount, dayOfExecution: day })
-      } else {
-        updateScheduledTransfer(expense.linkedScheduledTransferId, { amount: monthlyAmount, dayOfExecution: day })
-      }
+      updateScheduledTransfer(expense.linkedScheduledTransferId, { amount: monthlyAmount, dayOfExecution: day })
     }
   }
 
@@ -641,8 +638,6 @@ export default function Planning() {
       {applyDialog && (
         <ApplyDialog
           items={applyDialog.items}
-          scope={applyDialog.scope}
-          onScopeChange={scope => setApplyDialog(d => ({ ...d, scope }))}
           onConfirm={handleConfirmApply}
           onCancel={() => setApplyDialog(null)}
         />
@@ -1136,10 +1131,22 @@ function ConvertLeafDialog({ leafItem, newChildName, onConfirm, onCancel }) {
 
 // ─── Apply dialog ─────────────────────────────────────────────────────────────
 
-function ApplyDialog({ items, scope, onScopeChange, onConfirm, onCancel }) {
+function ApplyDialog({ items, onConfirm, onCancel }) {
   const toCreate = items.filter(i => i.status === 'not-applied')
   const toUpdate = items.filter(i => i.status === 'out-of-sync')
-  const hasExisting = toUpdate.length > 0
+
+  // Phase 55b: applying never records a transfer immediately — the rule fires
+  // on its day. Show WHEN each change takes effect (the rule's next occurrence
+  // with the item's chosen day; may be today if today IS that day).
+  const effectiveDate = item => nextScheduledOccurrence({
+    frequency: 'monthly',
+    dayOfExecution: item.dayOfExecution ?? 1,
+  })
+
+  const itemLine = ({ item }) => {
+    const eff = effectiveDate(item)
+    return <li key={item.id}>{item.name} — takes effect {eff === TODAY ? 'today' : formatDate(eff)}</li>
+  }
 
   return (
     <div className={styles.backdrop}>
@@ -1149,43 +1156,25 @@ function ApplyDialog({ items, scope, onScopeChange, onConfirm, onCancel }) {
 
           {toCreate.length > 0 && (
             <>
-              <p className={styles.dialogSubtitle}>{toCreate.length} item{toCreate.length !== 1 ? 's' : ''} will be created:</p>
-              <ul className={styles.dialogList}>
-                {toCreate.map(({ kind, item }) => (
-                  <li key={item.id}>{item.name} ({kind})</li>
-                ))}
-              </ul>
+              <p className={styles.dialogSubtitle}>{toCreate.length} scheduled transfer{toCreate.length !== 1 ? 's' : ''} will be created:</p>
+              <ul className={styles.dialogList}>{toCreate.map(itemLine)}</ul>
             </>
           )}
 
           {toUpdate.length > 0 && (
             <>
-              <p className={styles.dialogSubtitle}>{toUpdate.length} item{toUpdate.length !== 1 ? 's' : ''} will be updated:</p>
-              <ul className={styles.dialogList}>
-                {toUpdate.map(({ kind, item }) => (
-                  <li key={item.id}>{item.name} ({kind})</li>
-                ))}
-              </ul>
+              <p className={styles.dialogSubtitle}>{toUpdate.length} scheduled transfer{toUpdate.length !== 1 ? 's' : ''} will be updated:</p>
+              <ul className={styles.dialogList}>{toUpdate.map(itemLine)}</ul>
             </>
           )}
 
-          {hasExisting && (
-            <div className={styles.scopeChoice}>
-              <p className={styles.dialogSubtitle}>For existing transfers:</p>
-              <label className={styles.radioLabel}>
-                <input type="radio" name="scope" value="next" checked={scope === 'next'} onChange={() => onScopeChange('next')} />
-                Next occurrence only
-              </label>
-              <label className={styles.radioLabel}>
-                <input type="radio" name="scope" value="whole" checked={scope === 'whole'} onChange={() => onScopeChange('whole')} />
-                The whole series
-              </label>
-            </div>
-          )}
+          <p className={styles.dialogText}>
+            Nothing is recorded now — each transfer fires on its scheduled day.
+          </p>
         </div>
         <div className={styles.modalActions}>
           <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't apply any changes">Cancel</button>
-          <button className={styles.saveBtn} onClick={onConfirm} title="Apply the listed changes to the scheduled transfers">Apply</button>
+          <button className={styles.saveBtn} onClick={onConfirm} title="Apply the listed changes to the scheduled transfers — nothing is recorded until each transfer's day">Apply</button>
         </div>
       </div>
     </div>

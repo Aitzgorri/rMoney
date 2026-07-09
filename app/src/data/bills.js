@@ -261,6 +261,19 @@ export function getNextOccurrenceDate(item) {
   return null
 }
 
+// Pending occurrences whose due date has arrived, enriched with their (active)
+// item, oldest first — the "waiting for confirmation" list. Shared by the
+// Bills & Income pending section and the Dashboard upcoming card (Phase 55c).
+export function getDuePendingOccurrences() {
+  const items = load(KEY_ITEMS).filter(i => i.isActive)
+  const todayStr = localDateStr()
+  return load(KEY_PENDING)
+    .filter(p => p.status === 'pending' && p.dueDate <= todayStr)
+    .map(p => ({ ...p, item: items.find(i => i.id === p.plannedItemId) }))
+    .filter(p => p.item)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+}
+
 // Returns the next single occurrence per active item, sorted by date.
 // Items that have a pending (outstanding) occurrence are excluded entirely.
 export function getUpcomingOccurrences() {
