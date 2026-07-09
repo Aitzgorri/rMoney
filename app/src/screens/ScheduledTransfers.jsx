@@ -11,6 +11,7 @@ import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import InlineFormRow from '../components/InlineFormRow'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
 import { formatDate } from '../utils/dates'
+import { FREQUENCY_LABELS, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
 import styles from './ScheduledTransfers.module.css'
 import { fmtAmt } from '../utils/format'
@@ -203,7 +204,7 @@ export default function ScheduledTransfers({ onBack }) {
             <span className={styles.colSrc}>Src</span>
           </div>
           {sorted.map(t => (
-            <button key={t.id} className={styles.row} onClick={() => setEditTransfer(t)}>
+            <button key={t.id} className={styles.row} onClick={() => setEditTransfer(t)} title="Edit this scheduled transfer">
               <span className={styles.colRoute}>
                 <span className={styles.routeText}>
                   {t.fromName} → {t.toName}
@@ -211,8 +212,8 @@ export default function ScheduledTransfers({ onBack }) {
                 <span className={styles.nextDate}>next: {formatDate(t.nextDate)}</span>
               </span>
               <span className={styles.colAmount}>{fmtAmt(t.amount)}</span>
-              <span className={styles.colFreq}>{t.frequency ?? '—'}</span>
-              <span className={styles.colDay}>{t.dayOfExecution ?? '—'}</span>
+              <span className={styles.colFreq}>{FREQUENCY_LABELS[t.frequency] ?? t.frequency ?? '—'}</span>
+              <span className={styles.colDay}>{t.dayOfExecution != null ? dayLabel(t.frequency, t.dayOfExecution) || '—' : '—'}</span>
               <span className={`${styles.colSrc} ${t.planLink ? styles.srcPlan : styles.srcManual}`}>
                 {t.planLink ? 'plan' : 'man.'}
               </span>
