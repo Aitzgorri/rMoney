@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat, getDefaultCategoryId, createCategory } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat, getEnvelopes, envelopePathLabel, getDefaultIncomeEnvelope, getDefaultExpenseEnvelope } from '../data/envelopes'
-import { createTransaction, updateTransaction, getRecentCategoriesForPayee } from '../data/transactions'
+import { createTransaction, updateTransaction, getRecentCategoriesForPayee, getRecentEnvelopesForPayee } from '../data/transactions'
 import { getFavoriteAccounts, getFavoriteIncomeCategories, getFavoriteExpenseCategories, getFavoriteEnvelopes } from '../data/settings'
 import PayeeAutocomplete from './PayeeAutocomplete'
 import { createPlannedItem } from '../data/bills'
@@ -77,12 +77,16 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
     if (showRecurring && form.recurringName === (form.payeeName ?? '')) {
       set('recurringName', value)
     }
-    // Phase 51f: when no category is chosen yet, prefill the last category used
-    // for this payee. getRecentCategoriesForPayee matches by exact (normalized)
-    // name, so partial typing returns nothing — only a complete payee prefills.
+    // Phase 51f/53g: when no category / envelope is chosen yet, prefill the last
+    // one used for this payee. The lookups match by exact (normalized) name, so
+    // partial typing returns nothing — only a complete payee prefills.
     if (type !== 'transfer' && !form.categoryId) {
       const recent = getRecentCategoriesForPayee(value, type, 1)
       if (recent[0]) set('categoryId', recent[0])
+    }
+    if (type !== 'transfer' && !form.envelopeId) {
+      const recent = getRecentEnvelopesForPayee(value, type, 1)
+      if (recent[0]) set('envelopeId', recent[0])
     }
   }
 
@@ -211,6 +215,9 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
   const recentCats = (type !== 'transfer' ? getRecentCategoriesForPayee(form.payeeName, type, 3) : [])
     .map(id => catById.get(id)).filter(Boolean)
   const favCatIds = type === 'income' ? getFavoriteIncomeCategories() : getFavoriteExpenseCategories()
+  const envById = new Map(envelopes.map(e => [e.id, e]))
+  const recentEnvs = (type !== 'transfer' ? getRecentEnvelopesForPayee(form.payeeName, type, 3) : [])
+    .map(id => envById.get(id)).filter(Boolean)
   const allEnvelopes = getEnvelopes()   // incl. archived, for the path label
 
   return (
@@ -302,7 +309,12 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               <select className={styles.input} value={form.envelopeId}
                 onChange={e => set('envelopeId', e.target.value)}>
                 <option value="">— Default —</option>
-                {favoritesOptgroup(envelopes, getFavoriteEnvelopes())}
+                {recentEnvs.length > 0 && (
+                  <optgroup label="Recent for this payee">
+                    {recentEnvs.map(e => <option key={`r${e.id}`} value={e.id}>↻ {e.name}</option>)}
+                  </optgroup>
+                )}
+                {favoritesOptgroup(envelopes, getFavoriteEnvelopes(), recentEnvs.map(e => e.id))}
                 {treeOptions(envelopes)}
               </select>
               {form.envelopeId && (

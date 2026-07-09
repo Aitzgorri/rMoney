@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getTransactions, createTransaction, getLastUsedAccountId, getRecentCategoriesForPayee } from './transactions'
+import { getTransactions, createTransaction, getLastUsedAccountId, getRecentCategoriesForPayee, getRecentEnvelopesForPayee } from './transactions'
 import { seedStorage, resetStorage } from '../test/storage'
 
 describe('transaction ordering (Phase 49a — date desc, then entry time desc)', () => {
@@ -102,5 +102,16 @@ describe('getRecentCategoriesForPayee (Phase 51f/53e — payee→category memory
     tx(2, { payeeName: 'Lidl', categoryId: 'c3' })
     expect(getRecentCategoriesForPayee('Lidl', 'expense', 2)).toEqual(['c3', 'c2'])
     expect(getRecentCategoriesForPayee('   ', 'expense', 3)).toEqual([])
+  })
+
+  it('getRecentEnvelopesForPayee mirrors the category memory on envelopeId (Phase 53g)', () => {
+    tx(0, { payeeName: 'Lidl', envelopeId: 'env-groceries', categoryId: 'c1' })
+    tx(1, { payeeName: 'Lidl', envelopeId: 'env-household' })
+    tx(2, { payeeName: 'Lidl', envelopeId: 'env-groceries' })      // repeat — distinct
+    tx(3, { payeeName: 'Lidl', categoryId: 'c2' })                 // no envelope — skipped
+    tx(4, { payeeName: 'Acme', envelopeId: 'env-other' })          // other payee — excluded
+    expect(getRecentEnvelopesForPayee('lidl', 'expense', 3))
+      .toEqual(['env-groceries', 'env-household'])
+    expect(getRecentEnvelopesForPayee('Lidl', 'income', 3)).toEqual([])  // type filter
   })
 })

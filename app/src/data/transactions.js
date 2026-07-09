@@ -100,25 +100,34 @@ export function getPayeesRanked() {
   )
 }
 
-// The distinct categories most recently used for a given payee (Phase 51f),
-// newest first, limited to `limit`. Matches the payee by normalized name and
-// filters to a transaction type (so an income form only sees income categories).
-// Derived from transaction history — no new storage.
-export function getRecentCategoriesForPayee(payeeName, type, limit = 3) {
+// The distinct values of `field` most recently used for a given payee, newest
+// first, limited to `limit`. Matches the payee by normalized name and filters
+// to a transaction type. Derived from transaction history — no new storage.
+function recentFieldValuesForPayee(payeeName, type, field, limit) {
   const key = payeeName?.trim().toLowerCase()
   if (!key) return []
   const rows = load(KEY_TRANSACTIONS)
-    .filter(t => t.type === type && t.categoryId && t.payeeName?.trim().toLowerCase() === key)
+    .filter(t => t.type === type && t[field] && t.payeeName?.trim().toLowerCase() === key)
     .sort((a, b) => {
       const d = new Date(b.date) - new Date(a.date)
       return d !== 0 ? d : new Date(b.createdAt) - new Date(a.createdAt)
     })
   const seen = []
   for (const t of rows) {
-    if (!seen.includes(t.categoryId)) seen.push(t.categoryId)
+    if (!seen.includes(t[field])) seen.push(t[field])
     if (seen.length >= limit) break
   }
   return seen
+}
+
+// Payee → category memory (Phase 51f): so an income form only sees income categories.
+export function getRecentCategoriesForPayee(payeeName, type, limit = 3) {
+  return recentFieldValuesForPayee(payeeName, type, 'categoryId', limit)
+}
+
+// Payee → envelope memory (Phase 53g): mirrors the category memory.
+export function getRecentEnvelopesForPayee(payeeName, type, limit = 3) {
+  return recentFieldValuesForPayee(payeeName, type, 'envelopeId', limit)
 }
 
 function savePayee(name) {
