@@ -1,0 +1,24 @@
+/* Global sync indicator (SPEC-039) — fixed corner dot, present on every screen */
+.dot {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 150;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #2d3448;
+  background: #1e2535;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+.dot:hover { opacity: 1; }
+.ok      { color: #4ade80; }
+.pending { color: #e6aa3c; }
+.syncing { color: #60a5fa; }
+.trouble { color: #f87171; }

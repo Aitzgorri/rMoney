@@ -50,10 +50,17 @@ let backend = localBackend
 
 // ─── Public storage API (used by all 37 app-data call sites) ─────────────────
 
+// Global write listener (SPEC-039, Phase 59c): the sync engine registers here
+// to mark the device dirty and schedule an opportunistic push after any data
+// mutation, regardless of the active backend. Kept outside the backends so it
+// fires exactly once per write.
+let onAnyWrite = null
+export function setAppStorageWriteListener(fn) { onAnyWrite = fn }
+
 const appStorage = {
   getItem(key) { return backend.getItem(key) },
-  setItem(key, value) { backend.setItem(key, value) },
-  removeItem(key) { backend.removeItem(key) },
+  setItem(key, value) { backend.setItem(key, value); onAnyWrite?.(key) },
+  removeItem(key) { backend.removeItem(key); onAnyWrite?.(key) },
   keys() { return backend.keys() },
 }
 

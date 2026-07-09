@@ -155,6 +155,20 @@ export function setFavoriteEnvelopes(ids) {
   setSetting('favoriteEnvelopes', ids)
 }
 
+// ─── Device sync (SPEC-039) ──────────────────────────────────────────────────
+// URL + username are non-secret (SPEC-031) and live in the settings blob — they
+// sync between devices, which is desirable (same NAS). The WebDAV password is
+// NEVER stored here: it lives in the secrets backend under
+// `sync/webdav/password`; only the `webdavPasswordSet` flag is kept.
+
+export function getSyncConfig() {
+  return getSetting('sync', null) ?? { url: '', username: '', webdavPasswordSet: false, enabled: false }
+}
+
+export function setSyncConfig(fields) {
+  setSetting('sync', { ...getSyncConfig(), ...fields })
+}
+
 // ─── CSV import defaults ─────────────────────────────────────────────────────
 
 export function getDefaultCsvDateFormat() {

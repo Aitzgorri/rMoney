@@ -22,7 +22,8 @@ import { getActiveStockProfiles } from '../data/stockProfiles'
 import { getSecret, setSecret, deleteSecret, getSecurityMode, isEncryptionAvailable, SECURITY_MODES, SECURITY_MODE_INFO } from '../utils/secrets'
 import { getBudgetWarningThreshold, setBudgetWarningThreshold } from '../data/budgets'
 import { getCsvTemplates, canDeleteCsvTemplate, deleteCsvTemplate, updateCsvTemplate, getTemplateUsers } from '../data/csvTemplates'
-import { getDefaultCsvDateFormat, setDefaultCsvDateFormat } from '../data/settings'
+import { getDefaultCsvDateFormat, setDefaultCsvDateFormat, getSyncConfig, setSyncConfig } from '../data/settings'
+import { syncNow, getSyncStatus, subscribeSyncStatus, testConnection } from '../utils/sync'
 import { getAiSystemPrompts, createAiSystemPrompt, updateAiSystemPrompt, deleteAiSystemPrompt, canDeleteAiSystemPrompt } from '../data/aiSystemPrompts'
 import {
   getStorageSummaryAllTickers, getTotalChatSizeBytes,
@@ -302,6 +303,42 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [tradingScenariosStats, setTradingScenariosStats] = useState(() => getTradingScenariosStats())
   const [payeesStats] = useState(() => getPayeesStats())
   const [deletionsStats] = useState(() => getDeletionsStats())
+
+  // Device sync (SPEC-039, Phase 59)
+  const [syncCfg, setSyncCfg] = useState(() => getSyncConfig())
+  const [syncPwEditing, setSyncPwEditing] = useState(false)
+  const [syncPwDraft, setSyncPwDraft] = useState('')
+  const [syncTestBusy, setSyncTestBusy] = useState(false)
+  const [syncTestResult, setSyncTestResult] = useState(null)
+  const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
+  useEffect(() => subscribeSyncStatus(setSyncStatus), [])
+
+  function handleSyncCfgChange(fields) {
+    setSyncConfig(fields)
+    setSyncCfg(getSyncConfig())
+    setSyncStatus(getSyncStatus())
+  }
+
+  async function handleSyncPasswordSave() {
+    await setSecret('sync/webdav/password', syncPwDraft)
+    setSyncConfig({ webdavPasswordSet: true })
+    setSyncCfg(getSyncConfig())
+    setSyncPwDraft('')
+    setSyncPwEditing(false)
+    setSyncStatus(getSyncStatus())
+  }
+
+  async function handleSyncTest() {
+    setSyncTestBusy(true)
+    setSyncTestResult(null)
+    const password = syncPwDraft || await getSecret('sync/webdav/password')
+    if (!password) {
+      setSyncTestResult({ ok: false, error: 'Set the password first.' })
+    } else {
+      setSyncTestResult(await testConnection(syncCfg.url, syncCfg.username, password))
+    }
+    setSyncTestBusy(false)
+  }
   const [tradingScenariosDeleteConfirm, setTradingScenariosDeleteConfirm] = useState(false)
   const [cryptoProfiles,      setCryptoProfiles]      = useState(() => getCryptoProfiles())
   const [cryptoProfilesBytes, setCryptoProfilesBytes] = useState(() => getCryptoProfilesStorageBytes())
@@ -1181,6 +1218,77 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             <div className={styles.preview}>
               Budgets turn amber at <strong>{warningThreshold}%</strong> used
             </div>
+          </div>
+
+          {/* Device sync (SPEC-039, Phase 59) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Device sync</div>
+            <p className={styles.description}>
+              Sync your data between devices through a WebDAV folder (e.g. a Synology NAS with the
+              WebDAV Server package and a dedicated single-folder user). Deletions and edits merge
+              record-by-record; nothing is lost when devices were offline. The password is stored in
+              the encrypted secrets store and never leaves this device; API keys are never synced.
+              Requires the desktop or Android build — a plain browser blocks cross-origin WebDAV.
+            </p>
+            <div className={styles.field}>
+              <label className={styles.label}>Folder URL (https)</label>
+              <input className={styles.input} value={syncCfg.url} placeholder="https://nas.example.com:5006/rmoney-sync"
+                onChange={e => handleSyncCfgChange({ url: e.target.value.trim() })} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Username</label>
+              <input className={styles.input} value={syncCfg.username} autoComplete="off"
+                onChange={e => handleSyncCfgChange({ username: e.target.value.trim() })} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Password {syncCfg.webdavPasswordSet && !syncPwEditing ? '(set)' : ''}</label>
+              {syncCfg.webdavPasswordSet && !syncPwEditing ? (
+                <button className={styles.btnSmSec} onClick={() => setSyncPwEditing(true)}
+                  title="Enter a new WebDAV password (the current one stays until you save)">Change password</button>
+              ) : (
+                <div className={styles.field}>
+                  <input className={styles.input} type="password" value={syncPwDraft} autoComplete="new-password"
+                    onChange={e => setSyncPwDraft(e.target.value)} placeholder="WebDAV password" />
+                  <div className={styles.dialogActionsRow}>
+                    <button className={styles.btnSmSec} disabled={!syncPwDraft}
+                      onClick={handleSyncPasswordSave}
+                      title="Save the WebDAV password to the encrypted secrets store on this device">Save password</button>
+                    {syncCfg.webdavPasswordSet && (
+                      <button className={styles.btnSmSec} onClick={() => { setSyncPwEditing(false); setSyncPwDraft('') }}
+                        title="Keep the currently stored password">Cancel</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}
+                title="When enabled, changes are pushed automatically a few seconds after every edit; failures are silent and retried later">
+                <input type="checkbox" checked={!!syncCfg.enabled}
+                  onChange={e => handleSyncCfgChange({ enabled: e.target.checked })} />
+                {' '}Enable automatic sync
+              </label>
+            </div>
+            <div className={styles.dialogActionsRow}>
+              <button className={styles.btnSmSec} disabled={!syncCfg.url || !syncCfg.username || syncTestBusy}
+                onClick={handleSyncTest}
+                title="Check that the folder URL and credentials work (nothing is uploaded)">
+                {syncTestBusy ? 'Testing…' : 'Test connection'}
+              </button>
+              <button className={styles.btnSmSec} disabled={!syncStatus.configured || syncStatus.status === 'syncing'}
+                onClick={() => syncNow()}
+                title="Pull, merge and push now">
+                {syncStatus.status === 'syncing' ? 'Syncing…' : 'Sync now'}
+              </button>
+            </div>
+            {syncTestResult && (
+              <p className={styles.preview}>{syncTestResult.ok ? '✓ Connection works.' : `✗ ${syncTestResult.error}`}</p>
+            )}
+            <p className={styles.preview}>
+              {syncStatus.configured
+                ? `Status: ${syncStatus.status}${syncStatus.lastError ? ` — ${syncStatus.lastError}` : ''} · last sync ${syncStatus.lastSyncAt ? new Date(syncStatus.lastSyncAt).toLocaleString() : 'never'}${syncStatus.dirty ? ' · unsynced changes' : ''}`
+                : 'Not configured — fill in the URL, username and password, then enable.'}
+            </p>
           </div>
 
         </>

@@ -57,6 +57,18 @@ npm run audit:pre-publish
 
 Backup files exported from the app (`.rmy`) and any CSV import files may contain personal financial data. They are listed in `.gitignore` and must never be committed. If you have a file like `Import_test.csv` at the repo root, delete it or move it to an ignored location before pushing.
 
+## Device sync (Synology NAS / WebDAV)
+
+rMoney can sync its data between the desktop and Android builds through any WebDAV folder — no cloud service involved (SPEC-039). Setup on a Synology NAS:
+
+1. **Create a dedicated NAS user** (e.g. `rmoney-sync`) with access to **one shared folder only** (e.g. `rmoney-sync`) — deny everything else. The app's credential grants nothing beyond that folder.
+2. **Install the WebDAV Server package** in DSM Package Center and enable **HTTPS** (default port 5006).
+3. **Use a proper certificate**: DSM → Control Panel → Security → Certificate → Let's Encrypt with a DDNS hostname. WebViews are hostile to self-signed certificates — get this right on day one.
+4. In rMoney: **Settings → General → Device sync** — folder URL (`https://your-nas:5006/rmoney-sync`), the dedicated username, and its password (stored in the encrypted secrets store, per device). Test connection, then enable.
+5. **Away from home?** Don't expose the NAS to the internet for this. Install [Tailscale](https://tailscale.com) on the NAS, desktop and phone, and use the tailnet address as the folder URL — zero open ports.
+
+How it behaves: changes push automatically a few seconds after every edit; if the NAS is unreachable the change is kept and retried on the next edit, app focus, or a manual "Sync now" (the corner indicator shows the state). Devices that were offline merge record-by-record on reconnect — additions from both sides survive, the newest edit wins per record, and deletions propagate via a tombstone log instead of resurrecting. API keys are never part of the sync payload. A plain browser (`npm run dev`) can't sync — WebDAV servers don't send CORS headers; use the desktop or Android build.
+
 ## Releases
 
 See [`RELEASE.md`](RELEASE.md) for the full release process. In short:

@@ -342,6 +342,7 @@ const KEYED_PROVIDERS = ['massive', 'twelveData', 'finnhub', 'alphaVantage']
 export const ALL_SECRET_KEYS = [
   ...KEYED_PROVIDERS.map(id => `marketData/${id}/apiKey`),
   'ai/apiKey',
+  'sync/webdav/password',   // device-sync WebDAV credential (SPEC-039, Phase 59a)
 ]
 
 // Write the decrypted app-data object as one encrypted record. Vault must be open.

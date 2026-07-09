@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "http",
-  "description": "Allows native HTTP requests for CORS-restricted market data providers (Yahoo Finance, Stooq)",
+  "description": "Allows native HTTP requests for CORS-restricted market data providers (Yahoo Finance, Stooq) and the user-configured device-sync WebDAV server (SPEC-039). The sync host is user-configured and cannot be listed statically, so the scope allows any HTTPS host for plugin-http calls; the webview CSP connect-src stays strict for ordinary fetch().",
   "windows": ["main"],
   "permissions": [
     {
@@ -9,7 +9,8 @@
       "allow": [
         { "url": "https://query1.finance.yahoo.com/*" },
         { "url": "https://finance.yahoo.com/*" },
-        { "url": "https://stooq.com/*" }
+        { "url": "https://stooq.com/*" },
+        { "url": "https://**" }
       ]
     }
   ]

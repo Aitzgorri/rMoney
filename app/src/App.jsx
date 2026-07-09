@@ -15,6 +15,8 @@ import { migrateFavoriteCurrencies, migrateFavoriteCountries } from './data/sett
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
 import { migrateFeeCurrencyInvariant } from './data/stockTransactions'
 import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
+import { initSync, setOnSyncApplied, getSyncStatus, syncNow } from './utils/sync'
+import SyncStatusDot from './components/SyncStatusDot'
 import ResetDataDialog from './components/ResetDataDialog'
 import Dashboard from './screens/Dashboard'
 import Envelopes from './screens/Envelopes'
@@ -63,6 +65,7 @@ export default function App() {
   const [loadError, setLoadError] = useState(null)      // error string or null
   const [resetDialog, setResetDialog] = useState(false)
   const [keysNotRestored, setKeysNotRestored] = useState(false)
+  const [syncApplied, setSyncApplied] = useState(0)   // bumped when a sync applied remote changes (SPEC-039)
   const [droppedDividends, setDroppedDividends] = useState([])
 
   useEffect(() => {
@@ -149,6 +152,12 @@ export default function App() {
       sessionStorage.removeItem('rmoney_keys_not_restored')
       setKeysNotRestored(true)
     }
+    // Device sync (SPEC-039, Phase 59): opportunistic push on data mutations +
+    // retry on focus; a completed sync that applied remote changes re-renders
+    // the whole tree so every screen re-reads storage.
+    initSync()
+    setOnSyncApplied(() => setSyncApplied(n => n + 1))
+    if (getSyncStatus().configured) syncNow()   // pull on app open
   }, [vaultStatus])
 
   function navigate(tab, params = {}) {
@@ -345,9 +354,13 @@ export default function App() {
         </div>
       )}
 
-      <main className={`${styles.main} ${isDesktop ? styles.mainDesktop : ''}`}>
+      {/* key: remount the active screen after a sync applied remote changes,
+          so it re-reads storage (SPEC-039) */}
+      <main key={syncApplied} className={`${styles.main} ${isDesktop ? styles.mainDesktop : ''}`}>
         {renderScreen()}
       </main>
+
+      <SyncStatusDot />
 
       {!isDesktop && <BottomNav activeTab={activeTab} onTabChange={navigate} onAction={handleAction} />}
 
