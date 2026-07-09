@@ -49,7 +49,7 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] The recurring block lays out Name · Frequency · Day on one row at computer width
 
 ### Smart dropdowns *(Phase 51c–h)*
-- [x] **Favorite accounts** (SPEC-002) appear at the top of every account select (account, transfer From, transfer To) — favorites first, a divider, then the rest — via the shared `splitFavorites` helper
+- [x] **Favorite accounts** (SPEC-002) appear at the top of every account select (account, transfer From, transfer To) — favorites first, a divider, then the rest — via the shared `splitFavorites` helper *(rendering extracted to shared `components/optionHelpers.jsx` in Phase 53e, reused by the Bills & Income and envelope-transfer forms)*
 - [x] **Favorite categories** (type-scoped to the form's income/expense context, SPEC-003) and **favorite envelopes** (SPEC-004) appear as a **Favorites** group at the top of their dropdowns, above the full indented tree (which stays complete)
 - [x] **Account prepopulation:** when creating a transaction on the Transactions page, the account defaults to the account filtered in the left column; if none is filtered, the most-recently-used account (`defaultAccountId` prop)
 - [x] **Account prepopulation on the standalone add route** *(Phase 53a)*: the mobile ＋-menu "New transaction" screen prefills the same way — the Transactions screen's active account filter first (mirrored via the session-only `utils/uiSession.js` store, deliberately not persisted so it can never disagree with the visible filter after a restart), else the last-used account (shared `getLastUsedAccountId()` in `data/transactions.js`, also used by the desktop inline form). Returning to the Transactions screen restores the filter

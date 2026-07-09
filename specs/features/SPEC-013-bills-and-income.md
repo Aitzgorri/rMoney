@@ -36,7 +36,9 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 - [x] Account is **required** — each planned item is linked to a specific account
 - [x] Category, envelope, and payee follow the same defaults as transaction entry (SPEC-005): built-in defaults when not specified
 - [x] The payee field uses the shared **`PayeeAutocomplete`** control (Phase 49c), aligned with the transaction form — ranked suggestions, keyboard nav, freely editable
-- [ ] The category dropdown shows **only income categories** when the planned item type is Income, and **only expense categories** when the type is Expense — cross-type categories are never shown
+- [x] The category dropdown shows **only income categories** when the planned item type is Income, and **only expense categories** when the type is Expense — cross-type categories are never shown *(verified built — `typedCats` filters by the form's type; ticked during the Phase 53e review)*
+- [x] **Favorites in the form dropdowns** *(Phase 53e)*: the account select shows ★ favorite accounts first with a divider (shared `accountOptions`); the category and envelope selects show a **Favorites** optgroup (type-scoped for categories) above the full indented tree — same Phase 51c conventions as the transaction form, via the shared `components/optionHelpers.jsx`
+- [x] **Payee → category memory** *(Phase 53e)*: entering a payee with no category chosen prefills the payee's last-used category (type-matched, exact-name match), and the payee's last 3 distinct categories appear in a "Recent for this payee" optgroup above Favorites — same behaviour as the transaction form (`getRecentCategoriesForPayee`)
 - [x] User can edit any field of a planned item
 - [x] User can delete a planned item
 - [x] Deleting a regular planned item asks: delete only future occurrences, or also remove already-created transactions? User chooses.

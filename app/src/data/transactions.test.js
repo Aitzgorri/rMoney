@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getTransactions, createTransaction, getLastUsedAccountId } from './transactions'
+import { getTransactions, createTransaction, getLastUsedAccountId, getRecentCategoriesForPayee } from './transactions'
 import { seedStorage, resetStorage } from '../test/storage'
 
 describe('transaction ordering (Phase 49a — date desc, then entry time desc)', () => {
@@ -62,5 +62,45 @@ describe('getLastUsedAccountId (Phase 53a — last-used prefill fallback)', () =
 
   it('returns null when no transaction carries an account', () => {
     expect(getLastUsedAccountId()).toBeNull()
+  })
+})
+
+describe('getRecentCategoriesForPayee (Phase 51f/53e — payee→category memory)', () => {
+  beforeEach(() => {
+    seedStorage({})
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    resetStorage()
+  })
+
+  function tx(minute, fields) {
+    vi.setSystemTime(new Date(2026, 6, 1, 10, minute, 0))
+    return createTransaction({ type: 'expense', date: '2026-07-01', amount: 1, ...fields })
+  }
+
+  it('returns distinct categories newest-first, matching the payee by normalized name', () => {
+    tx(0, { payeeName: 'Lidl',   categoryId: 'cat-groceries' })
+    tx(1, { payeeName: 'lidl ',  categoryId: 'cat-household' })  // case/trim variants of the same payee
+    tx(2, { payeeName: 'Lidl',   categoryId: 'cat-groceries' })  // repeat — must stay distinct
+    tx(3, { payeeName: 'Devin',  categoryId: 'cat-eating-out' }) // different payee — excluded
+    expect(getRecentCategoriesForPayee('LIDL', 'expense', 3))
+      .toEqual(['cat-groceries', 'cat-household'])
+  })
+
+  it('filters by transaction type', () => {
+    tx(0, { payeeName: 'Acme', categoryId: 'cat-salary', type: 'income' })
+    tx(1, { payeeName: 'Acme', categoryId: 'cat-tools',  type: 'expense' })
+    expect(getRecentCategoriesForPayee('Acme', 'income', 3)).toEqual(['cat-salary'])
+    expect(getRecentCategoriesForPayee('Acme', 'expense', 3)).toEqual(['cat-tools'])
+  })
+
+  it('honours the limit and returns [] for a blank payee', () => {
+    tx(0, { payeeName: 'Lidl', categoryId: 'c1' })
+    tx(1, { payeeName: 'Lidl', categoryId: 'c2' })
+    tx(2, { payeeName: 'Lidl', categoryId: 'c3' })
+    expect(getRecentCategoriesForPayee('Lidl', 'expense', 2)).toEqual(['c3', 'c2'])
+    expect(getRecentCategoriesForPayee('   ', 'expense', 3)).toEqual([])
   })
 })

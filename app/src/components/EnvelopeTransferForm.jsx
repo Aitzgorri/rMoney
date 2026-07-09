@@ -8,9 +8,10 @@ import {
   createScheduledTransfer,
   updateScheduledTransfer,
 } from '../data/envelopes'
-import { INDENT } from '../utils/hierarchy'
 import { parseAmount } from '../utils/format'
 import { localDateStr } from '../utils/dates'
+import { getFavoriteEnvelopes } from '../data/settings'
+import { favoritesOptgroup, treeOptions } from './optionHelpers'
 import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import AmountInput from './AmountInput'
 import styles from './EnvelopeTransferForm.module.css'
@@ -28,6 +29,7 @@ export default function EnvelopeTransferForm({
   const envelopes = getActiveEnvelopes()
   const flat = getEnvelopesFlat(envelopes)
   const defaultIncome = getDefaultIncomeEnvelope()
+  const favEnvIds = getFavoriteEnvelopes()   // Favorites group atop both selects (Phase 53e)
   const today = localDateStr()
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -158,11 +160,8 @@ export default function EnvelopeTransferForm({
           value={form.fromEnvelopeId}
           onChange={e => set('fromEnvelopeId', e.target.value)}
         >
-          {flat.map(e => (
-            <option key={e.id} value={e.id}>
-              {INDENT.repeat(e.depth)}{e.name}
-            </option>
-          ))}
+          {favoritesOptgroup(flat, favEnvIds)}
+          {treeOptions(flat)}
         </select>
       </div>
 
@@ -173,11 +172,8 @@ export default function EnvelopeTransferForm({
           value={form.toEnvelopeId}
           onChange={e => set('toEnvelopeId', e.target.value)}
         >
-          {flat.map(e => (
-            <option key={e.id} value={e.id}>
-              {INDENT.repeat(e.depth)}{e.name}
-            </option>
-          ))}
+          {favoritesOptgroup(flat, favEnvIds)}
+          {treeOptions(flat)}
         </select>
         {form.fromEnvelopeId === form.toEnvelopeId && (
           <span className={styles.error}>Source and destination must be different</span>

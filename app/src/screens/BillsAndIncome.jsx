@@ -14,7 +14,9 @@ import {
 import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
-import { INDENT } from '../utils/hierarchy'
+import { getRecentCategoriesForPayee } from '../data/transactions'
+import { getFavoriteAccounts, getFavoriteIncomeCategories, getFavoriteExpenseCategories, getFavoriteEnvelopes } from '../data/settings'
+import { accountOptions, favoritesOptgroup, treeOptions } from '../components/optionHelpers'
 import { formatDate, localDateStr } from '../utils/dates'
 import { FREQUENCIES, FREQUENCY_LABELS, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
@@ -393,6 +395,25 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
   const isOneTime = form.frequency === 'one-time'
   const typedCats = catsFlat.filter(c => c.type === form.type)
 
+  // Favorites + payee→category memory in the dropdowns (Phase 53e — parity
+  // with the transaction form's Phase 51c/51f conventions).
+  const catById     = new Map(typedCats.map(c => [c.id, c]))
+  const recentCats  = getRecentCategoriesForPayee(form.payee ?? '', form.type, 3)
+    .map(id => catById.get(id)).filter(Boolean)
+  const favCatIds   = form.type === 'income' ? getFavoriteIncomeCategories() : getFavoriteExpenseCategories()
+
+  // On payee entry with no category chosen, prefill the payee's last-used category.
+  function handlePayeeInput(value) {
+    setForm(prev => {
+      const next = { ...prev, payee: value }
+      if (!prev.categoryId) {
+        const recent = getRecentCategoriesForPayee(value, prev.type, 1)
+        if (recent[0]) next.categoryId = recent[0]
+      }
+      return next
+    })
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.amount || !form.accountId) return
@@ -447,26 +468,33 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
           <label className={styles.label}>Account <span className={styles.required}>*</span>
             <select className={styles.select} value={form.accountId} onChange={e => set('accountId', e.target.value)} required>
               <option value="">— select account —</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.accountName}</option>)}
+              {accountOptions(accounts, getFavoriteAccounts())}
             </select>
           </label>
 
           <label className={styles.label}>Category (optional)
             <select className={styles.select} value={form.categoryId ?? ''} onChange={e => set('categoryId', e.target.value)}>
               <option value="">— none —</option>
-              {typedCats.map(c => <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>)}
+              {recentCats.length > 0 && (
+                <optgroup label="Recent for this payee">
+                  {recentCats.map(c => <option key={`r${c.id}`} value={c.id}>↻ {c.name}</option>)}
+                </optgroup>
+              )}
+              {favoritesOptgroup(typedCats, favCatIds, recentCats.map(c => c.id))}
+              {treeOptions(typedCats)}
             </select>
           </label>
 
           <label className={styles.label}>Envelope (optional)
             <select className={styles.select} value={form.envelopeId ?? ''} onChange={e => set('envelopeId', e.target.value)}>
               <option value="">— none —</option>
-              {envsFlat.map(e => <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>)}
+              {favoritesOptgroup(envsFlat, getFavoriteEnvelopes())}
+              {treeOptions(envsFlat)}
             </select>
           </label>
 
           <label className={styles.label}>Payee (optional)
-            <PayeeAutocomplete className={styles.input} value={form.payee ?? ''} onChange={v => set('payee', v)} />
+            <PayeeAutocomplete className={styles.input} value={form.payee ?? ''} onChange={handlePayeeInput} />
           </label>
 
           <label className={styles.label}>Frequency

@@ -6,17 +6,15 @@ import { createTransaction, updateTransaction, getRecentCategoriesForPayee } fro
 import { getFavoriteAccounts, getFavoriteIncomeCategories, getFavoriteExpenseCategories, getFavoriteEnvelopes } from '../data/settings'
 import PayeeAutocomplete from './PayeeAutocomplete'
 import { createPlannedItem } from '../data/bills'
-import { INDENT } from '../utils/hierarchy'
-import { splitFavorites } from '../utils/favorites'
 import { parseAmount } from '../utils/format'
 import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import { localDateStr } from '../utils/dates'
+import { accountOptions, favoritesOptgroup, treeOptions } from './optionHelpers'
 import AmountInput from './AmountInput'
 import styles from './TransactionForm.module.css'
 
 const TODAY = localDateStr()
 const NEW_CATEGORY = '__new__'   // sentinel option value for inline category create (51e)
-const DIVIDER = '─────────'      // disabled separator between favorites/recents and the tree
 
 
 export default function TransactionForm({ initial, defaultAccountId, onSave, onCancel, onDelete, inline = false }) {
@@ -203,34 +201,17 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
 
   const isEdit = !!initial
 
-  // ── Favorites-aware dropdown data (Phase 51c/51f/51h) ──────────────────────
-  // Accounts (flat): favorites first, then a divider, then the rest (no dup).
-  const { favorites: favAccts, rest: restAccts } = splitFavorites(accounts, getFavoriteAccounts())
-
-  // Categories (hierarchical): payee-recents block, then favorites block, then
-  // the FULL indented tree below (A1 — favorites are a shortcut, the tree stays
-  // complete). Recents/favorites de-duplicated against each other.
+  // ── Favorites-aware dropdown data (Phase 51c/51f/51h; shared helpers 53e) ──
+  // Accounts (flat): ★ favorites, divider, rest. Categories/envelopes
+  // (hierarchical): payee-recents block (categories only), then a Favorites
+  // group, then the FULL indented tree (A1 — favorites are a shortcut, the
+  // tree stays complete). Recents/favorites de-duplicated against each other.
+  const favAcctIds = getFavoriteAccounts()
   const catById = new Map(categories.map(c => [c.id, c]))
   const recentCats = (type !== 'transfer' ? getRecentCategoriesForPayee(form.payeeName, type, 3) : [])
     .map(id => catById.get(id)).filter(Boolean)
-  const recentCatSet = new Set(recentCats.map(c => c.id))
   const favCatIds = type === 'income' ? getFavoriteIncomeCategories() : getFavoriteExpenseCategories()
-  const favCats = favCatIds.map(id => catById.get(id)).filter(Boolean).filter(c => !recentCatSet.has(c.id))
-
-  // Envelopes (hierarchical): favorites block, then the full tree.
-  const envById = new Map(envelopes.map(e => [e.id, e]))
-  const favEnvs = getFavoriteEnvelopes().map(id => envById.get(id)).filter(Boolean)
   const allEnvelopes = getEnvelopes()   // incl. archived, for the path label
-
-  // Reused by all three account dropdowns (account / from / to): favorites ★
-  // first, a divider, then the rest.
-  const accountOptions = () => (
-    <>
-      {favAccts.map(a => <option key={`f${a.id}`} value={a.id}>★ {a.accountName} ({a.currency})</option>)}
-      {favAccts.length > 0 && <option disabled>{DIVIDER}</option>}
-      {restAccts.map(a => <option key={a.id} value={a.id}>{a.accountName} ({a.currency})</option>)}
-    </>
-  )
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -271,7 +252,7 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               <label className={styles.label}>Account *</label>
               <select className={styles.input} value={form.accountId}
                 onChange={e => set('accountId', e.target.value)} required>
-                {accountOptions()}
+                {accountOptions(accounts, favAcctIds)}
               </select>
             </div>
             <div className={styles.field} style={{ flex: 2 }}>
@@ -293,14 +274,8 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
                     {recentCats.map(c => <option key={`r${c.id}`} value={c.id}>↻ {c.name}</option>)}
                   </optgroup>
                 )}
-                {favCats.length > 0 && (
-                  <optgroup label="Favorites">
-                    {favCats.map(c => <option key={`fav${c.id}`} value={c.id}>★ {c.name}</option>)}
-                  </optgroup>
-                )}
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
-                ))}
+                {favoritesOptgroup(categories, favCatIds, recentCats.map(c => c.id))}
+                {treeOptions(categories)}
                 <option value={NEW_CATEGORY}>＋ New category…</option>
               </select>
               {showNewCategory && (
@@ -312,9 +287,7 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
                   <select className={styles.input} value={newCatParent}
                     onChange={e => setNewCatParent(e.target.value)}>
                     <option value="">（top level）</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
-                    ))}
+                    {treeOptions(categories)}
                   </select>
                   <div className={styles.newCatActions}>
                     <button type="button" className={styles.newCatAdd} onClick={handleCreateCategory}>Add</button>
@@ -329,14 +302,8 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               <select className={styles.input} value={form.envelopeId}
                 onChange={e => set('envelopeId', e.target.value)}>
                 <option value="">— Default —</option>
-                {favEnvs.length > 0 && (
-                  <optgroup label="Favorites">
-                    {favEnvs.map(e => <option key={`fav${e.id}`} value={e.id}>★ {e.name}</option>)}
-                  </optgroup>
-                )}
-                {envelopes.map(e => (
-                  <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
-                ))}
+                {favoritesOptgroup(envelopes, getFavoriteEnvelopes())}
+                {treeOptions(envelopes)}
               </select>
               {form.envelopeId && (
                 <span className={styles.envPath}>{envelopePathLabel(form.envelopeId, '›', allEnvelopes)}</span>
@@ -376,14 +343,14 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               <label className={styles.label}>From account *</label>
               <select className={styles.input} value={form.sourceAccountId}
                 onChange={e => set('sourceAccountId', e.target.value)} required>
-                {accountOptions()}
+                {accountOptions(accounts, favAcctIds)}
               </select>
             </div>
             <div className={styles.field} style={{ flex: 2 }}>
               <label className={styles.label}>To account *</label>
               <select className={styles.input} value={form.destinationAccountId}
                 onChange={e => set('destinationAccountId', e.target.value)} required>
-                {accountOptions()}
+                {accountOptions(accounts, favAcctIds)}
               </select>
             </div>
           </div>
