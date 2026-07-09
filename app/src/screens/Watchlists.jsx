@@ -67,7 +67,7 @@ export default function Watchlists({ onNavigate }) {
     <div className={styles.screen}>
       <div className={styles.header}>
         <h1 className={styles.title}>Watchlists</h1>
-        <button className={styles.newBtn} onClick={() => setCreating(true)}>+ New list</button>
+        <button className={styles.newBtn} onClick={() => setCreating(true)} title="Create a new watchlist">+ New list</button>
       </div>
 
       {creating && (
@@ -80,8 +80,8 @@ export default function Watchlists({ onNavigate }) {
             placeholder="List name…"
             autoFocus
           />
-          <button className={styles.saveBtn} onClick={handleCreate} disabled={!newName.trim()}>Save</button>
-          <button className={styles.cancelBtn} onClick={() => { setCreating(false); setNewName('') }}>Cancel</button>
+          <button className={styles.saveBtn} onClick={handleCreate} disabled={!newName.trim()} title="Create the watchlist with this name">Save</button>
+          <button className={styles.cancelBtn} onClick={() => { setCreating(false); setNewName('') }} title="Cancel creating a watchlist">Cancel</button>
         </div>
       )}
 
@@ -100,23 +100,23 @@ export default function Watchlists({ onNavigate }) {
                     onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setRenamingId(null) }}
                     autoFocus
                   />
-                  <button className={styles.saveBtn} onClick={saveRename}>Save</button>
-                  <button className={styles.cancelBtn} onClick={() => setRenamingId(null)}>Cancel</button>
+                  <button className={styles.saveBtn} onClick={saveRename} title="Save the new watchlist name">Save</button>
+                  <button className={styles.cancelBtn} onClick={() => setRenamingId(null)} title="Cancel renaming">Cancel</button>
                 </div>
               ) : deletingId === list.id ? (
                 <div className={styles.deleteConfirm}>
                   <span className={styles.deleteMsg}>Delete "{list.name}"?</span>
-                  <button className={styles.cancelBtn} onClick={() => setDeletingId(null)}>Cancel</button>
-                  <button className={styles.deleteBtn} onClick={() => handleDelete(list.id)}>Delete</button>
+                  <button className={styles.cancelBtn} onClick={() => setDeletingId(null)} title="Keep this watchlist">Cancel</button>
+                  <button className={styles.deleteBtn} onClick={() => handleDelete(list.id)} title="Permanently delete this watchlist">Delete</button>
                 </div>
               ) : (
                 <>
-                  <button className={styles.listName} onClick={() => setSelected(list.id)}>
+                  <button className={styles.listName} onClick={() => setSelected(list.id)} title="Open this watchlist">
                     {list.name}
                   </button>
                   <div className={styles.listActions}>
-                    <button className={styles.actionBtn} onClick={() => startRename(list)}>Rename</button>
-                    <button className={styles.actionBtnDanger} onClick={() => setDeletingId(list.id)}>Delete</button>
+                    <button className={styles.actionBtn} onClick={() => startRename(list)} title="Rename this watchlist">Rename</button>
+                    <button className={styles.actionBtnDanger} onClick={() => setDeletingId(list.id)} title="Delete this watchlist (asks for confirmation)">Delete</button>
                   </div>
                 </>
               )}

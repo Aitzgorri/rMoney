@@ -87,6 +87,7 @@ export default function ExchangeSelector({ ticker, currentExchange, currentCurre
               type="button"
               className={styles.row}
               onClick={() => handlePick(c)}
+              title="Switch the profile to this listing"
             >
               <span className={styles.exchange}>{c.exchange ?? '—'}</span>
               {c.currency && <span className={styles.currency}>{c.currency}</span>}

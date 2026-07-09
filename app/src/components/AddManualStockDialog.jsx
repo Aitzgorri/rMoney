@@ -94,8 +94,8 @@ export default function AddManualStockDialog({ onConfirm, onCancel }) {
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={!canSave}>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't add the stock">Cancel</button>
+          <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={!canSave} title="Create this manual stock profile">
             Add manual stock
           </button>
         </div>

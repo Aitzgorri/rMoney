@@ -697,7 +697,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
       {/* Header */}
       {!embedded ? (
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={onBack}>← Back</button>
+          <button className={styles.backBtn} onClick={onBack} title="Go back to the investing accounts list">← Back</button>
           <div className={styles.headerInfo}>
             <span className={styles.accountName}>{account?.name}</span>
             <span className={styles.institution}>{account?.institution}</span>
@@ -721,7 +721,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 <h3>Cannot delete</h3>
                 <p>{confirmDeleteBal.reason}</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setConfirmDeleteBal(null)}>OK</button>
+                  <button className={styles.cancelBtn} onClick={() => setConfirmDeleteBal(null)} title="Close — this balance cannot be deleted">OK</button>
                 </div>
               </>
             ) : (
@@ -729,8 +729,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 <h3>Delete {confirmDeleteBal.balance.currency} balance?</h3>
                 <p>This will remove the cash balance and its opening entry. This cannot be undone.</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setConfirmDeleteBal(null)}>Cancel</button>
-                  <button className={styles.deleteBtn} onClick={handleDeleteBalanceConfirm}>Delete</button>
+                  <button className={styles.cancelBtn} onClick={() => setConfirmDeleteBal(null)} title="Cancel — keep the balance">Cancel</button>
+                  <button className={styles.deleteBtn} onClick={handleDeleteBalanceConfirm} title="Confirm deletion of this cash balance">Delete</button>
                 </div>
               </>
             )}
@@ -875,8 +875,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
             <p>{negConfirm.message}</p>
             <p>Do you want to proceed?</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setNegConfirm(null)}>Cancel</button>
-              <button className={styles.proceedBtn} onClick={negConfirm.onConfirm}>Proceed</button>
+              <button className={styles.cancelBtn} onClick={() => setNegConfirm(null)} title="Cancel — don't take the balance negative">Cancel</button>
+              <button className={styles.proceedBtn} onClick={negConfirm.onConfirm} title="Proceed and allow the negative balance">Proceed</button>
             </div>
           </div>
         </div>
@@ -890,7 +890,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 <h3>Can't delete</h3>
                 <p>{activityDelete.reason}</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)}>Close</button>
+                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)} title="Close — this record cannot be deleted">Close</button>
                 </div>
               </>
             ) : (
@@ -898,8 +898,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 <h3>Delete {STOCK_TXN_DELETE_LABELS[activityDelete.activity.type] ?? 'transaction'}?</h3>
                 <p>This removes the record and its linked cash movements, then reverses its effect on your holdings and cash balances. It can't be undone.</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)}>Cancel</button>
-                  <button className={styles.proceedBtn} onClick={confirmDeleteActivity}>Delete</button>
+                  <button className={styles.cancelBtn} onClick={() => setActivityDelete(null)} title="Cancel — keep the record">Cancel</button>
+                  <button className={styles.proceedBtn} onClick={confirmDeleteActivity} title="Confirm deletion of this record">Delete</button>
                 </div>
               </>
             )}
@@ -912,7 +912,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionLabel}>Cash balances</span>
-          <button className={styles.newBalBtn} onClick={() => setFormMode('new-balance')}>+ New</button>
+          <button className={styles.newBalBtn} onClick={() => setFormMode('new-balance')} title="Add a cash balance in a new currency">+ New</button>
         </div>
 
         {balances.length === 0 ? (
@@ -931,9 +931,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                     </span>
                   </div>
                   <div className={styles.balanceActions}>
-                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('deposit') }}>Deposit</button>
-                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('withdraw') }}>Withdraw</button>
-                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('exchange') }}>Exchange</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('deposit') }} title="Deposit money into this balance from a budgeting account">Deposit</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('withdraw') }} title="Withdraw money from this balance to a budgeting account">Withdraw</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setActiveBalanceId(bal.id); setFormMode('exchange') }} title="Exchange money from this balance into another currency">Exchange</button>
                     <button className={styles.actionBtnIcon} onClick={() => startEditOpening(bal)} title="Edit opening balance" aria-label="Edit opening balance">✎</button>
                     <button className={`${styles.actionBtnIcon} ${styles.dangerIcon}`} onClick={() => handleDeleteBalanceRequest(bal)} title="Delete cash balance" aria-label="Delete cash balance">×</button>
                   </div>
@@ -947,8 +947,8 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                         onChange={e => setEditingOpeningValue(e.target.value)}
                         autoFocus
                       />
-                      <button className={styles.saveBtnSmall} onClick={saveOpening}>Save</button>
-                      <button className={styles.cancelBtnSmall} onClick={() => setEditingOpeningId(null)}>Cancel</button>
+                      <button className={styles.saveBtnSmall} onClick={saveOpening} title="Save the new opening balance">Save</button>
+                      <button className={styles.cancelBtnSmall} onClick={() => setEditingOpeningId(null)} title="Cancel editing the opening balance">Cancel</button>
                     </div>
                   )}
                 </div>
@@ -964,13 +964,13 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
         <div className={`${styles.sectionHeader} ${styles.sectionHeaderWrap}`}>
           <span className={styles.sectionLabel}>Positions</span>
           <div className={styles.sectionHeaderActions}>
-            <button className={styles.newBalBtn} onClick={() => setFormMode('buy')}>+ Buy</button>
-            <button className={styles.newBalBtn} onClick={() => setFormMode('crypto-buy')}>+ Buy crypto</button>
-            <button className={styles.newBalBtn} onClick={() => { setDefaultDividendTicker(null); setFormMode('dividend') }}>+ Dividend</button>
+            <button className={styles.newBalBtn} onClick={() => setFormMode('buy')} title="Record a stock buy on this account">+ Buy</button>
+            <button className={styles.newBalBtn} onClick={() => setFormMode('crypto-buy')} title="Record a crypto buy on this account">+ Buy crypto</button>
+            <button className={styles.newBalBtn} onClick={() => { setDefaultDividendTicker(null); setFormMode('dividend') }} title="Record a dividend received on this account">+ Dividend</button>
             {positions.length > 0 && (
-              <button className={styles.newBalBtn} onClick={() => { setDefaultTransferTicker(null); setFormMode('transfer') }}>Transfer</button>
+              <button className={styles.newBalBtn} onClick={() => { setDefaultTransferTicker(null); setFormMode('transfer') }} title="Transfer shares to another investing account">Transfer</button>
             )}
-            {onNavigate && <button className={styles.newBalBtn} onClick={() => onNavigate('csv-import', { accountId })}>Import CSV</button>}
+            {onNavigate && <button className={styles.newBalBtn} onClick={() => onNavigate('csv-import', { accountId })} title="Import broker transactions from a CSV file">Import CSV</button>}
           </div>
         </div>
         {positions.length === 0 ? (
@@ -1100,10 +1100,12 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                     <button
                       className={styles.actionBtnSmall}
                       onClick={() => { setDefaultSellTicker(p.ticker); setFormMode('sell') }}
+                      title="Record a sale of this position"
                     >Sell</button>
                     <button
                       className={styles.actionBtnSmall}
                       onClick={() => { setDefaultDividendTicker(p.ticker); setFormMode('dividend') }}
+                      title="Record a dividend for this position"
                     >Div</button>
                   </span>
                 ),
@@ -1160,9 +1162,9 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 id: 'actions', label: '',
                 render: p => (
                   <span style={{ display: 'flex', gap: 4 }}>
-                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-sell') }}>Sell</button>
-                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-swap') }}>Swap</button>
-                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-wallet-transfer') }}>Move</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-sell') }} title="Record a sale of this coin">Sell</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-swap') }} title="Swap this coin for another coin">Swap</button>
+                    <button className={styles.actionBtnSmall} onClick={() => { setCryptoActionPos(p); setFormMode('crypto-wallet-transfer') }} title="Record moving this coin between wallets">Move</button>
                   </span>
                 ),
               },
@@ -1202,6 +1204,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
               className={`${styles.filterToggleBtn} ${filterBarOpen ? styles.filterToggleOpen : ''} ${activeFilterCount > 0 ? styles.filterToggleActive : ''}`}
               onClick={toggleFilterBar}
               type="button"
+              title={filterBarOpen ? 'Hide the filter bar' : 'Show the filter bar'}
             >
               {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
             </button>
@@ -1259,6 +1262,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                 className={styles.clearFiltersBtn}
                 onClick={() => { setFilterTypes([]); setFilterPortfolios([]); setFilterTickers([]); setFilterCurrencies([]) }}
                 type="button"
+                title="Clear all active filters"
               >Clear all</button>
             )}
           </div>
@@ -1332,6 +1336,7 @@ export default function InvestingAccountDetail({ accountId, onBack, onNavigate, 
                   className={styles.loadMoreBtn}
                   onClick={() => setVisibleCount(v => v + 50)}
                   type="button"
+                  title="Show 50 more movements"
                 >
                   Load more ({combinedItems.length - visibleCount} remaining)
                 </button>
@@ -1490,7 +1495,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
   // Shared action footer: edit (label/handler vary per branch) sits next to a red Delete,
   // mirroring the crypto AssetActivityRow layout (delete now lives in the expanded detail).
   const deleteBtn = onDelete && (
-    <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>
+    <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete} title="Delete this record and reverse its effect">Delete</button>
   )
 
   if ((movement.type === 'buy' || movement.type === 'sell') && stockTxn) {
@@ -1525,7 +1530,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {onEdit && (
-            <button className={styles.detailEditBtn} onClick={onEdit}>
+            <button className={styles.detailEditBtn} onClick={onEdit} title={isBuy ? 'Open this buy for editing' : 'Open this sell for editing'}>
               Edit {isBuy ? 'buy' : 'sell'} →
             </button>
           )}
@@ -1569,7 +1574,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {onOpenLinkedTx && (
-            <button className={styles.detailEditBtn} onClick={onOpenLinkedTx}>
+            <button className={styles.detailEditBtn} onClick={onOpenLinkedTx} title="Open the linked budgeting transaction for editing">
               Edit linked transaction →
             </button>
           )}
@@ -1649,7 +1654,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {onEdit && movement.linkedStockTransactionId && (
-            <button className={styles.detailEditBtn} onClick={onEdit}>Edit exchange →</button>
+            <button className={styles.detailEditBtn} onClick={onEdit} title="Open this exchange for editing">Edit exchange →</button>
           )}
           {deleteBtn}
         </div>
@@ -1677,7 +1682,7 @@ function MovementDetail({ movement, currency, feeMovement, allMovements, balance
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {onEdit && (
-            <button className={styles.detailEditBtn} onClick={onEdit}>Edit transfer →</button>
+            <button className={styles.detailEditBtn} onClick={onEdit} title="Open this transfer for editing">Edit transfer →</button>
           )}
           {deleteBtn}
         </div>
@@ -1735,8 +1740,8 @@ function NewBalanceForm({ accountId, existingCurrencies, onSave, onCancel }) {
         />
       </div>
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!currency.trim()}>Create</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't create a balance">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!currency.trim()} title="Create this cash balance">Create</button>
       </div>
     </form>
   )
@@ -1850,11 +1855,12 @@ function DepositForm({ balance, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this deposit">Cancel</button>
         <button
           type="submit"
           className={styles.saveBtn}
           disabled={!amount || parseAmount(amount) <= 0 || (isCrossCurrency && crossMode === 'auto-exchange' && Number(rate) <= 0)}
+          title="Record this deposit"
         >
           Deposit
         </button>
@@ -1971,8 +1977,8 @@ function WithdrawForm({ balance, currentBalance, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!amount || parseAmount(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this withdrawal">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!amount || parseAmount(amount) <= 0 || (isCrossCurrency && Number(rate) <= 0)} title={isCrossCurrency && crossMode === 'land-in-matching' ? 'Exchange into the matching-currency balance (withdraw separately later)' : 'Record this withdrawal'}>
           {isCrossCurrency && crossMode === 'land-in-matching' ? 'Exchange' : 'Withdraw'}
         </button>
       </div>
@@ -2106,11 +2112,12 @@ function ExchangeForm({ balances, defaultSourceId, onSave, onCancel, initial }) 
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this exchange">Cancel</button>
         <button
           type="submit"
           className={styles.saveBtn}
           disabled={!sourceAmount || Number(sourceAmount) <= 0 || sourceId === targetId || !targetId}
+          title={initial ? 'Save changes to this exchange' : 'Record this currency exchange'}
         >
           {initial ? 'Save' : 'Exchange'}
         </button>
@@ -2241,7 +2248,7 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
                 {resolvedProfile.stockExchange ? ` · ${resolvedProfile.stockExchange}` : ''}
                 {resolvedProfile.currency ? ` · ${resolvedProfile.currency}` : ''}
               </span>
-              <button type="button" className={styles.relookupBtn} onClick={() => setResolving(true)}>
+              <button type="button" className={styles.relookupBtn} onClick={() => setResolving(true)} title="Search again for this ticker's identity">
                 Re-look up
               </button>
             </div>
@@ -2301,8 +2308,8 @@ function BuyForm({ balances, onSave, onCancel, initialTicker = '', tickerLocked 
         </div>
         {total > 0 && !isCrossSource && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {currency}</p>}
         <div className={styles.formActions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!canSave}>{isCrossSource ? 'Save buy + exchange' : 'Buy'}</button>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this buy">Cancel</button>
+          <button type="submit" className={styles.saveBtn} disabled={!canSave} title={isCrossSource ? 'Record this buy plus the required currency exchange' : 'Record this buy'}>{isCrossSource ? 'Save buy + exchange' : 'Buy'}</button>
         </div>
       </form>
 
@@ -2573,8 +2580,8 @@ function DividendForm({ accountId, positions, defaultTicker, onSave, onCancel, t
         </>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this dividend">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Save this dividend">Save</button>
       </div>
     </form>
   )
@@ -2625,7 +2632,7 @@ function CoinSearchPicker({ value, onChange }) {
           placeholder="BTC or Bitcoin"
           autoFocus
         />
-        <button type="button" className={styles.lookupBtn} onClick={runSearch} disabled={!query.trim() || searching}>
+        <button type="button" className={styles.lookupBtn} onClick={runSearch} disabled={!query.trim() || searching} title="Search for this coin by symbol or name">
           {searching ? '…' : 'Search'}
         </button>
       </div>
@@ -2636,6 +2643,7 @@ function CoinSearchPicker({ value, onChange }) {
             type="button"
             onClick={() => setListOpen(o => !o)}
             style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, fontSize: '0.85em', padding: 0 }}
+            title={listOpen ? 'Hide the matching coins' : 'Show the matching coins'}
           >
             {listOpen ? '▾' : '▸'} {candidates.length} match{candidates.length === 1 ? '' : 'es'}
           </button>
@@ -2777,8 +2785,8 @@ function CryptoBuyForm({ balances, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Buy</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this buy">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Record this crypto buy">Buy</button>
       </div>
     </form>
   )
@@ -2838,8 +2846,8 @@ function CryptoSellForm({ position, balances, onSave, onCancel }) {
       </div>
       <p className={styles.formSubtitle}>Proceeds land in your {currency} cash balance{hasTradeBal ? '' : ' (it will be created)'}.</p>
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this sale">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Record this crypto sale">Sell</button>
       </div>
     </form>
   )
@@ -3000,8 +3008,8 @@ function CryptoSwapForm({ position, cryptoTickers = [], initial = null, onSave, 
         reduces that holding. Both prices are saved with the swap.
       </p>
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>{isEdit ? 'Save' : 'Swap'}</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title={isEdit ? 'Save — replaces the original swap record' : 'Record this swap'}>{isEdit ? 'Save' : 'Swap'}</button>
       </div>
     </form>
   )
@@ -3055,8 +3063,8 @@ function CryptoWalletTransferForm({ position, onSave, onCancel }) {
       </div>
       <p className={styles.formSubtitle}>Records the move only — cost basis is preserved and no P/L is realised.</p>
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Move</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this wallet move">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Record this wallet move">Move</button>
       </div>
     </form>
   )
@@ -3125,10 +3133,10 @@ function AssetActivityRow({ activity: a, isExpanded, onToggle, onEdit, onDelete 
           <p className={styles.formSubtitle}>No cash impact — a swap is coin-for-coin; a wallet move only relabels where the coin is held.</p>
           <div style={{ display: 'flex', gap: 8 }}>
             {isSwap && onEdit && (
-              <button className={styles.detailEditBtn} onClick={onEdit}>Edit swap →</button>
+              <button className={styles.detailEditBtn} onClick={onEdit} title="Open this swap for editing (saving replaces the record)">Edit swap →</button>
             )}
             {onDelete && (
-              <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>
+              <button className={styles.detailEditBtn} style={{ color: '#f87171' }} onClick={onDelete} title="Delete this record (asks for confirmation)">Delete</button>
             )}
           </div>
         </div>
@@ -3289,7 +3297,7 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
       {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - (parseAmount(fee) || 0))} {currency}</p>}
       {openLots.length > 0 && (
         <div className={styles.lotPickerSection}>
-          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
+          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots} title={showLots ? 'Hide the lot picker' : 'Choose which lots to sell from'}>
             {showLots ? '▲' : '▼'} Advanced: choose lots
           </button>
           {showLots && (
@@ -3343,8 +3351,8 @@ function SellForm({ accountId, positions, balances = [], defaultTicker, onSave, 
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Sell</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this sale">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Record this sale">Sell</button>
       </div>
     </form>
   )
@@ -3470,7 +3478,7 @@ function TransferForm({ accountId, positions, balances, defaultTicker, onSave, o
       </p>
       {openLots.length > 0 && (
         <div className={styles.lotPickerSection}>
-          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
+          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots} title={showLots ? 'Hide the lot picker' : 'Choose which lots to transfer from'}>
             {showLots ? '▲' : '▼'} Advanced: choose lots
           </button>
           {showLots && (
@@ -3496,8 +3504,8 @@ function TransferForm({ accountId, positions, balances, defaultTicker, onSave, o
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Transfer</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this transfer">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Record this transfer">Transfer</button>
       </div>
     </form>
   )
@@ -3626,7 +3634,7 @@ function TransferEditForm({ txn, balances, onSave, onCancel }) {
       </div>
       {lotsWithCredit.length > 0 && (
         <div className={styles.lotPickerSection}>
-          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
+          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots} title={showLots ? 'Hide the lot picker' : 'Choose which lots to transfer from'}>
             {showLots ? '▲' : '▼'} Advanced: choose lots
           </button>
           {showLots && (
@@ -3653,8 +3661,8 @@ function TransferEditForm({ txn, balances, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Save changes to this transfer">Save</button>
       </div>
     </form>
   )

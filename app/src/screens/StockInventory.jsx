@@ -256,24 +256,29 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
             <button
               className={`${styles.filterBtn} ${!showArchived ? styles.filterBtnActive : ''}`}
               onClick={() => setShowArchived(false)}
+              title="Show only active stocks"
             >Active</button>
             <button
               className={`${styles.filterBtn} ${showArchived ? styles.filterBtnActive : ''}`}
               onClick={() => setShowArchived(true)}
+              title="Show only archived stocks"
             >Archived</button>
           </div>
           <div className={styles.filterToggle}>
             <button
               className={`${styles.filterBtn} ${confirmFilter === 'all' ? styles.filterBtnActive : ''}`}
               onClick={() => handleConfirmFilter('all')}
+              title="Show all stocks regardless of confirmation"
             >All</button>
             <button
               className={`${styles.filterBtn} ${confirmFilter === 'confirmed' ? styles.filterBtnActive : ''}`}
               onClick={() => handleConfirmFilter('confirmed')}
+              title="Show only confirmed stocks"
             >Confirmed</button>
             <button
               className={`${styles.filterBtn} ${confirmFilter === 'unconfirmed' ? styles.filterBtnActive : ''}`}
               onClick={() => handleConfirmFilter('unconfirmed')}
+              title="Show only unconfirmed stocks"
             >Unconfirmed</button>
           </div>
         </div>
@@ -285,7 +290,7 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
             onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
             placeholder="Ticker (AAPL) or company name…"
           />
-          <button className={styles.addBtn} onClick={handleAdd} disabled={!addInput.trim()}>
+          <button className={styles.addBtn} onClick={handleAdd} disabled={!addInput.trim()} title="Look up this ticker or name and add the stock">
             + Add stock
           </button>
           <button
@@ -525,11 +530,12 @@ export default function StockInventory({ onNavigate, initialConfirmFilter }) {
               autoFocus
             />
             <div className={styles.deleteActions}>
-              <button className={styles.deleteCancelBtn} onClick={() => setDeletingTicker(null)}>Cancel</button>
+              <button className={styles.deleteCancelBtn} onClick={() => setDeletingTicker(null)} title="Keep this stock">Cancel</button>
               <button
                 className={styles.deleteConfirmBtn}
                 onClick={() => handleDelete(deletingTicker)}
                 disabled={deleteInput.trim().toUpperCase() !== deletingTicker}
+                title="Permanently delete this stock profile and its cached data"
               >
                 Delete permanently
               </button>

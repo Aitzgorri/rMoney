@@ -57,7 +57,7 @@ export default function PassphraseSetup({ onDone }) {
               autoComplete="new-password"
               placeholder="Enter a strong passphrase"
             />
-            <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)}>
+            <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)} title={showPass ? 'Hide the passphrase' : 'Show the passphrase while typing'}>
               {showPass ? 'Hide' : 'Show'}
             </button>
           </div>
@@ -79,7 +79,7 @@ export default function PassphraseSetup({ onDone }) {
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.actions}>
-          <button className={styles.primaryBtn} onClick={handleCreate} disabled={busy}>
+          <button className={styles.primaryBtn} onClick={handleCreate} disabled={busy} title="Create the encrypted vault with this passphrase">
             {busy ? 'Creating vault…' : 'Create vault'}
           </button>
         </div>

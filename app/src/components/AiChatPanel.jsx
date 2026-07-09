@@ -284,7 +284,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
         <span className={styles.placeholderIcon}>🤖</span>
         <p className={styles.placeholderText}>AI evaluation isn&apos;t set up</p>
         {onNavigate && (
-          <button className={styles.placeholderLink} onClick={() => onNavigate('settings', { tab: 'ai' })}>
+          <button className={styles.placeholderLink} onClick={() => onNavigate('settings', { tab: 'ai' })} title="Open AI settings to set up the connection">
             Configure in Settings →
           </button>
         )}
@@ -315,10 +315,10 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
           >
             {prompts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className={styles.iconBtn} onClick={startEditSelected}>Edit</button>
-          <button className={styles.iconBtn} onClick={startNewPrompt}>+ New</button>
+          <button className={styles.iconBtn} onClick={startEditSelected} title="Edit the selected system prompt">Edit</button>
+          <button className={styles.iconBtn} onClick={startNewPrompt} title="Create a new system prompt">+ New</button>
           {onNavigate && (
-            <button className={styles.iconBtn} onClick={() => onNavigate('settings', { tab: 'ai', focusPromptId: selectedPromptId })}>
+            <button className={styles.iconBtn} onClick={() => onNavigate('settings', { tab: 'ai', focusPromptId: selectedPromptId })} title="Open AI prompt settings">
               Settings ↗
             </button>
           )}
@@ -331,6 +331,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
               className={styles.historyBtn}
               onClick={() => setHistoryOpen(v => !v)}
               disabled={chats.length === 0}
+              title={historyOpen ? 'Hide the chat history list' : 'Show previous chats for this stock'}
             >
               {activeChat ? chatTitle(activeChat) : 'New chat'} {chats.length > 0 ? '▾' : ''}
             </button>
@@ -338,7 +339,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
               <div className={styles.historyDropdown}>
                 {chats.map(c => (
                   <div key={c.id} className={`${styles.historyItem} ${c.id === activeChatId ? styles.historyItemActive : ''}`}>
-                    <button className={styles.historyItemTitle} onClick={() => handleSelectChat(c.id)}>
+                    <button className={styles.historyItemTitle} onClick={() => handleSelectChat(c.id)} title="Open this chat">
                       {c.pinned ? '📌 ' : ''}{chatTitle(c)}
                     </button>
                     <button
@@ -360,7 +361,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
               </div>
             )}
           </div>
-          <button className={styles.newChatBtn} onClick={handleNewChat}>+ New chat</button>
+          <button className={styles.newChatBtn} onClick={handleNewChat} title="Start a new chat">+ New chat</button>
         </div>
       </div>
 
@@ -380,7 +381,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
               <>
                 <span className={styles.errorText}>{m.content}</span>
                 {i === messages.length - 1 && (
-                  <button className={styles.retryBtn} onClick={handleRetry} disabled={isLoading}>Retry</button>
+                  <button className={styles.retryBtn} onClick={handleRetry} disabled={isLoading} title="Retry the failed request">Retry</button>
                 )}
               </>
             ) : m.content}
@@ -419,6 +420,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
             className={styles.sendBtn}
             onClick={handleSend}
             disabled={isLoading || (!isFirstTurnOfChat() && !inputText.trim())}
+            title="Send the message to the AI"
           >
             {isLoading ? '…' : 'Send'}
           </button>
@@ -432,7 +434,7 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
             <div className={styles.promptEditorHeader}>
               <span className={styles.promptEditorTitle}>{editingPrompt.id ? 'Edit prompt' : 'New prompt'}</span>
               {onNavigate && (
-                <button className={styles.linkBtn} onClick={() => { onNavigate('settings', { tab: 'ai', focusPromptId: selectedPromptId }); setPromptEditOpen(false) }}>
+                <button className={styles.linkBtn} onClick={() => { onNavigate('settings', { tab: 'ai', focusPromptId: selectedPromptId }); setPromptEditOpen(false) }} title="Open this prompt in the larger Settings editor">
                   Bigger editor in Settings ↗
                 </button>
               )}
@@ -452,8 +454,8 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
               placeholder="You are a..."
             />
             <div className={styles.promptEditorActions}>
-              <button className={styles.cancelBtn} onClick={() => { setPromptEditOpen(false); setEditingPrompt(null) }}>Cancel</button>
-              <button className={styles.saveBtn} onClick={savePromptEdit} disabled={!editingPrompt.name.trim()}>Save</button>
+              <button className={styles.cancelBtn} onClick={() => { setPromptEditOpen(false); setEditingPrompt(null) }} title="Discard changes and close the editor">Cancel</button>
+              <button className={styles.saveBtn} onClick={savePromptEdit} disabled={!editingPrompt.name.trim()} title="Save this prompt">Save</button>
             </div>
           </div>
         </div>
@@ -469,8 +471,8 @@ export default function AiChatPanel({ ticker, currency, positions, dividends, my
                 : 'Delete this chat? This cannot be undone.'}
             </p>
             <div className={styles.confirmActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDel(null)}>Cancel</button>
-              <button className={styles.deleteBtn} onClick={confirmDeleteChat}>Delete</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDel(null)} title="Keep the chat and close">Cancel</button>
+              <button className={styles.deleteBtn} onClick={confirmDeleteChat} title="Permanently delete this chat">Delete</button>
             </div>
           </div>
         </div>

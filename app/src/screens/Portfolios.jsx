@@ -232,8 +232,8 @@ export default function Portfolios({ onBack }) {
               </p>
             )}
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.deleteBtn} onClick={handleDeleteConfirm}>Delete</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Keep this portfolio">Cancel</button>
+              <button className={styles.deleteBtn} onClick={handleDeleteConfirm} title="Delete this portfolio permanently">Delete</button>
             </div>
           </div>
         </div>
@@ -241,12 +241,13 @@ export default function Portfolios({ onBack }) {
 
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={onBack}>←</button>
+          <button className={styles.backBtn} onClick={onBack} title="Go back to the previous screen">←</button>
           <h1 className={styles.title}>Portfolios</h1>
         </div>
         <button
           className={styles.newBtn}
           onClick={() => { closeAll(); setAdding({ type: 'node', parentId: null }) }}
+          title="Create a new top-level portfolio"
         >
           + New portfolio
         </button>
@@ -316,9 +317,9 @@ function PortfolioNodeRow({ node, depth, isFirst, isLast, showWarning, onEdit, o
       <div className={styles.nodeActions}>
         <button className={styles.moveBtn} onClick={onMoveUp} disabled={isFirst} title="Move up" aria-label="Move up">↑</button>
         <button className={styles.moveBtn} onClick={onMoveDown} disabled={isLast} title="Move down" aria-label="Move down">↓</button>
-        <button className={styles.actionBtn} onClick={onEdit}>Edit</button>
-        <button className={styles.actionBtn} onClick={onAddChild}>+ Group</button>
-        <button className={styles.actionBtn} onClick={onAddStock}>+ Stock</button>
+        <button className={styles.actionBtn} onClick={onEdit} title="Edit this portfolio's name and target %">Edit</button>
+        <button className={styles.actionBtn} onClick={onAddChild} title="Add a sub-portfolio inside this one">+ Group</button>
+        <button className={styles.actionBtn} onClick={onAddStock} title="Add a stock to this portfolio">+ Stock</button>
         <button
           className={`${styles.actionBtn} ${styles.actionBtnDelete}`}
           onClick={onDelete}
@@ -355,8 +356,8 @@ function AssignmentRow({ assignment, depth, isEditing, onEditStart, onEditSave, 
         {assignment.targetPercent !== null ? `${assignment.targetPercent}%` : ''}
       </span>
       <div className={styles.assignActions}>
-        <button className={styles.actionBtn} onClick={onEditStart}>Edit %</button>
-        <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={onDelete} aria-label="Remove stock assignment">×</button>
+        <button className={styles.actionBtn} onClick={onEditStart} title="Edit this stock's target %">Edit %</button>
+        <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={onDelete} title="Remove this stock from the portfolio" aria-label="Remove stock assignment">×</button>
       </div>
     </div>
   )
@@ -392,8 +393,9 @@ function AssignmentEditForm({ assignment, depth, onSave, onCancel }) {
       <button
         className={styles.inlineConfirm}
         onClick={() => onSave(targetStr === '' ? null : Number(targetStr))}
+        title="Save the target %"
       >✓</button>
-      <button className={styles.inlineCancel} onClick={onCancel}>✕</button>
+      <button className={styles.inlineCancel} onClick={onCancel} title="Cancel editing">✕</button>
     </div>
   )
 }
@@ -435,8 +437,8 @@ function NodeInlineForm({ depth, initialName = '', initialTarget = null, onSave,
         placeholder="%"
       />
       <span className={styles.inlinePctLabel}>%</span>
-      <button type="submit" className={styles.inlineConfirm} disabled={!name.trim()}>✓</button>
-      <button type="button" className={styles.inlineCancel} onClick={onCancel}>✕</button>
+      <button type="submit" className={styles.inlineConfirm} disabled={!name.trim()} title="Save this portfolio">✓</button>
+      <button type="button" className={styles.inlineCancel} onClick={onCancel} title="Cancel without saving">✕</button>
     </form>
   )
 }
@@ -491,8 +493,8 @@ function AssignmentAddForm({ depth, portfolioId, existingTickers, knownTickers, 
         placeholder="%"
       />
       <span className={styles.inlinePctLabel}>%</span>
-      <button type="submit" className={styles.inlineConfirm} disabled={!ticker.trim()}>✓</button>
-      <button type="button" className={styles.inlineCancel} onClick={onCancel}>✕</button>
+      <button type="submit" className={styles.inlineConfirm} disabled={!ticker.trim()} title="Add this stock to the portfolio">✓</button>
+      <button type="button" className={styles.inlineCancel} onClick={onCancel} title="Cancel without adding">✕</button>
       {error && <span className={styles.inlineError}>{error}</span>}
     </form>
   )

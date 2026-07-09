@@ -525,17 +525,20 @@ export default function BuySellPlanning({ onNavigate }) {
           <button
             className={styles.scenarioBtn}
             onClick={() => { setNewScenarioName(''); setNewScenarioOpen(true) }}
+            title="Create a new planning scenario"
           >+ New</button>
           {active && (
             <>
               <button
                 className={styles.scenarioBtn}
                 onClick={() => { setRenameValue(active.name); setRenameOpen(true) }}
+                title="Rename this scenario"
               >Rename</button>
-              <button className={styles.scenarioBtn} onClick={handleDuplicate}>Duplicate</button>
+              <button className={styles.scenarioBtn} onClick={handleDuplicate} title="Duplicate this scenario">Duplicate</button>
               <button
                 className={`${styles.scenarioBtn} ${styles.scenarioBtnDanger}`}
                 onClick={() => setDeleteOpen(true)}
+                title="Delete this scenario (asks for confirmation)"
               >Delete</button>
               <label className={styles.scenarioToggle} title="If on, executed rows disappear from the scenario after they're committed to a real transaction.">
                 <input
@@ -640,11 +643,12 @@ export default function BuySellPlanning({ onNavigate }) {
             placeholder="e.g. April rebalance"
           />
           <div className={styles.modalActions}>
-            <button className={styles.modalCancel} onClick={() => setNewScenarioOpen(false)}>Cancel</button>
+            <button className={styles.modalCancel} onClick={() => setNewScenarioOpen(false)} title="Close without creating a scenario">Cancel</button>
             <button
               className={styles.modalPrimary}
               onClick={handleCreateScenario}
               disabled={!newScenarioName.trim()}
+              title="Create the new scenario"
             >Create</button>
           </div>
         </ModalShell>
@@ -660,11 +664,12 @@ export default function BuySellPlanning({ onNavigate }) {
             onKeyDown={e => { if (e.key === 'Enter') handleRename() }}
           />
           <div className={styles.modalActions}>
-            <button className={styles.modalCancel} onClick={() => setRenameOpen(false)}>Cancel</button>
+            <button className={styles.modalCancel} onClick={() => setRenameOpen(false)} title="Close without renaming">Cancel</button>
             <button
               className={styles.modalPrimary}
               onClick={handleRename}
               disabled={!renameValue.trim()}
+              title="Save the new scenario name"
             >Rename</button>
           </div>
         </ModalShell>
@@ -676,8 +681,8 @@ export default function BuySellPlanning({ onNavigate }) {
             Delete <strong>{active.name}</strong>? This cannot be undone.
           </p>
           <div className={styles.modalActions}>
-            <button className={styles.modalCancel} onClick={() => setDeleteOpen(false)}>Cancel</button>
-            <button className={styles.modalDanger} onClick={handleDelete}>Delete</button>
+            <button className={styles.modalCancel} onClick={() => setDeleteOpen(false)} title="Close without deleting">Cancel</button>
+            <button className={styles.modalDanger} onClick={handleDelete} title="Permanently delete this scenario">Delete</button>
           </div>
         </ModalShell>
       )}
@@ -1021,7 +1026,7 @@ function buildSellColumns({
       ) },
     { id: 'ticker', label: 'Ticker', minWidth: 78, sortValue: r => r.ticker,
       render: r => (
-        <button className={styles.tickerLink} onClick={() => onTickerClick(r.ticker)}>{r.ticker}</button>
+        <button className={styles.tickerLink} onClick={() => onTickerClick(r.ticker)} title="Open this stock's detail page">{r.ticker}</button>
       ) },
     { id: 'account', label: 'Account', minWidth: 180,
       render: r => {
@@ -1168,7 +1173,7 @@ function buildBuyColumns({
       ) },
     { id: 'ticker', label: 'Ticker', minWidth: 78, sortValue: r => r.ticker,
       render: r => (
-        <button className={styles.tickerLink} onClick={() => onTickerClick(r.ticker)}>{r.ticker}</button>
+        <button className={styles.tickerLink} onClick={() => onTickerClick(r.ticker)} title="Open this stock's detail page">{r.ticker}</button>
       ) },
     { id: 'account', label: 'Account', minWidth: 180,
       render: r => (
@@ -1347,7 +1352,7 @@ function ModalShell({ title, onClose, children }) {
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>{title}</h3>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
+          <button className={styles.modalClose} onClick={onClose} title="Close this dialog">✕</button>
         </div>
         {children}
       </div>
@@ -1410,6 +1415,7 @@ function PositionPicker({ accounts, openLotsMap, existingRows, onCancel, onPick 
                 key={p.ticker}
                 className={styles.pickerRow}
                 disabled={alreadyExists(p.ticker, p.defaultAccount.accountId)}
+                title="Add this position as a sell row"
                 onClick={() => onPick({
                   ticker: p.ticker,
                   stockExchange: profile?.stockExchange ?? null,
@@ -1430,7 +1436,7 @@ function PositionPicker({ accounts, openLotsMap, existingRows, onCancel, onPick 
         )}
       </div>
       <div className={styles.modalActions}>
-        <button className={styles.modalCancel} onClick={onCancel}>Cancel</button>
+        <button className={styles.modalCancel} onClick={onCancel} title="Close without adding a sell row">Cancel</button>
       </div>
     </ModalShell>
   )
@@ -1476,7 +1482,7 @@ function StockPicker({ profiles, accounts, defaultAccountId, onCancel, onPick })
           </p>
         ) : (
           filtered.map(p => (
-            <button key={p.ticker} className={styles.pickerRow} onClick={() => pick(p)}>
+            <button key={p.ticker} className={styles.pickerRow} onClick={() => pick(p)} title="Add this stock as a buy row">
               <span className={styles.pickerTicker}>{p.ticker}</span>
               <span className={styles.pickerAccount}>{p.name ?? '—'}</span>
               <span className={styles.pickerExtra}>
@@ -1487,7 +1493,7 @@ function StockPicker({ profiles, accounts, defaultAccountId, onCancel, onPick })
         )}
       </div>
       <div className={styles.modalActions}>
-        <button className={styles.modalCancel} onClick={onCancel}>Cancel</button>
+        <button className={styles.modalCancel} onClick={onCancel} title="Close without adding a buy row">Cancel</button>
       </div>
     </ModalShell>
   )
@@ -1633,7 +1639,7 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
       <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Execute {side} — {row.ticker}</h3>
-          <button className={styles.modalClose} onClick={onClose} disabled={saving}>✕</button>
+          <button className={styles.modalClose} onClick={onClose} disabled={saving} title="Close without executing">✕</button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -1669,7 +1675,7 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
 
             {side === 'sell' && openLots.length > 0 && (
               <div className={styles.execLotSection}>
-                <button type="button" className={styles.execLotToggle} onClick={toggleLots}>
+                <button type="button" className={styles.execLotToggle} onClick={toggleLots} title={showLots ? 'Hide the lot picker' : 'Show the lot picker to choose which lots to sell'}>
                   {showLots ? '▲' : '▼'} Advanced: choose lots
                 </button>
                 {showLots && (
@@ -1707,8 +1713,8 @@ function ExecuteModal({ side, row, derived, accounts, activeId, mainCurrency, on
           </div>
 
           <div className={styles.modalActions}>
-            <button type="button" className={styles.modalCancel} onClick={onClose} disabled={saving}>Cancel</button>
-            <button type="submit" className={styles.modalPrimary} disabled={!canSave}>
+            <button type="button" className={styles.modalCancel} onClick={onClose} disabled={saving} title="Close without executing">Cancel</button>
+            <button type="submit" className={styles.modalPrimary} disabled={!canSave} title={`Record this ${side} as a real transaction`}>
               {saving ? 'Saving…' : `Execute ${side}`}
             </button>
           </div>
@@ -1786,7 +1792,7 @@ function LotPickerModal({ row, activeId, onClose, onSaved }) {
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Choose lots — {row.ticker}</h3>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
+          <button className={styles.modalClose} onClick={onClose} title="Close without saving lot picks">✕</button>
         </div>
         <div className={styles.execFormBody}>
           {openLots.length === 0 ? (
@@ -1815,10 +1821,10 @@ function LotPickerModal({ row, activeId, onClose, onSaved }) {
           )}
         </div>
         <div className={styles.modalActions}>
-          <button type="button" className={styles.modalCancel} onClick={onClose}>Cancel</button>
-          <button type="button" className={styles.modalCancel} onClick={handleClear} disabled={openLots.length === 0}>Clear</button>
-          <button type="button" className={styles.modalCancel} onClick={handleFifoFill} disabled={openLots.length === 0 || !(Number(row.shares) > 0)}>FIFO fill</button>
-          <button type="button" className={styles.modalPrimary} onClick={handleSave} disabled={openLots.length === 0}>Save</button>
+          <button type="button" className={styles.modalCancel} onClick={onClose} title="Close without saving lot picks">Cancel</button>
+          <button type="button" className={styles.modalCancel} onClick={handleClear} disabled={openLots.length === 0} title="Set all lot picks to zero">Clear</button>
+          <button type="button" className={styles.modalCancel} onClick={handleFifoFill} disabled={openLots.length === 0 || !(Number(row.shares) > 0)} title="Fill lots automatically from oldest to newest (FIFO)">FIFO fill</button>
+          <button type="button" className={styles.modalPrimary} onClick={handleSave} disabled={openLots.length === 0} title="Save these lot picks to the planned row (does not execute)">Save</button>
         </div>
       </div>
     </div>

@@ -578,10 +578,10 @@ export default function InvestmentReports() {
             <option value="">— none —</option>
             {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className={styles.btnSm} onClick={handleSavePreset}>
+          <button className={styles.btnSm} onClick={handleSavePreset} title={presetId ? 'Update the loaded preset with the current configuration' : 'Save the current configuration as a new preset'}>
             {presetId ? 'Update preset' : 'Save preset'}
           </button>
-          <button className={styles.btnSm} onClick={() => setManageOpen(true)}>Manage presets</button>
+          <button className={styles.btnSm} onClick={() => setManageOpen(true)} title="Open the saved presets list to load, rename or delete them">Manage presets</button>
         </div>
         <div className={styles.presetRight}>
           <span className={styles.currencyBadge}>{mainCurrency}</span>
@@ -589,6 +589,7 @@ export default function InvestmentReports() {
             className={styles.btnSm}
             onClick={handleRefreshRates}
             disabled={ratesStatus === 'loading'}
+            title="Fetch the latest exchange rates"
           >
             {ratesStatus === 'loading' ? 'Refreshing…' : ratesStatus === 'ok' ? 'Rates refreshed' : ratesStatus === 'error' ? 'Refresh failed' : 'Refresh rates'}
           </button>
@@ -641,6 +642,7 @@ export default function InvestmentReports() {
             key={t.id}
             className={`${styles.tab} ${breakdown === t.id ? styles.tabActive : ''}`}
             onClick={() => { setBreakdown(t.id); setPresetId(null) }}
+            title={`Switch to the ${t.label} view`}
           >
             {t.label}
           </button>
@@ -784,8 +786,8 @@ export default function InvestmentReports() {
               autoFocus
             />
             <div className={styles.dialogActions}>
-              <button className={styles.btnSec} onClick={() => setSaveDialog(false)}>Cancel</button>
-              <button className={styles.btnPrimary} onClick={handleSaveNewPreset} disabled={!saveName.trim()}>Save</button>
+              <button className={styles.btnSec} onClick={() => setSaveDialog(false)} title="Close without saving">Cancel</button>
+              <button className={styles.btnPrimary} onClick={handleSaveNewPreset} disabled={!saveName.trim()} title="Save the current configuration under this name">Save</button>
             </div>
           </div>
         </div>
@@ -814,21 +816,21 @@ export default function InvestmentReports() {
                           }}
                           autoFocus
                         />
-                        <button className={styles.btnSm} onClick={() => { updateReportPreset(p.id, { name: renameValue.trim() }); setPresets(getReportPresets()); setRenamingId(null) }}>Save</button>
-                        <button className={styles.btnSec} onClick={() => setRenamingId(null)}>Cancel</button>
+                        <button className={styles.btnSm} onClick={() => { updateReportPreset(p.id, { name: renameValue.trim() }); setPresets(getReportPresets()); setRenamingId(null) }} title="Save the new name">Save</button>
+                        <button className={styles.btnSec} onClick={() => setRenamingId(null)} title="Cancel renaming">Cancel</button>
                       </>
                     ) : deleteConfirmId === p.id ? (
                       <>
                         <span className={styles.presetName}>Delete "{p.name}"?</span>
-                        <button className={styles.btnDanger} onClick={() => { deleteReportPreset(p.id); setPresets(getReportPresets()); if (presetId === p.id) setPresetId(null); setDeleteConfirmId(null) }}>Delete</button>
-                        <button className={styles.btnSec} onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                        <button className={styles.btnDanger} onClick={() => { deleteReportPreset(p.id); setPresets(getReportPresets()); if (presetId === p.id) setPresetId(null); setDeleteConfirmId(null) }} title="Delete this preset permanently">Delete</button>
+                        <button className={styles.btnSec} onClick={() => setDeleteConfirmId(null)} title="Keep this preset">Cancel</button>
                       </>
                     ) : (
                       <>
                         <span className={styles.presetName}>{p.name}</span>
-                        <button className={styles.btnSm} onClick={() => { loadPreset(p.id); setManageOpen(false) }}>Load</button>
-                        <button className={styles.btnSm} onClick={() => { setRenamingId(p.id); setRenameValue(p.name) }}>Rename</button>
-                        <button className={styles.btnSmDanger} onClick={() => setDeleteConfirmId(p.id)}>Delete</button>
+                        <button className={styles.btnSm} onClick={() => { loadPreset(p.id); setManageOpen(false) }} title="Load this preset">Load</button>
+                        <button className={styles.btnSm} onClick={() => { setRenamingId(p.id); setRenameValue(p.name) }} title="Rename this preset">Rename</button>
+                        <button className={styles.btnSmDanger} onClick={() => setDeleteConfirmId(p.id)} title="Delete this preset (asks for confirmation)">Delete</button>
                       </>
                     )}
                   </div>
@@ -836,7 +838,7 @@ export default function InvestmentReports() {
               </div>
             )}
             <div className={styles.dialogActions}>
-              <button className={styles.btnSec} onClick={() => { setManageOpen(false); setRenamingId(null); setDeleteConfirmId(null) }}>Close</button>
+              <button className={styles.btnSec} onClick={() => { setManageOpen(false); setRenamingId(null); setDeleteConfirmId(null) }} title="Close this dialog">Close</button>
             </div>
           </div>
         </div>
@@ -882,8 +884,8 @@ function renderCell(colId, row, mc, editingCountry, countryDraft, setEditingCoun
               onKeyDown={e => { if (e.key === 'Enter') handleSaveCountry(); if (e.key === 'Escape') setEditingCountry(null) }}
               autoFocus
             />
-            <button className={styles.btnXs} onClick={handleSaveCountry}>✓</button>
-            <button className={styles.btnXs} onClick={() => setEditingCountry(null)}>✕</button>
+            <button className={styles.btnXs} onClick={handleSaveCountry} title="Save the HQ country override">✓</button>
+            <button className={styles.btnXs} onClick={() => setEditingCountry(null)} title="Cancel editing">✕</button>
           </span>
         )
       }
@@ -984,8 +986,8 @@ function BreakdownSection({ groups, mainCurrency, isDesktop, breakdownView, setB
       <div className={styles.breakdownToolbar}>
         {!allPortfoliosMode && (
           <div className={styles.viewToggle}>
-            <button className={`${styles.viewBtn} ${breakdownView === 'chart' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('chart')}>Chart</button>
-            <button className={`${styles.viewBtn} ${breakdownView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('table')}>Table</button>
+            <button className={`${styles.viewBtn} ${breakdownView === 'chart' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('chart')} title="Switch to the chart view">Chart</button>
+            <button className={`${styles.viewBtn} ${breakdownView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setBreakdownView('table')} title="Switch to the table view">Table</button>
           </div>
         )}
         {breakdown === 'portfolio' && portfolios.length > 0 && (
@@ -1245,7 +1247,7 @@ function PieChartsTab({ presets, setPresets, displayRows, portfolios, assignment
   return (
     <div className={styles.pieChartsTab}>
       <div className={styles.pieChartsToolbar}>
-        <button className={styles.btnSm} onClick={handleAddChart}>+ Add chart</button>
+        <button className={styles.btnSm} onClick={handleAddChart} title="Create a new pie chart">+ Add chart</button>
         {isDesktop && (
           <div className={styles.tilesPerRowPicker}>
             <span className={styles.groupLabel}>Tiles per row:</span>
@@ -1254,6 +1256,7 @@ function PieChartsTab({ presets, setPresets, displayRows, portfolios, assignment
                 key={n}
                 className={`${styles.viewBtn} ${tilesPerRow === n ? styles.viewBtnActive : ''}`}
                 onClick={() => setTilesPerRow(n)}
+                title={`Show ${n} tile${n !== 1 ? 's' : ''} per row`}
               >{n}</button>
             ))}
           </div>
@@ -1378,9 +1381,9 @@ function PieChartTile({ preset, displayRows, portfolios, assignments, mainCurren
             </label>
           </div>
           <div className={styles.formActions}>
-            <button className={styles.btnPrimary} onClick={handleSave}>Save</button>
-            <button className={styles.btnSec} onClick={() => { setDraft(null); onCancel() }}>Cancel</button>
-            <button className={styles.btnSmDanger} style={{ marginLeft: 'auto' }} onClick={() => { if (window.confirm('Delete this chart?')) { setDraft(null); onDelete() } }}>Delete</button>
+            <button className={styles.btnPrimary} onClick={handleSave} title="Save the chart settings">Save</button>
+            <button className={styles.btnSec} onClick={() => { setDraft(null); onCancel() }} title="Discard changes">Cancel</button>
+            <button className={styles.btnSmDanger} style={{ marginLeft: 'auto' }} onClick={() => { if (window.confirm('Delete this chart?')) { setDraft(null); onDelete() } }} title="Delete this chart (asks for confirmation)">Delete</button>
           </div>
         </div>
       ) : (

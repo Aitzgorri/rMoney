@@ -223,6 +223,7 @@ export default function Benchmarks() {
                 key={p}
                 className={`${styles.periodBtn} ${period === p ? styles.periodBtnActive : ''}`}
                 onClick={() => setPeriod(p)}
+                title={{ '1M': 'Compare over the last month', '3M': 'Compare over the last 3 months', '6M': 'Compare over the last 6 months', '1Y': 'Compare over the last year', '5Y': 'Compare over the last 5 years', 'All': 'Compare over the full available history' }[p]}
               >{p}</button>
             ))}
           </div>
@@ -279,7 +280,7 @@ export default function Benchmarks() {
         <div className={styles.listHeader}>
           <div className={styles.cardTitle}>Benchmark list</div>
           {!addForm && (
-            <button className={styles.btnSm} onClick={() => { setAddForm({ ticker: '', displayName: '' }); setAddError('') }}>
+            <button className={styles.btnSm} onClick={() => { setAddForm({ ticker: '', displayName: '' }); setAddError('') }} title="Add a custom benchmark by ticker">
               + Add benchmark
             </button>
           )}
@@ -302,10 +303,10 @@ export default function Benchmarks() {
                 onChange={e => setAddForm(f => ({ ...f, displayName: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddForm(null); setAddError('') } }}
               />
-              <button className={styles.btnPrimary} onClick={handleAdd} disabled={!addForm.ticker.trim()}>
+              <button className={styles.btnPrimary} onClick={handleAdd} disabled={!addForm.ticker.trim()} title="Add this benchmark to the list">
                 Add
               </button>
-              <button className={styles.btnSmSec} onClick={() => { setAddForm(null); setAddError('') }}>
+              <button className={styles.btnSmSec} onClick={() => { setAddForm(null); setAddError('') }} title="Close the form without adding">
                 Cancel
               </button>
             </div>
@@ -325,8 +326,8 @@ export default function Benchmarks() {
                     onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(b.id); if (e.key === 'Escape') setEditingId(null) }}
                     autoFocus
                   />
-                  <button className={styles.btnPrimary} onClick={() => handleSaveEdit(b.id)}>Save</button>
-                  <button className={styles.btnSmSec} onClick={() => setEditingId(null)}>Cancel</button>
+                  <button className={styles.btnPrimary} onClick={() => handleSaveEdit(b.id)} title="Save the new display name">Save</button>
+                  <button className={styles.btnSmSec} onClick={() => setEditingId(null)} title="Discard the rename">Cancel</button>
                 </>
               ) : (
                 <>
@@ -338,17 +339,17 @@ export default function Benchmarks() {
                   {!b.curated && deleteConfirm === b.id ? (
                     <div className={styles.benchmarkActions}>
                       <span style={{ fontSize: 12, color: '#94a3b8' }}>Remove?</span>
-                      <button className={styles.btnSmDanger} onClick={() => handleDelete(b.id)}>Yes</button>
-                      <button className={styles.btnSmSec} onClick={() => setDeleteConfirm(null)}>No</button>
+                      <button className={styles.btnSmDanger} onClick={() => handleDelete(b.id)} title="Confirm removing this benchmark">Yes</button>
+                      <button className={styles.btnSmSec} onClick={() => setDeleteConfirm(null)} title="Keep this benchmark">No</button>
                     </div>
                   ) : (
                     <div className={styles.benchmarkActions}>
                       {!b.curated && (
                         <>
-                          <button className={styles.btnSmSec} onClick={() => { setEditingId(b.id); setEditName(b.displayName) }}>
+                          <button className={styles.btnSmSec} onClick={() => { setEditingId(b.id); setEditName(b.displayName) }} title="Rename this benchmark">
                             Edit
                           </button>
-                          <button className={styles.btnSmDanger} onClick={() => setDeleteConfirm(b.id)}>
+                          <button className={styles.btnSmDanger} onClick={() => setDeleteConfirm(b.id)} title="Remove this benchmark (asks for confirmation)">
                             Delete
                           </button>
                         </>

@@ -761,7 +761,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           desktop via CSS — see StockPage.module.css. */}
       <div className={styles.header}>
         <div className={styles.headerMain}>
-          <button className={styles.backBtn} onClick={onBack}>←</button>
+          <button className={styles.backBtn} onClick={onBack} title="Go back to the previous screen">←</button>
           <span className={styles.headerTicker}>{norm}</span>
           {profile?.name && <span className={styles.headerName}>{profile.name}</span>}
           {!isManualStockProfile && (
@@ -779,9 +779,9 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
 
         <div className={styles.headerActions}>
           {accounts.length > 0 && <>
-            <button className={styles.buyBtn}      onClick={() => openAction('buy')}>+ Buy</button>
-            <button className={styles.sellBtn}     onClick={() => openAction('sell')}>+ Sell</button>
-            <button className={styles.dividendBtn} onClick={() => {
+            <button className={styles.buyBtn}      onClick={() => openAction('buy')} title="Record a buy of this stock">+ Buy</button>
+            <button className={styles.sellBtn}     onClick={() => openAction('sell')} title="Record a sell of this stock">+ Sell</button>
+            <button className={styles.dividendBtn} title="Record a dividend payout for this stock" onClick={() => {
               if (noDividends) { setShowNoDivPrompt(true); return }
               setShowDividendForm(true)
             }}>+ Dividend</button>
@@ -871,8 +871,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
       {showNoDivPrompt && (
         <div className={styles.noDivPrompt}>
           <span>{norm} is marked as not paying dividends. Clear flag and add anyway?</span>
-          <button className={styles.noDivPromptCancel} onClick={() => setShowNoDivPrompt(false)}>Cancel</button>
-          <button className={styles.noDivPromptConfirm} onClick={() => {
+          <button className={styles.noDivPromptCancel} onClick={() => setShowNoDivPrompt(false)} title="Keep the no-dividends flag and close">Cancel</button>
+          <button className={styles.noDivPromptConfirm} title="Clear the no-dividends flag and open the dividend form" onClick={() => {
             upsertStockProfile(norm, { paysDividends: null })
             setShowNoDivPrompt(false)
             setShowDividendForm(true)
@@ -887,8 +887,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             Detected {s.ratio.numerator}-for-{s.ratio.denominator} split on {norm} effective {s.date} — apply?
           </span>
           {s.error && <span className={styles.splitBannerError}>{s.error}</span>}
-          <button className={styles.noDivPromptCancel}  onClick={() => handleDismissDetectedSplit(s)}>Dismiss</button>
-          <button className={styles.noDivPromptConfirm} onClick={() => handleApplyDetectedSplit(s)}>Apply</button>
+          <button className={styles.noDivPromptCancel}  onClick={() => handleDismissDetectedSplit(s)} title="Dismiss this detected split without applying it">Dismiss</button>
+          <button className={styles.noDivPromptConfirm} onClick={() => handleApplyDetectedSplit(s)} title="Apply this detected split to your positions">Apply</button>
         </div>
       ))}
 
@@ -908,6 +908,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             )}
             <button
               className={styles.manualPriceBtn}
+              title={latestManualStock ? 'Enter a new price for this manual stock' : 'Enter the first price for this manual stock'}
               onClick={() => setManualStockForm({
                 date: new Date().toISOString().slice(0, 10),
                 amount: '',
@@ -917,7 +918,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
               {latestManualStock ? 'Set price' : 'Set first price'}
             </button>
             {getManualPricesForTicker(norm).length > 0 && (
-              <button className={styles.manualPriceBtn} onClick={() => setManualStockListOpen(o => !o)}>
+              <button className={styles.manualPriceBtn} onClick={() => setManualStockListOpen(o => !o)} title={manualStockListOpen ? 'Hide the manual price history' : 'Show the manual price history'}>
                 {manualStockListOpen ? 'Hide history' : 'Price history'}
               </button>
             )}
@@ -926,10 +927,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           <>
             <span className={styles.manualPriceLabel}>Price (manual):</span>
             <span className={styles.manualPriceValue}>{fmtAmt(manualPrice.amount)} {manualPrice.currency}</span>
-            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: String(manualPrice.amount), currency: manualPrice.currency })}>
+            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: String(manualPrice.amount), currency: manualPrice.currency })} title="Edit the manual price override">
               Edit
             </button>
-            <button className={styles.manualPriceClearBtn} onClick={() => { clearManualPrice(norm); setManualPriceKey(k => k + 1); fetchPrice() }}>
+            <button className={styles.manualPriceClearBtn} onClick={() => { clearManualPrice(norm); setManualPriceKey(k => k + 1); fetchPrice() }} title="Remove the manual price and go back to the live price">
               Clear manual price
             </button>
           </>
@@ -938,10 +939,10 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             <span className={styles.manualPriceLabel}>Price:</span>
             <span className={styles.manualPriceValue}>{fmtAmt(livePrice.price)} {livePrice.currency ?? ''}</span>
             <span className={styles.priceSource}>via {livePrice.providerName}</span>
-            <button className={styles.manualPriceBtn} onClick={() => fetchPrice(true)} disabled={priceStatus === 'loading'}>
+            <button className={styles.manualPriceBtn} onClick={() => fetchPrice(true)} disabled={priceStatus === 'loading'} title="Fetch the latest price now">
               {priceStatus === 'loading' ? 'Refreshing…' : 'Refresh'}
             </button>
-            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: '', currency: livePrice.currency ?? profile?.currency ?? currency ?? '' })}>
+            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: '', currency: livePrice.currency ?? profile?.currency ?? currency ?? '' })} title="Override the live price with a manual value">
               Set manual price
             </button>
           </>
@@ -950,7 +951,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             {priceStatus === 'loading' && <span className={styles.priceLoading}>Loading price…</span>}
             {priceStatus === 'unavailable' && <span className={styles.priceUnavailable}>Price unavailable</span>}
             {priceStatus === 'idle' && <span className={styles.priceUnavailable}>No price data</span>}
-            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: '', currency: profile?.currency ?? currency ?? '' })}>
+            <button className={styles.manualPriceBtn} onClick={() => setManualPriceForm({ amount: '', currency: profile?.currency ?? currency ?? '' })} title="Set a manual price for this stock">
               Set manual price
             </button>
           </>
@@ -976,6 +977,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           />
           <button
             className={styles.manualPriceSaveBtn}
+            title="Save the manual price"
             disabled={!manualPriceForm.amount || !manualPriceForm.currency}
             onClick={() => {
               setManualPrice(norm, manualPriceForm.amount, manualPriceForm.currency)
@@ -985,7 +987,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           >
             Save
           </button>
-          <button className={styles.manualPriceCancelBtn} onClick={() => setManualPriceForm(null)}>
+          <button className={styles.manualPriceCancelBtn} onClick={() => setManualPriceForm(null)} title="Discard the price and close the form">
             Cancel
           </button>
         </div>
@@ -1018,6 +1020,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           />
           <button
             className={styles.manualPriceSaveBtn}
+            title="Save this price entry"
             disabled={!manualStockForm.date || !manualStockForm.amount || !manualStockForm.currency}
             onClick={() => {
               setManualPriceEntry(norm, manualStockForm.date, manualStockForm.amount, manualStockForm.currency)
@@ -1027,7 +1030,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
           >
             Save
           </button>
-          <button className={styles.manualPriceCancelBtn} onClick={() => setManualStockForm(null)}>
+          <button className={styles.manualPriceCancelBtn} onClick={() => setManualStockForm(null)} title="Discard the price entry and close the form">
             Cancel
           </button>
         </div>
@@ -1043,10 +1046,12 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
               <button
                 className={styles.manualPriceBtn}
                 onClick={() => setManualStockForm({ date: row.date, amount: String(row.price), currency: row.currency })}
+                title="Edit this price entry"
               >Edit</button>
               <button
                 className={styles.manualPriceClearBtn}
                 onClick={() => { deleteManualPriceEntry(norm, row.date); setManualPriceKey(k => k + 1) }}
+                title="Delete this price entry"
               >Delete</button>
             </div>
           ))}
@@ -1121,7 +1126,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 <h2 className={styles.dialogTitle}>Can't delete</h2>
                 <p className={styles.dialogNote}>{deletingTx.reason}</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)}>Close</button>
+                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)} title="Close this dialog">Close</button>
                 </div>
               </>
             ) : (
@@ -1129,8 +1134,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 <h2 className={styles.dialogTitle}>Delete {deletingTx.txn._kind === 'currency-exchange' ? 'currency exchange' : deletingTx.txn._kind}?</h2>
                 <p className={styles.dialogNote}>This removes the record and its linked cash movements, then recalculates your positions. It can't be undone.</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)}>Cancel</button>
-                  <button className={styles.dialogDangerBtn} onClick={confirmDeleteTx}>Delete</button>
+                  <button className={styles.dialogCancelBtn} onClick={() => setDeletingTx(null)} title="Close without deleting">Cancel</button>
+                  <button className={styles.dialogDangerBtn} onClick={confirmDeleteTx} title="Permanently delete this transaction">Delete</button>
                 </div>
               </>
             )}
@@ -1198,8 +1203,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             </p>
             <p className={styles.dialogNote}>This also removes the linked cash movement.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.dialogCancelBtn} onClick={() => setDeletingDividend(null)}>Cancel</button>
-              <button className={styles.dialogDangerBtn} onClick={() => {
+              <button className={styles.dialogCancelBtn} onClick={() => setDeletingDividend(null)} title="Close without deleting">Cancel</button>
+              <button className={styles.dialogDangerBtn} title="Permanently delete this dividend and its linked cash movement" onClick={() => {
                 deleteDividend(deletingDividend.id)
                 setDeletingDividend(null)
               }}>Delete</button>
@@ -1252,6 +1257,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 <button
                   key={acc.id}
                   className={styles.accountPickerBtn}
+                  title={`Use ${acc.name} for this ${pickingAccount}`}
                   onClick={() => {
                     setActionAccountId(acc.id)
                     setActionForm(pickingAccount)
@@ -1263,7 +1269,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 </button>
               ))}
             </div>
-            <button className={styles.accountPickerCancel} onClick={() => setPickingAccount(null)}>Cancel</button>
+            <button className={styles.accountPickerCancel} onClick={() => setPickingAccount(null)} title="Close without selecting an account">Cancel</button>
           </div>
         </div>
       )}
@@ -1317,8 +1323,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             <p className={styles.negConfirmMsg}>{actionNegConfirm.message}</p>
             <p className={styles.negConfirmMsg}>Do you want to proceed?</p>
             <div className={styles.negConfirmActions}>
-              <button className={styles.negCancelBtn} onClick={() => setActionNegConfirm(null)}>Cancel</button>
-              <button className={styles.negProceedBtn} onClick={actionNegConfirm.onConfirm}>Proceed</button>
+              <button className={styles.negCancelBtn} onClick={() => setActionNegConfirm(null)} title="Cancel — do not record this transaction">Cancel</button>
+              <button className={styles.negProceedBtn} onClick={actionNegConfirm.onConfirm} title="Record the transaction despite the negative balance">Proceed</button>
             </div>
           </div>
         </div>
@@ -1343,6 +1349,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                       className={`${styles.chartPeriodBtn} ${chartPeriod === p ? styles.chartPeriodBtnActive : ''}`}
                       onClick={() => setChartPeriod(p)}
                       disabled={disabled}
+                      title={{ '1D': "Show today's intraday price history", '1M': 'Show the 1-month price history', '3M': 'Show the 3-month price history', '6M': 'Show the 6-month price history', '1Y': 'Show the 1-year price history', '5Y': 'Show the 5-year price history', 'All': 'Show the full price history' }[p]}
                     >{p}</button>
                   )
                   return disabled
@@ -1359,7 +1366,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>Positions</span>
               {positions.length > 0 && !splitFormOpen && (
-                <button className={styles.actionBtn} onClick={() => setSplitFormOpen(true)}>+ Split</button>
+                <button className={styles.actionBtn} onClick={() => setSplitFormOpen(true)} title="Record a stock split">+ Split</button>
               )}
             </div>
             {splitFormOpen && (
@@ -1405,8 +1412,8 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                 </p>
                 {splitError && <p className={styles.splitErrorMsg}>{splitError}</p>}
                 <div className={styles.splitActions}>
-                  <button className={styles.splitCancelBtn} onClick={() => { setSplitFormOpen(false); setSplitError('') }}>Cancel</button>
-                  <button className={styles.splitApplyBtn} onClick={handleApplySplit}>Apply</button>
+                  <button className={styles.splitCancelBtn} onClick={() => { setSplitFormOpen(false); setSplitError('') }} title="Close the split form without applying">Cancel</button>
+                  <button className={styles.splitApplyBtn} onClick={handleApplySplit} title="Apply this split to your positions">Apply</button>
                 </div>
               </div>
             )}
@@ -1638,6 +1645,7 @@ export default function StockPage({ ticker, onBack, onNavigate }) {
                   key={f}
                   className={`${styles.filterBtn} ${txFilter === f ? styles.filterBtnActive : ''}`}
                   onClick={() => setTxFilter(f)}
+                  title={f === 'all' ? 'Show all transaction types' : f === 'currency-exchange' ? 'Show only currency exchange transactions' : `Show only ${f} transactions`}
                 >
                   {FILTER_LABELS[f]}
                 </button>
@@ -2128,8 +2136,8 @@ function TxRow({ txn, accountsById, mainCurrency, realized = null, expanded = fa
           )}
           {(onEdit || onDelete) && (
             <div className={styles.txDetailActions}>
-              {onEdit && <button className={styles.txDetailBtn} onClick={onEdit}>Edit {editLabel} →</button>}
-              {onDelete && <button className={styles.txDetailBtn} style={{ color: '#f87171' }} onClick={onDelete}>Delete</button>}
+              {onEdit && <button className={styles.txDetailBtn} onClick={onEdit} title={`Edit this ${editLabel}`}>Edit {editLabel} →</button>}
+              {onDelete && <button className={styles.txDetailBtn} style={{ color: '#f87171' }} onClick={onDelete} title="Delete this transaction (asks for confirmation)">Delete</button>}
             </div>
           )}
         </div>
@@ -2271,7 +2279,7 @@ function YieldDetailDialog({ kind, ttmData, forwardData, price, avgCost, trading
         <h2 className={styles.dialogTitle}>{title}</h2>
         {body}
         <div className={styles.dialogActions}>
-          <button type="button" className={styles.dialogCancelBtn} onClick={onClose}>Close</button>
+          <button type="button" className={styles.dialogCancelBtn} onClick={onClose} title="Close this dialog">Close</button>
         </div>
       </div>
     </div>
@@ -2329,8 +2337,8 @@ function EditSplitDialog({ txn, onSave, onCancel }) {
           </div>
           {error && <p className={styles.splitErrorMsg}>{error}</p>}
           <div className={styles.dialogActions}>
-            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave}>Save</button>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Discard changes and close">Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave} title="Save the split changes">Save</button>
           </div>
         </form>
       </div>
@@ -2386,8 +2394,8 @@ function EditDividendDialog({ dividend, onSave, onCancel }) {
             </div>
           </div>
           <div className={styles.dialogActions}>
-            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare}>Save</button>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Discard changes and close">Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare} title="Save the dividend changes">Save</button>
           </div>
         </form>
       </div>
@@ -2472,8 +2480,8 @@ function ConvertToDeclaredDialog({ defaultExDate = '', defaultPerShare = '', def
             </div>
           </div>
           <div className={styles.dialogActions}>
-            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave}>Save as Declared</button>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Discard changes and close">Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!canSave} title="Save this dividend as declared">Save as Declared</button>
           </div>
         </form>
       </div>

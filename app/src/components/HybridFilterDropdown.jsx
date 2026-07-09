@@ -73,6 +73,7 @@ export default function HybridFilterDropdown({ label, options, selected, onChang
         className={`${styles.pill} ${active ? styles.pillActive : ''} ${disabled ? styles.pillDisabled : ''}`}
         onClick={openPanel}
         type="button"
+        title={`Filter by ${label.toLowerCase()}`}
       >
         {pillLabel}
         <span className={styles.chevron}>{open ? '▲' : '▼'}</span>
@@ -109,8 +110,8 @@ export default function HybridFilterDropdown({ label, options, selected, onChang
             ))}
           </div>
           <div className={styles.footer}>
-            <button className={styles.clearBtn} onClick={handleClear} type="button">Clear</button>
-            <button className={styles.applyBtn} onClick={handleApply} type="button">Apply</button>
+            <button className={styles.clearBtn} onClick={handleClear} type="button" title="Deselect all options">Clear</button>
+            <button className={styles.applyBtn} onClick={handleApply} type="button" title="Apply the selected filters">Apply</button>
           </div>
         </div>
       )}

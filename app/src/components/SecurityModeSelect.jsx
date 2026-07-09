@@ -32,6 +32,7 @@ export default function SecurityModeSelect({ onChoose }) {
                 onClick={() => setSelected(mode)}
                 disabled={unavailable}
                 aria-pressed={isSelected}
+                title={`Select the ${info.label} mode`}
               >
                 <div className={styles.modeHead}>
                   <span className={styles.modeName}>{info.label}</span>
@@ -52,7 +53,7 @@ export default function SecurityModeSelect({ onChoose }) {
         )}
 
         <div className={styles.actions}>
-          <button className={styles.primaryBtn} onClick={() => onChoose(selected)}>
+          <button className={styles.primaryBtn} onClick={() => onChoose(selected)} title="Confirm the selected security mode and continue">
             {selected === 'none' ? 'Continue without a password' : 'Continue'}
           </button>
         </div>

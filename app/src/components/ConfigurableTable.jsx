@@ -156,6 +156,7 @@ export default function ConfigurableTable({
           className={styles.pickerBtn}
           onClick={() => setPickerOpen(v => !v)}
           type="button"
+          title={pickerOpen ? 'Close the column picker' : 'Choose and reorder visible columns'}
         >
           ⊞ Columns
         </button>
@@ -190,6 +191,7 @@ export default function ConfigurableTable({
               className={styles.pickerClose}
               onClick={() => setPickerOpen(false)}
               type="button"
+              title="Close the column picker"
             >Done</button>
           </div>
         )}

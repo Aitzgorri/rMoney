@@ -57,7 +57,7 @@ export default function ResetDataDialog({ onBackup, onClose }) {
       <div className={styles.dialog} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h3 className={styles.title}>Reset data</h3>
-          {!running && <button className={styles.close} onClick={onClose}>✕</button>}
+          {!running && <button className={styles.close} onClick={onClose} title="Close without resetting">✕</button>}
         </div>
 
         <div className={styles.warning}>
@@ -66,7 +66,7 @@ export default function ResetDataDialog({ onBackup, onClose }) {
         </div>
 
         <div className={styles.backupRow}>
-          <button type="button" className={styles.backupBtn} onClick={onBackup} disabled={running}>
+          <button type="button" className={styles.backupBtn} onClick={onBackup} disabled={running} title="Open Save → Full backup before resetting">
             Back up first…
           </button>
           <span className={styles.backupHint}>Opens Save → Full backup (includes API keys).</span>
@@ -107,7 +107,7 @@ export default function ResetDataDialog({ onBackup, onClose }) {
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={running}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={running} title="Close without resetting">
             Cancel
           </button>
           <button
@@ -115,6 +115,7 @@ export default function ResetDataDialog({ onBackup, onClose }) {
             className={styles.resetBtn}
             onClick={handleReset}
             disabled={!canReset}
+            title="Permanently delete all app data except the ticked items (cannot be undone)"
           >
             {running ? 'Resetting…' : 'Reset'}
           </button>

@@ -88,7 +88,7 @@ export default function Investments({ onNavigate }) {
                 <h3>Cannot delete</h3>
                 <p>{confirmDelete.reason}</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>OK</button>
+                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Close this dialog">OK</button>
                 </div>
               </>
             ) : (
@@ -96,8 +96,8 @@ export default function Investments({ onNavigate }) {
                 <h3>Delete "{confirmDelete.account.name}"?</h3>
                 <p>This will remove the account and all its cash balances. This cannot be undone.</p>
                 <div className={styles.dialogActions}>
-                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-                  <button className={styles.deleteBtn} onClick={handleDeleteConfirm}>Delete</button>
+                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Keep this account">Cancel</button>
+                  <button className={styles.deleteBtn} onClick={handleDeleteConfirm} title="Delete this account permanently">Delete</button>
                 </div>
               </>
             )}
@@ -118,7 +118,7 @@ export default function Investments({ onNavigate }) {
             >
               {resetState === 'running' ? 'Resetting…' : resetState === 'done' ? 'Refreshed ✓' : 'Reset API'}
             </button>
-            <button className={styles.newBtn} onClick={() => setFormMode('new')}>+ New account</button>
+            <button className={styles.newBtn} onClick={() => setFormMode('new')} title="Create a new investing account">+ New account</button>
           </div>
         </div>
 
@@ -303,8 +303,8 @@ function AccountForm({ initial, onSave, onCancel, styles }) {
         </select>
       </div>
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!institution.trim() || !name.trim()}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Discard changes and close the form">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!institution.trim() || !name.trim()} title={initial ? 'Save changes to this account' : 'Create this account'}>
           {initial ? 'Save' : 'Create'}
         </button>
       </div>

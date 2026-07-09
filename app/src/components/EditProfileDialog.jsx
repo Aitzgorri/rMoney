@@ -241,6 +241,7 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
                   type="button"
                   className={styles.switchModeBtn}
                   onClick={() => setIdentityMode('manual')}
+                  title="Enter name, exchange and currency manually instead"
                 >
                   Switch to manual fields
                 </button>
@@ -279,6 +280,7 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
                   type="button"
                   className={styles.switchModeBtn}
                   onClick={() => setIdentityMode('resolution')}
+                  title="Go back to picking from the found candidates"
                 >
                   Back to resolution
                 </button>
@@ -345,8 +347,8 @@ export default function EditProfileDialog({ ticker, profile: profileProp, onSave
           </div>
 
           <div className={styles.dialogActions}>
-            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-            <button type="submit" className={styles.dialogSaveBtn}>Save</button>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} title="Save changes to this stock profile">Save</button>
           </div>
         </form>
       </div>

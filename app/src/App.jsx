@@ -314,7 +314,7 @@ export default function App() {
               ? 'Keys not included — safe to share.'
               : 'This file contains your API keys — keep it private.'}
           </span>
-          <button className={styles.saveBannerClose} onClick={() => setSaveBanner(null)}>✕</button>
+          <button className={styles.saveBannerClose} onClick={() => setSaveBanner(null)} title="Dismiss this notice">✕</button>
         </div>
       )}
 
@@ -323,7 +323,7 @@ export default function App() {
           <span>
             Keys were not restored from this backup. Re-enter them in Settings → Market data and Settings → AI.
           </span>
-          <button className={styles.saveBannerClose} onClick={() => setKeysNotRestored(false)}>✕</button>
+          <button className={styles.saveBannerClose} onClick={() => setKeysNotRestored(false)} title="Dismiss this notice">✕</button>
         </div>
       )}
 
@@ -334,14 +334,14 @@ export default function App() {
               ? `1 pending dividend for ${droppedDividends[0].ticker} was removed — no shares held on the ex-dividend date.`
               : `${droppedDividends.length} pending dividends were removed — no shares held on their ex-dividend dates (${[...new Set(droppedDividends.map(d => d.ticker))].join(', ')}).`}
           </span>
-          <button className={styles.saveBannerClose} onClick={() => setDroppedDividends([])}>✕</button>
+          <button className={styles.saveBannerClose} onClick={() => setDroppedDividends([])} title="Dismiss this notice">✕</button>
         </div>
       )}
 
       {loadError && (
         <div className={styles.loadError}>
           <span>{loadError}</span>
-          <button className={styles.saveBannerClose} onClick={() => setLoadError(null)}>✕</button>
+          <button className={styles.saveBannerClose} onClick={() => setLoadError(null)} title="Dismiss this error message">✕</button>
         </div>
       )}
 
@@ -383,8 +383,8 @@ export default function App() {
               </label>
             </div>
             <div className={styles.dialogActions}>
-              <button className={styles.dialogCancel} onClick={() => setSaveDialog(false)}>Cancel</button>
-              <button className={styles.dialogPrimary} onClick={handleSave}>Save</button>
+              <button className={styles.dialogCancel} onClick={() => setSaveDialog(false)} title="Cancel — don't save a backup">Cancel</button>
+              <button className={styles.dialogPrimary} onClick={handleSave} title={saveMode === 'full' ? 'Save a full backup (includes the encrypted vault — keep it private)' : 'Save a sharable backup (keys removed)'}>Save</button>
             </div>
           </div>
         </div>
@@ -404,8 +404,8 @@ export default function App() {
               This cannot be undone.
             </p>
             <div className={styles.dialogActions}>
-              <button className={styles.dialogCancel} onClick={() => setLoadDialog(null)}>Cancel</button>
-              <button className={styles.dialogConfirm} onClick={handleLoadConfirm}>Replace all data</button>
+              <button className={styles.dialogCancel} onClick={() => setLoadDialog(null)} title="Cancel — keep the current data">Cancel</button>
+              <button className={styles.dialogConfirm} onClick={handleLoadConfirm} title="Replace ALL current app data with this backup (cannot be undone)">Replace all data</button>
             </div>
           </div>
         </div>

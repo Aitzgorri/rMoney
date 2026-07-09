@@ -10,6 +10,7 @@ export default function CurrencyToggle({ value, onChange, tradingCurrency, mainC
         type="button"
         className={`${styles.btn} ${value === 'trading' ? styles.active : ''}`}
         onClick={() => onChange('trading')}
+        title="Show amounts in the trading currency"
       >
         {tradingLabel}
       </button>
@@ -17,6 +18,7 @@ export default function CurrencyToggle({ value, onChange, tradingCurrency, mainC
         type="button"
         className={`${styles.btn} ${value === 'main' ? styles.active : ''}`}
         onClick={() => onChange('main')}
+        title="Show amounts in your main currency"
       >
         {mainLabel}
       </button>

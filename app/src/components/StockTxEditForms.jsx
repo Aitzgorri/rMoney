@@ -75,8 +75,8 @@ export function BuyEditForm({ txn, onSave, onCancel }) {
       </div>
       {total > 0 && <p className={styles.ratePreview}>Total cost: {fmtAmt(total)} {txn.currency}</p>}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Save changes to this buy">Save</button>
       </div>
     </form>
   )
@@ -213,7 +213,7 @@ export function SellEditForm({ txn, accountId = txn.investingAccountId, onSave, 
       {proceeds > 0 && <p className={styles.ratePreview}>Net proceeds: {fmtAmt(proceeds - parseAmount(fee) || 0)} {txn.currency}</p>}
       {lotsWithCredit.length > 0 && (
         <div className={styles.lotPickerSection}>
-          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots}>
+          <button type="button" className={styles.lotPickerToggle} onClick={toggleLots} title={showLots ? 'Hide the lot picker' : 'Choose which lots to sell from'}>
             {showLots ? '▲' : '▼'} Advanced: choose lots
           </button>
           {showLots && (
@@ -240,8 +240,8 @@ export function SellEditForm({ txn, accountId = txn.investingAccountId, onSave, 
         </div>
       )}
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn} disabled={!canSave}>Save</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+        <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Save changes to this sell">Save</button>
       </div>
     </form>
   )

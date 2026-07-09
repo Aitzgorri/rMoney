@@ -408,13 +408,13 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
       return (
         <div className={styles.screen}>
           <div className={styles.header}>
-            <button className={styles.backBtn} onClick={onBack}>←</button>
+            <button className={styles.backBtn} onClick={onBack} title="Go back to the account screen">←</button>
             <h1 className={styles.title}>Import failed</h1>
           </div>
           <div className={styles.doneCard}>
             <div className={`${styles.doneStat} ${styles.doneStatErr}`}>{result.error}</div>
             <div className={styles.actions}>
-              <button className={styles.btnPrimary} onClick={onBack}>Close</button>
+              <button className={styles.btnPrimary} onClick={onBack} title="Close the import wizard">Close</button>
             </div>
           </div>
         </div>
@@ -435,7 +435,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
     return (
       <div className={styles.screen}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={onBack}>←</button>
+          <button className={styles.backBtn} onClick={onBack} title="Go back to the account screen">←</button>
           <h1 className={styles.title}>Import complete</h1>
         </div>
 
@@ -468,13 +468,14 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
               <button
                 className={styles.btnSecondary}
                 onClick={() => onNavigate?.('stock-inventory', { confirmFilter: 'unconfirmed' })}
+                title="Open Stock inventory filtered to unconfirmed tickers"
               >
                 Review in Stock inventory
               </button>
             </div>
           )}
           <div className={styles.actions}>
-            <button className={styles.btnPrimary} onClick={onBack}>Close</button>
+            <button className={styles.btnPrimary} onClick={onBack} title="Close the import wizard">Close</button>
           </div>
         </div>
 
@@ -494,6 +495,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
                 key={key}
                 className={`${styles.filterPill} ${reportFilter === key ? styles.filterPillActive : ''}`}
                 onClick={() => setReportFilter(key)}
+                title="Filter the report to these rows"
               >
                 {label}
               </button>
@@ -527,6 +529,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
                             if (isEditing) { setEditingRow(null); setEditErrors([]) }
                             else { setEditingRow(rr); setEditValues(buildEditValues(rr.parsed)); setEditErrors([]) }
                           }}
+                          title={isEditing ? 'Close the editor without importing this row' : 'Edit this row to fix its errors and retry the import'}
                         >
                           {isEditing ? 'Cancel' : 'Edit row'}
                         </button>
@@ -538,6 +541,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
                             if (type === 'dividend') onNavigate?.('dividends')
                             else onNavigate?.('stock', { ticker: rr.parsed.ticker })
                           }}
+                          title="Open the existing record this row duplicates"
                         >
                           View existing
                         </button>
@@ -613,8 +617,8 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
                         <div className={styles.inlineEditErrors}>{editErrors.join(' · ')}</div>
                       )}
                       <div className={styles.inlineEditActions}>
-                        <button className={styles.btnPrimary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => handleEditRetry(rr)}>Retry</button>
-                        <button className={styles.btnSecondary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => { setEditingRow(null); setEditErrors([]) }}>Cancel</button>
+                        <button className={styles.btnPrimary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => handleEditRetry(rr)} title="Validate the edited values and import this row">Retry</button>
+                        <button className={styles.btnSecondary} style={{ padding: '6px 14px', fontSize: '12px' }} onClick={() => { setEditingRow(null); setEditErrors([]) }} title="Discard the edits to this row">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -634,7 +638,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
     return (
       <div className={styles.screen}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => setStep(templateId ? 'setup' : 'map')}>←</button>
+          <button className={styles.backBtn} onClick={() => setStep(templateId ? 'setup' : 'map')} title="Go back to the previous import step">←</button>
           <h1 className={styles.title}>Preview</h1>
         </div>
         <div className={styles.previewSummary}>
@@ -681,10 +685,11 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
             className={styles.btnPrimary}
             onClick={commit}
             disabled={willImport.length === 0}
+            title="Import the previewed rows into this account"
           >
             Commit {willImport.length} row{willImport.length !== 1 ? 's' : ''}
           </button>
-          <button className={styles.btnSecondary} onClick={() => setStep(templateId ? 'setup' : 'map')}>← Back</button>
+          <button className={styles.btnSecondary} onClick={() => setStep(templateId ? 'setup' : 'map')} title="Go back to the previous import step">← Back</button>
         </div>
       </div>
     )
@@ -700,7 +705,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
     return (
       <div className={styles.screen}>
         <div className={styles.header}>
-          <button className={styles.backBtn} onClick={() => setStep('setup')}>←</button>
+          <button className={styles.backBtn} onClick={() => setStep('setup')} title="Go back to the file setup step">←</button>
           <h1 className={styles.title}>Map columns</h1>
         </div>
         <p className={styles.infoMsg}>
@@ -821,10 +826,11 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
             className={styles.btnPrimary}
             onClick={goToPreview}
             disabled={!Object.values(colMapping).some(v => v !== '__ignore__')}
+            title="Validate the mapped rows and preview the import"
           >
             Preview →
           </button>
-          <button className={styles.btnSecondary} onClick={() => setStep('setup')}>← Back</button>
+          <button className={styles.btnSecondary} onClick={() => setStep('setup')} title="Go back to the file setup step">← Back</button>
         </div>
       </div>
     )
@@ -837,7 +843,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
   return (
     <div className={styles.screen}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>←</button>
+        <button className={styles.backBtn} onClick={onBack} title="Cancel the import and go back">←</button>
         <h1 className={styles.title}>Import CSV</h1>
       </div>
       <p className={styles.infoMsg}>
@@ -908,6 +914,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
         <button
           className={styles.btnPrimary}
           disabled={!canAdvance}
+          title={useExistingTemplate ? 'Apply the selected template and preview the import' : 'Go to the column-mapping step'}
           onClick={() => {
             if (useExistingTemplate && csvRows) {
               // Apply template and skip to preview
@@ -929,7 +936,7 @@ export default function CsvImport({ accountId, onBack, onNavigate }) {
         >
           {useExistingTemplate ? 'Preview →' : 'Map columns →'}
         </button>
-        <button className={styles.btnSecondary} onClick={onBack}>Cancel</button>
+        <button className={styles.btnSecondary} onClick={onBack} title="Cancel the import and go back">Cancel</button>
       </div>
     </div>
   )

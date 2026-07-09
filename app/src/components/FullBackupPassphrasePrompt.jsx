@@ -49,7 +49,7 @@ export default function FullBackupPassphrasePrompt({ onConfirm, onCancel }) {
               autoComplete="current-password"
               placeholder="Enter your passphrase"
             />
-            <button type="button" className={styles.toggleBtn} onClick={() => setShowPass(v => !v)}>
+            <button type="button" className={styles.toggleBtn} onClick={() => setShowPass(v => !v)} title={showPass ? 'Hide the passphrase' : 'Show the passphrase while typing'}>
               {showPass ? 'Hide' : 'Show'}
             </button>
           </div>
@@ -58,13 +58,14 @@ export default function FullBackupPassphrasePrompt({ onConfirm, onCancel }) {
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.actions}>
-          <button className={styles.cancelBtn} onClick={onCancel} disabled={busy}>
+          <button className={styles.cancelBtn} onClick={onCancel} disabled={busy} title="Cancel the full backup">
             Cancel
           </button>
           <button
             className={styles.primaryBtn}
             onClick={handleConfirm}
             disabled={busy || !passphrase}
+            title="Verify the passphrase and create the full backup (includes the encrypted vault)"
           >
             {busy ? 'Verifying…' : 'Confirm'}
           </button>

@@ -37,7 +37,7 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.header}>
-        <button type="button" className={styles.backBtn} onClick={onCancel}>← Back</button>
+        <button type="button" className={styles.backBtn} onClick={onCancel} title="Discard changes and go back to the accounts list">← Back</button>
         <h2 className={styles.title}>{isEdit ? 'Edit Account' : 'New Account'}</h2>
         <span style={{ width: 60 }} />
       </div>
@@ -51,6 +51,7 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
               type="button"
               className={`${styles.typeOption} ${form.type === t.value ? styles.selected : ''}`}
               onClick={() => set('type', t.value)}
+              title={`Set the account type to ${t.label}`}
             >
               <span className={styles.typeIcon}>{t.icon}</span>
               {t.label}
@@ -97,18 +98,18 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
       </div>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn}>Save Account</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Discard changes and go back">Cancel</button>
+        <button type="submit" className={styles.saveBtn} title="Save this account">Save Account</button>
       </div>
 
       {isEdit && onArchive && (
-        <button type="button" className={styles.archiveBtn} onClick={onArchive}>
+        <button type="button" className={styles.archiveBtn} onClick={onArchive} title={initial.isArchived ? 'Restore this account to the active list' : 'Archive this account (hides it from the active list)'}>
           {initial.isArchived ? 'Unarchive Account' : 'Archive Account'}
         </button>
       )}
 
       {isEdit && onDelete && (
-        <button type="button" className={styles.deleteBtn} onClick={onDelete}>
+        <button type="button" className={styles.deleteBtn} onClick={onDelete} title="Delete this account (asks for confirmation; blocked if it has transactions)">
           Delete Account
         </button>
       )}

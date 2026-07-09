@@ -50,10 +50,10 @@ function DuplicateDialog({ ticker, dupCheck, onClose, onAddAnyway }) {
           ))}
         </ul>
         <div className={styles.dupActions}>
-          <button className={styles.dupSameBtn} onClick={onClose}>
+          <button className={styles.dupSameBtn} onClick={onClose} title="Close without saving — the existing record already covers this dividend">
             Same dividend — close without saving
           </button>
-          <button className={styles.dupDiffBtn} onClick={onAddAnyway}>
+          <button className={styles.dupDiffBtn} onClick={onAddAnyway} title="Save this dividend anyway as a separate record">
             Different dividend — add anyway
           </button>
         </div>
@@ -215,8 +215,8 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
           <div className={styles.noDivPrompt}>
             <span>{ticker} is marked as not paying dividends. Clear flag and add anyway?</span>
             <div className={styles.noDivActions}>
-              <button type="button" className={styles.noDivCancel} onClick={() => { setTicker(''); setNoDivPrompt(false) }}>Cancel</button>
-              <button type="button" className={styles.noDivClear} onClick={handleClearFlagAndContinue}>Clear flag and continue</button>
+              <button type="button" className={styles.noDivCancel} onClick={() => { setTicker(''); setNoDivPrompt(false) }} title="Cancel — keep the ticker marked as not paying dividends">Cancel</button>
+              <button type="button" className={styles.noDivClear} onClick={handleClearFlagAndContinue} title="Clear the no-dividends flag and continue entering this dividend">Clear flag and continue</button>
             </div>
           </div>
         )}
@@ -324,8 +324,8 @@ export default function MultiAccountDividendForm({ ticker: initialTicker = '', t
         )}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!canSave}>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard this dividend">Cancel</button>
+          <button type="submit" className={styles.saveBtn} disabled={!canSave} title="Save a dividend record for each included account">
             Save{includedRows.length > 1 ? ` (${includedRows.length} records)` : ''}
           </button>
         </div>

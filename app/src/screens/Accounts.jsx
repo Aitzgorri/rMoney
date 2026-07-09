@@ -104,7 +104,7 @@ export default function Accounts() {
             <h3>Cannot delete account</h3>
             <p>This account has transactions linked to it. Delete or reassign those transactions first.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setDeleteError(false)}>OK</button>
+              <button className={styles.cancelBtn} onClick={() => setDeleteError(false)} title="Close this message">OK</button>
             </div>
           </div>
         </div>
@@ -116,8 +116,8 @@ export default function Accounts() {
             <h3>Delete "{confirmDelete.accountName}"?</h3>
             <p>This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.deleteConfirmBtn} onClick={handleDeleteConfirm}>Delete</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Keep this account">Cancel</button>
+              <button className={styles.deleteConfirmBtn} onClick={handleDeleteConfirm} title="Permanently delete this account">Delete</button>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function Accounts() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>Accounts</h1>
-        <button className={styles.newBtn} onClick={() => setView('new')}>+ New</button>
+        <button className={styles.newBtn} onClick={() => setView('new')} title="Create a new account">+ New</button>
       </div>
 
       <div className={styles.sectionLabel}>Active</div>
@@ -144,7 +144,7 @@ export default function Accounts() {
 
       {archived.length > 0 && (
         <>
-          <button className={styles.archivedToggle} onClick={() => setShowArchived(v => !v)}>
+          <button className={styles.archivedToggle} onClick={() => setShowArchived(v => !v)} title={showArchived ? 'Hide the archived accounts' : 'Show the archived accounts'}>
             {showArchived ? 'Hide archived' : `Show archived (${archived.length})`}
           </button>
           {showArchived && archived.map(account => (

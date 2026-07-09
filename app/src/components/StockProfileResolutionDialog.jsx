@@ -283,8 +283,8 @@ export default function StockProfileResolutionDialog({ ticker, direction = 'A', 
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.confirmBtn} onClick={handleConfirm} disabled={!canConfirm || isLoading}>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't resolve this ticker">Cancel</button>
+          <button className={styles.confirmBtn} onClick={handleConfirm} disabled={!canConfirm || isLoading} title="Save the selected identity to the stock profile">
             {confirmLabel}
           </button>
         </div>

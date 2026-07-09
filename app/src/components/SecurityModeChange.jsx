@@ -102,7 +102,7 @@ export default function SecurityModeChange({ from, to, onClose }) {
                   autoFocus={!needCurrent}
                   placeholder="Enter a strong passphrase"
                 />
-                <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)}>
+                <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)} title={showPass ? 'Hide the passphrase' : 'Show the passphrase while typing'}>
                   {showPass ? 'Hide' : 'Show'}
                 </button>
               </div>
@@ -124,10 +124,10 @@ export default function SecurityModeChange({ from, to, onClose }) {
         {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.actions}>
-          <button className={styles.cancelBtn} onClick={onClose} disabled={busy}>
+          <button className={styles.cancelBtn} onClick={onClose} disabled={busy} title={isChange ? 'Close without changing the passphrase' : 'Close without changing the security mode'}>
             Cancel
           </button>
-          <button className={styles.primaryBtn} onClick={handleApply} disabled={busy}>
+          <button className={styles.primaryBtn} onClick={handleApply} disabled={busy} title={isChange ? 'Apply the new passphrase to your vault' : 'Apply the security-mode change described above'}>
             {busy ? 'Working…' : (isChange ? 'Change passphrase' : 'Switch mode')}
           </button>
         </div>

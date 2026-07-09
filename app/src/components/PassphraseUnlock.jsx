@@ -74,10 +74,10 @@ export default function PassphraseUnlock({ onDone, onReset, onCancel, mode = 'ke
           </p>
           <p className={styles.warning}>This cannot be undone.</p>
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={() => setForgotMode(false)} disabled={resetBusy}>
+            <button className={styles.cancelBtn} onClick={() => setForgotMode(false)} disabled={resetBusy} title="Return to the unlock screen without resetting">
               Go back
             </button>
-            <button className={styles.dangerBtn} onClick={handleReset} disabled={resetBusy}>
+            <button className={styles.dangerBtn} onClick={handleReset} disabled={resetBusy} title={mode === 'app' ? 'Permanently delete the vault, all app data, and all stored API keys' : 'Permanently delete the vault and all stored API keys'}>
               {resetBusy ? 'Resetting…' : 'Reset vault and lose all keys'}
             </button>
           </div>
@@ -110,7 +110,7 @@ export default function PassphraseUnlock({ onDone, onReset, onCancel, mode = 'ke
               autoComplete="current-password"
               placeholder="Enter your passphrase"
             />
-            <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)}>
+            <button className={styles.toggleBtn} onClick={() => setShowPass(v => !v)} title={showPass ? 'Hide the passphrase' : 'Show the passphrase while typing'}>
               {showPass ? 'Hide' : 'Show'}
             </button>
           </div>
@@ -120,7 +120,7 @@ export default function PassphraseUnlock({ onDone, onReset, onCancel, mode = 'ke
 
         <div className={styles.actions}>
           {onCancel && (
-            <button className={styles.cancelBtn} onClick={onCancel} disabled={busy}>
+            <button className={styles.cancelBtn} onClick={onCancel} disabled={busy} title="Close without unlocking">
               Cancel
             </button>
           )}
@@ -128,12 +128,13 @@ export default function PassphraseUnlock({ onDone, onReset, onCancel, mode = 'ke
             className={styles.primaryBtn}
             onClick={handleUnlock}
             disabled={busy || !passphrase || attemptsLeft <= 0}
+            title="Unlock the encrypted vault with this passphrase"
           >
             {busy ? 'Unlocking…' : 'Unlock'}
           </button>
         </div>
 
-        <button className={styles.forgotLink} onClick={() => setForgotMode(true)}>
+        <button className={styles.forgotLink} onClick={() => setForgotMode(true)} title="Reset the vault if you forgot your passphrase (shows what would be deleted first)">
           Forgot passphrase?
         </button>
       </div>

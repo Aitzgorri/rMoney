@@ -146,13 +146,14 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
               className={styles.lookupBtn}
               onClick={handleLookup}
               disabled={!newTicker || looking}
+              title="Look up the new ticker in market data"
             >
               {looking ? 'Looking up…' : 'Look up'}
             </button>
           </div>
           {lookError && <p className={styles.errorMsg}>{lookError}</p>}
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+            <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep the current ticker">Cancel</button>
           </div>
         </>)}
 
@@ -183,12 +184,13 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
           </div>
           <ModeChoice mode={mode} setMode={setMode} oldTicker={oldTicker} />
           <div className={styles.actions}>
-            <button className={styles.backBtn} onClick={handleBack}>Back</button>
-            <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+            <button className={styles.backBtn} onClick={handleBack} title="Go back and enter a different ticker">Back</button>
+            <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep the current ticker">Cancel</button>
             <button
               className={styles.renameBtn}
               onClick={handleRename}
               disabled={!mode}
+              title={mode === 'remap' ? 'Replace the identity — clears fetched history for the old ticker' : 'Rename the ticker and move all history to the new symbol'}
             >
               {mode === 'remap' ? 'Remap' : 'Rename'}
             </button>
@@ -228,12 +230,13 @@ export default function TickerRenameDialog({ oldTicker, onConfirm, onCancel }) {
           </div>
           <ModeChoice mode={mode} setMode={setMode} oldTicker={oldTicker} />
           <div className={styles.actions}>
-            <button className={styles.backBtn} onClick={handleBack}>Back</button>
-            <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+            <button className={styles.backBtn} onClick={handleBack} title="Go back and enter a different ticker">Back</button>
+            <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep the current ticker">Cancel</button>
             <button
               className={styles.renameBtn}
               onClick={handleRename}
               disabled={!mode}
+              title={mode === 'remap' ? 'Replace the identity — clears fetched history for the old ticker' : 'Rename the ticker and move all history to the new symbol'}
             >
               {mode === 'remap' ? 'Remap' : 'Rename'}
             </button>

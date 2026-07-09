@@ -126,7 +126,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>‹</button>
+        <button className={styles.backBtn} onClick={onBack} title="Go back to all watchlists">‹</button>
 
         {renamingList ? (
           <div className={styles.renameRow}>
@@ -137,8 +137,8 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
               onKeyDown={e => { if (e.key === 'Enter') handleSaveRename(); if (e.key === 'Escape') setRenamingList(false) }}
               autoFocus
             />
-            <button className={styles.saveBtn} onClick={handleSaveRename} disabled={!renameVal.trim()}>Save</button>
-            <button className={styles.cancelBtn} onClick={() => setRenamingList(false)}>Cancel</button>
+            <button className={styles.saveBtn} onClick={handleSaveRename} disabled={!renameVal.trim()} title="Save the new watchlist name">Save</button>
+            <button className={styles.cancelBtn} onClick={() => setRenamingList(false)} title="Cancel renaming">Cancel</button>
           </div>
         ) : (
           <>
@@ -146,8 +146,8 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
             <div className={styles.headerActions}>
               {!deletingList && (
                 <>
-                  <button className={styles.actionBtn} onClick={() => setRenamingList(true)}>Rename</button>
-                  <button className={styles.actionBtnDanger} onClick={() => setDeletingList(true)}>Delete</button>
+                  <button className={styles.actionBtn} onClick={() => setRenamingList(true)} title="Rename this watchlist">Rename</button>
+                  <button className={styles.actionBtnDanger} onClick={() => setDeletingList(true)} title="Delete this watchlist (asks for confirmation)">Delete</button>
                 </>
               )}
             </div>
@@ -159,8 +159,8 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
       {deletingList && (
         <div className={styles.deleteConfirmBar}>
           <span className={styles.deleteMsg}>Delete "{listName}" and all its stocks and alerts?</span>
-          <button className={styles.cancelBtn} onClick={() => setDeletingList(false)}>Cancel</button>
-          <button className={styles.deleteBtn} onClick={handleDeleteList}>Delete</button>
+          <button className={styles.cancelBtn} onClick={() => setDeletingList(false)} title="Keep this watchlist">Cancel</button>
+          <button className={styles.deleteBtn} onClick={handleDeleteList} title="Permanently delete this watchlist and all its stocks and alerts">Delete</button>
         </div>
       )}
 
@@ -176,8 +176,8 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                 <span className={styles.bannerText}>
                   {ticker} {a.direction === 'above' ? '≥' : '≤'} {a.currency ? a.currency + ' ' : ''}{a.threshold}
                 </span>
-                <button className={styles.rearmBtn} onClick={() => { rearmAlert(a.id); refresh() }}>Rearm</button>
-                <button className={styles.dismissBtn} onClick={() => { deleteAlert(a.id); refresh() }}>Dismiss</button>
+                <button className={styles.rearmBtn} onClick={() => { rearmAlert(a.id); refresh() }} title="Re-arm this alert so it can trigger again">Rearm</button>
+                <button className={styles.dismissBtn} onClick={() => { deleteAlert(a.id); refresh() }} title="Dismiss and delete this triggered alert">Dismiss</button>
               </div>
             )
           })}
@@ -193,7 +193,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
           onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
           placeholder="Ticker (AAPL) or company name…"
         />
-        <button className={styles.addBtn} onClick={handleAdd} disabled={!addInput.trim()}>
+        <button className={styles.addBtn} onClick={handleAdd} disabled={!addInput.trim()} title="Add this stock to the watchlist">
           + Add stock
         </button>
       </div>
@@ -226,6 +226,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                   <button
                     className={styles.tickerBtn}
                     onClick={() => onNavigate?.('stock', { ticker: entry.ticker })}
+                    title="Open this stock's detail page"
                   >
                     <span className={styles.ticker}>{entry.ticker}</span>
                     {profile?.name && <span className={styles.stockName}>{profile.name}</span>}
@@ -246,6 +247,7 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                     <button
                       className={styles.alertAddBtn}
                       onClick={() => { setAlertFormId(alertFormId === entry.id ? null : null); openAlertForm(entry) }}
+                      title="Add a price alert for this stock"
                     >
                       + Alert
                     </button>
@@ -256,13 +258,14 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                           if (entryAlerts.length > 0) setRemovingId(entry.id)
                           else handleRemoveEntry(entry.id)
                         }}
+                        title="Remove this stock from the watchlist (asks for confirmation if it has alerts)"
                       >
                         ✕
                       </button>
                     ) : (
                       <>
-                        <button className={styles.cancelBtn} onClick={() => setRemovingId(null)}>Keep</button>
-                        <button className={styles.deleteBtn} onClick={() => handleRemoveEntry(entry.id)}>Remove</button>
+                        <button className={styles.cancelBtn} onClick={() => setRemovingId(null)} title="Keep this stock and its alerts">Keep</button>
+                        <button className={styles.deleteBtn} onClick={() => handleRemoveEntry(entry.id)} title="Remove this stock and delete its alerts">Remove</button>
                       </>
                     )}
                   </div>
@@ -279,9 +282,9 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                         </span>
                         <span className={styles.alertStatus}>{a.status}</span>
                         {a.status === 'triggered' && (
-                          <button className={styles.rearmBtn} onClick={() => { rearmAlert(a.id); refresh() }}>Rearm</button>
+                          <button className={styles.rearmBtn} onClick={() => { rearmAlert(a.id); refresh() }} title="Re-arm this alert so it can trigger again">Rearm</button>
                         )}
-                        <button className={styles.alertDeleteBtn} onClick={() => { deleteAlert(a.id); refresh() }}>✕</button>
+                        <button className={styles.alertDeleteBtn} onClick={() => { deleteAlert(a.id); refresh() }} title="Delete this alert">✕</button>
                       </div>
                     ))}
                   </div>
@@ -309,11 +312,12 @@ export default function WatchlistDetail({ watchlist, onBack, onNavigate }) {
                       {alertCurrency && <span className={styles.alertCurrency}>{alertCurrency}</span>}
                     </div>
                     <div className={styles.alertFormActions}>
-                      <button className={styles.cancelBtn} onClick={() => setAlertFormId(null)}>Cancel</button>
+                      <button className={styles.cancelBtn} onClick={() => setAlertFormId(null)} title="Close without adding an alert">Cancel</button>
                       <button
                         className={styles.saveBtn}
                         onClick={handleSaveAlert}
                         disabled={!alertThreshold || parseAmount(alertThreshold) <= 0}
+                        title="Save this price alert"
                       >
                         Save
                       </button>

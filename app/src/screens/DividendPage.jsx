@@ -653,13 +653,14 @@ export default function DividendPage({ initialTab, onNavigate }) {
         </div>
         <div className={styles.headerRight}>
           <StaleIndicators heldTickers={heldTickers} refreshStatus={refreshStatus} />
-          <button className={styles.addDivBtn} onClick={() => setShowAddDiv(true)}>
+          <button className={styles.addDivBtn} onClick={() => setShowAddDiv(true)} title="Add a new dividend record">
             + Add dividend
           </button>
           <button
             className={styles.refreshBtn}
             onClick={handleRefreshAll}
             disabled={refreshing}
+            title="Fetch the latest dividend history for all held tickers"
           >
             {refreshing ? 'Refreshing…' : 'Refresh dividend data'}
           </button>
@@ -676,9 +677,9 @@ export default function DividendPage({ initialTab, onNavigate }) {
 
       {/* ── Tab bar ───────────────────────────────────────────────────────── */}
       <div className={styles.tabBar}>
-        <button className={`${styles.tabBtn} ${activeTab === 'calendar' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('calendar')}>Calendar</button>
-        <button className={`${styles.tabBtn} ${activeTab === 'metrics'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('metrics')}>Metrics</button>
-        <button className={`${styles.tabBtn} ${activeTab === 'pending'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('pending')}>
+        <button className={`${styles.tabBtn} ${activeTab === 'calendar' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('calendar')} title="Show the dividend calendar">Calendar</button>
+        <button className={`${styles.tabBtn} ${activeTab === 'metrics'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('metrics')} title="Show dividend metrics and charts">Metrics</button>
+        <button className={`${styles.tabBtn} ${activeTab === 'pending'  ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('pending')} title="Show dividends awaiting confirmation">
           Pending
           {pendingRecords.length > 0 && <span className={styles.pendingBadge}>{pendingRecords.length}</span>}
         </button>
@@ -792,7 +793,7 @@ function PendingTab({ records, accounts, onRefresh }) {
     <div className={styles.pendingTab}>
       <div className={styles.pendingHeader}>
         <span>{records.length} dividend{records.length !== 1 ? 's' : ''} awaiting confirmation</span>
-        <button className={styles.confirmAllBtn} onClick={handleConfirmAll}>Confirm all</button>
+        <button className={styles.confirmAllBtn} onClick={handleConfirmAll} title="Confirm receipt of all pending dividends">Confirm all</button>
       </div>
       <div className={styles.pendingTableWrap}>
         <table className={styles.tableEl}>
@@ -846,14 +847,14 @@ function PendingTab({ records, accounts, onRefresh }) {
                   <td className={styles.pendingActions}>
                     {isEditing ? (
                       <>
-                        <button className={styles.confirmBtn} onClick={() => handleEditSave(r)}>Save</button>
-                        <button className={styles.skipBtn} onClick={() => setEditId(null)}>Cancel</button>
+                        <button className={styles.confirmBtn} onClick={() => handleEditSave(r)} title="Save changes to this dividend">Save</button>
+                        <button className={styles.skipBtn} onClick={() => setEditId(null)} title="Discard changes">Cancel</button>
                       </>
                     ) : (
                       <>
-                        <button className={styles.confirmBtn} onClick={() => handleConfirm(r.id)}>Confirm</button>
-                        <button className={styles.editBtn}    onClick={() => handleEditStart(r)}>Edit</button>
-                        <button className={styles.skipBtn}    onClick={() => handleDelete(r.id)}>Delete</button>
+                        <button className={styles.confirmBtn} onClick={() => handleConfirm(r.id)} title="Confirm receipt of this dividend">Confirm</button>
+                        <button className={styles.editBtn}    onClick={() => handleEditStart(r)} title="Edit this dividend before confirming">Edit</button>
+                        <button className={styles.skipBtn}    onClick={() => handleDelete(r.id)} title="Delete this dividend">Delete</button>
                       </>
                     )}
                   </td>
@@ -922,21 +923,21 @@ function CalendarTab({ events, records, calView, setCalView, calFilter, setCalFi
     <div className={styles.calendarTab}>
       <div className={styles.calControls}>
         <div className={styles.viewToggle}>
-          <button className={`${styles.viewBtn} ${calView === 'month' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('month')}>Month</button>
-          <button className={`${styles.viewBtn} ${calView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('table')}>Table</button>
+          <button className={`${styles.viewBtn} ${calView === 'month' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('month')} title="Switch to the month calendar view">Month</button>
+          <button className={`${styles.viewBtn} ${calView === 'table' ? styles.viewBtnActive : ''}`} onClick={() => setCalView('table')} title="Switch to the table view">Table</button>
         </div>
         {calView === 'month' && (
           <div className={styles.monthNav}>
-            <button className={styles.navBtn} onClick={prevMonth}>‹</button>
+            <button className={styles.navBtn} onClick={prevMonth} title="Show the previous month">‹</button>
             <span className={styles.monthLabel}>{monthLabel}</span>
-            <button className={styles.navBtn} onClick={nextMonth}>›</button>
-            <button className={styles.navBtnSm} onClick={goToday}>Today</button>
+            <button className={styles.navBtn} onClick={nextMonth} title="Show the next month">›</button>
+            <button className={styles.navBtnSm} onClick={goToday} title="Jump to the current month">Today</button>
           </div>
         )}
         {calView === 'month' && (
           <div className={styles.filterToggle}>
-            <button className={`${styles.viewBtn} ${calFilter === 'both'     ? styles.viewBtnActive : ''}`} onClick={() => setCalFilter('both')}>Ex-div + Pay</button>
-            <button className={`${styles.viewBtn} ${calFilter === 'pay-only' ? styles.viewBtnActive : ''}`} onClick={() => setCalFilter('pay-only')}>Pay only</button>
+            <button className={`${styles.viewBtn} ${calFilter === 'both'     ? styles.viewBtnActive : ''}`} onClick={() => setCalFilter('both')} title="Show both ex-dividend and pay-date events">Ex-div + Pay</button>
+            <button className={`${styles.viewBtn} ${calFilter === 'pay-only' ? styles.viewBtnActive : ''}`} onClick={() => setCalFilter('pay-only')} title="Show only pay-date events">Pay only</button>
           </div>
         )}
       </div>
@@ -1003,7 +1004,7 @@ function MonthGrid({ calMonth, eventsByDay, popupDay, setPopupDay }) {
                 )
               })}
               {overflow > 0 && (
-                <button className={styles.overflowLink} onClick={() => setPopupDay(hasPop ? null : dateStr)}>
+                <button className={styles.overflowLink} onClick={() => setPopupDay(hasPop ? null : dateStr)} title={hasPop ? 'Hide the events for this day' : 'Show all events for this day'}>
                   +{overflow} more
                 </button>
               )}
@@ -1026,7 +1027,7 @@ function DayPopup({ events, onClose }) {
 
   return (
     <div className={styles.dayPopup} ref={ref}>
-      <button className={styles.popupClose} onClick={onClose}>×</button>
+      <button className={styles.popupClose} onClick={onClose} title="Close this popup">×</button>
       {events.map((e, i) => (
         <div key={i} className={styles.popupRow}>
           <span className={`${styles.dot} ${e.kind === 'pay' ? styles.dotGreen : styles.dotBlue} ${e.state === 'estimated' ? styles.dotDashed : ''}`} />
@@ -1134,6 +1135,7 @@ function CalendarTable({ records, calMonth, onNavigate, onRecordChange }) {
                   <button
                     className={styles.tickerLink}
                     onClick={() => onNavigate?.('stock', { ticker: r.ticker })}
+                    title="Open this stock's page"
                   >
                     {r.ticker}
                   </button>
@@ -1165,7 +1167,7 @@ function CalendarTable({ records, calMonth, onNavigate, onRecordChange }) {
       </table>
       {hasMore && <div ref={loadMoreRef} className={styles.loadMoreSentinel} />}
       {hasMore && (
-        <button className={styles.loadMoreBtn} onClick={() => setMonthsShown(prev => prev + TABLE_CHUNK_MONTHS)}>
+        <button className={styles.loadMoreBtn} onClick={() => setMonthsShown(prev => prev + TABLE_CHUNK_MONTHS)} title="Show three more months of upcoming dividends">
           Load more months
         </button>
       )}
@@ -1235,8 +1237,8 @@ function EditDividendDialog({ dividend, onSave, onCancel }) {
             </div>
           </div>
           <div className={styles.dialogActions}>
-            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare}>Save</button>
+            <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Discard changes and close">Cancel</button>
+            <button type="submit" className={styles.dialogSaveBtn} disabled={!perShare} title="Save changes to this dividend">Save</button>
           </div>
         </form>
       </div>
@@ -1267,8 +1269,8 @@ function DeleteDividendConfirm({ dividend, onConfirm, onCancel }) {
           </p>
         )}
         <div className={styles.dialogActions}>
-          <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="button" className={styles.btnSmDanger} onClick={onConfirm}>Delete</button>
+          <button type="button" className={styles.dialogCancelBtn} onClick={onCancel} title="Keep this dividend">Cancel</button>
+          <button type="button" className={styles.btnSmDanger} onClick={onConfirm} title="Delete this dividend permanently">Delete</button>
         </div>
       </div>
     </div>
@@ -1463,9 +1465,10 @@ function MetricsTab({
               <button key={p.id}
                 className={`${styles.presetBtn} ${p.id === activePresetId ? styles.presetBtnActive : ''}`}
                 onClick={() => setActivePresetId(p.id)}
+                title={`Show the "${p.name}" chart`}
               >{p.name}</button>
             ))}
-            <button className={styles.presetBtnAdd} onClick={handleCreatePreset}>+ New</button>
+            <button className={styles.presetBtnAdd} onClick={handleCreatePreset} title="Create a new chart preset">+ New</button>
           </div>
         </div>
 
@@ -1481,7 +1484,7 @@ function MetricsTab({
                     onBlur={() => { updatePreset({ name: presetNameDraft || activePreset.name }); setEditPresetId(null) }}
                     autoFocus />
                 ) : (
-                  <button className={styles.presetNameBtn} onClick={() => { setPresetNameDraft(activePreset.name); setEditPresetId(activePresetId) }}>
+                  <button className={styles.presetNameBtn} onClick={() => { setPresetNameDraft(activePreset.name); setEditPresetId(activePresetId) }} title="Rename this chart preset">
                     {activePreset.name} ✎
                   </button>
                 )}
@@ -1548,7 +1551,7 @@ function MetricsTab({
                   min={2000} max={+today().slice(0, 4) + 5} />
               </div>
 
-              <button className={styles.btnSmDanger} onClick={() => handleDeletePreset(activePresetId)}>Delete chart</button>
+              <button className={styles.btnSmDanger} onClick={() => handleDeletePreset(activePresetId)} title="Delete this chart preset">Delete chart</button>
             </div>
 
             {chartData.buckets.length === 0 && !chartData.grouped ? (
@@ -1577,7 +1580,7 @@ function MetricsTab({
               <option value="continent">By continent</option>
             </select>
             <div className={styles.colPickerWrapper}>
-              <button className={styles.colPickerBtn} onClick={() => setShowColPicker(p => !p)}>Columns ▾</button>
+              <button className={styles.colPickerBtn} onClick={() => setShowColPicker(p => !p)} title={showColPicker ? 'Close the column picker' : 'Choose which columns to show'}>Columns ▾</button>
               {showColPicker && (
                 <div className={styles.colPickerDropdown}>
                   {METRICS_COLUMNS.map(c => (
@@ -1592,7 +1595,7 @@ function MetricsTab({
                       {c.label}
                     </label>
                   ))}
-                  <button className={styles.colPickerClose} onClick={() => setShowColPicker(false)}>Close</button>
+                  <button className={styles.colPickerClose} onClick={() => setShowColPicker(false)} title="Close the column picker">Close</button>
                 </div>
               )}
             </div>
@@ -1652,14 +1655,14 @@ function MetricsRow({ row, shownColumns, mainCurrency, metricsGrouping, onNaviga
       <tr className={isGroup ? styles.groupRow : ''}>
         <td>
           {isGroup && (
-            <button className={styles.expandBtn} onClick={() => setExpanded(p => !p)}>
+            <button className={styles.expandBtn} onClick={() => setExpanded(p => !p)} title={expanded ? 'Collapse this group' : 'Expand this group to show its companies'}>
               {expanded ? '▾' : '▸'}
             </button>
           )}
           <span className={styles.rowLabel}>
             {metricsGrouping === 'company' ? (
               <>
-                <button className={styles.tickerLink} onClick={() => onNavigate?.('stock', { ticker: row.ticker })}>
+                <button className={styles.tickerLink} onClick={() => onNavigate?.('stock', { ticker: row.ticker })} title="Open this stock's page">
                   <strong>{row.ticker}</strong>
                 </button>
                 {' '}{row.label}
