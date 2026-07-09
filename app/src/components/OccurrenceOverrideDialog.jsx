@@ -1,35 +1,59 @@
 import { useState } from 'react'
-import { applyOccurrenceOverride } from '../data/bills'
+import { applyOccurrenceOverride, skipOccurrence, confirmOccurrence } from '../data/bills'
 import { parseAmount, fmtAmt } from '../utils/format'
 import { formatDate, localDateStr } from '../utils/dates'
 import AmountInput from './AmountInput'
 import styles from './OccurrenceOverrideDialog.module.css'
 
-// One-time edit of a single upcoming occurrence (Phase 55d, decisions D4):
-// change its date / amount / note, skip it, or jump to editing the whole
-// series. The series itself stays on its original schedule. If the chosen
-// date has already arrived (e.g. "Record now"), the transaction is recorded
-// immediately in BOTH application modes — the user picked the date
-// intentionally, so no second confirmation step.
+// One-time edit of a single occurrence (Phase 55d, decisions D4): change its
+// date / amount / note, skip it, or jump to editing the whole series. The
+// series itself stays on its original schedule.
+//
+// Two modes:
+//  • upcoming (no `entry.pendingOcc`): the occurrence is not generated yet —
+//    changes are stored as a one-shot override on the item. A chosen date that
+//    has arrived (e.g. "Record now") records immediately in BOTH modes.
+//  • pending (`entry.pendingOcc` set): the occurrence is already generated and
+//    waiting — Skip skips it, Confirm records it with the edited date/amount.
 export default function OccurrenceOverrideDialog({ entry, onEditSeries, onClose, onSaved }) {
-  const { item, seriesDate } = entry
+  const { item, seriesDate, pendingOcc } = entry
   const [date, setDate]     = useState(entry.date)
   const [amount, setAmount] = useState(String(entry.amount))
   const [note, setNote]     = useState('')
 
-  function save(overrideFields) {
-    applyOccurrenceOverride(item.id, seriesDate, overrideFields)
+  const effAmount = () => {
+    const amt = parseAmount(amount)
+    return Number.isFinite(amt) ? amt : entry.amount
+  }
+
+  function handleSkip() {
+    if (pendingOcc) skipOccurrence(pendingOcc.id)
+    else applyOccurrenceOverride(item.id, seriesDate, { skipped: true })
     onSaved()
   }
 
   function handleSave() {
-    const amt = parseAmount(amount)
-    save({ date, amount: Number.isFinite(amt) ? amt : entry.amount, note })
+    if (pendingOcc) {
+      confirmOccurrence(pendingOcc.id, effAmount(), {
+        type:       item.type,
+        accountId:  item.accountId,
+        currency:   item.currency,
+        categoryId: item.categoryId ?? null,
+        envelopeId: item.envelopeId ?? null,
+        payeeName:  item.payee ?? '',
+        note:       note.trim() || item.name,
+        date,
+        ...(item.countInNextPeriod ? { periodShift: 'next' } : {}),
+      })
+    } else {
+      applyOccurrenceOverride(item.id, seriesDate, { date, amount: effAmount(), note })
+    }
+    onSaved()
   }
 
   function handleRecordNow() {
-    const amt = parseAmount(amount)
-    save({ date: localDateStr(), amount: Number.isFinite(amt) ? amt : entry.amount, note })
+    applyOccurrenceOverride(item.id, seriesDate, { date: localDateStr(), amount: effAmount(), note })
+    onSaved()
   }
 
   const today = localDateStr()
@@ -39,8 +63,10 @@ export default function OccurrenceOverrideDialog({ entry, onEditSeries, onClose,
       <div className={styles.dialog}>
         <h3 className={styles.title}>{item.name}</h3>
         <p className={styles.subtitle}>
-          One-time change to the {formatDate(seriesDate)} occurrence — the series keeps its schedule
-          ({fmtAmt(item.amount)} {item.currency}).
+          {pendingOcc
+            ? `This occurrence (due ${formatDate(seriesDate)}) is waiting for confirmation — confirm it with the values below, skip it, or edit the series`
+            : `One-time change to the ${formatDate(seriesDate)} occurrence — the series keeps its schedule`}
+          {' '}({fmtAmt(item.amount)} {item.currency}).
         </p>
 
         <label className={styles.label}>Date
@@ -55,9 +81,11 @@ export default function OccurrenceOverrideDialog({ entry, onEditSeries, onClose,
         </label>
 
         <p className={styles.hint}>
-          {date <= today
-            ? 'The chosen date has arrived — saving records the transaction immediately.'
-            : `Will be ${item.applicationMode === 'auto-apply' ? 'recorded automatically' : 'shown for confirmation'} on ${formatDate(date)}.`}
+          {pendingOcc
+            ? 'Confirming records the transaction with the date and amount above.'
+            : date <= today
+              ? 'The chosen date has arrived — saving records the transaction immediately.'
+              : `Will be ${item.applicationMode === 'auto-apply' ? 'recorded automatically' : 'shown for confirmation'} on ${formatDate(date)}.`}
         </p>
 
         {onEditSeries && (
@@ -68,21 +96,23 @@ export default function OccurrenceOverrideDialog({ entry, onEditSeries, onClose,
         )}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.skipBtn} onClick={() => save({ skipped: true })}
+          <button type="button" className={styles.skipBtn} onClick={handleSkip}
             title="Skip this one occurrence — no transaction is created, the series continues">
             Skip this occurrence
           </button>
           <button type="button" className={styles.cancelBtn} onClick={onClose}
             title="Close without changing anything">Cancel</button>
-          {date > today && (
+          {!pendingOcc && date > today && (
             <button type="button" className={styles.cancelBtn} onClick={handleRecordNow}
               title="Record this occurrence today with the amount above (confirm early — no further confirmation)">
               Record now
             </button>
           )}
           <button type="button" className={styles.saveBtn} onClick={handleSave}
-            title="Save the one-time change for this occurrence only">
-            Save one-time change
+            title={pendingOcc
+              ? 'Confirm this occurrence — creates the transaction with the date and amount above'
+              : 'Save the one-time change for this occurrence only'}>
+            {pendingOcc ? 'Confirm' : 'Save one-time change'}
           </button>
         </div>
       </div>

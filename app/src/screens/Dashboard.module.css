@@ -520,3 +520,7 @@ button.upcomingRowBtn:hover { background: rgba(59, 130, 246, 0.08); border-radiu
   color: var(--text-faint);
   margin: 8px 0 0;
 }
+
+/* Due rows are clickable too (skip / adjust via the occurrence dialog) */
+.dueRowClickable { cursor: pointer; }
+.dueRowClickable:hover { background: rgba(230, 170, 60, 0.14); }

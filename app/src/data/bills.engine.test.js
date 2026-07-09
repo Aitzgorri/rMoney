@@ -130,6 +130,7 @@ describe('occurrence overrides (Phase 55d — one-time edits, skip, D4 immediate
   })
 
   it('getNextEffectiveOccurrence reflects date/amount overrides and passes over skips', () => {
+    seedStorage({})   // the derivation reads occurrence records now
     const i = item({ overrides: {
       '2026-07-20': { skipped: true },
       '2026-08-20': { date: '2026-08-15', amount: 60 },
@@ -146,6 +147,24 @@ describe('occurrence overrides (Phase 55d — one-time edits, skip, D4 immediate
     expect(txs).toHaveLength(1)
     expect(txs[0].amount).toBe(48)
     expect(txs[0].date).toBe('2026-07-09')
+  })
+
+  it('a skip is one-shot AND one-click: the next occurrence advances immediately (bug fix)', () => {
+    // The engine consumes a skip override by materializing a skipped occurrence
+    // record — the effective-next derivation must honour that record, otherwise
+    // the skipped date pops back into "upcoming" until a second skip.
+    seedStorage({ rmoney_bill_items: [item()] })
+    applyOccurrenceOverride('i1', '2026-07-20', { skipped: true })
+    const it1 = getPlannedItems()[0]
+    expect(it1.overrides).toEqual({})                                   // consumed
+    expect(getNextEffectiveOccurrence(it1)?.date).toBe('2026-08-20')    // advanced after ONE click
+  })
+
+  it('a recorded-early occurrence no longer shows as upcoming (same bug class)', () => {
+    seedStorage({ rmoney_bill_items: [item()] })
+    applyOccurrenceOverride('i1', '2026-07-20', { date: '2026-07-09', amount: 48 })  // Record now
+    expect(getTransactions()).toHaveLength(1)
+    expect(getNextEffectiveOccurrence(getPlannedItems()[0])?.date).toBe('2026-08-20')
   })
 
   it('applyOccurrenceOverride with no effective change clears a prior override', () => {

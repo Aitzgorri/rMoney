@@ -284,10 +284,16 @@ export function getNextEffectiveOccurrence(item) {
       : null
   }
   const ov = item.overrides ?? {}
+  // Series dates that already have an occurrence record (pending, confirmed OR
+  // skipped) are no longer "upcoming" — without this, a consumed skip/record-now
+  // override made the date pop back into the upcoming lists (the two-click bug).
+  const handled = new Set(
+    load(KEY_PENDING).filter(p => p.plannedItemId === item.id).map(p => p.seriesDate ?? p.dueDate)
+  )
   const horizonD = new Date()
   horizonD.setFullYear(horizonD.getFullYear() + 2)   // ≥1 occurrence even for yearly
   const candidates = getDueDates(item, localDateStr(horizonD))
-    .filter(seriesDate => !ov[seriesDate]?.skipped)
+    .filter(seriesDate => !ov[seriesDate]?.skipped && !handled.has(seriesDate))
     .map(seriesDate => ({
       seriesDate,
       date:       ov[seriesDate]?.date ?? seriesDate,
@@ -395,9 +401,13 @@ export function checkAndGeneratePending() {
 
     for (const seriesDate of seriesDates) {
       const key = `${item.id}__${seriesDate}`
-      if (handled.has(key)) continue
-
       const o = ov[seriesDate]
+      if (handled.has(key)) {
+        // Hygiene: an override targeting an already-handled occurrence can never
+        // apply — consume it so it doesn't linger on the item forever.
+        if (o) (consumedOverrides[item.id] ??= []).push(seriesDate)
+        continue
+      }
 
       // Phase 55d: a skipped occurrence is recorded (so it never re-fires) but
       // creates no transaction; the series continues unchanged.

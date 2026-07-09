@@ -345,15 +345,17 @@ export default function Dashboard({ onNavigate }) {
         {duePending.length > 0 && (
           <div className={styles.upcomingList}>
             {duePending.map(p => (
-              <div key={p.id} className={`${styles.upcomingRow} ${styles.dueRow}`}>
+              <div key={p.id} className={`${styles.upcomingRow} ${styles.dueRow} ${styles.dueRowClickable}`}
+                onClick={() => setOverrideEntry({ pendingOcc: p, item: p.item, seriesDate: p.seriesDate ?? p.dueDate, date: p.dueDate, amount: p.plannedAmount })}
+                title="Edit this due occurrence — adjust date/amount, skip, or confirm">
                 <span className={styles.upcomingDate}>{formatUpcomingDate(p.dueDate)}</span>
                 <span className={styles.dueTag}>due</span>
                 <span className={p.item.type === 'income' ? styles.positive : styles.negative}>
                   {p.item.type === 'income' ? '+' : '-'}{fmtAmt(p.plannedAmount)} {p.item.currency}
                 </span>
                 <span className={styles.upcomingName}>{getDisplayName(p.item, categoriesById)}</span>
-                <button className={styles.confirmDueBtn} onClick={() => handleConfirmDue(p)}
-                  title={`Confirm with the planned amount and due date — creates the transaction (adjust amount/date on the Bills & Income page instead if needed)`}>
+                <button className={styles.confirmDueBtn} onClick={e => { e.stopPropagation(); handleConfirmDue(p) }}
+                  title="Confirm with the planned amount and due date — creates the transaction (click the row instead to adjust or skip)">
                   Confirm
                 </button>
               </div>
