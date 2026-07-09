@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
-import { getTransactions, deleteTransaction, getPayees } from '../data/transactions'
+import { getTransactions, deleteTransaction, getPayees, getLastUsedAccountId } from '../data/transactions'
+import { getTxAccountFilter, setTxAccountFilter } from '../utils/uiSession'
 import { getAccounts } from '../data/accounts'
 import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
@@ -51,7 +52,9 @@ export default function Transactions({ initialAccountId, openInline }) {
   const [showFilter, setShowFilter] = useState(false)
   const [filters, setFilters] = useState({
     type: '',
-    accountId: initialAccountId || '',
+    // Navigation param wins; else restore the session's last account filter so
+    // returning from the ＋-menu add route keeps the filter in place (Phase 53a).
+    accountId: initialAccountId || getTxAccountFilter(),
     categoryId: '',
     envelopeId: '',
     payeeName: '',
@@ -62,6 +65,10 @@ export default function Transactions({ initialAccountId, openInline }) {
   })
   const [sortAsc, setSortAsc]   = useState(false)
   const [viewMode, setViewMode] = useState('list')  // 'list' | 'payees'
+
+  // Mirror the account filter into the session store so the ＋-menu New-transaction
+  // route (mounted outside this screen) can prefill from it (Phase 53a).
+  useEffect(() => { setTxAccountFilter(filters.accountId) }, [filters.accountId])
 
   const accounts        = getAccounts()
   const payees          = getPayees()
@@ -404,7 +411,7 @@ export default function Transactions({ initialAccountId, openInline }) {
             {onCollapse => (
               <TransactionForm
                 inline
-                defaultAccountId={filters.accountId || txs.find(t => t.accountId)?.accountId}
+                defaultAccountId={filters.accountId || getLastUsedAccountId()}
                 onSave={() => { refresh(); onCollapse() }}
                 onCancel={onCollapse}
               />

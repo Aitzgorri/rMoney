@@ -30,6 +30,14 @@ export function getTransactions() {
   })
 }
 
+// The account of the newest transaction in list order (date desc, then entry
+// time desc) — the "last-used" prefill fallback when no account filter is
+// active (Phase 51d/53a). Transfers carry source/destination ids instead of
+// `accountId` and are skipped.
+export function getLastUsedAccountId() {
+  return getTransactions().find(t => t.accountId)?.accountId ?? null
+}
+
 export function createTransaction(fields) {
   const transactions = load(KEY_TRANSACTIONS)
   const tx = {
