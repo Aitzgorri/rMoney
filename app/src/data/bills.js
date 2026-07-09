@@ -77,7 +77,8 @@ function clampDay(year, month0, day) {
 
 // Returns all due dates (local YYYY-MM-DD strings) for a planned item
 // from startDate up to and including untilDate (both local date strings).
-function getDueDates(item, untilDate) {
+// Exported for the recurrence unit tests (Phase 57c) — pure, clock-free.
+export function getDueDates(item, untilDate) {
   if (item.frequency === 'one-time') {
     return item.date && item.date <= untilDate ? [item.date] : []
   }
