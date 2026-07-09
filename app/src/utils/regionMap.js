@@ -84,7 +84,7 @@ const NAME_TO_ISO = {
   'russia': 'RU', 'russian federation': 'RU',
   'south africa': 'ZA', 'nigeria': 'NG', 'egypt': 'EG', 'kenya': 'KE',
   'israel': 'IL', 'saudi arabia': 'SA', 'united arab emirates': 'AE', 'uae': 'AE',
-  'turkey': 'TR', 'ukraine': 'UA', 'denmark': 'DK',
+  'turkey': 'TR', 'ukraine': 'UA',
 }
 
 function toISO(hqCountry) {
