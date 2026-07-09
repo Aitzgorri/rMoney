@@ -82,6 +82,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 key={item.id}
                 className={`${styles.moreItem} ${activeTab === item.id ? styles.moreItemActive : ''}`}
                 onClick={() => handleAddSelect(item)}
+                title={item.id === 'add' ? 'Add a new transaction' : 'Go to Transactions list'}
               >
                 <span className={styles.moreIcon}>{item.icon}</span>
                 <span>{item.label}</span>
@@ -99,6 +100,10 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 key={item.id}
                 className={styles.moreItem}
                 onClick={() => handleMoreSelect(item)}
+                title={item.action === 'save' ? 'Save all data to a file'
+                  : item.action === 'load' ? 'Load data from a file'
+                  : item.action === 'reset' ? 'Reset all data (asks for confirmation)'
+                  : `Go to ${item.label}`}
               >
                 <span className={styles.moreIcon}>{item.icon}</span>
                 <span>{item.label}</span>
@@ -116,6 +121,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 key={item.id}
                 className={`${styles.moreItem} ${activeTab === item.id ? styles.moreItemActive : ''}`}
                 onClick={() => handleInvestSelect(item)}
+                title={`Go to ${item.label}`}
               >
                 <span className={styles.moreIcon}>{item.icon}</span>
                 <span>{item.label}</span>
@@ -145,6 +151,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 className={styles.addBtn}
                 onClick={() => { setMoreOpen(false); setInvestOpen(false); setAddOpen(o => !o) }}
                 aria-label="Add or view transactions"
+                title="Add or view transactions"
               >
                 +
               </button>
@@ -156,6 +163,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 key={tab.id}
                 className={`${styles.tab} ${moreActive ? styles.active : ''}`}
                 onClick={() => { setInvestOpen(false); setAddOpen(false); setMoreOpen(o => !o) }}
+                title={moreOpen ? 'Close the More menu' : 'Open the More menu'}
               >
                 <span className={styles.icon}>{tab.icon}</span>
                 <span className={styles.label}>{tab.label}</span>
@@ -168,6 +176,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
                 key={tab.id}
                 className={`${styles.tab} ${investActive ? styles.active : ''}`}
                 onClick={() => { setMoreOpen(false); setAddOpen(false); setInvestOpen(o => !o) }}
+                title={investOpen ? 'Close the Investments menu' : 'Open the Investments menu'}
               >
                 <span className={styles.iconWrap}>
                   <span className={styles.icon}>{tab.icon}</span>
@@ -182,6 +191,7 @@ export default function BottomNav({ activeTab, onTabChange, onAction }) {
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
               onClick={() => { setMoreOpen(false); setInvestOpen(false); setAddOpen(false); onTabChange(tab.id) }}
+              title={`Go to ${tab.label}`}
             >
               <span className={styles.icon}>{tab.icon}</span>
               <span className={styles.label}>{tab.label}</span>

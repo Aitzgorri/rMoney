@@ -123,8 +123,8 @@ export default function ScheduledTransfers({ onBack }) {
               )}
               <p className={styles.dialogWarning}>This cannot be undone.</p>
               <div className={styles.dialogActions}>
-                <button className={styles.cancelBtn} onClick={() => setDeleteTarget(null)}>Cancel</button>
-                <button className={styles.deleteBtn} onClick={confirmDelete}>Delete</button>
+                <button className={styles.cancelBtn} onClick={() => setDeleteTarget(null)} title="Cancel — keep the scheduled transfer">Cancel</button>
+                <button className={styles.deleteBtn} onClick={confirmDelete} title="Confirm deletion — this cannot be undone">Delete</button>
               </div>
             </div>
           </div>
@@ -138,9 +138,9 @@ export default function ScheduledTransfers({ onBack }) {
   return (
     <div className={styles.screen}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>←</button>
+        <button className={styles.backBtn} onClick={onBack} title="Back to the previous screen">←</button>
         <h1 className={styles.title}>Scheduled transfers</h1>
-        <button className={styles.newBtn} onClick={() => isDesktop ? setInlineOpen(true) : setEditTransfer('new')}>+ New</button>
+        <button className={styles.newBtn} onClick={() => isDesktop ? setInlineOpen(true) : setEditTransfer('new')} title="Create a new scheduled transfer">+ New</button>
       </div>
 
       <div className={styles.toolbar}>
@@ -150,6 +150,7 @@ export default function ScheduledTransfers({ onBack }) {
             key={opt.value}
             className={`${styles.sortBtn} ${sort === opt.value ? styles.sortActive : ''}`}
             onClick={() => setSort(opt.value)}
+            title={`Sort the list by ${opt.label.toLowerCase()}`}
           >
             {opt.label}
           </button>
@@ -171,7 +172,7 @@ export default function ScheduledTransfers({ onBack }) {
           ))}
         </select>
         {(filterFrom || filterTo) && (
-          <button className={styles.filterClear} onClick={() => { setFilterFrom(''); setFilterTo('') }}>Clear</button>
+          <button className={styles.filterClear} onClick={() => { setFilterFrom(''); setFilterTo('') }} title="Clear the envelope filters">Clear</button>
         )}
       </div>
 

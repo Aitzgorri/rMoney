@@ -217,8 +217,8 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
             <h3>Delete this record?</h3>
             <p>This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.deleteConfirmBtn} onClick={() => {
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Cancel — keep the record">Cancel</button>
+              <button className={styles.deleteConfirmBtn} title="Confirm deletion — this cannot be undone" onClick={() => {
                 if (confirmDelete.kind === 'tx') deleteTransaction(confirmDelete.record.id)
                 else deleteEnvelopeTransfer(confirmDelete.record.id)
                 refresh()
@@ -233,7 +233,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
       <div className={styles.header}>
         {embedded
           ? <button className={styles.closeBtn} onClick={onBack} title="Close">✕</button>
-          : <button className={styles.backBtn} onClick={onBack}>← Back</button>
+          : <button className={styles.backBtn} onClick={onBack} title="Back to the envelope list">← Back</button>
         }
         <h2 className={styles.title}>{envelope.name}</h2>
         <div className={styles.headerActions}>
@@ -271,7 +271,8 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
       {/* Scheduled transfers section — collapsible, default collapsed (Phase 50) */}
       <div className={styles.scheduledSection}>
         <button type="button" className={styles.scheduledHeader}
-          onClick={() => schedCollapse.toggle('scheduled')}>
+          onClick={() => schedCollapse.toggle('scheduled')}
+          title={schedExpanded ? 'Collapse the scheduled transfers section' : 'Expand the scheduled transfers section'}>
           <span className={styles.chevron}>{schedExpanded ? '▾' : '▸'}</span>
           <span className={styles.sectionTitle}>Scheduled transfers</span>
           {scheduledTransfers.length > 0 && (
@@ -374,7 +375,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
               onChange={e => setFilter('dateTo', e.target.value)} />
           </div>
           {hasActiveFilters && (
-            <button className={styles.clearBtn} onClick={clearFilters}>Clear all filters</button>
+            <button className={styles.clearBtn} onClick={clearFilters} title="Clear all filters and the search text">Clear all filters</button>
           )}
         </div>
       )}

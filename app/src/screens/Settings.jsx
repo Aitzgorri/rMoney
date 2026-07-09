@@ -829,8 +829,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
         </div>
         {feeRowError && <div className={styles.fieldError}>{feeRowError}</div>}
         <div className={styles.dialogActionsRow}>
-          <button className={styles.btnSmSec} onClick={cancelFeeEdit}>Cancel</button>
-          <button className={styles.btnSm} onClick={saveFeeEdit}>Save</button>
+          <button className={styles.btnSmSec} title="Discard changes to this fee rule" onClick={cancelFeeEdit}>Cancel</button>
+          <button className={styles.btnSm} title="Save this fee rule" onClick={saveFeeEdit}>Save</button>
         </div>
       </div>
     )
@@ -879,7 +879,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
       return (
         <div className={styles.apiKeyRow}>
           <input className={styles.input} type="text" value={revealed} readOnly />
-          <button className={styles.btnSm} onClick={() => {
+          <button className={styles.btnSm} title="Hide the key" onClick={() => {
             setMdShowKey(s => ({ ...s, [id]: false }))
             setMdRevealedKey(s => ({ ...s, [id]: null }))
           }}>Hide</button>
@@ -891,8 +891,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
       return (
         <div className={styles.apiKeyRow}>
           <input className={styles.input} type="password" value="1234567890123456" readOnly />
-          <button className={styles.btnSm} onClick={showKey}>Show</button>
-          <button className={styles.btnSmSec} onClick={() => {
+          <button className={styles.btnSm} title="Reveal the saved API key" onClick={showKey}>Show</button>
+          <button className={styles.btnSmSec} title="Enter a new API key" onClick={() => {
             setMdEditing(s => ({ ...s, [id]: true }))
             setMdKeyDraft(s => ({ ...s, [id]: '' }))
           }}>Change</button>
@@ -910,9 +910,9 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
           onChange={e => setMdKeyDraft(s => ({ ...s, [id]: e.target.value }))}
           autoFocus={isEditing && keySet}
         />
-        <button className={styles.btnSm} onClick={saveKey}>Save</button>
+        <button className={styles.btnSm} title="Save the API key on this device" onClick={saveKey}>Save</button>
         {isEditing && keySet && (
-          <button className={styles.btnSmSec} onClick={() => {
+          <button className={styles.btnSmSec} title="Cancel changing the API key" onClick={() => {
             setMdEditing(s => ({ ...s, [id]: false }))
             setMdKeyDraft(s => ({ ...s, [id]: '' }))
           }}>Cancel</button>
@@ -927,6 +927,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
       <div className={styles.providerTestRow}>
         <button
           className={styles.btnSm}
+          title="Test this provider's connection and enable it on success"
           disabled={status === 'testing'}
           onClick={async () => {
             setMdTestStatus(s => ({ ...s, [id]: 'testing' }))
@@ -959,6 +960,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
           <button
             key={t.id}
             className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ''}`}
+            title={`Open the ${t.label} settings tab`}
             onClick={() => setActiveTab(t.id)}
           >
             {t.label}
@@ -1306,6 +1308,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               />
               <button
                 className={styles.btnSm}
+                title="Add this country tax override"
                 disabled={!countryTaxNew.country || countryTaxNew.pct === ''}
                 onClick={() => {
                   const updated = { ...perCountryTax, [countryTaxNew.country]: Number(countryTaxNew.pct) }
@@ -1386,8 +1389,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                             onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setRenamingId(null) }}
                             autoFocus
                           />
-                          <button className={styles.btnSm} onClick={saveRename}>Save</button>
-                          <button className={styles.btnSmSec} onClick={() => setRenamingId(null)}>Cancel</button>
+                          <button className={styles.btnSm} title="Save the new template name" onClick={saveRename}>Save</button>
+                          <button className={styles.btnSmSec} title="Cancel renaming" onClick={() => setRenamingId(null)}>Cancel</button>
                         </>
                       ) : (
                         <>
@@ -1397,8 +1400,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                               <span className={styles.templateUsers}>default for: {users.map(a => a.name).join(', ')}</span>
                             )}
                           </div>
-                          <button className={styles.btnSm} onClick={() => startRename(t)}>Rename</button>
-                          <button className={styles.btnSmDanger} onClick={() => requestDeleteTpl(t)}>Delete</button>
+                          <button className={styles.btnSm} title="Rename this template" onClick={() => startRename(t)}>Rename</button>
+                          <button className={styles.btnSmDanger} title="Delete this template" onClick={() => requestDeleteTpl(t)}>Delete</button>
                         </>
                       )}
                     </div>
@@ -1412,14 +1415,14 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 {deletingTpl.blocked ? (
                   <>
                     <p className={styles.dialogMsg}>{deletingTpl.reason}</p>
-                    <button className={styles.btnSm} onClick={() => setDeletingTpl(null)}>OK</button>
+                    <button className={styles.btnSm} title="Dismiss this message" onClick={() => setDeletingTpl(null)}>OK</button>
                   </>
                 ) : (
                   <>
                     <p className={styles.dialogMsg}>Delete "{deletingTpl.name}"? This cannot be undone.</p>
                     <div className={styles.dialogActionsRow}>
-                      <button className={styles.btnSmSec} onClick={() => setDeletingTpl(null)}>Cancel</button>
-                      <button className={styles.btnSmDanger} onClick={confirmDeleteTpl}>Delete</button>
+                      <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setDeletingTpl(null)}>Cancel</button>
+                      <button className={styles.btnSmDanger} title="Permanently delete this template" onClick={confirmDeleteTpl}>Delete</button>
                     </div>
                   </>
                 )}
@@ -1442,7 +1445,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             <div className={styles.feeSectionHeader}>
               <span className={styles.feeSectionTitle}>Per stock exchange</span>
               {!(editingFeeRow?.kind === 'exchange' && editingFeeRow.index === -1) && (
-                <button className={styles.btnSm} onClick={startAddExchangeFee}>+ Add exchange</button>
+                <button className={styles.btnSm} title="Add a per-exchange fee rule" onClick={startAddExchangeFee}>+ Add exchange</button>
               )}
             </div>
             {tradingFees.exchanges.length === 0 && !(editingFeeRow?.kind === 'exchange' && editingFeeRow.index === -1) ? (
@@ -1467,8 +1470,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       {rule.maximumFee != null && (
                         <span className={styles.feeRowVal}>max {fmtAmt(rule.maximumFee)}</span>
                       )}
-                      <button className={styles.btnSm} onClick={() => startEditExchangeFee(i)}>Edit</button>
-                      <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('exchange', i)}>Delete</button>
+                      <button className={styles.btnSm} title="Edit this exchange fee rule" onClick={() => startEditExchangeFee(i)}>Edit</button>
+                      <button className={styles.btnSmDanger} title="Delete this exchange fee rule" onClick={() => deleteFeeRow('exchange', i)}>Delete</button>
                     </div>
                   )
                 })}
@@ -1482,7 +1485,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             <div className={styles.feeSectionHeader}>
               <span className={styles.feeSectionTitle}>Per stock overrides</span>
               {!(editingFeeRow?.kind === 'stock' && editingFeeRow.index === -1) && (
-                <button className={styles.btnSm} onClick={startAddStockFee} disabled={stockProfilesForFee.length === 0}>
+                <button className={styles.btnSm} title="Add a per-stock fee override" onClick={startAddStockFee} disabled={stockProfilesForFee.length === 0}>
                   + Add stock override
                 </button>
               )}
@@ -1511,8 +1514,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       {rule.maximumFee != null && (
                         <span className={styles.feeRowVal}>max {fmtAmt(rule.maximumFee)}</span>
                       )}
-                      <button className={styles.btnSm} onClick={() => startEditStockFee(i)}>Edit</button>
-                      <button className={styles.btnSmDanger} onClick={() => deleteFeeRow('stock', i)}>Delete</button>
+                      <button className={styles.btnSm} title="Edit this stock fee override" onClick={() => startEditStockFee(i)}>Edit</button>
+                      <button className={styles.btnSmDanger} title="Delete this stock fee override" onClick={() => deleteFeeRow('stock', i)}>Delete</button>
                     </div>
                   )
                 })}
@@ -1589,6 +1592,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 </span>
                 <button
                   className={styles.btnSm}
+                  title="Open the IBKR OAuth sign-in page in a new tab"
                   disabled={!mdProviders.ibkr.clientId}
                   onClick={() => {
                     if (mdProviders.ibkr.clientId) {
@@ -1732,12 +1736,14 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 <span className={styles.cardTitle}>Recent API calls</span>
                 <button
                   className={styles.btnSm}
+                  title="Refresh the API call log"
                   onClick={() => setDebugLog(getCallLog())}
                 >
                   Refresh
                 </button>
                 <button
                   className={styles.btnSm}
+                  title="Clear the API call log"
                   onClick={() => { clearCallLog(); setDebugLog([]) }}
                 >
                   Clear
@@ -1822,18 +1828,18 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               {aiKeyShowing && savedAiConn?.apiKeySet && (
                 <div className={styles.apiKeyRow}>
                   <input className={styles.input} type="text" value={aiRevealedKey ?? ''} readOnly />
-                  <button className={styles.btnSm} onClick={() => { setAiKeyShowing(false); setAiRevealedKey(null) }}>Hide</button>
+                  <button className={styles.btnSm} title="Hide the key" onClick={() => { setAiKeyShowing(false); setAiRevealedKey(null) }}>Hide</button>
                 </div>
               )}
               {!aiKeyShowing && savedAiConn?.apiKeySet && !aiApiKeyEditing && (
                 <div className={styles.apiKeyRow}>
                   <input className={styles.input} type="password" value="1234567890123456" readOnly />
-                  <button className={styles.btnSm} onClick={async () => {
+                  <button className={styles.btnSm} title="Reveal the saved API key" onClick={async () => {
                     const key = await getSecret('ai/apiKey')
                     setAiRevealedKey(key)
                     setAiKeyShowing(true)
                   }}>Show</button>
-                  <button className={styles.btnSmSec} onClick={() => setAiApiKeyEditing(true)}>Change</button>
+                  <button className={styles.btnSmSec} title="Enter a new API key" onClick={() => setAiApiKeyEditing(true)}>Change</button>
                 </div>
               )}
               {(!savedAiConn?.apiKeySet || aiApiKeyEditing) && (
@@ -1847,16 +1853,16 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     autoFocus={aiApiKeyEditing}
                   />
                   {aiApiKeyEditing && (
-                    <button className={styles.btnSmSec} onClick={() => { setAiApiKeyEditing(false); setAiApiKeyDraft('') }}>Cancel</button>
+                    <button className={styles.btnSmSec} title="Cancel changing the API key" onClick={() => { setAiApiKeyEditing(false); setAiApiKeyDraft('') }}>Cancel</button>
                   )}
                 </div>
               )}
             </div>
 
             <div className={styles.aiActions}>
-              <button className={styles.btnSm} onClick={handleSaveAiConn}>Save</button>
+              <button className={styles.btnSm} title="Save the AI connection settings" onClick={handleSaveAiConn}>Save</button>
               {savedAiConn && (
-                <button className={styles.btnSmDanger} onClick={handleDeleteAiConn}>Delete connection</button>
+                <button className={styles.btnSmDanger} title="Delete the AI connection and its stored API key" onClick={handleDeleteAiConn}>Delete connection</button>
               )}
             </div>
           </div>
@@ -1864,7 +1870,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
           <div className={styles.card}>
             <div className={styles.cardTitleRow}>
               <span className={styles.cardTitle}>System Prompts</span>
-              <button className={styles.btnSm} onClick={startNewPrompt}>+ New prompt</button>
+              <button className={styles.btnSm} title="Create a new system prompt" onClick={startNewPrompt}>+ New prompt</button>
             </div>
             <p className={styles.description}>
               Named system prompts sent with each AI evaluation. Switch among them on the stock page.
@@ -1888,7 +1894,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                         <div className={styles.promptPreview}>{p.content.slice(0, 140)}{p.content.length > 140 ? '…' : ''}</div>
                       </div>
                       <div className={styles.promptActions}>
-                        <button className={styles.btnSm} onClick={() => startEditPrompt(p)}>Edit</button>
+                        <button className={styles.btnSm} title="Edit this prompt" onClick={() => startEditPrompt(p)}>Edit</button>
                         <button
                           className={styles.btnSmDanger}
                           onClick={() => requestDeletePrompt(p)}
@@ -1920,14 +1926,14 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                 {deletingPrompt.blocked ? (
                   <>
                     <p className={styles.dialogMsg}>{deletingPrompt.reason}</p>
-                    <button className={styles.btnSm} onClick={() => setDeletingPrompt(null)}>OK</button>
+                    <button className={styles.btnSm} title="Dismiss this message" onClick={() => setDeletingPrompt(null)}>OK</button>
                   </>
                 ) : (
                   <>
                     <p className={styles.dialogMsg}>Delete prompt "{deletingPrompt.name}"? This cannot be undone.</p>
                     <div className={styles.dialogActionsRow}>
-                      <button className={styles.btnSmSec} onClick={() => setDeletingPrompt(null)}>Cancel</button>
-                      <button className={styles.btnSmDanger} onClick={confirmDeletePrompt}>Delete</button>
+                      <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setDeletingPrompt(null)}>Cancel</button>
+                      <button className={styles.btnSmDanger} title="Permanently delete this prompt" onClick={confirmDeletePrompt}>Delete</button>
                     </div>
                   </>
                 )}
@@ -1975,6 +1981,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     {!isCurrent && !unavailable && (
                       <button
                         className={styles.securityModeSwitch}
+                        title={`Switch to ${info.label} mode`}
                         onClick={() => setModeChange({ from: securityMode, to: mode })}
                       >
                         Switch to {info.label}
@@ -1995,6 +2002,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             {encryptionAvailable && securityMode !== 'none' && (
               <button
                 className={styles.secondaryBtn}
+                title="Change your master passphrase"
                 onClick={() => setModeChange({ from: securityMode, to: securityMode })}
               >
                 Change passphrase
@@ -2050,6 +2058,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(watchlistSummary.bytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Delete all watchlists, stocks, and alerts"
                     disabled={watchlistSummary.listCount === 0 && watchlistSummary.stockCount === 0 && watchlistSummary.alertCount === 0}
                     onClick={() => setWatchlistDeleteConfirm(true)}
                   >
@@ -2064,8 +2073,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Delete all {watchlistSummary.listCount} watchlists, {watchlistSummary.stockCount} stocks, and {watchlistSummary.alertCount} alerts? This cannot be undone.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setWatchlistDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setWatchlistDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all watchlist data" onClick={() => {
                     deleteAllWatchlists()
                     setWatchlistSummary(getWatchlistStorageSummary())
                     setWatchlistDeleteConfirm(false)
@@ -2091,6 +2100,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(benchmarkBytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Delete all user-added benchmarks"
                     disabled={benchmarkUserCount === 0}
                     onClick={() => setBenchmarkDeleteConfirm(true)}
                   >
@@ -2105,8 +2115,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Delete all {benchmarkUserCount} user-added benchmark{benchmarkUserCount !== 1 ? 's' : ''}? Curated benchmarks are unaffected.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setBenchmarkDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setBenchmarkDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all user-added benchmarks" onClick={() => {
                     deleteAllUserBenchmarks()
                     setBenchmarkUserCount(getUserBenchmarks().length)
                     setBenchmarkBytes(getBenchmarksStorageBytes())
@@ -2138,6 +2148,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes} />
                   <button
                     className={styles.btnSm}
+                    title="Populate missing FX snapshots for older records"
                     onClick={handleFxBackfill}
                     disabled={fxBackfilling}
                   >
@@ -2182,6 +2193,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     <span className={styles.storageBytes}>{fmtBytes(apiDivHistStats.bytes)}</span>
                     <button
                       className={styles.btnSmDanger}
+                      title="Clear all stored API dividend history"
                       onClick={() => setApiDivHistDeleteConfirm(true)}
                     >
                       Clear all
@@ -2197,8 +2209,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   It will be re-fetched from market data providers next time you refresh.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setApiDivHistDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel clearing" onClick={() => setApiDivHistDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Clear the dividend history — it will be re-fetched from providers" onClick={() => {
                     clearApiDividendHistory()
                     setApiDivHistStats(getApiDividendHistoryStats())
                     setApiDivHistDeleteConfirm(false)
@@ -2225,6 +2237,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(dismissedSplitsBytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Clear the dismissed split notifications"
                     disabled={dismissedSplits.length === 0}
                     onClick={() => setDismissedSplitsConfirm(true)}
                   >
@@ -2239,8 +2252,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Clear all {dismissedSplits.length} dismissed split entr{dismissedSplits.length === 1 ? 'y' : 'ies'}?
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setDismissedSplitsConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel clearing" onClick={() => setDismissedSplitsConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Clear the list — these splits can be re-detected" onClick={() => {
                     deleteAllDismissedSplits()
                     setDismissedSplits(getDismissedSplits())
                     setDismissedSplitsBytes(getDismissedSplitsStorageBytes())
@@ -2272,6 +2285,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     <span className={styles.storageBytes}>{fmtBytes(cryptoProfilesBytes)}</span>
                     <button
                       className={styles.btnSmDanger}
+                      title="Clear all crypto coin mappings"
                       disabled={cryptoProfiles.length === 0}
                       onClick={() => setCryptoProfilesConfirm(true)}
                     >
@@ -2287,8 +2301,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Clear all {cryptoProfiles.length} crypto coin mapping{cryptoProfiles.length === 1 ? '' : 's'}?
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setCryptoProfilesConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel clearing" onClick={() => setCryptoProfilesConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Clear the mappings — you'll re-pick coins when pricing" onClick={() => {
                     deleteAllCryptoProfiles()
                     setCryptoProfiles(getCryptoProfiles())
                     setCryptoProfilesBytes(getCryptoProfilesStorageBytes())
@@ -2329,6 +2343,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     <span className={styles.storageBytes}>{fmtBytes(manualPricesStats.bytes)}</span>
                     <button
                       className={styles.btnSmDanger}
+                      title="Clear all manual stock prices"
                       onClick={() => setManualPricesDeleteConfirm(true)}
                     >
                       Clear all
@@ -2344,8 +2359,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   This cannot be undone — these are user-entered prices, not API data, so they will not be re-fetched.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setManualPricesDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel clearing" onClick={() => setManualPricesDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently clear all manual stock prices — they will not be re-fetched" onClick={() => {
                     clearAllManualPrices()
                     setManualPricesStats(getManualPricesStats())
                     setManualPricesDeleteConfirm(false)
@@ -2387,6 +2402,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     <span className={styles.storageBytes}>{fmtBytes(tradingScenariosStats.bytes)}</span>
                     <button
                       className={styles.btnSmDanger}
+                      title="Clear all Buy-Sell Planning scenarios"
                       onClick={() => setTradingScenariosDeleteConfirm(true)}
                     >
                       Clear all
@@ -2402,8 +2418,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   This cannot be undone — planned trades that have not been executed will be lost.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setTradingScenariosDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel clearing" onClick={() => setTradingScenariosDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently clear all planning scenarios" onClick={() => {
                     deleteAllTradingScenarios()
                     setTradingScenariosStats(getTradingScenariosStats())
                     setTradingScenariosDeleteConfirm(false)
@@ -2427,7 +2443,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageTicker}>Prices</span>
                   <span className={styles.storageCount}>{mdCacheStats.priceEntries} entr{mdCacheStats.priceEntries !== 1 ? 'ies' : 'y'}</span>
                   <span className={styles.storageBytes} />
-                  <button className={styles.btnSmSec} onClick={() => { clearPriceCache(); setMdCacheStats(getCacheStats()) }}>
+                  <button className={styles.btnSmSec} title="Clear cached prices so the next load fetches fresh data" onClick={() => { clearPriceCache(); setMdCacheStats(getCacheStats()) }}>
                     Clear
                   </button>
                 </div>
@@ -2481,6 +2497,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       <span className={styles.storageBytes}>{fmtBytes(row.bytes)}</span>
                       <button
                         className={styles.btnSmSec}
+                        title={`Delete unpinned chats for ${row.ticker} — pinned chats are kept`}
                         onClick={() => setStorageConfirm({ type: 'ticker-unpinned', ticker: row.ticker, pinnedCount: row.pinned, unpinnedCount: row.count - row.pinned })}
                         disabled={row.count - row.pinned === 0}
                       >
@@ -2488,6 +2505,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                       </button>
                       <button
                         className={styles.btnSmDanger}
+                        title={`Delete all chats for ${row.ticker}, including pinned`}
                         onClick={() => setStorageConfirm({ type: 'ticker-all', ticker: row.ticker, pinnedCount: row.pinned, unpinnedCount: row.count - row.pinned })}
                       >
                         Del all
@@ -2504,6 +2522,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     <span className={styles.storageBytes}>{fmtBytes(getTotalChatSizeBytes())}</span>
                     <button
                       className={styles.btnSmSec}
+                      title="Delete unpinned chats across all stocks — pinned chats are kept"
                       onClick={() => {
                         const totalUnpinned = storageSummary.reduce((s, r) => s + r.count - r.pinned, 0)
                         setStorageConfirm({ type: 'all-unpinned', pinnedCount: 0, unpinnedCount: totalUnpinned })
@@ -2514,6 +2533,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                     </button>
                     <button
                       className={styles.btnSmDanger}
+                      title="Delete all AI chats across all stocks, including pinned"
                       onClick={() => {
                         const totalPinned = storageSummary.reduce((s, r) => s + r.pinned, 0)
                         setStorageConfirm({ type: 'all', pinnedCount: totalPinned, unpinnedCount: 0 })
@@ -2530,8 +2550,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               <div className={styles.inlineDialog}>
                 <p className={styles.dialogMsg}>{storageConfirmMsg(storageConfirm)}</p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setStorageConfirm(null)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setStorageConfirm(null)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete these chats" onClick={() => {
                     const { type, ticker } = storageConfirm
                     if (type === 'ticker-unpinned') deleteUnpinnedChatsForTicker(ticker)
                     else if (type === 'ticker-all')   deleteAllChatsForTicker(ticker)
@@ -2561,6 +2581,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(reportPresetBytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Delete all investment report presets"
                     disabled={reportPresetCount === 0}
                     onClick={() => setReportPresetDeleteConfirm(true)}
                   >
@@ -2575,8 +2596,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Delete all {reportPresetCount} report preset{reportPresetCount !== 1 ? 's' : ''}? This cannot be undone.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setReportPresetDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setReportPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all report presets" onClick={() => {
                     deleteAllReportPresets()
                     setReportPresetCount(getReportPresets().length)
                     setReportPresetBytes(getReportPresetsStorageBytes())
@@ -2600,6 +2621,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(pieChartPresetBytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Delete all pie chart presets"
                     disabled={pieChartPresetCount === 0}
                     onClick={() => setPieChartPresetDeleteConfirm(true)}
                   >
@@ -2614,8 +2636,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Delete all {pieChartPresetCount} pie chart preset{pieChartPresetCount !== 1 ? 's' : ''}? This cannot be undone.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setPieChartPresetDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setPieChartPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all pie chart presets" onClick={() => {
                     deleteAllPieChartPresets()
                     setPieChartPresetCount(0)
                     setPieChartPresetBytes(getPieChartPresetsStorageBytes())
@@ -2659,6 +2681,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageBytes}>{fmtBytes(divChartPresetBytes)}</span>
                   <button
                     className={styles.btnSmDanger}
+                    title="Delete all dividend chart presets"
                     disabled={divChartPresetCount === 0}
                     onClick={() => setDivChartPresetDeleteConfirm(true)}
                   >
@@ -2673,8 +2696,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   Delete all {divChartPresetCount} dividend chart preset{divChartPresetCount !== 1 ? 's' : ''}? This cannot be undone.
                 </p>
                 <div className={styles.dialogActionsRow}>
-                  <button className={styles.btnSmSec} onClick={() => setDivChartPresetDeleteConfirm(false)}>Cancel</button>
-                  <button className={styles.btnSmDanger} onClick={() => {
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setDivChartPresetDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all dividend chart presets" onClick={() => {
                     deleteAllDividendChartPresets()
                     setDivChartPresetCount(0)
                     setDivChartPresetBytes(getDividendChartPresetsStorageBytes())
@@ -2741,8 +2764,8 @@ function PromptEditor({ value, onChange, onSave, onCancel }) {
         />
       </div>
       <div className={styles.dialogActionsRow}>
-        <button className={styles.btnSmSec} onClick={onCancel}>Cancel</button>
-        <button className={styles.btnSm} onClick={onSave} disabled={!value.name.trim()}>Save</button>
+        <button className={styles.btnSmSec} title="Discard changes to this prompt" onClick={onCancel}>Cancel</button>
+        <button className={styles.btnSm} title="Save this prompt" onClick={onSave} disabled={!value.name.trim()}>Save</button>
       </div>
     </div>
   )

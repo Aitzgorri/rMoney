@@ -196,8 +196,8 @@ export default function Envelopes() {
             )}
             <p className={styles.warning}>This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.deleteConfirmBtn} onClick={handleDeleteConfirm}>Delete all</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Cancel — keep the envelope">Cancel</button>
+              <button className={styles.deleteConfirmBtn} onClick={handleDeleteConfirm} title="Confirm deletion — this cannot be undone">Delete all</button>
             </div>
           </div>
         </div>
@@ -227,11 +227,12 @@ export default function Envelopes() {
                 </select>
               )}
               <div className={styles.dialogActions}>
-                <button className={styles.cancelBtn} onClick={() => setConfirmArchiveBuiltIn(null)}>Cancel</button>
+                <button className={styles.cancelBtn} onClick={() => setConfirmArchiveBuiltIn(null)} title="Cancel — don't archive">Cancel</button>
                 <button
                   className={styles.archiveConfirmBtn}
                   onClick={handleBuiltInArchiveConfirm}
                   disabled={!newDefaultId}
+                  title="Archive this envelope and make the selected one the new default"
                 >
                   Archive
                 </button>
@@ -310,7 +311,7 @@ export default function Envelopes() {
           {adding === 'root' ? (
             <AddForm value={newName} onChange={setNewName} onSubmit={handleAdd} onCancel={() => setAdding(null)} />
           ) : (
-            <button className={styles.addRoot} onClick={() => startAdding('root')}>
+            <button className={styles.addRoot} onClick={() => startAdding('root')} title="Add a top-level envelope">
               + Add envelope
             </button>
           )}
@@ -322,7 +323,8 @@ export default function Envelopes() {
       <EnvelopesGrandTotal mainCurrency={mainCurrency} styles={styles} />
 
       {archived.length > 0 && (
-        <button className={styles.archivedToggle} onClick={() => setShowArchived(v => !v)}>
+        <button className={styles.archivedToggle} onClick={() => setShowArchived(v => !v)}
+          title={showArchived ? 'Hide the archived envelopes' : 'Show the archived envelopes'}>
           {showArchived ? 'Hide archived' : `Show archived (${archived.length})`}
         </button>
       )}
@@ -362,8 +364,8 @@ function EnvelopeRow({ envelope, balance, isBuiltIn, isArchived, onClick, editin
             onChange={e => onEditChange(e.target.value)}
             autoFocus
           />
-          <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()}>✓</button>
-          <button type="button" className={styles.inlineCancel} onClick={onCancelEdit}>✕</button>
+          <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()} title="Save the new name">✓</button>
+          <button type="button" className={styles.inlineCancel} onClick={onCancelEdit} title="Cancel renaming">✕</button>
         </form>
       ) : (
         <>
@@ -456,8 +458,8 @@ function EnvelopeNode({
               onChange={e => onEditChange(e.target.value)}
               autoFocus
             />
-            <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()}>✓</button>
-            <button type="button" className={styles.inlineCancel} onClick={onCancelEdit}>✕</button>
+            <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()} title="Save the new name">✓</button>
+            <button type="button" className={styles.inlineCancel} onClick={onCancelEdit} title="Cancel renaming">✕</button>
           </form>
         ) : (
           <span className={styles.name}>
@@ -540,8 +542,8 @@ function AddForm({ value, onChange, onSubmit, onCancel }) {
         placeholder="Envelope name"
         autoFocus
       />
-      <button type="submit" className={styles.inlineSave} disabled={!value.trim()}>✓</button>
-      <button type="button" className={styles.inlineCancel} onClick={onCancel}>✕</button>
+      <button type="submit" className={styles.inlineSave} disabled={!value.trim()} title="Create the envelope">✓</button>
+      <button type="button" className={styles.inlineCancel} onClick={onCancel} title="Cancel adding">✕</button>
     </form>
   )
 }

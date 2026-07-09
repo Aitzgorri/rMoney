@@ -58,6 +58,14 @@ Make the app usable on desktop by letting content fill the full viewport, giving
 - [x] Chart axis tick labels that display **monetary amounts** use the same comma formatting (other tick types — dates, ratios — unaffected). *(Phase 43k — `DividendPage` `fmtTick`/`fmtCompact` and `StockPage` `fmtPrice` now emit comma; Benchmarks ticks are `%` and stay dot.)*
 - [x] The investment CSV import wizard (SPEC-025) **defaults its decimal-separator selector to comma** to match the app format. (Parsing already supports both via `parseNumber`; this only changes the default — no parser change.) *(Phase 43m — `CsvImport` `decimalSep` initial state `','`; selecting a saved template still applies that template's own separator.)*
 
+### Button tooltips *(Phase 54)*
+
+> Mandatory convention since 2026-07-08 (CLAUDE.md → UI Conventions → Button tooltips): **every button carries a tooltip** — a native `title`, or an existing custom CSS tooltip (`data-tooltip` / `data-tip`) **instead of** (never alongside) `title`. Style: concise imperative ("Delete this envelope (asks for confirmation)"); toggles use state-aware ternaries.
+
+- [x] **Budgeting-side audit** *(Phase 54d, 2026-07-09)*: all 16 budgeting-side files swept — nav (BottomNav/TopNav), Dashboard, Transactions (+ form, payee autocomplete, inline row), Envelopes + EnvelopeHistory + EnvelopeTransferForm, Planning, Bills & Income, Scheduled transfers, Budgets, Payees, and the whole Settings screen. **~223 tooltips added**; a brace-aware scan confirms **0 buttons without a tooltip** across the swept set. The three Transactions header buttons keep their styled `data-tooltip` (upgraded to state-aware wording) with no duplicate `title`; Settings' per-country tax `×` keeps its `data-tip`.
+- [ ] **Investing-side audit** *(Phase 54e)*: the same sweep for InvestingAccountDetail, StockPage, BuySellPlanning, DividendPage, InvestmentReports, watchlists, stock inventory, CSV import and the remaining investing components (~450+ buttons, the bulk of the app).
+- [x] Known non-button gap (recorded, not in scope of the button rule): Payees' expandable payee/transaction rows are clickable `<div>`s and carry no tooltip.
+
 ## UI / Screens
 Desktop Dashboard (text sketch):
 

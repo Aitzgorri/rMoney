@@ -167,6 +167,7 @@ export default function Dashboard({ onNavigate }) {
             className={styles.refreshBtn}
             onClick={handleRefreshRates}
             disabled={ratesLoading}
+            title="Fetch the latest exchange rates"
           >
             {ratesLoading ? 'Refreshing…' : 'Refresh rates'}
           </button>
@@ -177,7 +178,7 @@ export default function Dashboard({ onNavigate }) {
       <div className={`${styles.card} ${styles.accountsCard}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}>Account Balances</span>
-          <button className={styles.seeAll} onClick={() => onNavigate('accounts')}>
+          <button className={styles.seeAll} onClick={() => onNavigate('accounts')} title="Go to Accounts">
             See all →
           </button>
         </div>
@@ -210,6 +211,7 @@ export default function Dashboard({ onNavigate }) {
                 <button
                   className={styles.showNativeBtn}
                   onClick={() => setShowNative(v => !v)}
+                  title={showNative ? `Show totals in ${mainCurrency}` : 'Show totals in native currencies'}
                 >
                   {showNative ? `Show in ${mainCurrency}` : 'Show in native'}
                 </button>
@@ -304,7 +306,7 @@ export default function Dashboard({ onNavigate }) {
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}>Upcoming</span>
           {upcoming.length > 5 && (
-            <button className={styles.seeAll} onClick={() => setShowAllUpcoming(v => !v)}>
+            <button className={styles.seeAll} onClick={() => setShowAllUpcoming(v => !v)} title={showAllUpcoming ? 'Show only the first 5 upcoming items' : 'Show all upcoming items'}>
               {showAllUpcoming ? 'Show less' : `See all ${upcoming.length}`}
             </button>
           )}
@@ -334,7 +336,7 @@ export default function Dashboard({ onNavigate }) {
       <div className={styles.widgetSection}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitle}>Widgets</span>
-          <button className={styles.seeAll} onClick={() => setEditingWidgets(v => !v)}>
+          <button className={styles.seeAll} onClick={() => setEditingWidgets(v => !v)} title={editingWidgets ? 'Finish editing widgets' : 'Reorder or remove widgets'}>
             {editingWidgets ? 'Done' : 'Edit'}
           </button>
         </div>
@@ -368,12 +370,12 @@ export default function Dashboard({ onNavigate }) {
               ))}
             </select>
             <div className={styles.addWidgetActions}>
-              <button className={styles.cancelSmall} onClick={() => { setAddingWidget(false); setNewWidgetEnvelopeId('') }}>Cancel</button>
-              <button className={styles.confirmSmall} onClick={handleAddWidget} disabled={!newWidgetEnvelopeId}>Add</button>
+              <button className={styles.cancelSmall} onClick={() => { setAddingWidget(false); setNewWidgetEnvelopeId('') }} title="Cancel adding a widget">Cancel</button>
+              <button className={styles.confirmSmall} onClick={handleAddWidget} disabled={!newWidgetEnvelopeId} title="Add this widget to the dashboard">Add</button>
             </div>
           </div>
         ) : (
-          <button className={styles.addWidgetBtn} onClick={() => setAddingWidget(true)}>
+          <button className={styles.addWidgetBtn} onClick={() => setAddingWidget(true)} title="Add a new widget">
             + Add widget
           </button>
         )}
@@ -409,7 +411,7 @@ function EnvelopeDailySpendingWidget({ widget, envelopes, editing, onRemove, onM
     return (
       <div className={styles.widgetCard}>
         <span className={styles.widgetError}>{message}</span>
-        {editing && <button className={styles.removeBtn} onClick={onRemove}>Remove</button>}
+        {editing && <button className={styles.removeBtn} onClick={onRemove} title="Remove this widget">Remove</button>}
       </div>
     )
   }
@@ -424,10 +426,10 @@ function EnvelopeDailySpendingWidget({ widget, envelopes, editing, onRemove, onM
       {editing && (
         <div className={styles.widgetEditBar}>
           <div className={styles.widgetMoveButtons}>
-            <button className={styles.moveBtn} onClick={onMoveUp} disabled={isFirst}>▲</button>
-            <button className={styles.moveBtn} onClick={onMoveDown} disabled={isLast}>▼</button>
+            <button className={styles.moveBtn} onClick={onMoveUp} disabled={isFirst} title="Move widget up">▲</button>
+            <button className={styles.moveBtn} onClick={onMoveDown} disabled={isLast} title="Move widget down">▼</button>
           </div>
-          <button className={styles.removeBtn} onClick={onRemove}>Remove</button>
+          <button className={styles.removeBtn} onClick={onRemove} title="Remove this widget">Remove</button>
         </div>
       )}
       <div className={styles.widgetName}>{envelope.name}</div>

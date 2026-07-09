@@ -55,6 +55,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
               onClick={() => onTabChange(tab.id)}
+              title={`Go to ${tab.label}`}
             >
               {tab.label}
             </button>
@@ -63,6 +64,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
           <button
             className={`${styles.tab} ${investActive ? styles.active : ''}`}
             onClick={() => onTabChange('investments')}
+            title="Go to Investments"
           >
             Investments
             {alertBadge > 0 && <span className={styles.badge}>{alertBadge}</span>}
@@ -80,6 +82,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
           <button
             className={`${styles.tab} ${moreActive ? styles.active : ''}`}
             onClick={() => { if (!moreActive) onTabChange('planning') }}
+            title="Open the More section"
           >
             More
           </button>
@@ -87,6 +90,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
         <button
           className={styles.addBtn}
           onClick={() => onTabChange('transactions', { openInline: Date.now() })}
+          title="Add a new transaction"
         >
           + Add transaction
         </button>
@@ -100,6 +104,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
               key={tab.id}
               className={`${styles.subTab} ${activeTab === tab.id ? styles.subTabActive : ''}`}
               onClick={() => onTabChange(tab.id)}
+              title={`Go to ${tab.label}`}
             >
               {tab.label}
             </button>
@@ -112,6 +117,7 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
                   key={tab.id}
                   className={`${styles.subTab} ${activeTab === tab.id ? styles.subTabActive : ''}`}
                   onClick={() => onTabChange(tab.id)}
+                  title={`Go to ${tab.label}`}
                 >
                   {tab.label}
                 </button>
@@ -122,6 +128,9 @@ export default function TopNav({ activeTab, onTabChange, onAction }) {
                   key={tab.action}
                   className={styles.subTabAction}
                   onClick={() => onAction?.(tab.action)}
+                  title={tab.action === 'save' ? 'Save all data to a file'
+                    : tab.action === 'load' ? 'Load data from a file'
+                    : 'Reset all data (asks for confirmation)'}
                 >
                   {tab.label}
                 </button>

@@ -120,8 +120,8 @@ export default function EnvelopeTransferForm({
             <h3>Delete this {mode === 'regular' ? 'scheduled ' : ''}transfer?</h3>
             <p>This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-              <button type="button" className={styles.deleteConfirmBtn} onClick={onDelete}>Delete</button>
+              <button type="button" className={styles.cancelBtn} onClick={() => setShowDeleteConfirm(false)} title="Cancel — keep the transfer">Cancel</button>
+              <button type="button" className={styles.deleteConfirmBtn} onClick={onDelete} title="Confirm deletion — this cannot be undone">Delete</button>
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function EnvelopeTransferForm({
 
       {!inline && (
         <div className={styles.header}>
-          <button type="button" className={styles.backBtn} onClick={onCancel}>← Back</button>
+          <button type="button" className={styles.backBtn} onClick={onCancel} title="Go back without saving">← Back</button>
           <h2 className={styles.title}>{isEdit ? 'Edit' : 'New'} Transfer</h2>
           <span style={{ width: 60 }} />
         </div>
@@ -142,6 +142,7 @@ export default function EnvelopeTransferForm({
             type="button"
             className={`${styles.modeBtn} ${mode === 'one-time' ? styles.modeActive : ''}`}
             onClick={() => setMode('one-time')}
+            title={mode === 'one-time' ? 'One-time mode is selected' : 'Switch to a one-time transfer'}
           >
             One-time
           </button>
@@ -149,6 +150,7 @@ export default function EnvelopeTransferForm({
             type="button"
             className={`${styles.modeBtn} ${mode === 'regular' ? styles.modeActive : ''}`}
             onClick={() => setMode('regular')}
+            title={mode === 'regular' ? 'Regular (scheduled) mode is selected' : 'Switch to a regular (scheduled) transfer'}
           >
             Regular
           </button>
@@ -254,15 +256,16 @@ export default function EnvelopeTransferForm({
       </div>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
         <button type="submit" className={styles.saveBtn}
-          disabled={form.fromEnvelopeId === form.toEnvelopeId}>
+          disabled={form.fromEnvelopeId === form.toEnvelopeId}
+          title={isEdit ? 'Save changes to this transfer' : mode === 'one-time' ? 'Create the one-time transfer' : 'Create the scheduled transfer'}>
           {isEdit ? 'Save' : mode === 'one-time' ? 'Transfer' : 'Save'}
         </button>
       </div>
 
       {onDelete && (
-        <button type="button" className={styles.deleteBtn} onClick={() => setShowDeleteConfirm(true)}>
+        <button type="button" className={styles.deleteBtn} onClick={() => setShowDeleteConfirm(true)} title="Delete this transfer (asks for confirmation)">
           Delete transfer
         </button>
       )}

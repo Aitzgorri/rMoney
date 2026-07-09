@@ -221,8 +221,8 @@ export default function Transactions({ initialAccountId, openInline }) {
         <h3>Delete this transaction?</h3>
         <p>This cannot be undone.</p>
         <div className={styles.dialogActions}>
-          <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-          <button className={styles.deleteConfirmBtn} onClick={() => {
+          <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Keep this transaction">Cancel</button>
+          <button className={styles.deleteConfirmBtn} title="Permanently delete this transaction" onClick={() => {
             deleteTransaction(confirmDelete.id)
             refresh()
             setConfirmDelete(null)
@@ -255,19 +255,21 @@ export default function Transactions({ initialAccountId, openInline }) {
         <div className={styles.header}>
           <h1 className={styles.title}>Transactions</h1>
           <div className={styles.headerActions}>
+            {/* These three use the styled data-tooltip (CSS attr tooltip) INSTEAD of a
+                native title — one visible tooltip, never both (CLAUDE.md tooltip rule). */}
             <button
               className={`${styles.iconBtn} ${viewMode === 'payees' ? styles.active : ''}`}
-              data-tooltip="Payee report"
+              data-tooltip={viewMode === 'payees' ? 'Back to the transaction list' : 'Show the payee report'}
               onClick={() => setViewMode(v => v === 'payees' ? 'list' : 'payees')}>
               ₽
             </button>
             {!isDesktop && (
               <button className={`${styles.iconBtn} ${showFilter ? styles.active : ''}`}
-                data-tooltip="Filter"
+                data-tooltip={showFilter ? 'Hide transaction filters' : 'Show transaction filters'}
                 onClick={() => setShowFilter(v => !v)}>⚙</button>
             )}
             <button className={styles.iconBtn}
-              data-tooltip={sortAsc ? 'Sorted: oldest first' : 'Sorted: newest first'}
+              data-tooltip={sortAsc ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}
               onClick={() => setSortAsc(v => !v)}>
               {sortAsc ? '↑' : '↓'}
             </button>
@@ -287,6 +289,7 @@ export default function Transactions({ initialAccountId, openInline }) {
           <button
             className={`${styles.accountBtn} ${!filters.accountId ? styles.active : ''}`}
             onClick={() => setFilter('accountId', '')}
+            title="Show transactions from all accounts"
           >
             All
           </button>
@@ -295,6 +298,7 @@ export default function Transactions({ initialAccountId, openInline }) {
               key={a.id}
               className={`${styles.accountBtn} ${filters.accountId === a.id ? styles.active : ''}`}
               onClick={() => setFilter('accountId', a.id)}
+              title={`Show only ${a.accountName} transactions`}
             >
               {a.accountName}
             </button>
@@ -377,13 +381,13 @@ export default function Transactions({ initialAccountId, openInline }) {
             </div>
 
             {hasActiveFilters && (
-              <button className={styles.clearBtn} onClick={clearFilters}>Clear all filters</button>
+              <button className={styles.clearBtn} onClick={clearFilters} title="Reset all filters and search">Clear all filters</button>
             )}
           </div>
         )}
 
         {!isDesktop && hasActiveFilters && !showFilter && (
-          <button className={styles.clearBtnSmall} onClick={clearFilters}>✕ Clear filters</button>
+          <button className={styles.clearBtnSmall} onClick={clearFilters} title="Reset all filters and search">✕ Clear filters</button>
         )}
       </div>
 

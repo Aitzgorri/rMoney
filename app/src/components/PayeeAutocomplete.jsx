@@ -75,6 +75,7 @@ export default function PayeeAutocomplete({ value, onChange, className, placehol
               className={`${styles.suggestion} ${i === active ? styles.active : ''}`}
               onMouseEnter={() => setActive(i)}
               onClick={() => select(p.name)}
+              title="Use this payee"
             >
               {p.name}
             </button>

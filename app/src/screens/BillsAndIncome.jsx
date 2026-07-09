@@ -189,7 +189,7 @@ export default function BillsAndIncome({ onBack }) {
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>←</button>
+        <button className={styles.backBtn} onClick={onBack} title="Go back">←</button>
         <h1 className={styles.title}>Bills & Income</h1>
         <div style={{ width: 40 }} />
       </div>
@@ -199,7 +199,7 @@ export default function BillsAndIncome({ onBack }) {
         <div className={styles.pendingSection}>
           <div className={styles.pendingHeader}>
             <span className={styles.pendingTitle}>Pending ({enrichedPending.length})</span>
-            <button className={styles.confirmAllBtn} onClick={handleBulkConfirm}>✓ Confirm all</button>
+            <button className={styles.confirmAllBtn} onClick={handleBulkConfirm} title="Confirm all pending items">✓ Confirm all</button>
           </div>
           {enrichedPending.map(p => {
             const overdue = daysOverdue(p.dueDate)
@@ -230,8 +230,9 @@ export default function BillsAndIncome({ onBack }) {
                     className={styles.confirmBtn}
                     onClick={() => handleConfirmOccurrence(p, parseAmount(edit.amount), edit.date)}
                     disabled={!edit.amount}
+                    title="Confirm this occurrence with the shown date and amount"
                   >Confirm</button>
-                  <button className={styles.skipBtn} onClick={() => handleSkip(p.id)}>Skip</button>
+                  <button className={styles.skipBtn} onClick={() => handleSkip(p.id)} title="Skip this occurrence (no transaction is created)">Skip</button>
                 </div>
               </div>
             )
@@ -245,15 +246,17 @@ export default function BillsAndIncome({ onBack }) {
           <button
             className={`${styles.viewBtn} ${view === 'list' ? styles.viewActive : ''}`}
             onClick={() => setView('list')}
+            title="Show the list of planned items"
           >List</button>
           <button
             className={`${styles.viewBtn} ${view === 'upcoming' ? styles.viewActive : ''}`}
             onClick={() => setView('upcoming')}
+            title="Show upcoming occurrences"
           >Upcoming</button>
         </div>
         <div className={styles.addButtons}>
-          <button className={styles.addBtn} onClick={() => setEditItem('new-income')}>+ Income</button>
-          <button className={styles.addBtn} onClick={() => setEditItem('new-expense')}>+ Expense</button>
+          <button className={styles.addBtn} onClick={() => setEditItem('new-income')} title="Add a planned income item">+ Income</button>
+          <button className={styles.addBtn} onClick={() => setEditItem('new-expense')} title="Add a planned expense item">+ Expense</button>
         </div>
       </div>
 
@@ -268,6 +271,7 @@ export default function BillsAndIncome({ onBack }) {
                   key={t}
                   className={`${styles.filterBtn} ${filterType === t ? styles.filterActive : ''}`}
                   onClick={() => setFilterType(t)}
+                  title={t === 'all' ? 'Show all planned items' : `Show only ${t} items`}
                 >{t.charAt(0).toUpperCase() + t.slice(1)}</button>
               ))}
             </div>
@@ -351,7 +355,7 @@ function ItemRow({ item, accountMap, isOutstanding, onClick }) {
   const next = getNextOccurrenceDate(item)
   const freq = FREQUENCY_LABELS[item.frequency] ?? item.frequency
   return (
-    <button className={styles.itemRow} onClick={onClick}>
+    <button className={styles.itemRow} onClick={onClick} title="Edit this planned item">
       <div className={styles.itemInfo}>
         <span className={styles.itemName}>{item.name}</span>
         <span className={styles.itemMeta}>
@@ -430,7 +434,7 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
   return (
     <div className={styles.formScreen}>
       <div className={styles.header}>
-        <button type="button" className={styles.backBtn} onClick={onCancel}>←</button>
+        <button type="button" className={styles.backBtn} onClick={onCancel} title="Go back without saving">←</button>
         <h1 className={styles.title}>
           {initial ? 'Edit' : 'New'} planned {form.type}
         </h1>
@@ -444,10 +448,10 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
             <div className={styles.typeToggle}>
               <button type="button"
                 className={`${styles.typeBtn} ${form.type === 'income' ? styles.typeActive : ''}`}
-                onClick={() => set('type', 'income')}>Income</button>
+                onClick={() => set('type', 'income')} title="Set the type to income">Income</button>
               <button type="button"
                 className={`${styles.typeBtn} ${form.type === 'expense' ? styles.typeActive : ''}`}
-                onClick={() => set('type', 'expense')}>Expense</button>
+                onClick={() => set('type', 'expense')} title="Set the type to expense">Expense</button>
             </div>
           )}
 
@@ -554,11 +558,11 @@ function PlannedItemForm({ initial, defaultType, accounts, catsFlat, envsFlat, o
       </div>
 
       <div className={styles.formActions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel without saving">Cancel</button>
         {onDelete && (
-          <button type="button" className={styles.deleteBtn} onClick={onDelete}>Delete</button>
+          <button type="button" className={styles.deleteBtn} onClick={onDelete} title="Delete this planned item">Delete</button>
         )}
-        <button type="submit" form="bill-form" className={styles.saveBtn}>Save</button>
+        <button type="submit" form="bill-form" className={styles.saveBtn} title="Save this planned item">Save</button>
       </div>
     </div>
   )
@@ -574,7 +578,7 @@ function ConfirmOccurrenceDialog({ occurrence, item, onConfirm, onSkip, onCancel
   return (
     <div className={styles.formScreen}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onCancel}>←</button>
+        <button className={styles.backBtn} onClick={onCancel} title="Go back without confirming">←</button>
         <h1 className={styles.title}>Confirm: {item.name}</h1>
         <div style={{ width: 40 }} />
       </div>
@@ -602,11 +606,11 @@ function ConfirmOccurrenceDialog({ occurrence, item, onConfirm, onSkip, onCancel
         </label>
       </div>
       <div className={styles.formActions}>
-        <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button className={styles.skipBtn2} onClick={onSkip}>Skip</button>
+        <button className={styles.cancelBtn} onClick={onCancel} title="Cancel without confirming">Cancel</button>
+        <button className={styles.skipBtn2} onClick={onSkip} title="Skip this occurrence (no transaction is created)">Skip</button>
         <button className={styles.saveBtn}
           onClick={() => onConfirm(occurrence, parseAmount(actualAmount))}
-          disabled={!actualAmount}>
+          disabled={!actualAmount} title="Confirm this occurrence with the entered actual amount">
           Confirm
         </button>
       </div>
@@ -629,8 +633,8 @@ function DeleteItemDialog({ item, onConfirm, onCancel }) {
         )}
         <p className={styles.dialogWarning}>This cannot be undone.</p>
         <div className={styles.dialogActions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.deleteBtn2} onClick={() => onConfirm(item)}>Delete</button>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep it">Cancel</button>
+          <button className={styles.deleteBtn2} onClick={() => onConfirm(item)} title="Confirm deletion">Delete</button>
         </div>
       </div>
     </div>

@@ -454,7 +454,7 @@ export default function Planning() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionTitle}>Planned incomes</span>
-          <button className={styles.addBtn} onClick={() => isDesktop ? setIncomeInlineOpen(true) : setIncomeModal('new')}>+ Add</button>
+          <button className={styles.addBtn} onClick={() => isDesktop ? setIncomeInlineOpen(true) : setIncomeModal('new')} title="Add a planned income">+ Add</button>
         </div>
 
         {isDesktop && (
@@ -497,8 +497,8 @@ export default function Planning() {
                       {displayAmount != null ? fmtAmt(displayAmount) : '—'} {income.currency}
                     </span>
                     <div className={styles.incomeActions}>
-                      <button className={styles.rowBtn} onClick={() => setIncomeModal(income)}>✎</button>
-                      <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => handleDeleteIncome(income)}>×</button>
+                      <button className={styles.rowBtn} onClick={() => setIncomeModal(income)} title="Edit this planned income">✎</button>
+                      <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => handleDeleteIncome(income)} title="Delete this planned income">×</button>
                     </div>
                   </div>
                 </div>
@@ -514,11 +514,12 @@ export default function Planning() {
           <span className={styles.sectionTitle}>Planned expenses</span>
           <div className={styles.sectionHeaderActions}>
             {parentExpenseIds.length > 0 && (
-              <button className={styles.addBtn} onClick={() => allExpanded ? expand.clear() : expand.setAll(parentExpenseIds)}>
+              <button className={styles.addBtn} onClick={() => allExpanded ? expand.clear() : expand.setAll(parentExpenseIds)}
+                title={allExpanded ? 'Collapse all expense groups' : 'Expand all expense groups'}>
                 {allExpanded ? 'Collapse all' : 'Expand all'}
               </button>
             )}
-            <button className={styles.addBtn} onClick={() => isDesktop ? setExpenseInlineOpen(true) : setExpenseModal({ mode: 'new', parentId: null })}>+ Add</button>
+            <button className={styles.addBtn} onClick={() => isDesktop ? setExpenseInlineOpen(true) : setExpenseModal({ mode: 'new', parentId: null })} title="Add a planned expense">+ Add</button>
           </div>
         </div>
 
@@ -582,15 +583,15 @@ export default function Planning() {
 
       {/* One-time / scheduled transfer shortcut */}
       <div className={styles.transferRow}>
-        <button className={styles.addTransferBtn} onClick={() => setAddTransfer(true)}>
+        <button className={styles.addTransferBtn} onClick={() => setAddTransfer(true)} title="Add a one-time or scheduled envelope transfer">
           + Add envelope transfer
         </button>
       </div>
 
       {/* Action bar */}
       <div className={styles.actionBar}>
-        <button className={styles.resetAllBtn} onClick={handleResetAll}>↺ Reset all</button>
-        <button className={styles.applyAllBtn} onClick={handleApplyAll}>✓ Apply all transfers</button>
+        <button className={styles.resetAllBtn} onClick={handleResetAll} title="Reset every planned expense to its applied transfer amount (or clear it if not applied)">↺ Reset all</button>
+        <button className={styles.applyAllBtn} onClick={handleApplyAll} title="Apply every out-of-sync planned expense to its scheduled transfer">✓ Apply all transfers</button>
       </div>
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
@@ -753,7 +754,7 @@ function ExpenseNode({
         <div className={styles.expenseNameCell}>
           <span className={styles.expenseDragHandle} data-rowignore="1" {...listeners} {...attributes} title="Drag to reparent">≡</span>
           {isParent && (
-            <button className={styles.expandBtn} onClick={() => onToggleExpand(item.id)}>
+            <button className={styles.expandBtn} onClick={() => onToggleExpand(item.id)} title={isExpanded ? 'Collapse' : 'Expand'}>
               {isExpanded ? '▾' : '▸'}
             </button>
           )}
@@ -786,9 +787,9 @@ function ExpenseNode({
               >↺</button>
             </span>
           )}
-          <button className={styles.rowBtn} onClick={() => onAdd(item.id)}>+</button>
-          <button className={styles.rowBtn} onClick={() => onEdit(item)}>✎</button>
-          <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => onDelete(item)}>×</button>
+          <button className={styles.rowBtn} onClick={() => onAdd(item.id)} title="Add a sub-item under this expense">+</button>
+          <button className={styles.rowBtn} onClick={() => onEdit(item)} title="Edit this planned expense">✎</button>
+          <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => onDelete(item)} title="Delete this planned expense">×</button>
         </div>
       </div>
       {isParent && isExpanded && (
@@ -913,8 +914,8 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
           </form>
         </div>
         <div className={styles.modalActions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" form="income-form" className={styles.saveBtn}>Save</button>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+          <button type="submit" form="income-form" className={styles.saveBtn} title="Save this planned income">Save</button>
         </div>
       </div>
     </div>
@@ -1094,8 +1095,8 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
           </form>
         </div>
         <div className={styles.modalActions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" form="expense-form" className={styles.saveBtn}>Save</button>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+          <button type="submit" form="expense-form" className={styles.saveBtn} title="Save this planned expense">Save</button>
         </div>
       </div>
     </div>
@@ -1125,8 +1126,8 @@ function ConvertLeafDialog({ leafItem, newChildName, onConfirm, onCancel }) {
           <p className={styles.dialogWarning}>This cannot be undone.</p>
         </div>
         <div className={styles.modalActions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.dangerBtn} onClick={onConfirm}>Convert</button>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't convert">Cancel</button>
+          <button className={styles.dangerBtn} onClick={onConfirm} title="Convert this item to a parent">Convert</button>
         </div>
       </div>
     </div>
@@ -1183,8 +1184,8 @@ function ApplyDialog({ items, scope, onScopeChange, onConfirm, onCancel }) {
           )}
         </div>
         <div className={styles.modalActions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.saveBtn} onClick={onConfirm}>Apply</button>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — don't apply any changes">Cancel</button>
+          <button className={styles.saveBtn} onClick={onConfirm} title="Apply the listed changes to the scheduled transfers">Apply</button>
         </div>
       </div>
     </div>
@@ -1206,8 +1207,8 @@ function DeleteConfirmDialog({ item, descendants, onConfirm, onCancel }) {
           <p className={styles.dialogWarning}>This cannot be undone.</p>
         </div>
         <div className={styles.modalActions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.dangerBtn} onClick={onConfirm}>Delete all</button>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep the items">Cancel</button>
+          <button className={styles.dangerBtn} onClick={onConfirm} title="Confirm deletion — this cannot be undone">Delete all</button>
         </div>
       </div>
     </div>

@@ -188,8 +188,8 @@ export default function Budgets({ onBack }) {
             )}
             <p className={styles.dialogWarning}>Any budgets on these categories are removed too. This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDeleteCat(null)}>Cancel</button>
-              <button className={styles.deleteConfirmBtn} onClick={handleDeleteCatConfirm}>Delete all</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDeleteCat(null)} title="Cancel — keep it">Cancel</button>
+              <button className={styles.deleteConfirmBtn} onClick={handleDeleteCatConfirm} title="Confirm deletion">Delete all</button>
             </div>
           </div>
         </div>
@@ -208,8 +208,8 @@ export default function Budgets({ onBack }) {
               </select>
               {successors.length === 0 && <p className={styles.dialogWarning}>No other {confirmArchive.category.type} categories exist. Add one first.</p>}
               <div className={styles.dialogActions}>
-                <button className={styles.cancelBtn} onClick={() => setConfirmArchive(null)}>Cancel</button>
-                <button className={styles.deleteConfirmBtn} onClick={handleArchiveConfirm} disabled={!archiveSuccessorId}>Archive</button>
+                <button className={styles.cancelBtn} onClick={() => setConfirmArchive(null)} title="Cancel — don't archive">Cancel</button>
+                <button className={styles.deleteConfirmBtn} onClick={handleArchiveConfirm} disabled={!archiveSuccessorId} title="Archive this built-in category">Archive</button>
               </div>
             </div>
           </div>
@@ -217,21 +217,21 @@ export default function Budgets({ onBack }) {
       })()}
 
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onBack}>←</button>
+        <button className={styles.backBtn} onClick={onBack} title="Go back">←</button>
         <h1 className={styles.title}>Categories &amp; budgets</h1>
         <div style={{ width: 32 }} />
       </div>
 
       <div className={styles.typeTabs}>
         <button className={`${styles.typeTab} ${activeType === 'expense' ? styles.typeTabActive : ''}`}
-          onClick={() => { setActiveType('expense'); setAdding(null); setEditing(null) }}>Expense</button>
+          onClick={() => { setActiveType('expense'); setAdding(null); setEditing(null) }} title="Show expense categories">Expense</button>
         <button className={`${styles.typeTab} ${activeType === 'income' ? styles.typeTabActive : ''}`}
-          onClick={() => { setActiveType('income'); setAdding(null); setEditing(null) }}>Income</button>
+          onClick={() => { setActiveType('income'); setAdding(null); setEditing(null) }} title="Show income categories">Income</button>
       </div>
 
       {parentCatIds.length > 0 && (
         <div className={styles.toolbar}>
-          <button className={styles.collapseAllBtn} onClick={toggleCollapseAll}>{allCollapsed ? 'Expand all' : 'Collapse all'}</button>
+          <button className={styles.collapseAllBtn} onClick={toggleCollapseAll} title={allCollapsed ? 'Expand all category groups' : 'Collapse all category groups'}>{allCollapsed ? 'Expand all' : 'Collapse all'}</button>
         </div>
       )}
 
@@ -277,7 +277,7 @@ export default function Budgets({ onBack }) {
           {adding === 'root' && addingType === activeType ? (
             <AddForm value={newName} onChange={setNewName} onSubmit={handleAddCategory} onCancel={() => setAdding(null)} />
           ) : (
-            <button className={styles.addRoot} onClick={() => startAdding('root', activeType)}>+ Add {activeType} category</button>
+            <button className={styles.addRoot} onClick={() => startAdding('root', activeType)} title={`Add a top-level ${activeType} category`}>+ Add {activeType} category</button>
           )}
 
           <CategoryRootDropZone />
@@ -336,8 +336,8 @@ function TreeNode({
         {isEditing ? (
           <form className={styles.inlineForm} onSubmit={onEditSave}>
             <input className={styles.inlineInput} value={editing.name} onChange={e => onEditChange(e.target.value)} autoFocus />
-            <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()}>✓</button>
-            <button type="button" className={styles.inlineCancel} onClick={onCancelEdit}>✕</button>
+            <button type="submit" className={styles.inlineSave} disabled={!editing.name.trim()} title="Save the new name">✓</button>
+            <button type="button" className={styles.inlineCancel} onClick={onCancelEdit} title="Cancel renaming">✕</button>
           </form>
         ) : (
           <>
@@ -388,8 +388,8 @@ function AddForm({ value, onChange, onSubmit, onCancel }) {
   return (
     <form className={styles.addForm} onSubmit={onSubmit}>
       <input className={styles.inlineInput} value={value} onChange={e => onChange(e.target.value)} placeholder="Category name" autoFocus />
-      <button type="submit" className={styles.inlineSave} disabled={!value.trim()}>✓</button>
-      <button type="button" className={styles.inlineCancel} onClick={onCancel}>✕</button>
+      <button type="submit" className={styles.inlineSave} disabled={!value.trim()} title="Add this category">✓</button>
+      <button type="button" className={styles.inlineCancel} onClick={onCancel} title="Cancel adding">✕</button>
     </form>
   )
 }
@@ -490,8 +490,8 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
         {deleteDialog}
         {fields}
         <div className={styles.formActions}>
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || parseAmount(amount) <= 0}>Save</button>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel without saving">Cancel</button>
+          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || parseAmount(amount) <= 0} title="Save this budget">Save</button>
         </div>
       </form>
     )
@@ -501,16 +501,16 @@ function BudgetForm({ initial, initialCategoryId, onSave, onCancel, onDelete, de
     <div className={styles.screen}>
       {deleteDialog}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={onCancel}>←</button>
+        <button className={styles.backBtn} onClick={onCancel} title="Go back without saving">←</button>
         <h1 className={styles.title}>{initial ? 'Edit budget' : 'New category budget'}</h1>
         <div style={{ width: 32 }} />
       </div>
       <form className={styles.form} onSubmit={handleSubmit}>
         {fields}
         <div className={styles.formActions}>
-          {onDelete && <button type="button" className={styles.deleteBtn} onClick={onDelete}>Delete</button>}
-          <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || parseAmount(amount) <= 0}>Save</button>
+          {onDelete && <button type="button" className={styles.deleteBtn} onClick={onDelete} title="Delete this budget">Delete</button>}
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel without saving">Cancel</button>
+          <button type="submit" className={styles.saveBtn} disabled={!categoryId || !amount || parseAmount(amount) <= 0} title="Save this budget">Save</button>
         </div>
       </form>
     </div>
@@ -527,8 +527,8 @@ function DeleteDialog({ onConfirm, onCancel }) {
         <p className={styles.dialogText}>The budget target will be removed. All historical transactions remain intact.</p>
         <p className={styles.dialogWarning}>This cannot be undone.</p>
         <div className={styles.dialogActions}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.deleteConfirmBtn} onClick={onConfirm}>Delete</button>
+          <button className={styles.cancelBtn} onClick={onCancel} title="Cancel — keep it">Cancel</button>
+          <button className={styles.deleteConfirmBtn} onClick={onConfirm} title="Confirm deletion">Delete</button>
         </div>
       </div>
     </div>

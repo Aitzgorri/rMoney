@@ -12,7 +12,7 @@ import styles from './InlineFormRow.module.css'
 export default function InlineFormRow({ label, open, onOpenChange, children }) {
   if (!open) {
     return (
-      <button className={styles.addRow} onClick={() => onOpenChange(true)}>
+      <button className={styles.addRow} onClick={() => onOpenChange(true)} title={label}>
         <span className={styles.plus}>+</span>
         {label}
       </button>

@@ -156,8 +156,8 @@ export default function Payees() {
             <h3>Merge payees?</h3>
             <p>"{confirmMerge.from}" will be merged into the existing "{confirmMerge.to}". {confirmMerge.usage.txCount} transaction(s){confirmMerge.usage.itemCount ? ` + ${confirmMerge.usage.itemCount} recurring item(s)` : ''} will move. This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmMerge(null)}>Cancel</button>
-              <button className={styles.confirmBtn} onClick={doMerge}>Merge</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmMerge(null)} title="Cancel — don't merge">Cancel</button>
+              <button className={styles.confirmBtn} onClick={doMerge} title="Confirm the merge">Merge</button>
             </div>
           </div>
         </div>
@@ -168,8 +168,8 @@ export default function Payees() {
             <h3>Delete payee "{confirmDelete.name}"?</h3>
             <p>{confirmDelete.usage.txCount} transaction(s){confirmDelete.usage.itemCount ? ` + ${confirmDelete.usage.itemCount} recurring item(s)` : ''} will be left with no payee (the records are kept). This cannot be undone.</p>
             <div className={styles.dialogActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button className={styles.deleteBtn} onClick={doDelete}>Delete</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)} title="Cancel — keep it">Cancel</button>
+              <button className={styles.deleteBtn} onClick={doDelete} title="Confirm deletion">Delete</button>
             </div>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default function Payees() {
             {expenseCats.map(c => <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>)}
           </select>
         </label>
-        {hasFilters && <button className={styles.clearBtn} onClick={() => setFilters(emptyFilters())}>Clear filters</button>}
+        {hasFilters && <button className={styles.clearBtn} onClick={() => setFilters(emptyFilters())} title="Reset all filters to their defaults">Clear filters</button>}
       </div>
 
       {shown.length === 0 ? (
@@ -235,8 +235,8 @@ export default function Payees() {
                   {renaming?.key === g.key ? (
                     <form className={styles.renameForm} onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); submitRename() }}>
                       <PayeeAutocomplete className={styles.renameInput} value={renameVal} onChange={setRenameVal} />
-                      <button type="submit" className={styles.iconBtn}>✓</button>
-                      <button type="button" className={styles.iconBtn} onClick={() => setRenaming(null)}>✕</button>
+                      <button type="submit" className={styles.iconBtn} title="Save the new payee name">✓</button>
+                      <button type="button" className={styles.iconBtn} onClick={() => setRenaming(null)} title="Cancel renaming">✕</button>
                     </form>
                   ) : (
                     <span className={styles.payeeName}>{g.display}</span>

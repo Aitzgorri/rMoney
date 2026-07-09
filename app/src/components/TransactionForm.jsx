@@ -226,7 +226,7 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
     <form className={styles.form} onSubmit={handleSubmit}>
       {!inline && (
         <div className={styles.header}>
-          <button type="button" className={styles.backBtn} onClick={onCancel}>← Back</button>
+          <button type="button" className={styles.backBtn} onClick={onCancel} title="Go back without saving">← Back</button>
           <h2 className={styles.title}>{isEdit ? 'Edit' : 'New'} Transaction</h2>
           <span style={{ width: 60 }} />
         </div>
@@ -241,6 +241,7 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               type="button"
               className={`${styles.typeBtn} ${type === t ? styles.typeActive : ''} ${styles['type_' + t]}`}
               onClick={() => setType(t)}
+              title={t === 'income' ? 'Record an income' : t === 'expense' ? 'Record an expense' : 'Record a transfer'}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
@@ -299,8 +300,8 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
                     {treeOptions(categories)}
                   </select>
                   <div className={styles.newCatActions}>
-                    <button type="button" className={styles.newCatAdd} onClick={handleCreateCategory}>Add</button>
-                    <button type="button" className={styles.newCatCancel}
+                    <button type="button" className={styles.newCatAdd} onClick={handleCreateCategory} title="Create this category">Add</button>
+                    <button type="button" className={styles.newCatCancel} title="Cancel creating a category"
                       onClick={() => { setShowNewCategory(false); setNewCatName('') }}>Cancel</button>
                   </div>
                 </div>
@@ -486,8 +487,8 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
       )}
 
       <div className={styles.actions}>
-        <button type="button" className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-        <button type="submit" className={styles.saveBtn}>
+        <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Discard changes and close the form">Cancel</button>
+        <button type="submit" className={styles.saveBtn} title={isEdit ? 'Save changes to this transaction' : 'Save this transaction'}>
           {isEdit ? 'Save changes' : 'Save'}
         </button>
       </div>
@@ -495,7 +496,7 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
       {isEdit && onDelete && (
         initial?.linkedFromInvestments
           ? <p className={styles.linkedNote}>This transaction was created by an investment deposit or withdrawal. To delete it, remove the movement from the Investments screen.</p>
-          : <button type="button" className={styles.deleteBtn} onClick={onDelete}>Delete transaction</button>
+          : <button type="button" className={styles.deleteBtn} onClick={onDelete} title="Delete this transaction (asks for confirmation)">Delete transaction</button>
       )}
     </form>
   )
