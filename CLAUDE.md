@@ -75,6 +75,14 @@ After any meaningful change (spec edit, code change, plan edit), proactively pro
 
 - **Number / amount formatting (MANDATORY)**: Every monetary amount MUST be displayed through the central formatter in `src/utils/format.js` (`fmtAmt` / its helper family), which renders **comma decimal + narrow-space thousands** (`1 234,56`) regardless of locale. **Never** hand-roll `toLocaleString('en-US', …)`, `.replace(/,/g,' ')`, or bare `toFixed(2)` for amounts in a component — route it through `format.js` instead. Percentages and FX rates keep the **dot** decimal (they are ratios, not amounts). Near-zero values must render as `0.00`, never `−0.00` — use the shared `round2` helper before any sign decision. Amount entry stays on `<input type="number">` (the browser localizes display; `.value` parses with a dot). Full convention + rationale: SPEC-015 → *Amount / number formatting*.
 
+## Testing convention
+**Every new feature and every bug fix MUST come with tests** (rule added 2026-07-09):
+- **Bug fixes:** write a regression test that reproduces the bug *before* fixing it; the fix makes the test pass. The bug can then never silently return.
+- **New features:** the feature's data-layer / util logic ships with unit tests in the same phase — acceptance criteria are not "done" without them.
+- Focus is the pure logic (`data/*.js`, `utils/*.js` — money math, recurrence engines, balances, merging); component/E2E tests are optional per case, not mandated.
+- Runner: **Vitest** (`npm test` in `app/`), set up in Phase 57 (SPEC-040 § Infrastructure). **Phase 57 must land before any further feature phase starts**, so this rule is actionable from the next code change onward. Test placement and seeding conventions live in SPEC-040.
+- The retroactive coverage backlog for everything built before this rule is SPEC-040 § Retroactive sweep (Phase 60, planned last) — do not let it grow: new/changed code is covered now, not deferred there.
+
 ## Data persistence convention
 Any new feature that stores data in `localStorage` MUST register itself in the **Settings → Storage tab** (defined in SPEC-026) by adding a new card with a meaningful breakdown (per-entity where applicable). The Storage tab is the canonical place for users to see what data the app holds and to bulk-clean it. Sizes are computed via `new Blob([JSON.stringify(value)]).size` (UTF-8 bytes) — use the same method everywhere so totals add up correctly. When adding a new persistent collection, add a card to the Storage tab as part of the same spec; do not defer it.
 

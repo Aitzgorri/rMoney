@@ -6,7 +6,7 @@
 
 **Last shipped: v0.37.0** (tagged, on origin) — bundles Phases 43–46 (envelope-transfer correctness + comma format, Payees, tree-collapse UX + AmountInput, Categories-page merge). **v0.38.0 is version-bumped (Phases 47–52 + the mobile-nav fix) but the git tag is not cut yet** — cut it per the RELEASE.md process when ready. The earlier v0.36.0 bundled Phase 38 (June 2026 adjustments): the 430–439 review batch (SPEC-020 dividend tweaks, SPEC-034 cash-impact header alignment, SPEC-017 currency conversion, SPEC-029 ticker resolution, SPEC-021 responsive polish) plus the same-day Buy-Sell Planning cash-impact follow-up (FX triangulation, two-column overspend, global-pass cascade ordering, held-balance currency display, End sub-cent snap). Backup format advanced to `rmoney-data-v4` (`settings.favoriteCountries`). The earlier v0.35.0 bundled Phase 34a (transaction-edit correctness), Phase 35a (cross-currency fee model), Phase 36a–g (Finnhub/Stooq adapters, API-detected splits, stock-exchange selector, default CSV template, standalone lot picker), and Phase 37a–b — backup `rmoney-data-v3`. Full sub-phase breakdown lives in `RELEASE.md` and the git history; line-by-line acceptance criteria are removed from this plan once a release is closed.
 
-**Status:** **Phases 47–52 — the 12 June 2026 scratch-notes batch — are all ✓ done and version-bumped into v0.38.0 (tag pending)** (budgeting-side UX: frequency unification, favorites, transaction-form overhaul, scheduled-transfer display + fixes, envelope projection overhaul). A **Phase 53** gap-closure batch (from the 2026-07-08 reconciliation review of those notes) is now planned — see below. Build order was foundational-first: **47 (frequency) ✓ done → 48 (favorites) ✓ done → 49 (small wins) ✓ done → 50 (envelopes scheduled list) ✓ done → 51 (transaction form) ✓ done**. The 12 June 2026 batch is complete; see the Phase 47–51 sections below. On the investing track, Phase 20 continues with the next asset class — **Crypto is shipped ([SPEC-036](features/SPEC-036-crypto-holdings.md), `done`)**; bonds → metals → options remain sketches in SPEC-035 (each graduates to its own spec before code). (Phase 21b Mobile Investments parity shipped 2026-06-02; deferred mobile items 228a/228b live in SPEC-030.)
+**Status:** **Phases 47–52 — the 12 June 2026 scratch-notes batch — are all ✓ done and version-bumped into v0.38.0 (tag pending)** (budgeting-side UX: frequency unification, favorites, transaction-form overhaul, scheduled-transfer display + fixes, envelope projection overhaul). A **Phase 53** gap-closure batch (from the 2026-07-08 reconciliation review of those notes) is now planned — see below. **Planned build order across the open phases (agreed 2026-07-09): Phase 57 (test infrastructure) FIRST — the new CLAUDE.md testing rule requires it before any further feature work — then 53 → 54 → 55 → 56 (UX + bug fixes take priority over sync while the app is single-user), then 58–59 (device sync, SPEC-039), and Phase 60 (retroactive test coverage, SPEC-040) deliberately last.** Build order was foundational-first: **47 (frequency) ✓ done → 48 (favorites) ✓ done → 49 (small wins) ✓ done → 50 (envelopes scheduled list) ✓ done → 51 (transaction form) ✓ done**. The 12 June 2026 batch is complete; see the Phase 47–51 sections below. On the investing track, Phase 20 continues with the next asset class — **Crypto is shipped ([SPEC-036](features/SPEC-036-crypto-holdings.md), `done`)**; bonds → metals → options remain sketches in SPEC-035 (each graduates to its own spec before code). (Phase 21b Mobile Investments parity shipped 2026-06-02; deferred mobile items 228a/228b live in SPEC-030.)
 
 ---
 
@@ -61,7 +61,11 @@
 | 53 — Phase 47–52 gap closure + follow-up enhancements | planned | From the 2026-07-08 reconciliation review — mobile account prefill, Planning frequency unification, Scheduled-transfers friendly labels, residual UTC date defaults, favorites + payee-memory beyond the transaction form, scheduled-transfer start date, payee→envelope memory; SPEC-005/009/012/013 |
 | 54 — notes_8 correctness + small UX wins | planned | From the 08 Jul 2026 notes — Planning-apply rounding fix (+repair migration), transfer From-account prefill, envelope-page polish (tooltips, Transfer label, left-pane From prefill, daily-spend toggle), app-wide tooltip audit (new CLAUDE.md rule); SPEC-004/005/007/009 |
 | 55 — Bills & Income editing + confirmation overhaul | planned | From the 08 Jul 2026 notes — edit scope "from now on" default with opt-in past rewrite (+preview), no transaction-on-save bug fix, occurrence overrides (one-time vs lasting edits from Dashboard), due-pending + confirm on Dashboard, early confirm, next-period income attribution; SPEC-008/009/013 |
-| 56 — Untracked accounts (envelope scope) | planned | From the 08 Jul 2026 notes — per-account "counted in envelopes" flag; boundary-crossing transfers post as envelope expense/income with auto-note; unallocated reconciliation figure; new spec SPEC-038 |
+| 56 — Untracked accounts (envelope scope) | planned | From the 08 Jul 2026 notes — per-account "counted in envelopes" flag; boundary-crossing transfers post as envelope expense/income with auto-note; unallocated reconciliation figure; SPEC-038 (`draft`) |
+| 57 — Test infrastructure (build FIRST) | planned | Vitest + appStorage mock + seed suites on the highest-risk engines; prerequisite for the 2026-07-09 CLAUDE.md testing rule (tests with every feature/fix); SPEC-040 § Infrastructure |
+| 58 — Device sync: groundwork + merge engine | planned | `updatedAt` stamping, tombstones, base snapshot, backup v6; pure three-way merge engine, test-first; SPEC-039 (`draft`) |
+| 59 — Device sync: WebDAV transport + UX | planned | Settings Sync card (Stronghold credential + CSP host), ETag-safe sync cycle, opportunistic push + status indicator, Synology/Tailscale setup docs; SPEC-039 |
+| 60 — Retroactive test coverage (planned LAST) | planned | Sweep: tests for all pre-rule features (data layer, utils, engines, historical bug classes); scope only shrinks as the testing rule covers new work; SPEC-040 § Retroactive sweep |
 
 > Phases 40–42 (forex CSP host + Stooq historical, planned-expense value-column format, planned-expense row hover) shipped between v0.36.0 and this plan; their per-item criteria live (checked) in SPEC cross-spec / SPEC-009 and are not re-listed here per the "remove implemented items" rule.
 
@@ -441,13 +445,56 @@ Recommended sub-phase order (each is independently shippable / testable):
 
 ## Phase 56 — Untracked accounts (envelope scope) (planned)
 
-> New feature, new spec (**SPEC-038 Untracked accounts** — create via `spec:new` when this phase starts and move these criteria there). The classic off-budget concept: today no tracked/untracked flag exists (`accounts.js:33-47`) and account-to-account transfers never touch envelopes (filtered out of `getEnvelopeBalance`).
+> New feature — spec created 2026-07-09: **[SPEC-038 Untracked accounts](features/SPEC-038-untracked-accounts.md)** (`draft`; review + flip to `ready` before this phase starts; the criteria below live there too). The classic off-budget concept: today no tracked/untracked flag exists (`accounts.js:33-47`) and account-to-account transfers never touch envelopes (filtered out of `getEnvelopeBalance`).
+
+### SPEC-038 Untracked accounts — items
 
 56a. [ ] **Account flag.** `countedInEnvelopes: bool` (default **true**; absent = true, so existing data is untouched — additive, no backup bump) on the account form + account settings. (SPEC-002 + SPEC-038)
 56b. [ ] **Boundary-crossing transfers post to envelopes.** Transfer tracked→untracked: the transfer form asks which envelope takes it as an **expense**, with an auto-generated note "Transfer from {source account} to {destination account}"; untracked→tracked: recorded as envelope **income** into a user-chosen envelope; untracked↔untracked or tracked↔tracked: no envelope effect (envelope picker hidden). Engine: these postings count in `getEnvelopeBalance`. (SPEC-038)
 56c. [ ] **Starting-balance seed respects the flag.** The Undistributed-income seed (`envelopes.js:215`, sum of ALL accounts' starting balances) excludes untracked accounts — otherwise envelope totals stay wrong. (SPEC-038/004)
 56d. [ ] **Existing history: leave alone (proposed default).** The feature applies from when the flag is set; historical boundary-crossing transfers are not retro-posted. (Optional later enhancement: a review screen to backfill selected past transfers.) (SPEC-038)
 56e. [ ] **Unallocated reconciliation figure.** A small health-check figure — tracked-accounts total minus total envelope balances — showing how much money sits outside envelopes ("unallocated"), 0 when every tracked unit is enveloped. Placement to decide during build (Envelopes page header and/or Dashboard); per-currency like the existing totals. (SPEC-038/007)
+
+---
+
+# Phases 57–60 — test foundation + device sync (planned 2026-07-09)
+
+> From the device-sync design discussion (2026-07-09). Two specs created as `draft` — **[SPEC-039 Device Sync](features/SPEC-039-device-sync.md)** and **[SPEC-040 App Test Coverage](features/SPEC-040-app-test-coverage.md)** — review + flip to `ready` before their phases start. Decisions locked with the user:
+> - **Priority:** sync comes **after** the Phase 53–56 UX/bug batch (app is single-user today), BUT **Phase 57 (test infrastructure) is pulled forward and built FIRST** — the new CLAUDE.md **Testing convention** (tests with every feature/fix, regression test before every bug fix, added 2026-07-09) needs a runner to exist before Phases 53–56 write any code.
+> - **Sync design (SPEC-039):** WebDAV file on the user's Synology NAS (dedicated single-folder NAS user), payload = SPEC-016 backup format, client-side **three-way record-level merge** (`updatedAt` + tombstones + base snapshot; additions union; newest-wins on same-record edits, logged, no prompts) — snapshot last-writer-wins was rejected because the travel case (phone + laptop both diverging while the NAS stays home) would lose one side. Push is opportunistic and failure-tolerant ("try after each mutation"), since either device may be offline at any time. CouchDB/PouchDB and folder-sync services (Syncthing/Drive) evaluated and rejected — see the spec.
+> - **Retroactive coverage (SPEC-040 § sweep) is deliberately planned LAST** (Phase 60): the going-forward rule keeps it from growing; it mops up only what predates the rule.
+
+## Phase 57 — Test infrastructure (planned — build BEFORE Phase 53)
+
+### SPEC-040 App Test Coverage — infrastructure
+
+57a. [ ] **Vitest wiring.** Vitest dev-dependency in `app/`, `npm test` (watch + run modes), conventions documented (`*.test.js` beside source). (SPEC-040)
+57b. [ ] **`appStorage` test helper.** Mock/seed/reset helper so `data/*.js` functions run against seeded storage without a browser — the Phase 39a wrapper makes this a thin shim. (SPEC-040)
+57c. [ ] **Seed suites on the highest-risk pure logic.** `format.js` (`round2`, `parseAmount`, `fmtAmt`), `frequency.js` (`monthlyEquivalent`, `dayPickerKind`), and recurrence engine cases (`getDueDates` weekly/bi-weekly anchoring, `isScheduledTransferDueToday`, the 16→15 UTC class) — proving the harness and covering the engines Phases 54–55 are about to touch. (SPEC-040)
+
+## Phase 58 — Device sync: groundwork + merge engine (planned)
+
+### SPEC-039 Device Sync — groundwork + merge
+
+58a. [ ] **`updatedAt` stamping.** Every create/update in the data layer stamps `updatedAt`; absent = oldest. Centralized in `data/*.js` write paths. (SPEC-039)
+58b. [ ] **Tombstone log.** `rmoney_deletions` (`{collection, id, deletedAt}`) written by all delete paths in synced collections; Storage-tab card; backup format → **`rmoney-data-v6`**; retention pruning once synced. (SPEC-039/016/026)
+58c. [ ] **Base snapshot + sync metadata.** Last-synced snapshot stored locally as merge base; device id + last-sync + dirty flag. (SPEC-039)
+58d. [ ] **Merge engine, test-first.** Pure `mergeSnapshots(base, local, remote)` → merged + change log; union adds, newest-`updatedAt` wins, tombstones beat resurrection, edit-vs-delete by timestamp; exhaustive unit suite written before any transport exists. (SPEC-039)
+
+## Phase 59 — Device sync: WebDAV transport + UX (planned)
+
+### SPEC-039 Device Sync — transport + UX
+
+59a. [ ] **Settings → Sync card.** URL/user/password (password → Stronghold per SPEC-031, `webdavSet` flag, masked UI); NAS host added to CSP via the existing user-configured-host pattern; Test connection. (SPEC-039/031)
+59b. [ ] **Sync cycle.** Pull → merge → ETag/`If-Match`-guarded write-back (retry on precondition failure) → base update; first-sync upload when no remote file. (SPEC-039)
+59c. [ ] **Opportunistic push + status.** Debounced try-push after each mutation; silent tolerance of unreachability (persistent dirty flag; retry on mutation/app-focus/manual); status indicator (synced / pending / unreachable) + Sync now. (SPEC-039)
+59d. [ ] **Cross-platform verification + setup docs.** Verified from Tauri desktop AND Android against a Synology WebDAV share over HTTPS; docs for the dedicated single-folder NAS user, WebDAV package, Let's Encrypt cert, optional Tailscale for away-from-home. (SPEC-039)
+
+## Phase 60 — Retroactive test coverage (planned LAST)
+
+### SPEC-040 App Test Coverage — retroactive sweep
+
+60a. [ ] **Module inventory + sweep.** Per-module test files for all `data/*.js` and logic-bearing `utils/*.js` predating the testing rule; historical bug classes as regression tests; engines covered against the worked examples recorded in this plan/specs; coverage report + intentional gaps listed in SPEC-040. (SPEC-040)
 
 ---
 
