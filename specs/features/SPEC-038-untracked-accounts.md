@@ -1,7 +1,7 @@
 ---
 id: SPEC-038
 name: Untracked Accounts
-status: draft
+status: done
 created: 2026-07-09
 ---
 
@@ -19,14 +19,14 @@ From the 08 Jul 2026 notes (`scratch_notes/notes_8.md` #18–21); planned as **P
 - As a user, I can see at a glance how much tracked money is not yet allocated to any envelope.
 
 ## Acceptance Criteria
-- [ ] Account model gains `countedInEnvelopes: bool` — default **true**, absent = true, so existing data is untouched (additive; no backup-format bump). Editable on the account form.
-- [ ] Transfer tracked→untracked: the transfer form asks which envelope records it as an **expense**, with an auto-generated note "Transfer from {source account} to {destination account}".
-- [ ] Transfer untracked→tracked: recorded as envelope **income** into a user-chosen envelope (same auto-note pattern).
-- [ ] Transfers tracked↔tracked or untracked↔untracked: no envelope effect; the envelope picker is hidden.
-- [ ] These boundary postings count in `getEnvelopeBalance` / envelope history.
-- [ ] The Undistributed-income starting-balance seed excludes untracked accounts' starting balances.
-- [ ] Existing historical transfers are left alone — the feature applies from when the flag is set (optional later enhancement: a review screen to backfill selected past transfers).
-- [ ] **Unallocated reconciliation figure:** tracked-accounts total minus total envelope balances, per currency, 0 when every tracked unit is enveloped; placement decided during build (Envelopes header and/or Dashboard).
+- [x] Account model gains `countedInEnvelopes: bool` — default **true**, absent = true, so existing data is untouched (additive; no backup-format bump). Editable on the account form ("Counted in envelopes" checkbox with an explanatory tooltip); `isAccountTracked(account)` is the shared helper.
+- [x] Transfer tracked→untracked: the transfer form shows a **"Counts as expense from envelope"** picker (Favorites group + full indented tree; empty = the default expense envelope) with a helper line naming the untracked account; the note auto-fills "Transfer from {source account} to {destination account}" when left empty.
+- [x] Transfer untracked→tracked: recorded as envelope **income** into a user-chosen envelope (default: Undistributed income; same auto-note pattern).
+- [x] Transfers tracked↔tracked or untracked↔untracked: no envelope effect; the envelope picker is hidden and any stale `envelopeId`/`envelopeFlow` is stripped on save.
+- [x] Boundary postings are stored ON the transfer transaction (`envelopeFlow: 'expense' | 'income'` + `envelopeId`) — the direction is captured at write time, so toggling an account's flag later never rewrites history. They count in `getEnvelopeBalance` (expense = `sourceAmount` out, income = `destinationAmount` in), in `getEnvelopesTotalByCurrency` (per the tracked side's currency), and render in the envelope history (⇄ icon, "→ to account X" / "← from account X", running balance included; click opens the transfer for editing).
+- [x] The Undistributed-income starting-balance seed excludes untracked accounts' starting balances (both in `getEnvelopeBalance` and the per-currency totals).
+- [x] Existing historical transfers are left alone — the feature applies from when the flag is set (optional later enhancement: a review screen to backfill selected past transfers).
+- [x] **Unallocated reconciliation figure** (`getUnallocatedByCurrency`): tracked-account current balances minus envelope totals, per currency; **placement: the Envelopes page grand-total area**, shown only when some currency is non-zero (a healthy setup stays uncluttered), with a tooltip explaining what a non-zero value means. Unit-tested: the identity holds (0) when boundary crossings are recorded and reveals legacy unrecorded ones.
 
 ## UI / Screens
 - Account form: a "Counted in envelopes" toggle (with an explanation line).
@@ -42,5 +42,6 @@ From the 08 Jul 2026 notes (`scratch_notes/notes_8.md` #18–21); planned as **P
 - Per-envelope account restrictions or multi-envelope splits of one transfer.
 
 ## Open Questions
-- Data shape for the envelope posting on a boundary transfer (field on the transaction vs separate linked record) — decide when Phase 56 starts.
-- Where the unallocated figure lives (Envelopes header, Dashboard, or both).
+- ~~Data shape for the envelope posting~~ → decided: fields on the transfer transaction (`envelopeFlow` + `envelopeId`), direction captured at write time.
+- ~~Where the unallocated figure lives~~ → decided: Envelopes page grand-total area, shown only when non-zero.
+- **Income/expense transactions ON an untracked account** currently still post to envelopes (only *transfers* were in scope per the notes). This drifts the unallocated figure when an untracked account has direct income/expenses. If that bites in practice, a follow-up could exclude untracked accounts' transactions from envelope math — a behaviour change needing its own decision.

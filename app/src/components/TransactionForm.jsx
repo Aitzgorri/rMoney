@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getActiveAccounts } from '../data/accounts'
+import { getActiveAccounts, isAccountTracked } from '../data/accounts'
 import { getCategoriesFlat, getDefaultCategoryId, createCategory } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat, getEnvelopes, envelopePathLabel, getDefaultIncomeEnvelope, getDefaultExpenseEnvelope } from '../data/envelopes'
 import { createTransaction, updateTransaction, getRecentCategoriesForPayee, getRecentEnvelopesForPayee } from '../data/transactions'
@@ -162,6 +162,22 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
       const dest = accounts.find(a => a.id === form.destinationAccountId)
       data.sourceCurrency      = src?.currency ?? ''
       data.destinationCurrency = dest?.currency ?? ''
+
+      // SPEC-038 (Phase 56b): boundary transfers post to an envelope. The flow
+      // direction is stored so later flag changes never rewrite history; the
+      // note auto-describes the crossing when the user left it empty.
+      if (boundaryFlow) {
+        data.envelopeFlow = boundaryFlow
+        data.envelopeId = form.envelopeId
+          || (boundaryFlow === 'income' ? getDefaultIncomeEnvelope()?.id : getDefaultExpenseEnvelope()?.id)
+          || null
+        if (!data.note?.trim()) {
+          data.note = `Transfer from ${src?.accountName ?? '?'} to ${dest?.accountName ?? '?'}`
+        }
+      } else {
+        data.envelopeFlow = null
+        data.envelopeId = null
+      }
       // For same-currency transfers, destination receives exactly what source sends
       if (!isCrossCurrency) {
         data.destinationAmount = data.sourceAmount
@@ -204,6 +220,14 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
   const srcAccount  = accounts.find(a => a.id === form.sourceAccountId)
   const destAccount = accounts.find(a => a.id === form.destinationAccountId)
   const isCrossCurrency = srcAccount && destAccount && srcAccount.currency !== destAccount.currency
+
+  // SPEC-038 (Phase 56b): does this transfer cross the tracked/untracked line?
+  // Money leaving the tracked world posts to an envelope as an EXPENSE; money
+  // entering posts as INCOME. Same-side transfers never touch envelopes.
+  const boundaryFlow = type === 'transfer' && srcAccount && destAccount
+    ? (isAccountTracked(srcAccount) && !isAccountTracked(destAccount) ? 'expense'
+      : !isAccountTracked(srcAccount) && isAccountTracked(destAccount) ? 'income' : null)
+    : null
 
   const isEdit = !!initial
 
@@ -379,6 +403,28 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
               </select>
             </div>
           </div>
+
+          {/* SPEC-038: envelope posting for tracked↔untracked transfers */}
+          {boundaryFlow && (
+            <div className={styles.field}>
+              <label className={styles.label}>
+                {boundaryFlow === 'expense' ? 'Counts as expense from envelope' : 'Counts as income into envelope'}
+              </label>
+              <select className={styles.input} value={form.envelopeId}
+                onChange={e => set('envelopeId', e.target.value)}>
+                <option value="">
+                  — Default ({(boundaryFlow === 'income' ? getDefaultIncomeEnvelope() : getDefaultExpenseEnvelope())?.name ?? 'built-in'}) —
+                </option>
+                {favoritesOptgroup(envelopes, getFavoriteEnvelopes())}
+                {treeOptions(envelopes)}
+              </select>
+              <span className={styles.envPath}>
+                {boundaryFlow === 'expense'
+                  ? `${destAccount?.accountName} is not counted in envelopes — this money leaves the envelope world`
+                  : `${srcAccount?.accountName} is not counted in envelopes — this money enters the envelope world`}
+              </span>
+            </div>
+          )}
 
           {/* Cross-currency only: amount sent in the source currency */}
           {isCrossCurrency && (

@@ -126,6 +126,9 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
     if (r._kind === 'tx') {
       if (r.type === 'income')  runBal += Number(r.amount)
       if (r.type === 'expense') runBal -= Number(r.amount)
+      // Boundary account-transfers (SPEC-038): stored flow decides the sign
+      if (r.type === 'transfer' && r.envelopeFlow === 'income')  runBal += Number(r.destinationAmount)
+      if (r.type === 'transfer' && r.envelopeFlow === 'expense') runBal -= Number(r.sourceAmount)
     } else if (!r._isInternal) {
       if (familyIds.has(r.toEnvelopeId))   runBal += Number(r.amount)
       if (familyIds.has(r.fromEnvelopeId)) runBal -= Number(r.amount)
@@ -388,18 +391,25 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
             const isTransfer = r._kind === 'transfer'
             const isInternal = isTransfer && r._isInternal
             const isIn  = isTransfer && !isInternal && familyIds.has(r.toEnvelopeId)
-            const amount = Number(r.amount)
+            // Boundary account-transfer posted to this envelope (SPEC-038)
+            const isBoundary = r._kind === 'tx' && r.type === 'transfer'
+            const boundaryIn = isBoundary && r.envelopeFlow === 'income'
+            const amount = isBoundary
+              ? Number(boundaryIn ? r.destinationAmount : r.sourceAmount)
+              : Number(r.amount)
             const runBal = runningBalances[r.id]
             const amountClass = isTransfer
               ? (isInternal ? styles.neutral : isIn ? styles.positive : styles.negative)
-              : r.type === 'income' ? styles.positive : styles.negative
+              : isBoundary
+                ? (boundaryIn ? styles.positive : styles.negative)
+                : r.type === 'income' ? styles.positive : styles.negative
 
             return (
               <div key={r.id} className={styles.row} onClick={() => {
                 setEditing({ kind: isTransfer ? 'transfer' : 'tx', record: r })
               }}>
                 <div className={`${styles.typeIcon} ${amountClass}`}>
-                  {isTransfer ? '⇄' : r.type === 'income' ? '↓' : '↑'}
+                  {isTransfer || isBoundary ? '⇄' : r.type === 'income' ? '↓' : '↑'}
                 </div>
                 <div className={styles.rowMain}>
                   <div className={styles.rowTop}>
@@ -416,6 +426,12 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
                             ? `← from ${envelopeName(r.fromEnvelopeId)}`
                             : `→ to ${envelopeName(r.toEnvelopeId)}`}
                       </span>
+                    ) : isBoundary ? (
+                      <span className={styles.rowMeta}>
+                        {boundaryIn
+                          ? `← from account ${accountName(r.sourceAccountId)}`
+                          : `→ to account ${accountName(r.destinationAccountId)}`}
+                      </span>
                     ) : (
                       <>
                         <span className={styles.rowMeta}>{accountName(r.accountId)}</span>
@@ -429,7 +445,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
                 </div>
                 <div className={styles.rowRight}>
                   <span className={`${styles.rowAmount} ${amountClass}`}>
-                    {isInternal ? '⇄' : isTransfer ? (isIn ? '+' : '−') : r.type === 'income' ? '+' : '−'}
+                    {isInternal ? '⇄' : isTransfer ? (isIn ? '+' : '−') : isBoundary ? (boundaryIn ? '+' : '−') : r.type === 'income' ? '+' : '−'}
                     {fmtAmt(amount)}
                   </span>
                   <span className={styles.runningBal}>{fmtAmt(round2(runBal))}</span>

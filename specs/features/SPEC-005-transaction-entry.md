@@ -41,6 +41,7 @@ Transactions can be one-off or recurring (scheduled to repeat automatically).
 - [x] Exchange rate is automatically calculated from the two amounts and saved with the transfer
 - [x] Optional field: transfer fee (default 0) — deducted from the source account
 - [x] Account transfers do NOT require category, envelope, or payee
+- [x] **Boundary transfers** *(SPEC-038, Phase 56)*: when a transfer crosses the tracked/untracked account line, a conditional envelope picker appears ("Counts as expense from / income into envelope") and the saved transfer carries `envelopeFlow` + `envelopeId`; the note auto-fills "Transfer from {src} to {dst}" when empty. Same-side transfers show no picker
 - [x] Date defaults to today
 
 ### Form layout *(Phase 51a/b/g)*

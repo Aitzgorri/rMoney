@@ -30,7 +30,13 @@ export function getActiveAccounts() {
   return sortAlpha(load().filter(a => !a.isArchived))
 }
 
-export function createAccount({ type, companyName, accountName, currency, startingBalance }) {
+// Whether an account's balance counts toward envelope budgeting (SPEC-038).
+// The flag is additive: records without it are tracked (legacy behaviour).
+export function isAccountTracked(account) {
+  return account?.countedInEnvelopes !== false
+}
+
+export function createAccount({ type, companyName, accountName, currency, startingBalance, countedInEnvelopes }) {
   const accounts = load()
   const account = {
     id: generateId(),
@@ -39,6 +45,7 @@ export function createAccount({ type, companyName, accountName, currency, starti
     accountName,
     currency,
     startingBalance: Number(startingBalance),
+    countedInEnvelopes: countedInEnvelopes !== false,   // default true (SPEC-038, Phase 56a)
     isArchived: false,
     createdAt: new Date().toISOString(),
   }

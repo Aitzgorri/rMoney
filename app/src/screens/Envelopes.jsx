@@ -7,6 +7,7 @@ import {
   getEnvelopeBalance,
   getTotalEnvelopeBalance,
   getEnvelopesTotalByCurrency,
+  getUnallocatedByCurrency,
   createEnvelope,
   updateEnvelope,
   archiveEnvelope,
@@ -567,17 +568,35 @@ function EnvelopesGrandTotal({ mainCurrency, styles }) {
 
   const nativeTotal = isSingleNative ? round2(byCurrency[currencies[0]]) : null
 
+  // SPEC-038 (Phase 56e): tracked-account balances minus envelope totals, per
+  // currency — 0 when every tracked unit sits in an envelope. Shown only when
+  // some currency is off, so a healthy setup stays uncluttered.
+  const unallocated = getUnallocatedByCurrency()
+  const offCurrencies = Object.entries(unallocated).filter(([, v]) => v !== 0)
+
   return (
-    <div className={styles.grandTotal}>
-      <span className={styles.grandTotalLabel}>Total</span>
-      <span className={styles.grandTotalValue}>
-        {isSingleNative
-          ? `${nativeTotal < 0 ? '−' : ''}${fmtAmt(Math.abs(nativeTotal))} ${mainCurrency}`
-          : mainTotal !== null
-            ? `≈ ${mainTotal < 0 ? '−' : ''}${fmtAmt(Math.abs(mainTotal))} ${mainCurrency}`
-            : '—'
-        }
-      </span>
-    </div>
+    <>
+      <div className={styles.grandTotal}>
+        <span className={styles.grandTotalLabel}>Total</span>
+        <span className={styles.grandTotalValue}>
+          {isSingleNative
+            ? `${nativeTotal < 0 ? '−' : ''}${fmtAmt(Math.abs(nativeTotal))} ${mainCurrency}`
+            : mainTotal !== null
+              ? `≈ ${mainTotal < 0 ? '−' : ''}${fmtAmt(Math.abs(mainTotal))} ${mainCurrency}`
+              : '—'
+          }
+        </span>
+      </div>
+      {offCurrencies.length > 0 && (
+        <div className={styles.grandTotal}
+          title="Tracked account balances minus envelope totals. Non-zero usually means money moved to/from an account outside envelopes before this was tracked, or income/expenses on an untracked account.">
+          <span className={styles.grandTotalLabel}>Unallocated</span>
+          <span className={styles.grandTotalValue}>
+            {offCurrencies.map(([cur, v]) =>
+              `${v < 0 ? '−' : ''}${fmtAmt(Math.abs(v))} ${cur}`).join(' · ')}
+          </span>
+        </div>
+      )}
+    </>
   )
 }

@@ -97,6 +97,15 @@ export default function AccountForm({ initial, onSave, onCancel, onDelete, onArc
         </div>
       </div>
 
+      <div className={styles.field}>
+        <label className={styles.label}
+          title="Untracked accounts are outside envelope budgeting (SPEC-038): their balances don't count toward envelope totals, and transfers to/from them post to an envelope as expense/income">
+          <input type="checkbox" checked={form.countedInEnvelopes !== false}
+            onChange={e => set('countedInEnvelopes', e.target.checked)} />
+          {' '}Counted in envelopes
+        </label>
+      </div>
+
       <div className={styles.actions}>
         <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Discard changes and go back">Cancel</button>
         <button type="submit" className={styles.saveBtn} title="Save this account">Save Account</button>

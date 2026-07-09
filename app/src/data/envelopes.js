@@ -1,6 +1,7 @@
 import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
 import { round2 } from '../utils/format'
+import { getAccountBalance } from './transactions'
 
 const KEY_ENVELOPES  = 'rmoney_envelopes'
 const KEY_TRANSFERS  = 'rmoney_envelope_transfers'
@@ -210,16 +211,31 @@ export function getEnvelopeBalance(envelopeId) {
   const txIn  = assigned.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
   const txOut = assigned.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
 
+  // Boundary account-transfers (SPEC-038, Phase 56b): a transfer that crosses
+  // the tracked/untracked line posts to a chosen envelope — money leaving the
+  // tracked world is an envelope expense, money entering is envelope income.
+  // The direction is STORED on the transaction (`envelopeFlow`), so later
+  // toggling an account's flag never rewrites history.
+  const flowIn = txs
+    .filter(t => t.type === 'transfer' && t.envelopeId === envelopeId && t.envelopeFlow === 'income')
+    .reduce((s, t) => s + Number(t.destinationAmount), 0)
+  const flowOut = txs
+    .filter(t => t.type === 'transfer' && t.envelopeId === envelopeId && t.envelopeFlow === 'expense')
+    .reduce((s, t) => s + Number(t.sourceAmount), 0)
+
   // Account starting balances — these are "initial money" that lives in the
-  // default income envelope until the user distributes it
+  // default income envelope until the user distributes it. Untracked accounts
+  // (SPEC-038, Phase 56c) are excluded — their money is outside the envelopes.
   let startingBalances = 0
   if (envelope?.isDefaultIncome) {
     const KEY_ACCOUNTS = 'rmoney_accounts'
     const accounts = (() => { try { return JSON.parse(appStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
-    startingBalances = accounts.reduce((sum, a) => sum + Number(a.startingBalance), 0)
+    startingBalances = accounts
+      .filter(a => a.countedInEnvelopes !== false)
+      .reduce((sum, a) => sum + Number(a.startingBalance), 0)
   }
 
-  return (transferIn + txIn + startingBalances) - (transferOut + txOut)
+  return (transferIn + txIn + flowIn + startingBalances) - (transferOut + txOut + flowOut)
 }
 
 export function getDescendantIds(envelopeId) {
@@ -242,7 +258,8 @@ export function getEnvelopesTotalByCurrency() {
   const txs = (() => { try { return JSON.parse(appStorage.getItem(KEY_TRANSACTIONS)) ?? [] } catch { return [] } })()
   const accounts = (() => { try { return JSON.parse(appStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
   const result = {}
-  for (const a of accounts.filter(a => !a.isArchived)) {
+  // Untracked accounts' starting money is outside the envelopes (SPEC-038).
+  for (const a of accounts.filter(a => !a.isArchived && a.countedInEnvelopes !== false)) {
     const cur = a.currency || 'EUR'
     result[cur] = (result[cur] ?? 0) + Number(a.startingBalance)
   }
@@ -253,8 +270,38 @@ export function getEnvelopesTotalByCurrency() {
     } else if (tx.type === 'expense') {
       const cur = tx.currency || 'EUR'
       result[cur] = (result[cur] ?? 0) - Number(tx.amount)
+    } else if (tx.type === 'transfer' && tx.envelopeFlow === 'income') {
+      // Boundary transfer INTO the tracked world (SPEC-038, Phase 56b)
+      const cur = tx.destinationCurrency || tx.currency || 'EUR'
+      result[cur] = (result[cur] ?? 0) + Number(tx.destinationAmount)
+    } else if (tx.type === 'transfer' && tx.envelopeFlow === 'expense') {
+      // Boundary transfer OUT of the tracked world
+      const cur = tx.sourceCurrency || tx.currency || 'EUR'
+      result[cur] = (result[cur] ?? 0) - Number(tx.sourceAmount)
     }
   }
+  return result
+}
+
+// Unallocated reconciliation figure (SPEC-038, Phase 56e): per currency, the
+// current balances of TRACKED active accounts minus the envelope totals. Zero
+// when every tracked unit of money sits in an envelope; a non-zero value
+// usually reveals boundary crossings recorded before the feature existed.
+export function getUnallocatedByCurrency() {
+  const KEY_ACCOUNTS = 'rmoney_accounts'
+  const accounts = (() => { try { return JSON.parse(appStorage.getItem(KEY_ACCOUNTS)) ?? [] } catch { return [] } })()
+  const tracked = accounts.filter(a => !a.isArchived && a.countedInEnvelopes !== false)
+
+  const result = {}
+  for (const a of tracked) {
+    const cur = a.currency || 'EUR'
+    result[cur] = (result[cur] ?? 0) + getAccountBalance(a.id, a.startingBalance)
+  }
+  const env = getEnvelopesTotalByCurrency()
+  for (const [cur, total] of Object.entries(env)) {
+    result[cur] = (result[cur] ?? 0) - total
+  }
+  for (const cur of Object.keys(result)) result[cur] = round2(result[cur])
   return result
 }
 
