@@ -1,5 +1,6 @@
 import { createTransaction, deleteTransaction } from './transactions'
 import { getAccounts } from './accounts'
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY_ACCOUNTS  = 'rmoney_investing_accounts'
@@ -29,6 +30,7 @@ export function createInvestingAccount({ institution, name, note = null, default
     note: note?.trim() || null,
     defaultCsvTemplateId,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_ACCOUNTS, [...load(KEY_ACCOUNTS), account])
   return account
@@ -36,7 +38,7 @@ export function createInvestingAccount({ institution, name, note = null, default
 
 export function updateInvestingAccount(id, fields) {
   save(KEY_ACCOUNTS, load(KEY_ACCOUNTS).map(a =>
-    a.id === id ? { ...a, ...fields } : a
+    a.id === id ? { ...a, ...fields, updatedAt: new Date().toISOString() } : a
   ))
 }
 
@@ -73,6 +75,9 @@ export function deleteInvestingAccount(id) {
   const balances = load(KEY_BALANCES).filter(b => b.investingAccountId === id)
   const movements = load(KEY_MOVEMENTS)
   const balanceIds = new Set(balances.map(b => b.id))
+  movements.filter(m => balanceIds.has(m.cashBalanceId)).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
+  balances.forEach(b => recordDeletion(KEY_BALANCES, b.id))
+  recordDeletion(KEY_ACCOUNTS, id)
   save(KEY_MOVEMENTS, movements.filter(m => !balanceIds.has(m.cashBalanceId)))
   save(KEY_BALANCES, load(KEY_BALANCES).filter(b => b.investingAccountId !== id))
   save(KEY_ACCOUNTS, load(KEY_ACCOUNTS).filter(a => a.id !== id))
@@ -111,6 +116,7 @@ export function createCashBalance({ investingAccountId, currency, openingBalance
     currency,
     openingBalance: Number(openingBalance),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_BALANCES, [...load(KEY_BALANCES), balance])
 
@@ -133,12 +139,12 @@ export function updateCashBalanceOpening(id, newOpeningBalance) {
   if (!bal) return
   const delta = Number(newOpeningBalance) - bal.openingBalance
   save(KEY_BALANCES, load(KEY_BALANCES).map(b =>
-    b.id === id ? { ...b, openingBalance: Number(newOpeningBalance) } : b
+    b.id === id ? { ...b, openingBalance: Number(newOpeningBalance), updatedAt: new Date().toISOString() } : b
   ))
   // Update the opening movement amount
   save(KEY_MOVEMENTS, load(KEY_MOVEMENTS).map(m =>
     m.cashBalanceId === id && m.type === 'opening'
-      ? { ...m, amount: Number(newOpeningBalance) }
+      ? { ...m, amount: Number(newOpeningBalance), updatedAt: new Date().toISOString() }
       : m
   ))
 }
@@ -160,6 +166,8 @@ export function canDeleteCashBalance(id) {
 export function deleteCashBalance(id) {
   const { canDelete } = canDeleteCashBalance(id)
   if (!canDelete) throw new Error('Cannot delete cash balance with activity.')
+  load(KEY_MOVEMENTS).filter(m => m.cashBalanceId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
+  recordDeletion(KEY_BALANCES, id)
   save(KEY_MOVEMENTS, load(KEY_MOVEMENTS).filter(m => m.cashBalanceId !== id))
   save(KEY_BALANCES, load(KEY_BALANCES).filter(b => b.id !== id))
 }
@@ -189,6 +197,7 @@ export function deleteCashMovement(id) {
   if (movement.linkedBudgetingTransactionId) {
     deleteTransaction(movement.linkedBudgetingTransactionId)
   }
+  recordDeletion(KEY_MOVEMENTS, id)
   save(KEY_MOVEMENTS, load(KEY_MOVEMENTS).filter(m => m.id !== id))
 }
 
@@ -201,6 +210,7 @@ export function addCashMovement(fields) {
     linkedDividendId: null,
     exchangeRatesSnapshot: null,
     ...fields,
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_MOVEMENTS, [...load(KEY_MOVEMENTS), movement])
   return movement

@@ -41,6 +41,7 @@ import { getCryptoProfiles, getCryptoProfilesStorageBytes, deleteAllCryptoProfil
 import { getManualPricesStats, clearAllManualPrices } from '../data/manualPrices'
 import { getTradingScenariosStats, deleteAllTradingScenarios } from '../data/tradingScenarios'
 import { getPayeesStats } from '../data/payees'
+import { getDeletionsStats } from '../data/syncMeta'
 import { testProvider } from '../data/marketDataClient'
 import { getCacheStats, clearPriceCache, clearAllMarketCaches } from '../utils/marketDataCache'
 import { getCallLog, clearCallLog, getLogStorageBytes } from '../utils/marketDataLogger'
@@ -300,6 +301,7 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [manualPricesDeleteConfirm, setManualPricesDeleteConfirm] = useState(false)
   const [tradingScenariosStats, setTradingScenariosStats] = useState(() => getTradingScenariosStats())
   const [payeesStats] = useState(() => getPayeesStats())
+  const [deletionsStats] = useState(() => getDeletionsStats())
   const [tradingScenariosDeleteConfirm, setTradingScenariosDeleteConfirm] = useState(false)
   const [cryptoProfiles,      setCryptoProfiles]      = useState(() => getCryptoProfiles())
   const [cryptoProfilesBytes, setCryptoProfilesBytes] = useState(() => getCryptoProfilesStorageBytes())
@@ -2660,6 +2662,26 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
                   <span className={styles.storageTicker}>Payees</span>
                   <span className={styles.storageCount}>{payeesStats.count} payee{payeesStats.count !== 1 ? 's' : ''}</span>
                   <span className={styles.storageBytes}>{fmtBytes(payeesStats.bytes)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sync deletion log (SPEC-039) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Sync deletion log</div>
+            <p className={styles.description}>
+              Records of deleted items ("tombstones") kept so a deletion propagates to your other
+              devices during sync instead of the item reappearing. Pruned automatically after
+              syncing; there is deliberately no manual delete — clearing it could resurrect
+              deleted records on another device.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Tombstones</span>
+                  <span className={styles.storageCount}>{deletionsStats.count} record{deletionsStats.count !== 1 ? 's' : ''}</span>
+                  <span className={styles.storageBytes}>{fmtBytes(deletionsStats.bytes)}</span>
                 </div>
               </div>
             </div>

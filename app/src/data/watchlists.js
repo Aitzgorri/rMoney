@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEYS = {
@@ -19,16 +20,17 @@ export function getWatchlists() {
 export function createWatchlist(name) {
   const lists = load(KEYS.watchlists)
   const maxOrder = lists.reduce((m, l) => Math.max(m, l.order ?? 0), 0)
-  const list = { id: nanoid(), name: name.trim(), order: maxOrder + 1, createdAt: new Date().toISOString() }
+  const list = { id: nanoid(), name: name.trim(), order: maxOrder + 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   save(KEYS.watchlists, [...lists, list])
   return list
 }
 
 export function updateWatchlist(id, fields) {
-  save(KEYS.watchlists, load(KEYS.watchlists).map(l => l.id === id ? { ...l, ...fields } : l))
+  save(KEYS.watchlists, load(KEYS.watchlists).map(l => l.id === id ? { ...l, ...fields, updatedAt: new Date().toISOString() } : l))
 }
 
 export function deleteWatchlist(id) {
+  recordDeletion(KEYS.watchlists, id)
   save(KEYS.watchlists, load(KEYS.watchlists).filter(l => l.id !== id))
   // Cascade-delete entries and their alerts
   const entries = load(KEYS.entries).filter(e => e.watchlistId === id)
@@ -38,7 +40,10 @@ export function deleteWatchlist(id) {
 
 export function reorderWatchlists(orderedIds) {
   const lists = load(KEYS.watchlists)
-  save(KEYS.watchlists, lists.map(l => ({ ...l, order: orderedIds.indexOf(l.id) })))
+  save(KEYS.watchlists, lists.map(l => {
+    const order = orderedIds.indexOf(l.id)
+    return order === l.order ? l : { ...l, order, updatedAt: new Date().toISOString() }
+  }))
 }
 
 // ─── Watchlist entries ────────────────────────────────────────────────────────
@@ -63,12 +68,14 @@ export function addStockToWatchlist(watchlistId, ticker) {
   if (entries.some(e => e.watchlistId === watchlistId && e.ticker === t)) {
     throw new Error('Already on this list')
   }
-  const entry = { id: nanoid(), watchlistId, ticker: t, addedAt: new Date().toISOString() }
+  const entry = { id: nanoid(), watchlistId, ticker: t, addedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   save(KEYS.entries, [...entries, entry])
   return entry
 }
 
 export function deleteWatchlistEntry(entryId) {
+  recordDeletion(KEYS.entries, entryId)
+  load(KEYS.alerts).filter(a => a.watchlistEntryId === entryId).forEach(a => recordDeletion(KEYS.alerts, a.id))
   save(KEYS.entries, load(KEYS.entries).filter(e => e.id !== entryId))
   save(KEYS.alerts, load(KEYS.alerts).filter(a => a.watchlistEntryId !== entryId))
 }
@@ -78,6 +85,8 @@ export function deleteWatchlistEntry(entryId) {
 export function deleteWatchlistEntriesForTicker(ticker) {
   const t = ticker.trim().toUpperCase()
   const removed = new Set(load(KEYS.entries).filter(e => e.ticker === t).map(e => e.id))
+  removed.forEach(entryId => recordDeletion(KEYS.entries, entryId))
+  load(KEYS.alerts).filter(a => removed.has(a.watchlistEntryId)).forEach(a => recordDeletion(KEYS.alerts, a.id))
   save(KEYS.entries, load(KEYS.entries).filter(e => e.ticker !== t))
   save(KEYS.alerts, load(KEYS.alerts).filter(a => !removed.has(a.watchlistEntryId)))
 }
@@ -112,16 +121,18 @@ export function createAlert(watchlistEntryId, { direction, threshold, currency }
     status: 'armed',
     createdAt: new Date().toISOString(),
     triggeredAt: null,
+    updatedAt: new Date().toISOString(),
   }
   save(KEYS.alerts, [...load(KEYS.alerts), alert])
   return alert
 }
 
 export function updateAlert(id, fields) {
-  save(KEYS.alerts, load(KEYS.alerts).map(a => a.id === id ? { ...a, ...fields } : a))
+  save(KEYS.alerts, load(KEYS.alerts).map(a => a.id === id ? { ...a, ...fields, updatedAt: new Date().toISOString() } : a))
 }
 
 export function deleteAlert(id) {
+  recordDeletion(KEYS.alerts, id)
   save(KEYS.alerts, load(KEYS.alerts).filter(a => a.id !== id))
 }
 
@@ -151,7 +162,7 @@ export function evaluateAlerts(priceMap) {
     const hit = a.direction === 'above' ? price >= a.threshold : price <= a.threshold
     if (hit) {
       newlyTriggered.push(a.id)
-      return { ...a, status: 'triggered', triggeredAt: new Date().toISOString() }
+      return { ...a, status: 'triggered', triggeredAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     }
     return a
   })
@@ -186,6 +197,9 @@ export function getWatchlistStorageSummary() {
 }
 
 export function deleteAllWatchlists() {
+  load(KEYS.watchlists).forEach(l => recordDeletion(KEYS.watchlists, l.id))
+  load(KEYS.entries).forEach(e => recordDeletion(KEYS.entries, e.id))
+  load(KEYS.alerts).forEach(a => recordDeletion(KEYS.alerts, a.id))
   save(KEYS.watchlists, [])
   save(KEYS.entries, [])
   save(KEYS.alerts, [])

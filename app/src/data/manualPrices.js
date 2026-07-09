@@ -53,7 +53,7 @@ export function getManualPriceOnOrBefore(ticker, asOfDate) {
 export function setManualPriceEntry(ticker, date, price, currency) {
   const t = ticker.toUpperCase()
   const c = currency.trim().toUpperCase()
-  const row = { ticker: t, date, price: Number(price), currency: c, setAt: new Date().toISOString() }
+  const row = { ticker: t, date, price: Number(price), currency: c, setAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   const rows = load().filter(r => !(r.ticker === t && r.date === date))
   save([...rows, row])
 }
@@ -76,7 +76,7 @@ export function renameManualPricesTicker(oldTicker, newTicker) {
   const o = oldTicker.toUpperCase()
   const n = newTicker.toUpperCase()
   if (o === n) return
-  save(load().map(r => r.ticker === o ? { ...r, ticker: n } : r))
+  save(load().map(r => r.ticker === o ? { ...r, ticker: n, updatedAt: new Date().toISOString() } : r))
 }
 
 // ─── Storage stats (Settings → Storage tab) ──────────────────────────────────

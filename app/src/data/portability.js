@@ -20,13 +20,17 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 // shapes inside rmoney_stock_transactions (assetClass/wallet, swap + wallet-transfer types,
 // fee:{coin,quantity}). The delta is additive — older backups load and default the new bits
 // (absent cryptoProfiles → []; transactions without assetClass are treated as stock).
-const VERSION = 'rmoney-data-v5'
+// v6 (SPEC-039, Phase 58): adds the rmoney_deletions tombstone log (device-sync
+// groundwork) and additive `updatedAt` stamps on records. Older backups load
+// and default the missing collection ([]); records without updatedAt are simply
+// treated as older than any stamped record.
+const VERSION = 'rmoney-data-v6'
 
-// Versions the loader can ingest. Newer code accepts older backups (v1–v4)
-// and migrates them in-memory before writing v5-shape data to appStorage.
-const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5']
+// Versions the loader can ingest. Newer code accepts older backups (v1–v5)
+// and migrates them in-memory before writing v6-shape data to appStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5', 'rmoney-data-v6']
 
-const KEYS = {
+export const KEYS = {
   accounts:           'rmoney_accounts',
   transactions:       'rmoney_transactions',
   payees:             'rmoney_payees',
@@ -66,6 +70,8 @@ const KEYS = {
   tradingScenarios:        'rmoney_trading_scenarios',
   // Dismissed API-detected splits (Phase 36d) — user-curated; both backup modes.
   dismissedSplits:         'rmoney_dismissed_splits',
+  // Sync tombstones (SPEC-039) — deletions that must propagate between devices.
+  deletions:               'rmoney_deletions',
   // PERSISTED HISTORY — included in Full backup only; excluded from Sharable backup.
   apiDividendHistory: 'rmoney_api_dividend_history',
   // HOT CACHES (rmoney_market_data_cache, rmoney_market_data_log) — excluded from both backup modes.
@@ -143,6 +149,7 @@ export function exportAppData({ mode = 'sharable', strongholdVault = null } = {}
     manualPrices:            readList(KEYS.manualPrices),
     tradingScenarios:        readList(KEYS.tradingScenarios),
     dismissedSplits:         readList(KEYS.dismissedSplits),
+    deletions:               readList(KEYS.deletions),
   }
   if (mode === 'full') {
     base.apiDividendHistory = readList(KEYS.apiDividendHistory)
@@ -367,12 +374,11 @@ export function migrateBackup(parsed) {
       settings:      migrateSettingsObjectToV2(parsed.settings       ?? {}),
     }
   }
-  if (parsed.version === 'rmoney-data-v2' || parsed.version === 'rmoney-data-v3') {
-    // v2→v3 (dismissedSplits + stockTransactions fee-currency fields) and
-    // v3→v4 (settings.favoriteCountries) are both purely additive: importAppData
-    // defaults the new collection, the item-291 boot migration backfills
-    // feeCurrency, and favoriteCountries defaults on first use. No field
-    // transforms are needed here — just relabel so the payload is v4 shape.
+  if (['rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5'].includes(parsed.version)) {
+    // Every delta from v2 through v6 is purely additive (new collections default
+    // to [] in importAppData; new fields — favoriteCountries, crypto shapes,
+    // updatedAt stamps, the deletions log — default on first use). No field
+    // transforms are needed — just relabel so the payload is current-shape.
     return { ...parsed, version: VERSION }
   }
   return parsed
@@ -418,6 +424,7 @@ export function importAppData(data) {
   write(KEYS.manualPrices,              data.manualPrices              ?? [])
   write(KEYS.tradingScenarios,          data.tradingScenarios          ?? [])
   write(KEYS.dismissedSplits,           data.dismissedSplits           ?? [])
+  write(KEYS.deletions,                 data.deletions                 ?? [])
   // Persisted history — present only in Full backups; absent key means keep existing data
   if ('apiDividendHistory' in data) {
     write(KEYS.apiDividendHistory, data.apiDividendHistory ?? [])

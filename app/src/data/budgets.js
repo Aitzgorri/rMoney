@@ -3,6 +3,7 @@ import { getTransactions } from './transactions'
 import { getPlanningStartDay, getSetting, setSetting } from './settings'
 import { getCurrentPeriod } from '../utils/planningPeriod'
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY = 'rmoney_budgets'
 
@@ -39,17 +40,19 @@ export function createBudget({ categoryId, amount, currency, period }) {
     currency,
     period,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), budget])
   return budget
 }
 
 export function updateBudget(id, fields) {
-  save(load().map(b => b.id === id ? { ...b, ...fields } : b))
+  save(load().map(b => b.id === id ? { ...b, ...fields, updatedAt: new Date().toISOString() } : b))
 }
 
 export function deleteBudget(id) {
   save(load().filter(b => b.id !== id))
+  recordDeletion(KEY, id)
 }
 
 // ─── Period computation ───────────────────────────────────────────────────────

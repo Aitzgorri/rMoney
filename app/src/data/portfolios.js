@@ -1,3 +1,4 @@
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY_PORTFOLIOS  = 'rmoney_portfolios'
@@ -50,6 +51,7 @@ export function createPortfolio({ parentId = null, name, targetPercent = null })
     order: maxSiblingOrder(parentId ?? null) + 1,
     targetPercent: (targetPercent !== null && targetPercent !== '') ? Number(targetPercent) : null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_PORTFOLIOS, [...all, item])
   return item
@@ -65,6 +67,7 @@ export function updatePortfolio(id, fields) {
       updated.targetPercent = (fields.targetPercent !== null && fields.targetPercent !== '')
         ? Number(fields.targetPercent) : null
     }
+    updated.updatedAt = new Date().toISOString()
     return updated
   }))
 }
@@ -81,8 +84,8 @@ export function reorderPortfolio(id, direction) {
   if (swapIdx < 0 || swapIdx >= siblings.length) return
   const swapItem = siblings[swapIdx]
   save(KEY_PORTFOLIOS, all.map(p => {
-    if (p.id === id)        return { ...p, order: swapItem.order }
-    if (p.id === swapItem.id) return { ...p, order: item.order }
+    if (p.id === id)        return { ...p, order: swapItem.order, updatedAt: new Date().toISOString() }
+    if (p.id === swapItem.id) return { ...p, order: item.order, updatedAt: new Date().toISOString() }
     return p
   }))
 }
@@ -96,7 +99,7 @@ export function reparentPortfolio(id, newParentId) {
   if (item.parentId === resolved) return
   const newOrder = maxSiblingOrder(resolved) + 1
   save(KEY_PORTFOLIOS, all.map(p =>
-    p.id === id ? { ...p, parentId: resolved, order: newOrder } : p
+    p.id === id ? { ...p, parentId: resolved, order: newOrder, updatedAt: new Date().toISOString() } : p
   ))
 }
 
@@ -137,6 +140,8 @@ export function deletePortfolio(id) {
   }
   collect(id)
 
+  toDelete.forEach(pid => recordDeletion(KEY_PORTFOLIOS, pid))
+  assignments.filter(a => toDelete.has(a.portfolioId)).forEach(a => recordDeletion(KEY_ASSIGNMENTS, a.id))
   save(KEY_PORTFOLIOS, all.filter(p => !toDelete.has(p.id)))
   save(KEY_ASSIGNMENTS, assignments.filter(a => !toDelete.has(a.portfolioId)))
 }
@@ -161,6 +166,7 @@ export function createPortfolioAssignment({ portfolioId, ticker, targetPercent =
     ticker: norm,
     targetPercent: (targetPercent !== null && targetPercent !== '') ? Number(targetPercent) : null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_ASSIGNMENTS, [...all, item])
   return item
@@ -171,10 +177,12 @@ export function updatePortfolioAssignment(id, { targetPercent }) {
   save(KEY_ASSIGNMENTS, all.map(a => a.id !== id ? a : {
     ...a,
     targetPercent: (targetPercent !== null && targetPercent !== '') ? Number(targetPercent) : null,
+    updatedAt: new Date().toISOString(),
   }))
 }
 
 export function deletePortfolioAssignment(id) {
+  recordDeletion(KEY_ASSIGNMENTS, id)
   save(KEY_ASSIGNMENTS, load(KEY_ASSIGNMENTS).filter(a => a.id !== id))
 }
 

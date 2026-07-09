@@ -1,3 +1,4 @@
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_csv_templates'
@@ -24,13 +25,14 @@ export function createCsvTemplate({ name, dateFormat, decimalSeparator, mapping,
     typeValueMap,              // { csvTypeValue: 'buy'|'sell'|'dividend'|'transfer' } | null
     defaultTransactionType,    // 'buy'|'sell'|'dividend'|'transfer'|null
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), item])
   return item
 }
 
 export function updateCsvTemplate(id, fields) {
-  save(load().map(t => t.id === id ? { ...t, ...fields } : t))
+  save(load().map(t => t.id === id ? { ...t, ...fields, updatedAt: new Date().toISOString() } : t))
 }
 
 // Returns { canDelete, reason, users } — blocked when accounts reference it
@@ -44,6 +46,7 @@ export function canDeleteCsvTemplate(id) {
 }
 
 export function deleteCsvTemplate(id) {
+  recordDeletion(KEY, id)
   save(load().filter(t => t.id !== id))
 }
 

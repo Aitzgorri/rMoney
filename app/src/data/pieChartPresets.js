@@ -1,3 +1,4 @@
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_pie_chart_presets'
@@ -19,24 +20,28 @@ export function createPieChartPreset(fields) {
     otherThresholdPct: fields.otherThresholdPct ?? 1,
     showTableBelow: fields.showTableBelow ?? false,
     chartType: fields.chartType ?? 'pie',
+    updatedAt: new Date().toISOString(),
   }
   save([...presets, preset])
   return preset
 }
 
 export function updatePieChartPreset(id, fields) {
-  save(load().map(p => p.id === id ? { ...p, ...fields } : p))
+  save(load().map(p => p.id === id ? { ...p, ...fields, updatedAt: new Date().toISOString() } : p))
 }
 
 export function deletePieChartPreset(id) {
+  recordDeletion(KEY, id)
   const presets = load().filter(p => p.id !== id)
-  save(presets.map((p, i) => ({ ...p, gridPosition: i })))
+  save(presets.map((p, i) => (p.gridPosition === i ? p : { ...p, gridPosition: i, updatedAt: new Date().toISOString() })))
 }
 
 export function reorderPieChartPresets(orderedIds) {
   const presets = load()
   const byId = Object.fromEntries(presets.map(p => [p.id, p]))
-  save(orderedIds.filter(id => byId[id]).map((id, i) => ({ ...byId[id], gridPosition: i })))
+  save(orderedIds.filter(id => byId[id]).map((id, i) => (
+    byId[id].gridPosition === i ? byId[id] : { ...byId[id], gridPosition: i, updatedAt: new Date().toISOString() }
+  )))
 }
 
 export function getPieChartPresetsStorageBytes() {
@@ -45,5 +50,6 @@ export function getPieChartPresetsStorageBytes() {
 }
 
 export function deleteAllPieChartPresets() {
+  load().forEach(p => recordDeletion(KEY, p.id))
   save([])
 }

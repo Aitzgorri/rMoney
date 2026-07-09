@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_trading_scenarios'
@@ -68,6 +69,7 @@ export function duplicateTradingScenario(id) {
 }
 
 export function deleteTradingScenario(id) {
+  recordDeletion(KEY, id)
   save(load().filter(s => s.id !== id))
   if (getActiveScenarioId() === id) {
     const remaining = load()
@@ -239,6 +241,7 @@ export function getTradingScenariosStats() {
 }
 
 export function deleteAllTradingScenarios() {
+  load().forEach(s => recordDeletion(KEY, s.id))
   save([])
   setActiveScenarioId(null)
 }

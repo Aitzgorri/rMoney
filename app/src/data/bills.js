@@ -4,6 +4,7 @@
 import { createTransaction, updateTransaction } from './transactions'
 import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
+import { recordDeletion } from './syncMeta'
 
 const KEY_ITEMS    = 'rmoney_bill_items'
 const KEY_PENDING  = 'rmoney_bill_pending'
@@ -18,19 +19,24 @@ export function getPlannedItems() { return load(KEY_ITEMS) }
 
 export function createPlannedItem(fields) {
   const items = load(KEY_ITEMS)
-  const item = { id: generateId(), isActive: true, createdAt: new Date().toISOString(), ...fields }
+  const item = { id: generateId(), isActive: true, createdAt: new Date().toISOString(), ...fields, updatedAt: new Date().toISOString() }
   save(KEY_ITEMS, [...items, item])
   return item
 }
 
 export function updatePlannedItem(id, fields) {
-  save(KEY_ITEMS, load(KEY_ITEMS).map(i => i.id === id ? { ...i, ...fields } : i))
+  save(KEY_ITEMS, load(KEY_ITEMS).map(i => i.id === id ? { ...i, ...fields, updatedAt: new Date().toISOString() } : i))
 }
 
 export function deletePlannedItem(id) {
   save(KEY_ITEMS, load(KEY_ITEMS).filter(i => i.id !== id))
+  recordDeletion(KEY_ITEMS, id)
   // Also remove any pending occurrences for this item
-  save(KEY_PENDING, load(KEY_PENDING).filter(p => p.plannedItemId !== id))
+  const pending = load(KEY_PENDING)
+  save(KEY_PENDING, pending.filter(p => p.plannedItemId !== id))
+  for (const p of pending.filter(p => p.plannedItemId === id)) {
+    recordDeletion(KEY_PENDING, p.id)
+  }
 }
 
 // ── Pending occurrences CRUD ─────────────────────────────────────────────────
@@ -50,7 +56,7 @@ export function confirmOccurrence(occId, actualAmount, itemFields) {
   })
   save(KEY_PENDING, pending.map(p =>
     p.id === occId
-      ? { ...p, status: 'confirmed', actualAmount, confirmedAt: new Date().toISOString(), transactionId: tx.id }
+      ? { ...p, status: 'confirmed', actualAmount, confirmedAt: new Date().toISOString(), transactionId: tx.id, updatedAt: new Date().toISOString() }
       : p
   ))
   return tx
@@ -58,7 +64,7 @@ export function confirmOccurrence(occId, actualAmount, itemFields) {
 
 export function skipOccurrence(occId) {
   const pending = load(KEY_PENDING)
-  save(KEY_PENDING, pending.map(p => p.id === occId ? { ...p, status: 'skipped' } : p))
+  save(KEY_PENDING, pending.map(p => p.id === occId ? { ...p, status: 'skipped', updatedAt: new Date().toISOString() } : p))
 }
 
 // ── Past-records rewrite (Phase 55a — opt-in edit scope) ─────────────────────
@@ -86,7 +92,7 @@ export function applyAmountToPastOccurrences(itemId, amount) {
   }
   if (linked.length > 0) {
     const linkedIds = new Set(linked.map(p => p.id))
-    save(KEY_PENDING, pending.map(p => linkedIds.has(p.id) ? { ...p, actualAmount: amount } : p))
+    save(KEY_PENDING, pending.map(p => linkedIds.has(p.id) ? { ...p, actualAmount: amount, updatedAt: new Date().toISOString() } : p))
   }
   return linked.length
 }
@@ -314,7 +320,7 @@ export function applyOccurrenceOverride(itemId, seriesDate, { date, amount, note
   const overrides = { ...(item.overrides ?? {}) }
   if (Object.keys(clean).length === 0) delete overrides[seriesDate]   // no-op edit clears any prior override
   else overrides[seriesDate] = clean
-  save(KEY_ITEMS, items.map(i => i.id === itemId ? { ...i, overrides } : i))
+  save(KEY_ITEMS, items.map(i => i.id === itemId ? { ...i, overrides, updatedAt: new Date().toISOString() } : i))
 
   checkAndGeneratePending()
 }
@@ -401,6 +407,7 @@ export function checkAndGeneratePending() {
           plannedItemId: item.id, seriesDate, dueDate: seriesDate,
           plannedAmount: item.amount, actualAmount: null,
           status: 'skipped', confirmedAt: null, transactionId: null,
+          updatedAt: new Date().toISOString(),
         })
         ;(consumedOverrides[item.id] ??= []).push(seriesDate)
         continue
@@ -426,6 +433,7 @@ export function checkAndGeneratePending() {
         status:        immediate ? 'confirmed' : 'pending',
         confirmedAt:   immediate ? new Date().toISOString() : null,
         transactionId: null,
+        updatedAt:     new Date().toISOString(),
       }
 
       if (o) (consumedOverrides[item.id] ??= []).push(seriesDate)
@@ -467,7 +475,7 @@ export function checkAndGeneratePending() {
       if (!used) return i
       const overrides = { ...(i.overrides ?? {}) }
       for (const k of used) delete overrides[k]
-      return { ...i, overrides }
+      return { ...i, overrides, updatedAt: new Date().toISOString() }
     }))
   }
 }

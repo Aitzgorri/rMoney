@@ -60,6 +60,11 @@ Beyond save/load, the user can wipe the app back to a first-install-like state w
 - [x] **Forward incompatibility unchanged.** A `rmoney-data-v3` backup loaded into v0.33.0–v0.34.x is rejected with "This backup was saved by a newer version of rMoney. Update the app to load it." (those builds' `ACCEPTED_VERSIONS` stop at v2).
 - [ ] **Round-trip verification (v0.35.0).** Export on v0.35.0 (`rmoney-data-v3`) → reload → confirm no data loss; export a v2 backup (v0.34.x) → load into v0.35.0 → confirm `dismissedSplits` defaults and `feeCurrency` backfills. *(To verify on the real app during the v0.35.0 smoke test before tagging.)*
 
+#### v5 → v6 bump *(Phase 58, SPEC-039 device-sync groundwork)*
+- [x] **Bump format to `rmoney-data-v6`** (`portability.js`). v6 differs from v5 in: a new **`deletions` collection** (`rmoney_deletions` — sync tombstones `{collection, id, deletedAt}`, included in both backup modes so deletions propagate between devices) and additive **`updatedAt` stamps** on records across all synced collections (written by every create/update path since Phase 58a).
+- [x] **Backwards-compatible load:** the delta is purely additive — `migrateBackup` relabels v2–v5 payloads (v1 still chains through the v2 transforms); `importAppData` defaults an absent `deletions` to `[]`; records without `updatedAt` are treated as older than any stamped record by the merge engine. Forward incompatibility unchanged: v6 backups are rejected by ≤v0.38.x with the "update the app" message.
+- [x] The device-local sync state (`rmoney_sync_meta` — device id, last-sync, dirty flag — and the `rmoney_sync_base` merge base) is deliberately **NOT** in the backup: each device must keep its own.
+
 ## UI / Screens
 More menu gains two items:
 

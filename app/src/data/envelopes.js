@@ -2,6 +2,7 @@ import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
 import { round2 } from '../utils/format'
 import { getAccountBalance } from './transactions'
+import { recordDeletion } from './syncMeta'
 
 const KEY_ENVELOPES  = 'rmoney_envelopes'
 const KEY_TRANSFERS  = 'rmoney_envelope_transfers'
@@ -109,6 +110,7 @@ export function initBuiltInEnvelopes() {
       isDefaultExpense: false,
       isArchived: false,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
       id: generateId(),
@@ -119,6 +121,7 @@ export function initBuiltInEnvelopes() {
       isDefaultExpense: true,
       isArchived: false,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   ]
   save(KEY_ENVELOPES, [...existing, ...builtIns])
@@ -135,6 +138,7 @@ export function createEnvelope({ name, parentId }) {
     isDefaultExpense: false,
     isArchived: false,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_ENVELOPES, [...envelopes, envelope])
   return envelope
@@ -142,26 +146,27 @@ export function createEnvelope({ name, parentId }) {
 
 export function updateEnvelope(id, fields) {
   const envelopes = load(KEY_ENVELOPES)
-  save(KEY_ENVELOPES, envelopes.map(e => e.id === id ? { ...e, ...fields } : e))
+  save(KEY_ENVELOPES, envelopes.map(e => e.id === id ? { ...e, ...fields, updatedAt: new Date().toISOString() } : e))
 }
 
 export function archiveEnvelope(id, { newDefaultIncomeId, newDefaultExpenseId } = {}) {
   const envelopes = load(KEY_ENVELOPES)
   const target = envelopes.find(e => e.id === id)
+  const now = new Date().toISOString()
 
   let updated = envelopes.map(e => {
-    if (e.id === id) return { ...e, isArchived: true }
+    if (e.id === id) return { ...e, isArchived: true, updatedAt: now }
     // Reassign defaults if the archived envelope was a default
     if (target?.isDefaultIncome && e.id === newDefaultIncomeId)
-      return { ...e, isDefaultIncome: true }
+      return { ...e, isDefaultIncome: true, updatedAt: now }
     if (target?.isDefaultExpense && e.id === newDefaultExpenseId)
-      return { ...e, isDefaultExpense: true }
+      return { ...e, isDefaultExpense: true, updatedAt: now }
     return e
   })
 
   // Clear old default flags from archived envelope
   updated = updated.map(e =>
-    e.id === id ? { ...e, isDefaultIncome: false, isDefaultExpense: false } : e
+    e.id === id ? { ...e, isDefaultIncome: false, isDefaultExpense: false, updatedAt: now } : e
   )
 
   save(KEY_ENVELOPES, updated)
@@ -172,6 +177,9 @@ export function deleteEnvelope(id) {
   if (envelopes.find(e => e.id === id)?.isBuiltIn) return  // built-ins cannot be deleted
   const toDelete = new Set([id, ...getDescendants(id, envelopes).map(e => e.id)])
   save(KEY_ENVELOPES, envelopes.filter(e => !toDelete.has(e.id)))
+  for (const e of envelopes.filter(e => toDelete.has(e.id))) {
+    recordDeletion(KEY_ENVELOPES, e.id)
+  }
 }
 
 export function getDefaultIncomeEnvelope() {
@@ -327,6 +335,7 @@ export function createEnvelopeTransfer({ fromEnvelopeId, toEnvelopeId, amount, d
     date: date ?? localDateStr(),
     note: note ?? '',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_TRANSFERS, [...transfers, transfer])
   return transfer
@@ -335,12 +344,13 @@ export function createEnvelopeTransfer({ fromEnvelopeId, toEnvelopeId, amount, d
 export function updateEnvelopeTransfer(id, fields) {
   const patch = coerceAmount(fields)
   const transfers = load(KEY_TRANSFERS)
-  save(KEY_TRANSFERS, transfers.map(t => t.id === id ? { ...t, ...patch } : t))
+  save(KEY_TRANSFERS, transfers.map(t => t.id === id ? { ...t, ...patch, updatedAt: new Date().toISOString() } : t))
 }
 
 export function deleteEnvelopeTransfer(id) {
   const transfers = load(KEY_TRANSFERS)
   save(KEY_TRANSFERS, transfers.filter(t => t.id !== id))
+  recordDeletion(KEY_TRANSFERS, id)
 }
 
 // ─── Scheduled transfers ─────────────────────────────────────────────────────
@@ -363,6 +373,7 @@ export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, 
     isActive: true,
     lastExecutedDate: null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_SCHEDULED, [...scheduled, item])
   return item
@@ -467,8 +478,9 @@ export function runDueScheduledTransfers() {
       note: `Scheduled (${s.frequency})`,
       isScheduled: true,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
-    return { ...s, lastExecutedDate: todayStr }
+    return { ...s, lastExecutedDate: todayStr, updatedAt: new Date().toISOString() }
   })
 
   if (newTransfers.length > 0) {
@@ -480,12 +492,13 @@ export function runDueScheduledTransfers() {
 export function updateScheduledTransfer(id, fields) {
   const patch = coerceAmount(fields)
   const scheduled = load(KEY_SCHEDULED)
-  save(KEY_SCHEDULED, scheduled.map(s => s.id === id ? { ...s, ...patch } : s))
+  save(KEY_SCHEDULED, scheduled.map(s => s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s))
 }
 
 export function deleteScheduledTransfer(id) {
   const scheduled = load(KEY_SCHEDULED)
   save(KEY_SCHEDULED, scheduled.filter(s => s.id !== id))
+  recordDeletion(KEY_SCHEDULED, id)
 }
 
 // ─── Migration: remove invalid self-transfers ────────────────────────────────

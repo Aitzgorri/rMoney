@@ -28,9 +28,9 @@ export function upsertCryptoProfile(ticker, fields) {
   const list = load()
   const existing = list.find(p => p.ticker === t)
   if (existing) {
-    save(list.map(p => p.ticker === t ? { ...p, ...fields } : p))
+    save(list.map(p => p.ticker === t ? { ...p, ...fields, updatedAt: new Date().toISOString() } : p))
   } else {
-    save([...list, { ticker: t, coinId: null, name: null, ...fields }])
+    save([...list, { ticker: t, coinId: null, name: null, ...fields, updatedAt: new Date().toISOString() }])
   }
 }
 

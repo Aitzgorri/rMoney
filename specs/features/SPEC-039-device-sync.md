@@ -1,7 +1,7 @@
 ---
 id: SPEC-039
 name: Device Sync
-status: draft
+status: in-progress
 created: 2026-07-09
 ---
 
@@ -28,18 +28,19 @@ Design agreed 2026-07-09. Local-first: both devices remain fully functional with
 
 ## Acceptance Criteria
 
-### Groundwork (data model)
-- [ ] Every create/update in the data layer stamps `updatedAt` (ISO timestamp) on the record; existing records without `updatedAt` are treated as older than any stamped record.
-- [ ] Deletions in synced collections write a tombstone `{ collection, id, deletedAt }` to a new `rmoney_deletions` log; tombstones are pruned after a retention window once synced.
-- [ ] The last successfully synced snapshot is stored locally as the merge **base** (latest base only).
-- [ ] The `rmoney_deletions` collection appears as a card in Settings → Storage (SPEC-026 convention) and is included in the SPEC-016 backup (format bump to `rmoney-data-v6`).
+### Groundwork (data model) *(Phase 58 ✓ 2026-07-09)*
+- [x] Every create/update in the data layer stamps `updatedAt` (ISO timestamp) on the record; existing records without `updatedAt` are treated as older than any stamped record. *(Swept across all 23 data modules covering the backup collections; boot-repair migrations deliberately do NOT stamp — they are not user edits; boot seeds and the recurring engines DO, since they persist genuinely new records.)*
+- [x] Deletions in synced collections write a tombstone `{ collection, id, deletedAt }` to a new `rmoney_deletions` log (`data/syncMeta.js` `recordDeletion` — ~54 call sites incl. every cascade: envelope descendants, bill occurrences, watchlist entries+alerts, portfolio assignments, linked cash movements…); `pruneDeletions(retentionDays = 180)` exists and is called by the sync cycle after a successful sync (wired in Phase 59). **Id-less collections** (stock/crypto profiles keyed by ticker, manual prices, dismissed splits) get no per-record tombstones — by design, the merge engine handles those lists as blobs, where the three-way base comparison propagates deletions.
+- [x] The last successfully synced snapshot is stored locally as the merge **base** (latest base only — `rmoney_sync_base`), alongside device-local sync metadata (`rmoney_sync_meta`: stable device id, last-sync time, dirty flag). Neither is in the backup — each device keeps its own.
+- [x] The `rmoney_deletions` collection appears as a card in Settings → Storage ("Sync deletion log" — no manual delete, deliberately: clearing it could resurrect records on other devices) and is included in the SPEC-016 backup (**format bumped to `rmoney-data-v6`**, both modes; loader defaults absence).
 
-### Merge engine
-- [ ] A pure module `mergeSnapshots(base, local, remote)` returns the merged snapshot plus a structured change/conflict log; it performs no I/O.
-- [ ] Records added on either side are all present after merge (union by id).
-- [ ] A record edited on both sides resolves to the newer `updatedAt`; the losing version is recorded in the change log.
-- [ ] A record deleted on one side and untouched on the other stays deleted (tombstone honoured); deleted on one side and *edited* on the other resolves by newest timestamp.
-- [ ] The engine has an exhaustive unit-test suite (both-added, edit-vs-edit, edit-vs-delete, resurrection, empty/first-sync, per-collection shapes) — written before the engine is wired to transport.
+### Merge engine *(Phase 58d ✓ 2026-07-09 — `utils/mergeSnapshots.js`)*
+- [x] A pure module `mergeSnapshots(base, local, remote)` returns the merged snapshot plus a structured change/conflict log; it performs no I/O and no clock reads.
+- [x] Records added on either side are all present after merge (union by id).
+- [x] A record edited on both sides resolves to the newer `updatedAt` (fallback `createdAt`, fallback oldest); the losing version is recorded in the change log (`kept-local` / `kept-remote`).
+- [x] A record deleted on one side and untouched on the other stays deleted (tombstone honoured, and the tombstone itself survives the merge for other devices); deleted on one side and *edited* on the other resolves by newest timestamp (`kept-edit-over-delete` / `deleted` logged).
+- [x] Blob fields (the settings object, id-less lists, unknown shapes) merge three-way at the field level: the side that changed vs the base wins; both changed → local wins, logged. Tombstone logs from both sides union with the newest `deletedAt` per record.
+- [x] The engine has an exhaustive unit-test suite (both-added, edit-vs-edit incl. single-side-silent, legacy-unstamped-vs-stamped, edit-vs-delete both directions, resurrection, empty/first-sync, missing-field, blob conflicts, deletions-log union) — written before any transport exists.
 
 ### Transport + UX
 - [ ] Settings → Sync card: WebDAV URL, username, password. The password is stored per SPEC-031 (Stronghold record, `webdavSet: bool` flag, masked UI); the host is added to the CSP the same way as the user-configured AI host.

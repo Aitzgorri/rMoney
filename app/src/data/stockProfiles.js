@@ -38,9 +38,9 @@ export function upsertStockProfile(ticker, fields) {
   const list = load()
   const existing = list.find(p => p.ticker === t)
   if (existing) {
-    save(list.map(p => p.ticker === t ? { ...p, ...fields } : p))
+    save(list.map(p => p.ticker === t ? { ...p, ...fields, updatedAt: new Date().toISOString() } : p))
   } else {
-    save([...list, { ticker: t, taxPercentOverride: null, ...fields }])
+    save([...list, { ticker: t, taxPercentOverride: null, ...fields, updatedAt: new Date().toISOString() }])
   }
 }
 
@@ -218,7 +218,7 @@ export function renameTicker(oldTicker, newTicker, resolvedFields = {}, mode = '
 
   if (mode === 'remap') {
     // Profile: drop the old entry, write a fresh one with only resolvedFields.
-    const newEntry = { ticker: next, taxPercentOverride: null, ...resolvedFields, ...confirmFields }
+    const newEntry = { ticker: next, taxPercentOverride: null, ...resolvedFields, ...confirmFields, updatedAt: new Date().toISOString() }
     save([...profiles.filter(p => p.ticker !== old && p.ticker !== next), newEntry])
 
     // User records: rename ticker (no-op when old === next). These are the
@@ -237,7 +237,7 @@ export function renameTicker(oldTicker, newTicker, resolvedFields = {}, mode = '
     // 'rename' — same company, symbol changed: carry over old entry, merge
     // resolved fields, key under the new ticker.
     const { ticker: _drop, ...oldFields } = oldProfile ?? { taxPercentOverride: null }
-    const newEntry = { ...oldFields, ...resolvedFields, ...confirmFields, ticker: next }
+    const newEntry = { ...oldFields, ...resolvedFields, ...confirmFields, ticker: next, updatedAt: new Date().toISOString() }
     save([...profiles.filter(p => p.ticker !== old && p.ticker !== next), newEntry])
 
     renameInKey('rmoney_stock_transactions', old, next)
@@ -257,7 +257,7 @@ function renameInKey(storageKey, old, next) {
   try {
     const arr = JSON.parse(appStorage.getItem(storageKey)) ?? []
     appStorage.setItem(storageKey, JSON.stringify(
-      arr.map(r => r.ticker === old ? { ...r, ticker: next } : r)
+      arr.map(r => r.ticker === old ? { ...r, ticker: next, updatedAt: new Date().toISOString() } : r)
     ))
   } catch { /* corrupt JSON in appStorage — leave untouched */ }
 }

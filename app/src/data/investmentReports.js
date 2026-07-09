@@ -1,3 +1,4 @@
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_investment_report_presets'
@@ -15,16 +16,18 @@ export function createReportPreset({ name, config }) {
     name: name.trim(),
     config,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), preset])
   return preset
 }
 
 export function updateReportPreset(id, fields) {
-  save(load().map(p => p.id === id ? { ...p, ...fields } : p))
+  save(load().map(p => p.id === id ? { ...p, ...fields, updatedAt: new Date().toISOString() } : p))
 }
 
 export function deleteReportPreset(id) {
+  recordDeletion(KEY, id)
   save(load().filter(p => p.id !== id))
 }
 
@@ -34,5 +37,6 @@ export function getReportPresetsStorageBytes() {
 }
 
 export function deleteAllReportPresets() {
+  load().forEach(p => recordDeletion(KEY, p.id))
   save([])
 }

@@ -2,6 +2,7 @@ import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvest
 import { getSetting } from './settings'
 import { getOpenLots } from './stockTransactions'
 import { getApiDividendHistory } from './apiDividendHistory'
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_dividends'
@@ -99,12 +100,13 @@ export function createDividend({ investingAccountId, ticker, currency, exDividen
     exchangeRates: null,
     cashMovementId: null,
     createdAt: now,
+    updatedAt: now,
   }
   save([...load(), dividend])
 
   if (status === 'received') {
     const movement = writeCashMovement(dividend)
-    const withMovement = { ...dividend, cashMovementId: movement.id }
+    const withMovement = { ...dividend, cashMovementId: movement.id, updatedAt: new Date().toISOString() }
     save(load().map(d => d.id === dividend.id ? withMovement : d))
     return withMovement
   }
@@ -124,6 +126,7 @@ export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
     dividendPerShare: Number(dividendPerShare),
     taxPercent: Number(taxPercent),
     ...(type !== undefined ? { type: type === 'special' ? 'special' : 'regular' } : {}),
+    updatedAt: new Date().toISOString(),
   }
   const { netTotal } = computeDividendDerived(updated)
   save(list.map(d => d.id === id ? updated : d))
@@ -132,7 +135,7 @@ export function updateDividend(id, { dividendPerShare, taxPercent, type }) {
     try {
       const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
       appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
-        movements.map(m => m.id === dividend.cashMovementId ? { ...m, amount: netTotal } : m)
+        movements.map(m => m.id === dividend.cashMovementId ? { ...m, amount: netTotal, updatedAt: new Date().toISOString() } : m)
       ))
     } catch {}
   }
@@ -151,8 +154,10 @@ export function deleteDividend(id) {
       appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(
         movements.filter(m => m.id !== dividend.cashMovementId)
       ))
+      recordDeletion(KEY_MOVEMENTS, dividend.cashMovementId)
     } catch {}
   }
+  recordDeletion(KEY, id)
   save(load().filter(d => d.id !== id))
 }
 
@@ -172,6 +177,7 @@ export function confirmDividend(id) {
     status: 'received',
     confirmedAt: now,
     cashMovementId: movement.id,
+    updatedAt: now,
   }
   save(list.map(d => d.id === id ? updated : d))
   return updated
@@ -239,6 +245,7 @@ export function promoteDividends() {
 
     if (recalcShares === 0) {
       dropped.push({ ticker: d.ticker, exDividendDate: d.exDividendDate, payoutDate: d.payoutDate, investingAccountId: d.investingAccountId })
+      recordDeletion(KEY, d.id)
       return null // mark for removal
     }
 
@@ -249,6 +256,7 @@ export function promoteDividends() {
       shareCount: recalcShares,
       status: nextStatus,
       confirmedAt: nextStatus === 'received' ? now : null,
+      updatedAt: now,
     }
   }).filter(Boolean)
 
@@ -258,7 +266,7 @@ export function promoteDividends() {
   const withMovements = updated.map(d => {
     if (d.status !== 'received' || d.cashMovementId) return d
     const movement = writeCashMovement(d)
-    return { ...d, cashMovementId: movement.id }
+    return { ...d, cashMovementId: movement.id, updatedAt: new Date().toISOString() }
   })
 
   save(withMovements)
@@ -334,6 +342,7 @@ export function autoCreatePendingFromApi() {
         exchangeRates: null,
         cashMovementId: null,
         createdAt: now,
+        updatedAt: now,
       }
       newRecords.push(record)
       existingKeys.add(key)

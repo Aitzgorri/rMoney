@@ -1,6 +1,7 @@
 // CRUD for AI system prompts. One prompt is selected at a time (id in app settings).
 // The collection is seeded with a "Default" prompt that cannot be deleted but can be edited.
 
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_ai_system_prompts'
@@ -77,6 +78,7 @@ export function canDeleteAiSystemPrompt(id) {
 export function deleteAiSystemPrompt(id) {
   const { canDelete, reason } = canDeleteAiSystemPrompt(id)
   if (!canDelete) throw new Error(reason)
+  recordDeletion(KEY, id)
   save(ensureSeeded().filter(r => r.id !== id))
 }
 

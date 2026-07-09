@@ -1,4 +1,5 @@
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY = 'rmoney_accounts'
 
@@ -48,6 +49,7 @@ export function createAccount({ type, companyName, accountName, currency, starti
     countedInEnvelopes: countedInEnvelopes !== false,   // default true (SPEC-038, Phase 56a)
     isArchived: false,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...accounts, account])
   return account
@@ -55,7 +57,7 @@ export function createAccount({ type, companyName, accountName, currency, starti
 
 export function updateAccount(id, fields) {
   const accounts = load()
-  const updated = accounts.map(a => a.id === id ? { ...a, ...fields } : a)
+  const updated = accounts.map(a => a.id === id ? { ...a, ...fields, updatedAt: new Date().toISOString() } : a)
   save(updated)
 }
 
@@ -70,4 +72,5 @@ export function unarchiveAccount(id) {
 export function deleteAccount(id) {
   const accounts = load()
   save(accounts.filter(a => a.id !== id))
+  recordDeletion(KEY, id)
 }

@@ -1,4 +1,5 @@
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY_TRANSACTIONS = 'rmoney_transactions'
 const KEY_PAYEES       = 'rmoney_payees'
@@ -44,6 +45,7 @@ export function createTransaction(fields) {
     id: generateId(),
     ...fields,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_TRANSACTIONS, [...transactions, tx])
 
@@ -57,13 +59,14 @@ export function createTransaction(fields) {
 
 export function updateTransaction(id, fields) {
   const transactions = load(KEY_TRANSACTIONS)
-  save(KEY_TRANSACTIONS, transactions.map(t => t.id === id ? { ...t, ...fields } : t))
+  save(KEY_TRANSACTIONS, transactions.map(t => t.id === id ? { ...t, ...fields, updatedAt: new Date().toISOString() } : t))
   if (fields.payeeName?.trim()) savePayee(fields.payeeName.trim())
 }
 
 export function deleteTransaction(id) {
   const transactions = load(KEY_TRANSACTIONS)
   save(KEY_TRANSACTIONS, transactions.filter(t => t.id !== id))
+  recordDeletion(KEY_TRANSACTIONS, id)
 }
 
 // ─── Payees ──────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ export function getRecentEnvelopesForPayee(payeeName, type, limit = 3) {
 function savePayee(name) {
   const payees = load(KEY_PAYEES)
   if (payees.some(p => p.name.toLowerCase() === name.toLowerCase())) return
-  save(KEY_PAYEES, [...payees, { id: generateId(), name, createdAt: new Date().toISOString() }])
+  save(KEY_PAYEES, [...payees, { id: generateId(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }])
 }
 
 // ─── Recurring rules ─────────────────────────────────────────────────────────
@@ -144,19 +147,20 @@ export function getRecurringRules() {
 
 export function createRecurringRule(fields) {
   const rules = load(KEY_RECURRING)
-  const rule = { id: generateId(), isActive: true, createdAt: new Date().toISOString(), ...fields }
+  const rule = { id: generateId(), isActive: true, createdAt: new Date().toISOString(), ...fields, updatedAt: new Date().toISOString() }
   save(KEY_RECURRING, [...rules, rule])
   return rule
 }
 
 export function updateRecurringRule(id, fields) {
   const rules = load(KEY_RECURRING)
-  save(KEY_RECURRING, rules.map(r => r.id === id ? { ...r, ...fields } : r))
+  save(KEY_RECURRING, rules.map(r => r.id === id ? { ...r, ...fields, updatedAt: new Date().toISOString() } : r))
 }
 
 export function deleteRecurringRule(id) {
   const rules = load(KEY_RECURRING)
   save(KEY_RECURRING, rules.filter(r => r.id !== id))
+  recordDeletion(KEY_RECURRING, id)
 }
 
 // Returns true if any transaction references the given account.

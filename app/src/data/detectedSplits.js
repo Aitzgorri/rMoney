@@ -57,6 +57,7 @@ export function dismissSplit({ ticker, date, ratio }) {
     numerator: Number(ratio.numerator),
     denominator: Number(ratio.denominator),
     dismissedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   const list = load()
   if (list.some(d => sameKey(d, entry))) return

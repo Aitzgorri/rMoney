@@ -1,6 +1,7 @@
 import { getCashBalanceByCurrency, createCashBalance, addCashMovement, getInvestingAccounts } from './investingAccounts'
 import { getHistoricalForex } from './marketDataClient'
 import { getMainCurrency } from './settings'
+import { recordDeletion } from './syncMeta'
 import appStorage from '../utils/appStorage'
 
 const KEY = 'rmoney_stock_transactions'
@@ -322,6 +323,7 @@ export function createBuy({ date, investingAccountId, ticker, stockExchange = nu
     lotAllocations: null,
     exchangeRates,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   // SPEC-036 (D1/D6): stamp crypto-only fields so stock records stay byte-identical (absence ⇒ stock).
   // `wallet` is the exchange-slot analogue; fractional `shares` flow through unchanged.
@@ -367,6 +369,7 @@ export function createSell({ date, investingAccountId, ticker, stockExchange = n
     lotAllocations,
     exchangeRates,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   // SPEC-036 (D1/D6): stamp crypto-only fields; FIFO/LIFO lot selection above is scoped to the
   // matching asset class so a crypto sell only consumes crypto lots.
@@ -457,6 +460,7 @@ export function createSwap({
     lotAllocations,              // FROM-leg (productive + fee-if-paid-in-FROM)
     feeLotAllocations,           // fee leg when paid in a non-FROM coin
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), txn])
   // No cash movement: a swap is coin-for-coin and the fee is paid in crypto (reduces a holding).
@@ -543,16 +547,20 @@ export function deleteStockTransaction(id) {
     if (triggeredExchange) {
       try {
         const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+        movements.filter(m => m.linkedStockTransactionId === triggeredExchange.id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
         appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== triggeredExchange.id)))
       } catch {}
+      recordDeletion(KEY, triggeredExchange.id)
       save(load().filter(t => t.id !== triggeredExchange.id))
     }
   }
 
   try {
     const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    movements.filter(m => m.linkedStockTransactionId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
     appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
+  recordDeletion(KEY, id)
   save(load().filter(t => t.id !== id))
 }
 
@@ -583,6 +591,7 @@ export function createCurrencyExchange({
     triggeredByStockTransactionId,
     exchangeRates,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), txn])
   const srcSnapshot = (exchangeRates?.sourceRateToMain != null)
@@ -614,6 +623,7 @@ export function updateCurrencyExchange(id, {
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
     const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    movements.filter(m => m.linkedStockTransactionId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
     appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
@@ -626,6 +636,7 @@ export function updateCurrencyExchange(id, {
     feeCashBalanceId: (feeCashBalanceId && Number(feeAmount) > 0) ? feeCashBalanceId : null,
     feeAmount: Number(feeAmount) > 0 ? Number(feeAmount) : null,
     exchangeRates,
+    updatedAt: new Date().toISOString(),
   }
   save(txns.map(t => t.id === id ? updated : t))
 
@@ -689,6 +700,7 @@ export function createTransfer({
     lotAllocations,
     exchangeRates: null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), txn])
 
@@ -723,6 +735,7 @@ export function createWalletTransfer({ date, investingAccountId, ticker, quantit
     fromWallet: fromWallet?.trim() || null,
     toWallet: toWallet?.trim() || null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...load(), txn])
   return txn
@@ -771,6 +784,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
         const rate = await fetchRate(txn.currency, txn.date)
         if (rate != null) {
           txn.exchangeRates = { mainCurrency, rateToMain: rate, capturedAt: new Date().toISOString(), fxBackfilled: true }
+          txn.updatedAt = new Date().toISOString()
           processed++
         } else { failed++ }
       } else if (txn.type === 'currency-exchange') {
@@ -785,6 +799,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
             capturedAt: new Date().toISOString(),
             fxBackfilled: true,
           }
+          txn.updatedAt = new Date().toISOString()
           processed++
         } else { failed++ }
       }
@@ -805,6 +820,7 @@ export async function backfillFxSnapshots({ onProgress } = {}) {
       const rate = await fetchRate(currency, m.date)
       if (rate != null) {
         m.exchangeRatesSnapshot = { mainCurrency, rateToMain: rate, capturedAt: new Date().toISOString(), fxBackfilled: true }
+        m.updatedAt = new Date().toISOString()
         processed++
       } else { failed++ }
     }
@@ -843,6 +859,7 @@ export function updateBuy(id, { date, stockExchange, wallet, shares, price, fee,
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
     const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    movements.filter(m => m.linkedStockTransactionId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
     appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
@@ -855,6 +872,7 @@ export function updateBuy(id, { date, stockExchange, wallet, shares, price, fee,
     fee: Number(fee || 0),
     transactionExternalId: transactionExternalId?.trim() || null,
     exchangeRates: exchangeRates ?? txn.exchangeRates,
+    updatedAt: new Date().toISOString(),
   }
   // SPEC-036: only override `wallet` when the caller supplies it (crypto edit); otherwise
   // the spread above preserves the record's existing assetClass/wallet.
@@ -887,6 +905,7 @@ export function updateSell(id, { date, stockExchange, wallet, shares, price, fee
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
     const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    movements.filter(m => m.linkedStockTransactionId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
     appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
@@ -901,6 +920,7 @@ export function updateSell(id, { date, stockExchange, wallet, shares, price, fee
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations: finalAllocations,
     exchangeRates: exchangeRates ?? txn.exchangeRates,
+    updatedAt: new Date().toISOString(),
   }
   // SPEC-036: only override `wallet` when supplied (crypto edit); spread preserves it otherwise.
   if (wallet !== undefined) updated.wallet = wallet?.trim() || null
@@ -924,7 +944,7 @@ export function updateSplit(id, { date, numerator, denominator }) {
   const txns = load()
   const txn = txns.find(t => t.id === id && t.type === 'split')
   if (!txn) throw new Error('Split not found')
-  const updated = { ...txn, date, ratio: { numerator: Number(numerator), denominator: Number(denominator) } }
+  const updated = { ...txn, date, ratio: { numerator: Number(numerator), denominator: Number(denominator) }, updatedAt: new Date().toISOString() }
   save(txns.map(t => t.id === id ? updated : t))
   return updated
 }
@@ -939,6 +959,7 @@ export function updateTransfer(id, { date, destinationInvestingAccountId, shares
   const KEY_MOVEMENTS = 'rmoney_cash_movements'
   try {
     const movements = JSON.parse(appStorage.getItem(KEY_MOVEMENTS)) ?? []
+    movements.filter(m => m.linkedStockTransactionId === id).forEach(m => recordDeletion(KEY_MOVEMENTS, m.id))
     appStorage.setItem(KEY_MOVEMENTS, JSON.stringify(movements.filter(m => m.linkedStockTransactionId !== id)))
   } catch {}
 
@@ -952,6 +973,7 @@ export function updateTransfer(id, { date, destinationInvestingAccountId, shares
     feeCashBalanceId: feeCashBalanceId || null,
     transactionExternalId: transactionExternalId?.trim() || null,
     lotAllocations: finalAllocations,
+    updatedAt: new Date().toISOString(),
   }
   save(txns.map(t => t.id === id ? updated : t))
 
@@ -994,6 +1016,7 @@ export function applySplit({ ticker, date, numerator, denominator }) {
     lotAllocations: null,
     exchangeRates: null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }))
   save([...txns, ...created])
   return created

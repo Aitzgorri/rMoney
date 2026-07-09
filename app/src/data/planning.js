@@ -1,4 +1,5 @@
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY_INCOMES  = 'rmoney_planned_incomes'
 const KEY_EXPENSES = 'rmoney_planned_expenses'
@@ -66,6 +67,7 @@ export function createPlannedIncome({ name, amount, currency, frequency, dayOfEx
     date:                   isOneTime ? (date ?? null) : null,
     envelopeId,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_INCOMES, [...items, item])
   return item
@@ -74,7 +76,7 @@ export function createPlannedIncome({ name, amount, currency, frequency, dayOfEx
 export function updatePlannedIncome(id, fields) {
   save(KEY_INCOMES, load(KEY_INCOMES).map(i => {
     if (i.id !== id) return i
-    const merged = { ...i, ...fields }
+    const merged = { ...i, ...fields, updatedAt: new Date().toISOString() }
     // Planned incomes are scratchpad-only — strip any legacy link field.
     delete merged.linkedScheduledTransferId
     return merged
@@ -83,6 +85,7 @@ export function updatePlannedIncome(id, fields) {
 
 export function deletePlannedIncome(id) {
   save(KEY_INCOMES, load(KEY_INCOMES).filter(i => i.id !== id))
+  recordDeletion(KEY_INCOMES, id)
 }
 
 // ─── Planned expenses ─────────────────────────────────────────────────────────
@@ -104,17 +107,19 @@ export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelop
     amount:                amount != null ? Number(amount) : null,
     linkedScheduledTransferId: null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save(KEY_EXPENSES, [...items, item])
   return item
 }
 
 export function updatePlannedExpense(id, fields) {
-  save(KEY_EXPENSES, load(KEY_EXPENSES).map(i => i.id === id ? { ...i, ...fields } : i))
+  save(KEY_EXPENSES, load(KEY_EXPENSES).map(i => i.id === id ? { ...i, ...fields, updatedAt: new Date().toISOString() } : i))
 }
 
 export function deletePlannedExpense(id) {
   save(KEY_EXPENSES, load(KEY_EXPENSES).filter(i => i.id !== id))
+  recordDeletion(KEY_EXPENSES, id)
 }
 
 // Returns all descendants (children, grandchildren, …) of a given expense item.
@@ -128,6 +133,9 @@ export function deletePlannedExpenseTree(id) {
   const all = load(KEY_EXPENSES)
   const toDelete = new Set([id, ...getExpenseDescendants(id, all).map(e => e.id)])
   save(KEY_EXPENSES, all.filter(e => !toDelete.has(e.id)))
+  for (const e of all.filter(e => toDelete.has(e.id))) {
+    recordDeletion(KEY_EXPENSES, e.id)
+  }
 }
 
 // Convert a leaf item into a parent: clear its envelope/amount fields.
@@ -135,7 +143,7 @@ export function deletePlannedExpenseTree(id) {
 export function convertLeafToParent(id) {
   save(KEY_EXPENSES, load(KEY_EXPENSES).map(i =>
     i.id === id
-      ? { ...i, envelopeId: null, sourceEnvelopeId: null, currency: null, amount: null, amountBasis: null, linkedScheduledTransferId: null }
+      ? { ...i, envelopeId: null, sourceEnvelopeId: null, currency: null, amount: null, amountBasis: null, linkedScheduledTransferId: null, updatedAt: new Date().toISOString() }
       : i
   ))
 }

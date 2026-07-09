@@ -1,4 +1,5 @@
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY          = 'rmoney_categories'
 const KEY_DEFAULTS = 'rmoney_default_categories'
@@ -52,6 +53,7 @@ export function ensureBuiltInCategories() {
       parentId: null,
       isBuiltIn: true,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
   }
   if (!hasExpense) {
@@ -62,6 +64,7 @@ export function ensureBuiltInCategories() {
       parentId: null,
       isBuiltIn: true,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
   }
   if (toAdd.length > 0) save([...all, ...toAdd])
@@ -85,7 +88,7 @@ export function archiveBuiltInCategory(id, successorId) {
   const all = load()
   const target = all.find(c => c.id === id)
   if (!target?.isBuiltIn) return
-  save(all.map(c => c.id === id ? { ...c, isArchived: true } : c))
+  save(all.map(c => c.id === id ? { ...c, isArchived: true, updatedAt: new Date().toISOString() } : c))
   saveDefaults({ ...loadDefaults(), [target.type]: successorId })
 }
 
@@ -129,6 +132,7 @@ export function createCategory({ type, name, parentId }) {
     name,
     parentId: parentId ?? null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
   save([...categories, category])
   return category
@@ -136,7 +140,7 @@ export function createCategory({ type, name, parentId }) {
 
 export function updateCategory(id, fields) {
   const categories = load()
-  save(categories.map(c => c.id === id ? { ...c, ...fields } : c))
+  save(categories.map(c => c.id === id ? { ...c, ...fields, updatedAt: new Date().toISOString() } : c))
 }
 
 // Deletes a category and all its descendants. Built-in categories cannot be deleted.
@@ -145,4 +149,7 @@ export function deleteCategory(id) {
   if (categories.find(c => c.id === id)?.isBuiltIn) return
   const toDelete = new Set([id, ...getDescendants(id, categories).map(c => c.id)])
   save(categories.filter(c => !toDelete.has(c.id)))
+  for (const c of categories.filter(c => toDelete.has(c.id))) {
+    recordDeletion(KEY, c.id)
+  }
 }

@@ -1,5 +1,6 @@
 import { inferLocaleCurrency } from '../utils/currency'
 import appStorage from '../utils/appStorage'
+import { recordDeletion } from './syncMeta'
 
 const KEY = 'rmoney_settings'
 
@@ -389,6 +390,7 @@ export function addWidget(type, config) {
     type,
     config,
     order: maxOrder + 1,
+    updatedAt: new Date().toISOString(),
   }
   saveWidgets([...widgets, widget])
   return widget
@@ -396,15 +398,22 @@ export function addWidget(type, config) {
 
 export function removeWidget(id) {
   saveWidgets(loadWidgets().filter(w => w.id !== id))
+  recordDeletion(KEY_WIDGETS, id)
 }
 
 export function reorderWidgets(orderedIds) {
   const widgets = loadWidgets()
+  const now = new Date().toISOString()
+  // Only records whose order actually changes get a fresh updatedAt stamp.
   const reordered = orderedIds.map((id, i) => {
     const w = widgets.find(w => w.id === id)
-    return w ? { ...w, order: i } : null
+    if (!w) return null
+    return w.order === i ? w : { ...w, order: i, updatedAt: now }
   }).filter(Boolean)
   // Keep any widgets not in the list at the end
   const remaining = widgets.filter(w => !orderedIds.includes(w.id))
-  saveWidgets([...reordered, ...remaining.map((w, i) => ({ ...w, order: reordered.length + i }))])
+  saveWidgets([...reordered, ...remaining.map((w, i) => {
+    const order = reordered.length + i
+    return w.order === order ? w : { ...w, order, updatedAt: now }
+  })])
 }
