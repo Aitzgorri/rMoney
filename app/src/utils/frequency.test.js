@@ -85,4 +85,15 @@ describe('convertAmount (planning period basis)', () => {
     expect(convertAmount(75, 'one-time', 'monthly')).toBe(75)
     expect(convertAmount(75, 'monthly', 'monthly')).toBe(75)
   })
+
+  it('accepts weekly/bi-weekly as a FROM basis via their monthly equivalent (Phase 53b)', () => {
+    expect(convertAmount(120, 'weekly', 'monthly')).toBe(520)
+    expect(convertAmount(120, 'weekly', 'yearly')).toBe(6240)
+    expect(convertAmount(100, 'biweekly', 'monthly')).toBeCloseTo(216.6667, 3)
+    expect(convertAmount(100, 'biweekly', 'quarterly')).toBe(650)
+  })
+
+  it('passes unknown bases through unchanged', () => {
+    expect(convertAmount(9, 'nonsense', 'monthly')).toBe(9)
+  })
 })

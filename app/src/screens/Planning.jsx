@@ -11,7 +11,7 @@ import {
   getPlannedExpenses, createPlannedExpense, updatePlannedExpense, deletePlannedExpense,
   getExpenseDescendants, deletePlannedExpenseTree, convertLeafToParent,
 } from '../data/planning'
-import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS } from '../utils/frequency'
+import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS, FREQUENCIES, WEEKDAYS, dayPickerKind, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import {
@@ -483,7 +483,7 @@ export default function Planning() {
                     <span className={styles.incomeFreq}>
                       {income.frequency === 'one-time'
                         ? `${formatDate(income.date)} · one-time`
-                        : `day ${income.dayOfExecution} · ${FREQUENCY_LABELS[income.frequency] ?? income.frequency}`}
+                        : `${dayLabel(income.frequency, income.dayOfExecution)} · ${FREQUENCY_LABELS[income.frequency] ?? income.frequency}`}
                     </span>
                   </div>
                   <div className={styles.incomeRight}>
@@ -828,6 +828,16 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
 
   function set(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
 
+  // Reset the day when the picker kind changes (weekday 0–6 vs month-day 1–28),
+  // so a stale value can't cross kinds — same pattern as the other recurring forms (Phase 47d).
+  function handleFrequencyChange(value) {
+    setForm(prev => ({
+      ...prev,
+      frequency: value,
+      ...(dayPickerKind(prev.frequency) !== dayPickerKind(value) ? { dayOfExecution: 1 } : {}),
+    }))
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.amount) return
@@ -835,6 +845,7 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
   }
 
   const isOneTime = form.frequency === 'one-time'
+  const dayKind   = dayPickerKind(form.frequency)
 
   return (
     <div className={inline ? styles.inlineWrap : styles.backdrop}>
@@ -856,11 +867,8 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
             </div>
 
             <label className={styles.label}>Frequency
-              <select className={styles.select} value={form.frequency} onChange={e => set('frequency', e.target.value)}>
-                <option value="one-time">One-time</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
+              <select className={styles.select} value={form.frequency} onChange={e => handleFrequencyChange(e.target.value)}>
+                {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
             </label>
 
@@ -870,9 +878,11 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
               </label>
             ) : (
               <>
-                <label className={styles.label}>Day of month
+                <label className={styles.label}>{dayKind === 'weekday' ? 'Day of week' : 'Day of month'}
                   <select className={styles.select} value={form.dayOfExecution} onChange={e => set('dayOfExecution', Number(e.target.value))}>
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {dayKind === 'weekday'
+                      ? WEEKDAYS.map((w, i) => <option key={w} value={i}>{w}</option>)
+                      : DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </label>
                 <div className={styles.row}>

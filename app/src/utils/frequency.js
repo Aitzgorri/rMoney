@@ -69,8 +69,12 @@ export const PERIOD_LABELS = {
   yearly:    'Yearly',
 }
 
-// Convert an amount from one period basis to another (monthly / quarterly / yearly).
-// 'one-time' amounts are returned unchanged.
+// Convert an amount between bases. `toBasis` is always a period basis
+// (monthly / quarterly / yearly — see PERIOD_LABELS above). `fromBasis`
+// additionally accepts the weekly/bi-weekly recurrence frequencies, which
+// normalise through their monthly equivalent (Phase 53b — planned incomes and
+// scheduled transfers can carry them since Phase 47). 'one-time' amounts are
+// returned unchanged.
 export function convertAmount(amount, fromBasis, toBasis) {
   const n = Number(amount)
   if (!fromBasis || fromBasis === 'one-time' || fromBasis === toBasis) return n
@@ -80,6 +84,7 @@ export function convertAmount(amount, fromBasis, toBasis) {
   if (fromBasis === 'monthly')   monthly = n
   else if (fromBasis === 'quarterly') monthly = n / 3
   else if (fromBasis === 'yearly')    monthly = n / 12
+  else if (fromBasis === 'weekly' || fromBasis === 'biweekly') monthly = monthlyEquivalent(n, fromBasis)
   else return n
 
   if (toBasis === 'monthly')   return monthly

@@ -41,7 +41,9 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] Changing the period recalculates all displayed amounts in both sections, not just the summary
 
 ### Planned incomes
-- [x] User can add a planned income with: name, amount, currency, frequency (one-time | monthly | other regular), target envelope, start date (and end date for regular incomes, optional)
+- [x] User can add a planned income with: name, amount, currency, frequency, target envelope, start date (and end date for regular incomes, optional)
+- [x] **Frequency options come from the shared `utils/frequency.js` module** *(Phase 53b)*: the full set **one-time, weekly, bi-weekly, monthly, quarterly, yearly** — closing the last dropdown left outside the Phase 47 unification. The day picker is a **weekday** selector for weekly/bi-weekly and a **day-of-month (1–28)** selector for monthly/quarterly/yearly (`dayPickerKind`), resetting when the picker kind changes; income rows label the day via the shared `dayLabel` ("Tuesday · Bi-weekly", "15th · Monthly")
+- [x] Weekly/bi-weekly planned incomes are counted in the summary totals through their monthly equivalent (×52/12, ×26/12): `convertAmount` accepts them as a *from* basis *(Phase 53b — this also fixed a latent bug where `expenseSyncStatus` treated a weekly/bi-weekly linked scheduled transfer's amount as if it were monthly)*. The display-period basis itself stays monthly/quarterly/yearly
 - [x] Target envelope defaults to the built-in **Undistributed income** envelope but the user may pick any envelope
 - [x] User can have multiple regular incomes (e.g. salary + side hustle) and multiple one-time incomes
 - [x] User can edit or delete any planned income freely (scratchpad — no popups, no automatic transfer/transaction changes)
