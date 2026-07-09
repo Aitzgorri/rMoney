@@ -12,6 +12,7 @@ import { buildEnvelopeProjection } from '../utils/envelopeProjection'
 import { useCollapseState } from '../utils/useCollapseState'
 import styles from './EnvelopeHistory.module.css'
 import { fmtAmt, round2, parseAmount } from '../utils/format'
+import { daysRemaining } from '../utils/planningPeriod'
 import AmountInput from '../components/AmountInput'
 import PayeeAutocomplete from '../components/PayeeAutocomplete'
 
@@ -28,6 +29,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [search, setSearch]           = useState('')
   const [showFilter, setShowFilter]   = useState(false)
+  const [showDaily, setShowDaily]     = useState(false)  // per-day spendable figure (Phase 54c)
   const [sortAsc, setSortAsc]         = useState(false)
   const [_refreshKey, setRefreshKey]  = useState(0)
   const [filters, setFilters]         = useState({
@@ -235,10 +237,15 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         }
         <h2 className={styles.title}>{envelope.name}</h2>
         <div className={styles.headerActions}>
-          <button className={styles.iconBtn} onClick={() => setCreatingTransfer(true)} title="New transfer from this envelope">⇄</button>
+          <button className={styles.iconBtn} onClick={() => setCreatingTransfer(true)} title="New transfer from this envelope">⇄ Transfer</button>
+          <button className={`${styles.iconBtn} ${showDaily ? styles.active : ''}`}
+            onClick={() => setShowDaily(v => !v)}
+            title="Show how much can be spent per day until the end of the planning period">÷</button>
           <button className={`${styles.iconBtn} ${showFilter ? styles.active : ''}`}
-            onClick={() => setShowFilter(v => !v)}>⚙</button>
-          <button className={styles.iconBtn} onClick={() => setSortAsc(v => !v)}>
+            onClick={() => setShowFilter(v => !v)}
+            title={showFilter ? 'Hide transaction filters' : 'Show transaction filters'}>⚙</button>
+          <button className={styles.iconBtn} onClick={() => setSortAsc(v => !v)}
+            title={sortAsc ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}>
             {sortAsc ? '↑' : '↓'}
           </button>
         </div>
@@ -249,6 +256,16 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         <span className={`${styles.balanceValue} ${balance < 0 ? styles.negative : styles.positive}`}>
           {balance < 0 ? '−' : ''}{fmtAmt(Math.abs(balance))}
         </span>
+        {showDaily && (() => {
+          // Same formula as the Dashboard daily-spending widget (SPEC-008).
+          const days = daysRemaining()
+          const daily = balance <= 0 ? 0 : days > 0 ? balance / days : 0
+          return (
+            <span className={styles.balanceLabel}>
+              {fmtAmt(daily)} / day · {days} day{days === 1 ? '' : 's'} left in period
+            </span>
+          )
+        })()}
       </div>
 
       {/* Scheduled transfers section — collapsible, default collapsed (Phase 50) */}

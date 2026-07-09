@@ -30,7 +30,7 @@ import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Planning.module.css'
-import { fmtAmt } from '../utils/format'
+import { fmtAmt, round2 } from '../utils/format'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 const TODAY = localDateStr()
@@ -43,8 +43,11 @@ function expenseSyncStatus(expense, scheduledTransfers) {
   if (!expense.linkedScheduledTransferId) return 'not-applied'
   const t = scheduledTransfers.find(s => s.id === expense.linkedScheduledTransferId)
   if (!t) return 'not-applied'
-  const planned = convertAmount(expense.amount, expense.amountBasis, 'monthly')
-  const actual  = convertAmount(t.amount, t.frequency, 'monthly')
+  // Compare at cent precision on both sides (Phase 54a): stored amounts are now
+  // rounded on write, so an unrounded planned figure (4.305) must not read as
+  // out-of-sync against its correctly-stored 4.30/4.31.
+  const planned = round2(convertAmount(expense.amount, expense.amountBasis, 'monthly'))
+  const actual  = round2(convertAmount(t.amount, t.frequency, 'monthly'))
   return Math.abs(planned - actual) < 0.005 ? 'in-sync' : 'out-of-sync'
 }
 
@@ -357,7 +360,10 @@ export default function Planning() {
   }
 
   function applyExpense(expense, status, scope) {
-    const monthlyAmount = convertAmount(expense.amount, expense.amountBasis, 'monthly')
+    // Round the computed monthly figure BEFORE it is persisted (Phase 54a):
+    // a yearly target ÷ 12 (e.g. 51.66 → 4.305) must never be stored with
+    // sub-cent precision — stored sums then disagree with the rounded display.
+    const monthlyAmount = round2(convertAmount(expense.amount, expense.amountBasis, 'monthly'))
 
     const day = expense.dayOfExecution ?? 1
 

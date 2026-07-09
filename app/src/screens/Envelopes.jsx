@@ -86,6 +86,7 @@ export default function Envelopes() {
   if (view === 'transfer') {
     return (
       <EnvelopeTransferForm
+        defaultFromEnvelopeId={historyEnvelope?.id}   // selected envelope = From (Phase 54c)
         onSave={() => { refresh(); setView('list') }}
         onCancel={() => setView('list')}
       />
@@ -248,11 +249,13 @@ export default function Envelopes() {
             <button
               className={styles.transferBtn}
               onClick={() => allCollapsed ? collapse.clear() : collapse.setAll(parentEnvelopeIds)}
+              title={allCollapsed ? 'Expand all envelope groups' : 'Collapse all envelope groups'}
             >
               {allCollapsed ? 'Expand all' : 'Collapse all'}
             </button>
           )}
-          <button className={styles.transferBtn} onClick={() => setView('transfer')}>
+          <button className={styles.transferBtn} onClick={() => setView('transfer')}
+            title="New envelope transfer (from the selected envelope, if any)">
             ⇄ Transfer
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer } from './envelopes'
+import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer, updateScheduledTransfer, migrateTransferAmounts } from './envelopes'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
 
 // nextScheduledOccurrence(s, fromDate) scans forward reusing the engine's own
@@ -136,6 +136,40 @@ describe('createScheduledTransfer (storage-backed via the test helper)', () => {
     })
     const rule = getScheduledTransfers()[0]
     expect(nextScheduledOccurrence(rule, new Date(2026, 5, 10))).toBe('2026-06-16')
+  })
+})
+
+describe('amount rounding on write + repair migration (Phase 54a)', () => {
+  afterEach(resetStorage)
+
+  it('no write path persists sub-cent precision', () => {
+    seedStorage({})
+    // 100/12 — the Planning yearly÷12 class of value
+    createScheduledTransfer({ fromEnvelopeId: 'a', toEnvelopeId: 'b', amount: 8.333333333333334, frequency: 'monthly', dayOfExecution: 1 })
+    createEnvelopeTransfer({ fromEnvelopeId: 'a', toEnvelopeId: 'b', amount: 216.66666666666666, date: '2026-07-01' })
+    expect(getScheduledTransfers()[0].amount).toBe(8.33)
+    expect(readStorage('rmoney_envelope_transfers')[0].amount).toBe(216.67)
+
+    updateScheduledTransfer(getScheduledTransfers()[0].id, { amount: 4.999999 })
+    expect(getScheduledTransfers()[0].amount).toBe(5)
+  })
+
+  it('migrateTransferAmounts repairs stored strings AND sub-cent amounts', () => {
+    seedStorage({
+      rmoney_envelope_transfers: [
+        { id: 't1', amount: 8.333333333333334 },   // sub-cent (the screenshot bug)
+        { id: 't2', amount: '150' },               // legacy string (Phase 43)
+        { id: 't3', amount: 25 },                  // already clean — untouched
+        { id: 't4', amount: 'garbage' },           // malformed — left alone
+      ],
+      rmoney_envelope_scheduled: [
+        { id: 's1', amount: 4.999999 },
+      ],
+    })
+    migrateTransferAmounts()
+    const t = readStorage('rmoney_envelope_transfers')
+    expect(t.map(x => x.amount)).toEqual([8.33, 150, 25, 'garbage'])
+    expect(readStorage('rmoney_envelope_scheduled')[0].amount).toBe(5)
   })
 })
 

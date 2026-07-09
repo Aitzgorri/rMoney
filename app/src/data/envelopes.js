@@ -1,5 +1,6 @@
 import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
+import { round2 } from '../utils/format'
 
 const KEY_ENVELOPES  = 'rmoney_envelopes'
 const KEY_TRANSFERS  = 'rmoney_envelope_transfers'
@@ -21,10 +22,13 @@ function generateId() {
 
 // Coerce an `amount` field to a number when present, so a string coming from a
 // form input never gets persisted (string amounts corrupt the balance sums,
-// which add with `+` — see migrateTransferAmounts below).
+// which add with `+` — see migrateTransferAmounts below). Also rounds to 2
+// decimals (Phase 54a): no write path may persist sub-cent precision — computed
+// amounts like a yearly target ÷ 12 (4.305) made stored sums disagree with
+// their per-row rounded display.
 function coerceAmount(fields) {
   if (fields && fields.amount !== undefined) {
-    return { ...fields, amount: Number(fields.amount) }
+    return { ...fields, amount: round2(fields.amount) }
   }
   return fields
 }
@@ -272,7 +276,7 @@ export function createEnvelopeTransfer({ fromEnvelopeId, toEnvelopeId, amount, d
     id: generateId(),
     fromEnvelopeId,
     toEnvelopeId,
-    amount: Number(amount),
+    amount: round2(amount),   // never persist sub-cent precision (Phase 54a)
     date: date ?? localDateStr(),
     note: note ?? '',
     createdAt: new Date().toISOString(),
@@ -304,7 +308,7 @@ export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, 
     id: generateId(),
     fromEnvelopeId,
     toEnvelopeId,
-    amount: Number(amount),
+    amount: round2(amount),   // never persist sub-cent precision (Phase 54a)
     frequency,
     dayOfExecution: Number(dayOfExecution),
     startDate: startDate || null,   // optional anchor/gate (Phase 53f); null = legacy createdAt anchoring
@@ -452,31 +456,32 @@ export function cleanupSelfScheduledTransfers() {
   return toRemove.map(s => s.id)
 }
 
-// ─── Migration: coerce string amounts to numbers ─────────────────────────────
-// The one-time-transfer *edit* form used to persist `amount` as the raw string
-// from its <input>, and updateEnvelopeTransfer merged it verbatim. Because the
-// balance sums add amounts with `+`, a stored string turned addition into string
-// concatenation — producing wildly wrong totals and, once two decimal amounts
-// combined into a two-dot string, `NaN`. Write/read paths now coerce (Phase 43a/
-// 43b); this one-time pass repairs any already-stored string amounts so old data
-// is correct without the user re-saving each record. Only finite values are
-// rewritten, so a malformed string is left untouched rather than turned into NaN.
+// ─── Migration: repair stored amounts (strings + sub-cent precision) ─────────
+// Two historical write bugs left bad amounts in storage:
+//  • Phase 43: the one-time-transfer *edit* form persisted `amount` as the raw
+//    string from its <input> — balance sums then concatenated instead of adding.
+//  • Phase 54a: Planning "apply" persisted unrounded computed amounts (a yearly
+//    target ÷ 12 → 4.305), so stored sums disagreed with the per-row rounded
+//    display (the "0,01 header vs 0,00 running balance" screenshot).
+// Write paths now coerce AND round; this startup pass (idempotent) repairs
+// already-stored data without the user re-saving each record. Only finite
+// values are rewritten, so a malformed string is left untouched.
 export function migrateTransferAmounts() {
-  const coerceList = (items) => {
+  const repairList = (items) => {
     let changed = false
     const fixed = items.map(item => {
-      if (typeof item.amount === 'string') {
-        const n = Number(item.amount)
-        if (Number.isFinite(n)) { changed = true; return { ...item, amount: n } }
-      }
+      const n = typeof item.amount === 'string' ? Number(item.amount) : item.amount
+      if (!Number.isFinite(n)) return item
+      const rounded = round2(n)
+      if (rounded !== item.amount) { changed = true; return { ...item, amount: rounded } }
       return item
     })
     return { fixed, changed }
   }
 
-  const transfers = coerceList(load(KEY_TRANSFERS))
+  const transfers = repairList(load(KEY_TRANSFERS))
   if (transfers.changed) save(KEY_TRANSFERS, transfers.fixed)
 
-  const scheduled = coerceList(load(KEY_SCHEDULED))
+  const scheduled = repairList(load(KEY_SCHEDULED))
   if (scheduled.changed) save(KEY_SCHEDULED, scheduled.fixed)
 }

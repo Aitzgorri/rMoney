@@ -43,10 +43,12 @@ export default function TransactionForm({ initial, defaultAccountId, onSave, onC
     payeeName:           '',
     date:                TODAY,
     note:                '',
-    // transfer fields
-    sourceAccountId:      accounts[0]?.id ?? '',
+    // transfer fields — From follows the same filter → last-used prefill as the
+    // expense account (Phase 54b); To picks the first *different* account so the
+    // form never opens with source === destination.
+    sourceAccountId:      defaultAccount?.id ?? '',
     sourceAmount:         '',
-    destinationAccountId: accounts[1]?.id ?? '',
+    destinationAccountId: accounts.find(a => a.id !== defaultAccount?.id)?.id ?? '',
     destinationAmount:    '',
     transferFee:          '0',
     // recurring

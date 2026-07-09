@@ -51,8 +51,13 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] Search and filters work together
 
 ### Creating a transfer from envelope history
-- [x] The envelope history screen has a "Transfer" button that opens the envelope transfer form (from SPEC-004)
+- [x] The envelope history screen has a "Transfer" button that opens the envelope transfer form (from SPEC-004) — labelled **"⇄ Transfer"** (icon + text, Phase 54c), with a tooltip
 - [x] When opened from envelope history, the transfer form's "From" field defaults to the envelope being viewed (overriding the global default of "Undistributed income")
+- [x] The **left tree-pane "⇄ Transfer" button** also prefills From with the currently selected envelope when one is selected *(Phase 54c — previously it always fell back to Undistributed income, inconsistent with the detail-pane button)*
+
+### Detail-pane header polish *(Phase 54c)*
+- [x] The ⚙ filter toggle and the ↓/↑ sort toggle carry `title` tooltips (tooltip rule, CLAUDE.md 2026-07-08)
+- [x] A **÷ daily-spend toggle** sits between the Transfer and filter buttons: when on, the Balance row also shows **balance ÷ days remaining in the current planning period** ("X,XX / day · N days left in period") — the same formula as the Dashboard daily-spending widget (SPEC-008), computed on the envelope's total (incl. descendants) balance
 
 ### Editing records
 - [x] Tapping a transaction row opens it for editing (uses Transaction Entry form from SPEC-005)

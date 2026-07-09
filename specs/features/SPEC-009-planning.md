@@ -72,6 +72,11 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] The planning tool is a **scratchpad**: the user can freely edit any planned income or planned expense amount without triggering popups or modals — changes are reflected immediately in the summary totals so the user can see the income/expense impact
 - [x] Edits do **not** automatically create or update scheduled transfers or recurring transactions
 
+### Amount precision (Phase 54a)
+- [x] **"Apply" never persists sub-cent amounts**: the computed monthly figure (`convertAmount` of a yearly/quarterly target — e.g. 51.66/yr → 4.305) is rounded to 2 decimals via `round2` before it is written to the scheduled/one-time transfer, and the data layer (`createEnvelopeTransfer` / `createScheduledTransfer` / `coerceAmount` on updates) rounds every amount on write as a guard — no write path can store more than 2 decimals (SPEC-004)
+- [x] The sync-status comparison rounds both sides to cent precision first, so an unrounded planned figure can never read as out-of-sync against its correctly-rounded stored transfer
+- [x] The Phase 43c startup migration (`migrateTransferAmounts`) now also **repairs already-stored sub-cent amounts** (rounding them to 2 decimals), fixing the "Balance 0,01 vs running balance 0,00" disagreement from the 08 Jul 2026 screenshot without the user re-saving records
+
 ### Sync indicators (expenses only)
 - [x] Each planned **expense leaf** shows a **sync indicator** when the planned amount differs from the corresponding scheduled envelope transfer (or when no transfer exists yet)
 - [x] Each out-of-sync expense row also shows a small **reset icon** that reverts that individual item back to the current transfer amount (or clears the amount if no transfer exists yet)
