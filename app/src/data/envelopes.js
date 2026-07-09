@@ -298,7 +298,7 @@ export function getScheduledTransfers() {
   return load(KEY_SCHEDULED)
 }
 
-export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, frequency, dayOfExecution }) {
+export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, frequency, dayOfExecution, startDate, note }) {
   const scheduled = load(KEY_SCHEDULED)
   const item = {
     id: generateId(),
@@ -307,6 +307,8 @@ export function createScheduledTransfer({ fromEnvelopeId, toEnvelopeId, amount, 
     amount: Number(amount),
     frequency,
     dayOfExecution: Number(dayOfExecution),
+    startDate: startDate || null,   // optional anchor/gate (Phase 53f); null = legacy createdAt anchoring
+    note: note ?? '',               // was silently dropped on create (edits kept it) — fixed in Phase 53f
     isActive: true,
     lastExecutedDate: null,
     createdAt: new Date().toISOString(),
@@ -326,6 +328,17 @@ function monthsBetween(anchor, today) {
   return (today.getFullYear() - anchor.getFullYear()) * 12 + (today.getMonth() - anchor.getMonth())
 }
 
+// The cadence anchor: the rule's explicit startDate (local y-m-d, Phase 53f)
+// when present, else its creation moment (legacy behaviour). Parsed with the
+// local Date constructor — never new Date('YYYY-MM-DD'), which is a UTC parse.
+function scheduleAnchor(s) {
+  if (s.startDate) {
+    const [y, m, d] = s.startDate.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+  return atMidnight(new Date(s.createdAt))
+}
+
 // Does a scheduled transfer fall due on `today`?
 //   weekly    → matching weekday
 //   biweekly  → matching weekday AND an even number of weeks from the anchor
@@ -333,9 +346,13 @@ function monthsBetween(anchor, today) {
 //   monthly   → matching day-of-month (1–28, so no month-length clamping needed)
 //   quarterly → matching day-of-month, in a month 0/3/6/9 from the anchor month
 //   yearly    → matching day-of-month, in the anchor month
-// Quarterly/yearly/biz anchor on `createdAt` (scheduled transfers have no
-// startDate field); monthly/weekly need no anchor.
+// Bi-weekly/quarterly/yearly anchor on the rule's optional `startDate`, else
+// `createdAt` (Phase 53f); monthly/weekly need no anchor. An explicit startDate
+// also gates EVERY frequency: nothing fires before it.
 function isScheduledTransferDueToday(s, today) {
+  // Nothing fires before an explicit start date (Phase 53f) — enables
+  // "starts next month" rules and user control over the cadence anchor.
+  if (s.startDate && localDateStr(today) < s.startDate) return false
   const dow = today.getDay()
   const dom = today.getDate()
   switch (s.frequency) {
@@ -343,9 +360,9 @@ function isScheduledTransferDueToday(s, today) {
       return dow === s.dayOfExecution
     case 'biweekly': {
       if (dow !== s.dayOfExecution) return false
-      const created = atMidnight(new Date(s.createdAt))
-      const daysUntil = (s.dayOfExecution - created.getDay() + 7) % 7
-      const anchor = new Date(created)
+      const base = scheduleAnchor(s)
+      const daysUntil = (s.dayOfExecution - base.getDay() + 7) % 7
+      const anchor = new Date(base)
       anchor.setDate(anchor.getDate() + daysUntil)
       const diffDays = Math.round((atMidnight(today) - anchor) / 86400000)
       return diffDays >= 0 && diffDays % 14 === 0
@@ -353,9 +370,9 @@ function isScheduledTransferDueToday(s, today) {
     case 'monthly':
       return dom === s.dayOfExecution
     case 'quarterly':
-      return dom === s.dayOfExecution && monthsBetween(new Date(s.createdAt), today) % 3 === 0
+      return dom === s.dayOfExecution && monthsBetween(scheduleAnchor(s), today) % 3 === 0
     case 'yearly':
-      return dom === s.dayOfExecution && monthsBetween(new Date(s.createdAt), today) % 12 === 0
+      return dom === s.dayOfExecution && monthsBetween(scheduleAnchor(s), today) % 12 === 0
     default:
       return false
   }

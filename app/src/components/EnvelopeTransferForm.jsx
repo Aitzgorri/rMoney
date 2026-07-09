@@ -58,6 +58,7 @@ export default function EnvelopeTransferForm({
     note:           initial?.note           ?? '',
     frequency:      initial?.frequency      ?? 'monthly',
     dayOfExecution: initial?.dayOfExecution ?? 1,
+    startDate:      initial?.startDate      ?? '',   // optional cadence anchor/gate (Phase 53f)
   })
 
   function set(field, value) {
@@ -97,6 +98,7 @@ export default function EnvelopeTransferForm({
         amount:         parseAmount(form.amount),
         frequency:      form.frequency,
         dayOfExecution: Number(form.dayOfExecution),
+        startDate:      form.startDate || null,
         note:           form.note,
       }
       if (initial && initial.frequency) {
@@ -214,6 +216,17 @@ export default function EnvelopeTransferForm({
                 : MONTH_DAYS.map(d => <option key={d} value={d}>{d}</option>)
               }
             </select>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Start date (optional)</label>
+            <input
+              className={styles.input}
+              type="date"
+              value={form.startDate}
+              onChange={e => set('startDate', e.target.value)}
+              title="The transfer never fires before this date; bi-weekly, quarterly and yearly cadences count from it. Leave empty to start immediately."
+            />
           </div>
         </>
       )}

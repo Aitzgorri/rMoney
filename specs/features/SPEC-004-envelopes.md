@@ -60,7 +60,8 @@ Envelopes are primarily a savings-tracking tool: the user distributes income int
 - [x] **"Today" defaults use the local calendar** *(Phase 53d)*: the transfer form's date default and `createEnvelopeTransfer`'s fallback date go through `localDateStr()` — never `toISOString().split('T')[0]`, which rolls back a day near midnight in UTC+ timezones (the 16→15 bug family). The same sweep converted every remaining date-only `toISOString` derivation app-wide (TransactionForm, Planning, Bills & Income incl. its due-filter, InvestingAccountDetail); regression-tested at the data layer
 
 ### Scheduled transfers
-- [x] User can create a scheduled transfer with: source envelope, destination envelope, amount, frequency, day of execution
+- [x] User can create a scheduled transfer with: source envelope, destination envelope, amount, frequency, day of execution, **optional start date** and note
+- [x] **Optional start date** *(Phase 53f)*: the transfer never fires before it, and bi-weekly/quarterly/yearly cadences count from it (fallback: the rule's creation date, so existing records keep their behaviour). Set in the regular-mode transfer form; additive `startDate` field in `rmoney_envelope_scheduled` — no backup-format bump. *(Also fixed in the same change: the form's note was silently dropped by `createScheduledTransfer` — it now persists.)*
 - [x] An envelope can have multiple scheduled transfers (both incoming and outgoing)
 - [x] Scheduled transfers execute automatically on the specified day
 - [x] User can edit or delete a scheduled transfer
