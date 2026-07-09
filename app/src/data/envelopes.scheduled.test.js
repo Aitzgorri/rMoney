@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers } from './envelopes'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer } from './envelopes'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
 
 // nextScheduledOccurrence(s, fromDate) scans forward reusing the engine's own
@@ -84,5 +84,21 @@ describe('createScheduledTransfer (storage-backed via the test helper)', () => {
     })
     const rule = getScheduledTransfers()[0]
     expect(nextScheduledOccurrence(rule, new Date(2026, 5, 10))).toBe('2026-06-16')
+  })
+})
+
+describe('createEnvelopeTransfer default date (Phase 53d — the UTC-midnight class)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    resetStorage()
+  })
+
+  it('defaults to the LOCAL calendar date, even just after local midnight', () => {
+    seedStorage({})
+    vi.useFakeTimers()
+    // 00:30 local: toISOString() rolls back to the previous day in any UTC+ zone.
+    vi.setSystemTime(new Date(2026, 6, 9, 0, 30, 0))
+    createEnvelopeTransfer({ fromEnvelopeId: 'env-a', toEnvelopeId: 'env-b', amount: 5 })
+    expect(readStorage('rmoney_envelope_transfers')[0].date).toBe('2026-07-09')
   })
 })

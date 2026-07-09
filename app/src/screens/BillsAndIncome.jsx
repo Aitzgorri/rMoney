@@ -15,7 +15,7 @@ import { getActiveAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
 import { getActiveEnvelopes, getEnvelopesFlat } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
-import { formatDate } from '../utils/dates'
+import { formatDate, localDateStr } from '../utils/dates'
 import { FREQUENCIES, FREQUENCY_LABELS, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import PayeeAutocomplete from '../components/PayeeAutocomplete'
@@ -23,7 +23,7 @@ import styles from './BillsAndIncome.module.css'
 import { fmtAmt, parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
 
-const TODAY = new Date().toISOString().split('T')[0]
+const TODAY = localDateStr()
 
 function daysOverdue(dueDate) {
   const due   = new Date(dueDate)
@@ -51,7 +51,7 @@ export default function BillsAndIncome({ onBack }) {
   const envsFlat   = getEnvelopesFlat(getActiveEnvelopes())
 
   // Enrich pending items with their parent planned item
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = localDateStr()
   const enrichedPending = pending
     .map(p => ({ ...p, item: items.find(i => i.id === p.plannedItemId) }))
     .filter(p => p.item && p.dueDate <= todayStr)   // only show if the due date has arrived

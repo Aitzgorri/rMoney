@@ -10,6 +10,7 @@ import {
 } from '../data/envelopes'
 import { INDENT } from '../utils/hierarchy'
 import { parseAmount } from '../utils/format'
+import { localDateStr } from '../utils/dates'
 import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
 import AmountInput from './AmountInput'
 import styles from './EnvelopeTransferForm.module.css'
@@ -27,7 +28,7 @@ export default function EnvelopeTransferForm({
   const envelopes = getActiveEnvelopes()
   const flat = getEnvelopesFlat(envelopes)
   const defaultIncome = getDefaultIncomeEnvelope()
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 

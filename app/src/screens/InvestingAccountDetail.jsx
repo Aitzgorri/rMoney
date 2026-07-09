@@ -63,8 +63,9 @@ import CurrencyDropdown from '../components/CurrencyDropdown'
 import { BuyEditForm, SellEditForm } from '../components/StockTxEditForms'
 import { applyBuyEdit, applySellEdit } from '../data/stockTxEdit'
 import styles from './InvestingAccountDetail.module.css'
+import { localDateStr } from '../utils/dates'
 
-function today() { return new Date().toISOString().split('T')[0] }
+function today() { return localDateStr() }
 
 // Fee movement types merged into parent rows; not rendered as standalone rows.
 const FEE_TYPES = new Set(['buy-fee', 'sell-fee', 'exchange-fee'])

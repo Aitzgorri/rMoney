@@ -273,7 +273,7 @@ export function createEnvelopeTransfer({ fromEnvelopeId, toEnvelopeId, amount, d
     fromEnvelopeId,
     toEnvelopeId,
     amount: Number(amount),
-    date: date ?? new Date().toISOString().split('T')[0],
+    date: date ?? localDateStr(),
     note: note ?? '',
     createdAt: new Date().toISOString(),
   }

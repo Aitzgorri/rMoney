@@ -10,10 +10,11 @@ import { INDENT } from '../utils/hierarchy'
 import { splitFavorites } from '../utils/favorites'
 import { parseAmount } from '../utils/format'
 import { RECURRING_FREQUENCIES, WEEKDAYS, MONTH_DAYS, dayPickerKind } from '../utils/frequency'
+import { localDateStr } from '../utils/dates'
 import AmountInput from './AmountInput'
 import styles from './TransactionForm.module.css'
 
-const TODAY = new Date().toISOString().split('T')[0]
+const TODAY = localDateStr()
 const NEW_CATEGORY = '__new__'   // sentinel option value for inline category create (51e)
 const DIVIDER = '─────────'      // disabled separator between favorites/recents and the tree
 

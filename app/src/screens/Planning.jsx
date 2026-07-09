@@ -13,7 +13,7 @@ import {
 } from '../data/planning'
 import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS, FREQUENCIES, WEEKDAYS, dayPickerKind, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
-import { formatDate } from '../utils/dates'
+import { formatDate, localDateStr } from '../utils/dates'
 import {
   DndContext,
   useDraggable,
@@ -33,7 +33,7 @@ import styles from './Planning.module.css'
 import { fmtAmt } from '../utils/format'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
-const TODAY = new Date().toISOString().split('T')[0]
+const TODAY = localDateStr()
 
 // ─── Sync helpers ─────────────────────────────────────────────────────────────
 // Note: planned incomes are scratchpad-only (SPEC-009) — they do not sync to

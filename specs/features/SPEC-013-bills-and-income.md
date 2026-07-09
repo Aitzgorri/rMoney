@@ -51,6 +51,7 @@ Bills & Income answers: "What money do I expect to come in or go out of my accou
 
 ### Outstanding items list
 - [x] The page shows a **pending section** at the top listing all items that are due but not yet confirmed
+- [x] The "due date has arrived" comparison uses the **local** calendar date (`localDateStr()`), so a bill due today is confirmable from local midnight — previously `toISOString()` shifted to UTC and hid it until the UTC day caught up *(Phase 53d)*
 - [x] Each pending row shows: name, account, days overdue (if past due), an editable date field (pre-filled with due date), and an editable amount field (pre-filled with planned amount)
 - [x] Pending items are sorted by due date (oldest first)
 - [x] User can confirm a pending item with adjusted date and/or amount directly from the pending row — no separate dialog required
