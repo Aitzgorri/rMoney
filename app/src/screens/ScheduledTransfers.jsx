@@ -6,7 +6,8 @@ import {
   deleteScheduledTransfer,
   nextScheduledOccurrenceInfo,
 } from '../data/envelopes'
-import { getPlannedExpenses, updatePlannedExpense } from '../data/planning'
+import { getPlannedExpenses, clearTransferLinks } from '../data/planning'
+import { getActivePlanId } from '../data/settings'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import TransferOccurrenceDialog from '../components/TransferOccurrenceDialog'
 import InlineFormRow from '../components/InlineFormRow'
@@ -37,7 +38,9 @@ export default function ScheduledTransfers({ onBack }) {
   // Always read fresh from storage
   const transfers = getScheduledTransfers()
   const envelopesFlat = getEnvelopesFlat(getActiveEnvelopes())
-  const plannedExpenses = getPlannedExpenses()
+  // The ACTIVE plan owns the live rules (Phase 65, P1) — drafts may hold copies
+  // of the same links, but the "plan" indicator reflects the active plan only.
+  const plannedExpenses = getPlannedExpenses(getActivePlanId())
 
   // Map envelopeId → name for quick lookups
   const envelopeMap = Object.fromEntries(envelopesFlat.map(e => [e.id, e]))
@@ -89,11 +92,9 @@ export default function ScheduledTransfers({ onBack }) {
 
   function confirmDelete() {
     if (!deleteTarget) return
-    // If linked to a planning expense, clear the link before deleting the transfer.
-    const link = planLinkMap[deleteTarget.id]
-    if (link) {
-      updatePlannedExpense(link.item.id, { linkedScheduledTransferId: null })
-    }
+    // Clear the link on EVERY plan referencing this transfer (drafts may hold
+    // copies of the pointer — Phase 65) before deleting it.
+    clearTransferLinks(deleteTarget.id)
     deleteScheduledTransfer(deleteTarget.id)
     setDeleteTarget(null)
     setEditTransfer(null)

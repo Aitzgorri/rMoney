@@ -65,6 +65,10 @@ Beyond save/load, the user can wipe the app back to a first-install-like state w
 - [x] **Backwards-compatible load:** the delta is purely additive — `migrateBackup` relabels v2–v5 payloads (v1 still chains through the v2 transforms); `importAppData` defaults an absent `deletions` to `[]`; records without `updatedAt` are treated as older than any stamped record by the merge engine. Forward incompatibility unchanged: v6 backups are rejected by ≤v0.38.x with the "update the app" message.
 - [x] The device-local sync state (`rmoney_sync_meta` — device id, last-sync, dirty flag — and the `rmoney_sync_base` merge base) is deliberately **NOT** in the backup: each device must keep its own.
 
+#### v6 → v7 bump *(Phase 65, SPEC-009 multiple envelope plans)*
+- [x] **Bump format to `rmoney-data-v7`** (`portability.js`). v7 differs from v6 in: a new **`plans` collection** (`rmoney_plans` — named envelope plans `{id, name, createdAt, updatedAt}`, both backup modes), an additive **`planId`** on planned incomes/expenses, and the additive **`settings.activePlanId`** key (rides inside the settings blob).
+- [x] **Backwards-compatible load:** purely additive — `migrateBackup` relabels v2–v6 payloads; `importAppData` defaults an absent `plans` to `[]` and then runs `ensureDefaultPlan()`, which wraps unstamped planned items into "Plan 1" and heals the active-plan id (the same idempotent migration runs on every boot). Forward incompatibility unchanged: v7 backups are rejected by older builds with the "update the app" message.
+
 ## UI / Screens
 More menu gains two items:
 

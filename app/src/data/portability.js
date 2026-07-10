@@ -1,6 +1,7 @@
 import { migrateDividendsArrayToV2 } from './dividends'
 import { migrateStockProfilesArrayToV2 } from './stockProfiles'
 import { migrateSettingsObjectToV2 } from './settings'
+import { ensureDefaultPlan } from './planning'
 import appStorage from '../utils/appStorage'
 
 const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
@@ -24,11 +25,16 @@ const IS_TAURI = typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__
 // groundwork) and additive `updatedAt` stamps on records. Older backups load
 // and default the missing collection ([]); records without updatedAt are simply
 // treated as older than any stamped record.
-const VERSION = 'rmoney-data-v6'
+// v7 (SPEC-009, Phase 65): adds the rmoney_plans collection (multiple envelope
+// plans), a `planId` on planned incomes/expenses, and `settings.activePlanId`.
+// Older backups load and default the collection ([]); ensureDefaultPlan (run
+// after import and on every boot) wraps unstamped items into "Plan 1" and
+// heals the active-plan id.
+const VERSION = 'rmoney-data-v7'
 
-// Versions the loader can ingest. Newer code accepts older backups (v1–v5)
-// and migrates them in-memory before writing v6-shape data to appStorage.
-const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5', 'rmoney-data-v6']
+// Versions the loader can ingest. Newer code accepts older backups (v1–v6)
+// and migrates them in-memory before writing v7-shape data to appStorage.
+const ACCEPTED_VERSIONS = ['rmoney-data-v1', 'rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5', 'rmoney-data-v6', 'rmoney-data-v7']
 
 export const KEYS = {
   accounts:           'rmoney_accounts',
@@ -40,6 +46,7 @@ export const KEYS = {
   scheduledTransfers: 'rmoney_envelope_scheduled',
   categories:         'rmoney_categories',
   categoryDefaults:   'rmoney_default_categories',
+  plans:              'rmoney_plans',
   plannedIncomes:     'rmoney_planned_incomes',
   plannedExpenses:    'rmoney_planned_expenses',
   budgets:            'rmoney_budgets',
@@ -122,6 +129,7 @@ export function exportAppData({ mode = 'sharable', strongholdVault = null } = {}
     scheduledTransfers: readList(KEYS.scheduledTransfers),
     categories:         readList(KEYS.categories),
     categoryDefaults:   readObj(KEYS.categoryDefaults),
+    plans:              readList(KEYS.plans),
     plannedIncomes:     readList(KEYS.plannedIncomes),
     plannedExpenses:    readList(KEYS.plannedExpenses),
     budgets:            readList(KEYS.budgets),
@@ -374,10 +382,11 @@ export function migrateBackup(parsed) {
       settings:      migrateSettingsObjectToV2(parsed.settings       ?? {}),
     }
   }
-  if (['rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5'].includes(parsed.version)) {
-    // Every delta from v2 through v6 is purely additive (new collections default
+  if (['rmoney-data-v2', 'rmoney-data-v3', 'rmoney-data-v4', 'rmoney-data-v5', 'rmoney-data-v6'].includes(parsed.version)) {
+    // Every delta from v2 through v7 is purely additive (new collections default
     // to [] in importAppData; new fields — favoriteCountries, crypto shapes,
-    // updatedAt stamps, the deletions log — default on first use). No field
+    // updatedAt stamps, the deletions log, plan ids — default on first use;
+    // ensureDefaultPlan wraps unstamped planned items after import). No field
     // transforms are needed — just relabel so the payload is current-shape.
     return { ...parsed, version: VERSION }
   }
@@ -397,6 +406,7 @@ export function importAppData(data) {
   write(KEYS.scheduledTransfers, data.scheduledTransfers ?? [])
   write(KEYS.categories,         data.categories         ?? [])
   write(KEYS.categoryDefaults,   data.categoryDefaults   ?? {})
+  write(KEYS.plans,              data.plans              ?? [])
   write(KEYS.plannedIncomes,     data.plannedIncomes     ?? [])
   write(KEYS.plannedExpenses,    data.plannedExpenses    ?? [])
   write(KEYS.budgets,            data.budgets            ?? [])
@@ -429,4 +439,8 @@ export function importAppData(data) {
   if ('apiDividendHistory' in data) {
     write(KEYS.apiDividendHistory, data.apiDividendHistory ?? [])
   }
+
+  // Phase 65 (SPEC-009): a pre-v7 payload has no plans — wrap its planned items
+  // into the default plan and heal the active-plan id right away (idempotent).
+  ensureDefaultPlan()
 }

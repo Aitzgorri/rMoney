@@ -2,9 +2,11 @@ import appStorage from '../utils/appStorage'
 import { recordDeletion } from './syncMeta'
 import { convertAmount } from '../utils/frequency'
 import { round2 } from '../utils/format'
+import { getActivePlanId, setActivePlanId } from './settings'
 
 const KEY_INCOMES  = 'rmoney_planned_incomes'
 const KEY_EXPENSES = 'rmoney_planned_expenses'
+const KEY_PLANS    = 'rmoney_plans'
 
 function load(key) {
   try { return JSON.parse(appStorage.getItem(key)) ?? [] } catch { return [] }
@@ -48,17 +50,145 @@ export function cleanupPlanningAfterSelfTransferRemoval(removedTransferIds = [])
   }
 }
 
-// ─── Planned incomes ──────────────────────────────────────────────────────────
+// ─── Plans (SPEC-009, Phase 65 — multiple named envelope plans) ──────────────
+// Plan record: { id, name, createdAt, updatedAt }. Planned incomes/expenses
+// carry a `planId`. Exactly ONE plan is active (settings.activePlanId — synced,
+// decision P1): only it shows sync indicators and may Apply; the others are
+// freely editable drafts. `linkedScheduledTransferId` is a plain pointer —
+// several plans may reference the same live rule (duplicates keep the links),
+// but only the active plan acts on it. Deleting a plan therefore NEVER touches
+// scheduled transfers (and the active plan cannot be deleted at all).
 
-export function getPlannedIncomes() {
-  return load(KEY_INCOMES)
+export function getPlans() {
+  return load(KEY_PLANS)
 }
 
-export function createPlannedIncome({ name, amount, currency, frequency, dayOfExecution, startDate, endDate, date, envelopeId }) {
+// Boot migration (idempotent, wired in main.jsx + after a backup import):
+// guarantees ≥1 plan exists, stamps `planId` on legacy items, and heals a
+// missing/stale activePlanId.
+export function ensureDefaultPlan() {
+  let plans = load(KEY_PLANS)
+  if (plans.length === 0) {
+    plans = [{ id: generateId(), name: 'Plan 1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]
+    save(KEY_PLANS, plans)
+  }
+  const first = plans[0]
+  for (const key of [KEY_INCOMES, KEY_EXPENSES]) {
+    const items = load(key)
+    if (items.some(i => !i.planId)) {
+      save(key, items.map(i => i.planId ? i : { ...i, planId: first.id, updatedAt: new Date().toISOString() }))
+    }
+  }
+  if (!plans.some(p => p.id === getActivePlanId())) setActivePlanId(first.id)
+  return first
+}
+
+export function createPlan(name) {
+  const plans = load(KEY_PLANS)
+  const plan = { id: generateId(), name: name?.trim() || `Plan ${plans.length + 1}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+  save(KEY_PLANS, [...plans, plan])
+  return plan
+}
+
+export function renamePlan(id, name) {
+  if (!name?.trim()) return
+  save(KEY_PLANS, load(KEY_PLANS).map(p => p.id === id ? { ...p, name: name.trim(), updatedAt: new Date().toISOString() } : p))
+}
+
+// Deep-copies a plan: fresh ids for the plan and every item, expense tree
+// parentId links remapped onto the new ids. `linkedScheduledTransferId`
+// pointers are KEPT — the copy references the same live rules, and whichever
+// plan is active acts on them (P1).
+export function duplicatePlan(id, name) {
+  const source = load(KEY_PLANS).find(p => p.id === id)
+  if (!source) return null
+  const plan = createPlan(name ?? `${source.name} (copy)`)
+
+  const incomes = load(KEY_INCOMES)
+  const copiedIncomes = incomes.filter(i => i.planId === id).map(i => ({
+    ...i, id: generateId(), planId: plan.id,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }))
+  save(KEY_INCOMES, [...incomes, ...copiedIncomes])
+
+  const expenses = load(KEY_EXPENSES)
+  const sourceExpenses = expenses.filter(e => e.planId === id)
+  const idMap = new Map(sourceExpenses.map(e => [e.id, generateId()]))
+  const copiedExpenses = sourceExpenses.map(e => ({
+    ...e, id: idMap.get(e.id), planId: plan.id,
+    parentId: e.parentId ? (idMap.get(e.parentId) ?? null) : null,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }))
+  save(KEY_EXPENSES, [...expenses, ...copiedExpenses])
+  return plan
+}
+
+// Deletes a DRAFT plan and its items (with tombstones). Refuses the active
+// plan — switch first; this also guarantees at least one plan always remains.
+// Never touches scheduled transfers (only the active plan owns live rules).
+export function deletePlan(id) {
+  if (id === getActivePlanId()) return false
+  const plans = load(KEY_PLANS)
+  if (!plans.some(p => p.id === id)) return false
+
+  for (const key of [KEY_INCOMES, KEY_EXPENSES]) {
+    const items = load(key)
+    const doomed = items.filter(i => i.planId === id)
+    if (doomed.length > 0) {
+      save(key, items.filter(i => i.planId !== id))
+      for (const i of doomed) recordDeletion(key, i.id)
+    }
+  }
+  save(KEY_PLANS, plans.filter(p => p.id !== id))
+  recordDeletion(KEY_PLANS, id)
+  return true
+}
+
+// Clears every expense's pointer at a deleted scheduled transfer — across ALL
+// plans (drafts may hold copies of the same link). (Phase 65)
+export function clearTransferLinks(transferId) {
+  const expenses = load(KEY_EXPENSES)
+  if (!expenses.some(e => e.linkedScheduledTransferId === transferId)) return
+  save(KEY_EXPENSES, expenses.map(e =>
+    e.linkedScheduledTransferId === transferId
+      ? { ...e, linkedScheduledTransferId: null, updatedAt: new Date().toISOString() }
+      : e
+  ))
+}
+
+// Settings → Storage card figures (SPEC-026 convention: UTF-8 bytes via Blob).
+export function getPlanningStorageSummary() {
+  const plans = load(KEY_PLANS), incomes = load(KEY_INCOMES), expenses = load(KEY_EXPENSES)
+  const bytes = [plans, incomes, expenses].reduce((s, v) => s + new Blob([JSON.stringify(v)]).size, 0)
+  return { planCount: plans.length, incomeCount: incomes.length, expenseCount: expenses.length, bytes }
+}
+
+// Storage-tab bulk clean (SPEC-026 convention): removes every plan and planned
+// item (with tombstones), then recreates the default plan so the Planning
+// screen never faces an empty registry.
+export function deleteAllPlanningData() {
+  for (const key of [KEY_INCOMES, KEY_EXPENSES, KEY_PLANS]) {
+    for (const item of load(key)) recordDeletion(key, item.id)
+    appStorage.removeItem(key)
+  }
+  setActivePlanId(null)
+  ensureDefaultPlan()
+}
+
+// ─── Planned incomes ──────────────────────────────────────────────────────────
+
+// Pass a planId to scope to one plan (Phase 65); omit for all plans.
+export function getPlannedIncomes(planId) {
+  const items = load(KEY_INCOMES)
+  return planId ? items.filter(i => i.planId === planId) : items
+}
+
+export function createPlannedIncome({ name, amount, currency, frequency, dayOfExecution, startDate, endDate, date, envelopeId, planId }) {
   const items = load(KEY_INCOMES)
   const isOneTime = frequency === 'one-time'
   const item = {
     id: generateId(),
+    planId: planId ?? getActivePlanId(),
     name,
     amount: Number(amount),
     currency,
@@ -92,14 +222,17 @@ export function deletePlannedIncome(id) {
 
 // ─── Planned expenses ─────────────────────────────────────────────────────────
 
-export function getPlannedExpenses() {
-  return load(KEY_EXPENSES)
+// Pass a planId to scope to one plan (Phase 65); omit for all plans.
+export function getPlannedExpenses(planId) {
+  const items = load(KEY_EXPENSES)
+  return planId ? items.filter(e => e.planId === planId) : items
 }
 
-export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelopeId, currency, amount, amountBasis, dayOfExecution, transferFrequency }) {
+export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelopeId, currency, amount, amountBasis, dayOfExecution, transferFrequency, planId }) {
   const items = load(KEY_EXPENSES)
   const item = {
     id: generateId(),
+    planId: planId ?? getActivePlanId(),
     name,
     parentId:              parentId ?? null,
     envelopeId:            envelopeId ?? null,

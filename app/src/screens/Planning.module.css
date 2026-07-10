@@ -493,6 +493,162 @@
   letter-spacing: 0.04em;
 }
 
+/* ── Plans pane (Phase 65 — visual plan boxes, left column on desktop) ────── */
+
+.planLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plansPane {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.plansPaneTitle {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.planBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .planLayout { flex-direction: row; align-items: flex-start; }
+  .plansPane {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 220px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 90px;
+  }
+}
+
+.planBox {
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.planBox:hover { border-color: #3d4558; }
+.planBoxViewed { border-color: #3b82f6; }
+
+.planBoxName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planActiveBadge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.planDraftBadge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  background: #2d3448;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.planBoxActions {
+  display: flex;
+  gap: 4px;
+}
+
+.planRenameRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.planRenameInput {
+  flex: 1;
+  min-width: 0;
+  background: #0f1520;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 4px 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+}
+
+.planRenameInput:focus { outline: none; }
+
+.newPlanBtn {
+  background: none;
+  border: 1px dashed #2d3448;
+  border-radius: 12px;
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 10px;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.newPlanBtn:hover { color: var(--text-muted); border-color: #3d4558; }
+
+/* Draft-plan banner (Phase 65 — viewing a non-active plan) */
+.draftBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.draftBannerBtn {
+  background: none;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.draftBannerBtn:hover { background: rgba(251, 191, 36, 0.12); }
+
 /* Explanatory line under a form field (Phase 61f — the Occurrence select) */
 .fieldHint {
   font-size: 11px;

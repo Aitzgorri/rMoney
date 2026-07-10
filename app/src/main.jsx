@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import { initBuiltInEnvelopes, cleanupSelfScheduledTransfers, migrateTransferAmounts } from './data/envelopes.js'
 import { ensureBuiltInCategories } from './data/categories.js'
-import { cleanupPlanningAfterSelfTransferRemoval } from './data/planning.js'
+import { cleanupPlanningAfterSelfTransferRemoval, ensureDefaultPlan } from './data/planning.js'
 
 // Ensure built-in data exists on first run
 initBuiltInEnvelopes()
@@ -19,6 +19,11 @@ cleanupPlanningAfterSelfTransferRemoval(removedTransferIds)
 // Phase 43c: repair any envelope-transfer / scheduled-transfer amounts that were
 // previously stored as strings (corrupted balance sums — NaN / wrong totals).
 migrateTransferAmounts()
+
+// Phase 65 (SPEC-009): guarantee a plan registry exists — wraps legacy planned
+// items into "Plan 1" and heals the active-plan id. Idempotent; also re-run by
+// the Planning screen and after a backup import (covers vault-hydration timing).
+ensureDefaultPlan()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

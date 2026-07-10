@@ -32,6 +32,16 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 
 ## Acceptance Criteria
 
+### Multiple plans *(Phase 65 — from the 10 Jul 2026 notes; decision P1 locked 2026-07-10)*
+- [x] The user can keep **multiple named plans** and switch between them via **visual plan boxes on the left side** of the page (a left column on desktop, a wrapped row on mobile), with **+ New plan**, inline **rename** (✎), **duplicate** (⧉) and **delete** (×) actions — every action button carries a tooltip
+- [x] **Exactly one plan is ACTIVE** (green badge): only it shows sync indicators and offers Reset/Apply. All other plans are **drafts** (freely editable — no sync icons, no Apply); making a draft active is an explicit **★ Make active** action with a confirmation dialog. The active-plan id lives in the settings blob (`settings.activePlanId`) so it **syncs between devices** — unlike Buy-Sell Planning's per-device active scenario
+- [x] **Switching the active plan changes no scheduled transfer by itself**: the newly active plan's rows show their real sync state (`linkedScheduledTransferId` is a plain pointer — several plans may reference the same live rule); live transfers not covered by the new plan keep firing and remain visible on the Scheduled-transfers page (the confirmation dialog says all of this)
+- [x] **Drafts never touch live rules**: deleting a draft plan (or rows/conversions inside a draft) never deletes a scheduled transfer; the **active plan cannot be deleted** (switch first — this also guarantees ≥1 plan always exists)
+- [x] **Duplicate** deep-copies the plan (fresh ids, expense-tree parentIds remapped) and **keeps** the transfer-link pointers, so a duplicated-then-activated plan adopts the same live rules seamlessly
+- [x] Viewing a draft shows a **banner** naming the active plan with a shortcut to make the viewed draft active; new rows created while viewing a plan land in that plan
+- [x] **Migration**: `ensureDefaultPlan()` (boot + after backup import, idempotent) creates "Plan 1" when no plans exist, stamps `planId` on legacy items, and heals a missing/stale active-plan id. Backup format bumped to **`rmoney-data-v7`** (SPEC-016); the `rmoney_plans` collection syncs (id-list merge, `updatedAt` stamps, tombstones on delete) and appears in a new **Settings → Storage "Envelope planning" card** (plans + incomes + expenses breakdown, bulk delete recreates the default plan)
+- [x] The plans data layer is unit-tested (migration idempotence + healing, scoping, duplicate tree-remap + kept links, active-plan delete guard + tombstones + transfers untouched, cross-plan link clearing)
+
 ### Page and overall layout
 - [x] Planning is a separate page, reachable from the **More menu** as **"Envelope planning"** (the name explicitly contains "Envelope" so it cannot be confused with budget targets or other future planning features)
 - [x] The page has two main sections: **Planned incomes** and **Planned expenses** (the list of all scheduled transfers lives on its own page — see SPEC-012)
@@ -255,8 +265,16 @@ LEAF → PARENT CONVERSION WARNING
 
 ## Data
 
+Plan record *(Phase 65)*:
+- id
+- name: text
+- createdAt / updatedAt: dates
+
+*The active plan is `settings.activePlanId` (synced via the settings blob — decision P1). Both planned incomes and planned expenses carry a `planId` (absent on legacy records until `ensureDefaultPlan` stamps them).*
+
 Planned income record:
 - id
+- planId: id of the plan this row belongs to (Phase 65)
 - name: text
 - amount: number
 - currency: currency code
@@ -272,6 +290,7 @@ Planned income record:
 
 Planned expense item:
 - id
+- planId: id of the plan this row belongs to (Phase 65)
 - name: text
 - parentId: id of parent item, or null if root
 - envelopeId: id of destination envelope (required for leaves, must be null for parents)

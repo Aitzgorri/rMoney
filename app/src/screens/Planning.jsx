@@ -11,6 +11,7 @@ import {
   getPlannedExpenses, createPlannedExpense, updatePlannedExpense, deletePlannedExpense,
   getExpenseDescendants, deletePlannedExpenseTree, convertLeafToParent,
   expenseSyncStatus, plannedTransferFields, resetFieldsFromTransfer,
+  getPlans, ensureDefaultPlan, createPlan, renamePlan, duplicatePlan, deletePlan,
 } from '../data/planning'
 import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS, FREQUENCIES, WEEKDAYS, dayPickerKind, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
@@ -28,7 +29,7 @@ import {
 import { getDescendantIds } from '../utils/treeDnd'
 import EnvelopeTransferForm from '../components/EnvelopeTransferForm'
 import { convertToMain, ensureRates } from '../utils/currency'
-import { getMainCurrency } from '../data/settings'
+import { getMainCurrency, getActivePlanId, setActivePlanId } from '../data/settings'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Planning.module.css'
 import { fmtAmt } from '../utils/format'
@@ -111,8 +112,25 @@ export default function Planning() {
   const [, setRefreshKey] = useState(0)
   function refresh() { setRefreshKey(k => k + 1) }
 
-  const incomes  = getPlannedIncomes()
-  const expenses = getPlannedExpenses()
+  // Plans (Phase 65, SPEC-009 — decision P1): the registry is guaranteed by
+  // ensureDefaultPlan (idempotent, also run at boot); the page opens on the
+  // ACTIVE plan and can switch to view/edit drafts. Only the active plan shows
+  // sync indicators and offers Reset/Apply.
+  const [viewedPlanId, setViewedPlanId] = useState(() => { ensureDefaultPlan(); return getActivePlanId() })
+  const plans = getPlans()
+  const activePlanId = getActivePlanId()
+  const viewedPlan = plans.find(p => p.id === viewedPlanId) ?? plans[0]
+  const planIsActive = viewedPlan?.id === activePlanId
+  if (viewedPlan && viewedPlan.id !== viewedPlanId) setViewedPlanId(viewedPlan.id)  // heal a deleted viewed plan
+
+  // Plan management UI state
+  const [renamingPlanId, setRenamingPlanId] = useState(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [planDeleteConfirm, setPlanDeleteConfirm] = useState(null)   // plan record
+  const [makeActiveConfirm, setMakeActiveConfirm] = useState(null)   // plan record
+
+  const incomes  = getPlannedIncomes(viewedPlan?.id)
+  const expenses = getPlannedExpenses(viewedPlan?.id)
   const scheduledTransfers = getScheduledTransfers()
   const envelopes    = getActiveEnvelopes()
   const envelopesFlat = getEnvelopesFlat(envelopes)
@@ -171,13 +189,46 @@ export default function Planning() {
     expenseMonthlyTotals[exp.currency] = (expenseMonthlyTotals[exp.currency] ?? 0) + monthly
   }
 
+  // ─── Plan actions (Phase 65) ───────────────────────────────────────────────
+
+  function handleCreatePlan() {
+    const p = createPlan(`Plan ${plans.length + 1}`)
+    setViewedPlanId(p.id)
+    refresh()
+  }
+
+  function handleDuplicatePlan(plan) {
+    const copy = duplicatePlan(plan.id)
+    if (copy) setViewedPlanId(copy.id)
+    refresh()
+  }
+
+  function handleRenamePlan() {
+    renamePlan(renamingPlanId, renameDraft)
+    setRenamingPlanId(null)
+    refresh()
+  }
+
+  function handleDeletePlan(plan) {
+    deletePlan(plan.id)
+    if (viewedPlanId === plan.id) setViewedPlanId(getActivePlanId())
+    setPlanDeleteConfirm(null)
+    refresh()
+  }
+
+  function handleMakeActive(plan) {
+    setActivePlanId(plan.id)
+    setMakeActiveConfirm(null)
+    refresh()
+  }
+
   // ─── Income actions ────────────────────────────────────────────────────────
 
   function handleSaveIncome(data) {
     if (data.id) {
       updatePlannedIncome(data.id, data)
     } else {
-      createPlannedIncome(data)
+      createPlannedIncome({ ...data, planId: data.planId ?? viewedPlan?.id })
     }
     setIncomeModal(null)
     refresh()
@@ -191,6 +242,7 @@ export default function Planning() {
   // ─── Expense actions ───────────────────────────────────────────────────────
 
   function handleSaveExpense(data) {
+    data = { ...data, planId: data.planId ?? viewedPlan?.id }   // new rows land in the viewed plan (Phase 65)
     if (data.id) {
       updatePlannedExpense(data.id, data)
     } else {
@@ -212,8 +264,9 @@ export default function Planning() {
 
   function handleConfirmConvert() {
     const { leafItem, newChildData } = convertDialog
-    // Delete linked scheduled transfer if any
-    if (leafItem.linkedScheduledTransferId) {
+    // Delete linked scheduled transfer if any — only when this plan is ACTIVE;
+    // drafts never touch live rules (Phase 65, P1).
+    if (leafItem.linkedScheduledTransferId && planIsActive) {
       deleteScheduledTransfer(leafItem.linkedScheduledTransferId)
     }
     // Convert leaf to parent
@@ -229,7 +282,9 @@ export default function Planning() {
     if (descendants.length > 0) {
       setDeleteConfirm({ type: 'expense-tree', item, descendants })
     } else {
-      if (item.linkedScheduledTransferId) deleteScheduledTransfer(item.linkedScheduledTransferId)
+      // Drafts never touch live rules (Phase 65, P1) — only the active plan
+      // deletes the linked scheduled transfer along with its row.
+      if (item.linkedScheduledTransferId && planIsActive) deleteScheduledTransfer(item.linkedScheduledTransferId)
       deletePlannedExpense(item.id)
       refresh()
     }
@@ -237,9 +292,12 @@ export default function Planning() {
 
   function handleConfirmDeleteExpense() {
     const { item, descendants } = deleteConfirm
-    // Clean up linked transfers
-    for (const d of [item, ...descendants]) {
-      if (d.linkedScheduledTransferId) deleteScheduledTransfer(d.linkedScheduledTransferId)
+    // Clean up linked transfers — only when this plan is ACTIVE; drafts never
+    // touch live rules (Phase 65, P1).
+    if (planIsActive) {
+      for (const d of [item, ...descendants]) {
+        if (d.linkedScheduledTransferId) deleteScheduledTransfer(d.linkedScheduledTransferId)
+      }
     }
     deletePlannedExpenseTree(item.id)
     setDeleteConfirm(null)
@@ -427,6 +485,68 @@ export default function Planning() {
         </div>
       </div>
 
+      <div className={styles.planLayout}>
+        {/* Plans pane — visual boxes on the left on desktop (Phase 65b) */}
+        <aside className={styles.plansPane}>
+          <span className={styles.plansPaneTitle}>Plans</span>
+          {plans.map(p => {
+            const isActivePlanBox = p.id === activePlanId
+            const isViewed = p.id === viewedPlan?.id
+            return (
+              <div key={p.id}
+                className={`${styles.planBox} ${isViewed ? styles.planBoxViewed : ''}`}
+                onClick={() => setViewedPlanId(p.id)}>
+                {renamingPlanId === p.id ? (
+                  <span className={styles.planRenameRow} onClick={e => e.stopPropagation()}>
+                    <input className={styles.planRenameInput} value={renameDraft} autoFocus
+                      onChange={e => setRenameDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenamePlan()
+                        if (e.key === 'Escape') setRenamingPlanId(null)
+                      }} />
+                    <button className={styles.rowBtn} onClick={handleRenamePlan} title="Save the new plan name">✓</button>
+                  </span>
+                ) : (
+                  <span className={styles.planBoxName}>{p.name}</span>
+                )}
+                {isActivePlanBox
+                  ? <span className={styles.planActiveBadge} title="The active plan drives the sync indicators and Apply — drafts never touch scheduled transfers">ACTIVE</span>
+                  : <span className={styles.planDraftBadge} title="A draft — freely editable, no sync indicators, cannot Apply">draft</span>}
+                <div className={styles.planBoxActions} onClick={e => e.stopPropagation()}>
+                  <button className={styles.rowBtn} title="Rename this plan"
+                    onClick={() => { setRenamingPlanId(p.id); setRenameDraft(p.name) }}>✎</button>
+                  <button className={styles.rowBtn} title="Duplicate this plan as a new draft (copies every row; transfer links are kept)"
+                    onClick={() => handleDuplicatePlan(p)}>⧉</button>
+                  {!isActivePlanBox && (
+                    <>
+                      <button className={styles.rowBtn} title="Make this plan the active plan (asks for confirmation)"
+                        onClick={() => setMakeActiveConfirm(p)}>★</button>
+                      <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`}
+                        title="Delete this draft plan and its rows (asks for confirmation; scheduled transfers are not touched)"
+                        onClick={() => setPlanDeleteConfirm(p)}>×</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          <button className={styles.newPlanBtn} onClick={handleCreatePlan} title="Create a new empty draft plan">+ New plan</button>
+        </aside>
+
+        <div className={styles.planBody}>
+      {!planIsActive && (
+        <div className={styles.draftBanner}>
+          <span>
+            Viewing the draft <strong>{viewedPlan?.name}</strong> — sync indicators and Apply work
+            on the active plan ({plans.find(p => p.id === activePlanId)?.name ?? '—'}).
+          </span>
+          <button className={styles.draftBannerBtn} onClick={() => setMakeActiveConfirm(viewedPlan)}
+            title="Make this plan the active plan (asks for confirmation)">
+            ★ Make active
+          </button>
+        </div>
+      )}
+
       {/* Planned incomes */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
@@ -550,6 +670,7 @@ export default function Planning() {
                     onAdd={parentId => setExpenseModal({ mode: 'new', parentId })}
                     onEdit={item => setExpenseModal({ mode: 'edit', item })}
                     onDelete={handleDeleteExpense}
+                    planIsActive={planIsActive}
                   />
                 ))}
               <ExpenseRootDropZone />
@@ -565,13 +686,71 @@ export default function Planning() {
         </button>
       </div>
 
-      {/* Action bar */}
-      <div className={styles.actionBar}>
-        <button className={styles.resetAllBtn} onClick={handleResetAll} title="Reset every planned expense to its applied transfer amount (or clear it if not applied)">↺ Reset all</button>
-        <button className={styles.applyAllBtn} onClick={handleApplyAll} title="Apply every out-of-sync planned expense to its scheduled transfer">✓ Apply all transfers</button>
+      {/* Action bar — only the ACTIVE plan may Reset/Apply (Phase 65, P1) */}
+      {planIsActive ? (
+        <div className={styles.actionBar}>
+          <button className={styles.resetAllBtn} onClick={handleResetAll} title="Reset every planned expense to its applied transfer amount (or clear it if not applied)">↺ Reset all</button>
+          <button className={styles.applyAllBtn} onClick={handleApplyAll} title="Apply every out-of-sync planned expense to its scheduled transfer">✓ Apply all transfers</button>
+        </div>
+      ) : (
+        <div className={styles.actionBar}>
+          <button className={styles.applyAllBtn} onClick={() => setMakeActiveConfirm(viewedPlan)}
+            title="Make this plan the active plan (asks for confirmation) — only the active plan can apply transfers">
+            ★ Make this plan active
+          </button>
+        </div>
+      )}
+
+        </div>
       </div>
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
+
+      {makeActiveConfirm && (
+        <div className={styles.backdrop}>
+          <div className={styles.modal}>
+            <div className={styles.modalBody}>
+              <h2 className={styles.modalTitle}>Make "{makeActiveConfirm.name}" the active plan?</h2>
+              <p className={styles.dialogText}>
+                Sync indicators and Apply will work on this plan's rows from now on.
+                Switching changes <strong>no scheduled transfer by itself</strong> — rows linked to
+                existing transfers show their sync state, unlinked rows show as not applied, and
+                transfers only change when you Apply.
+              </p>
+              <p className={styles.dialogText}>
+                Live transfers no longer covered by this plan keep firing — review them on the
+                Scheduled transfers page.
+              </p>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setMakeActiveConfirm(null)} title="Cancel — keep the current active plan">Cancel</button>
+              <button className={styles.saveBtn} onClick={() => handleMakeActive(makeActiveConfirm)} title="Switch the active plan now">Make active</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {planDeleteConfirm && (
+        <div className={styles.backdrop}>
+          <div className={styles.modal}>
+            <div className={styles.modalBody}>
+              <h2 className={styles.modalTitle}>Delete the draft "{planDeleteConfirm.name}"?</h2>
+              <p className={styles.dialogText}>
+                This deletes the plan and its {getPlannedIncomes(planDeleteConfirm.id).length} planned
+                income{getPlannedIncomes(planDeleteConfirm.id).length !== 1 ? 's' : ''} and{' '}
+                {getPlannedExpenses(planDeleteConfirm.id).length} planned
+                expense{getPlannedExpenses(planDeleteConfirm.id).length !== 1 ? 's' : ''}.
+                Scheduled transfers are <strong>not</strong> touched.
+              </p>
+              <p className={styles.dialogWarning}>This cannot be undone.</p>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setPlanDeleteConfirm(null)} title="Cancel — keep the draft plan">Cancel</button>
+              <button className={styles.dangerBtn} onClick={() => handleDeletePlan(planDeleteConfirm)} title="Delete this draft plan and its rows — this cannot be undone">Delete plan</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {incomeModal && (
         <IncomeFormModal
@@ -664,14 +843,16 @@ function ExpenseRootDropZone() {
 
 function ExpenseNode({
   item, allExpenses, depth, period, expenseMonthlyTotals, scheduledTransfers, expanded,
-  onToggleExpand, onApplySingle, onResetExpense, onAdd, onEdit, onDelete,
+  onToggleExpand, onApplySingle, onResetExpense, onAdd, onEdit, onDelete, planIsActive = true,
 }) {
   const children = allExpenses.filter(e => e.parentId === item.id)
   const isGroupOnly = item.envelopeId == null && item.amount == null
   const isParent = isGroupOnly || children.length > 0
   const isExpanded = expanded.has(item.id)
   const amounts = calcExpenseAmounts(item, allExpenses, period)
-  const syncStatus = isParent ? null : expenseSyncStatus(item, scheduledTransfers)
+  // Draft plans show no sync indicators — only the ACTIVE plan compares against
+  // and applies to the live scheduled transfers (Phase 65, P1).
+  const syncStatus = isParent || !planIsActive ? null : expenseSyncStatus(item, scheduledTransfers)
   const isOutOfSync = syncStatus === 'out-of-sync' || syncStatus === 'not-applied'
 
   let cur = item.currency
@@ -795,6 +976,7 @@ function ExpenseNode({
               onAdd={onAdd}
               onEdit={onEdit}
               onDelete={onDelete}
+              planIsActive={planIsActive}
             />
           ))
       )}

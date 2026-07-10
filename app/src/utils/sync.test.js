@@ -71,7 +71,7 @@ describe('sync engine (SPEC-039, Phase 59)', () => {
     expect(calls[1].headers['If-None-Match']).toBe('*')
     const uploaded = JSON.parse(calls[1].body)
     expect(uploaded.accounts).toHaveLength(1)
-    expect(uploaded.version).toBe('rmoney-data-v6')
+    expect(uploaded.version).toBe('rmoney-data-v7')   // bumped in Phase 65 (plans collection)
 
     expect(getSyncBase().accounts).toHaveLength(1)
     expect(getSyncMeta().dirty).toBe(false)

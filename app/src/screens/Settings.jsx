@@ -31,6 +31,7 @@ import {
   deleteAllUnpinnedChats, deleteAllAiChats,
 } from '../data/aiChats'
 import { getWatchlistStorageSummary, deleteAllWatchlists } from '../data/watchlists'
+import { getPlanningStorageSummary, deleteAllPlanningData } from '../data/planning'
 import { getUserBenchmarks, deleteAllUserBenchmarks, getBenchmarksStorageBytes } from '../data/benchmarks'
 import { getReportPresets, getReportPresetsStorageBytes, deleteAllReportPresets } from '../data/investmentReports'
 import { getPieChartPresets, getPieChartPresetsStorageBytes, deleteAllPieChartPresets } from '../data/pieChartPresets'
@@ -280,6 +281,8 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
   const [storageConfirm,  setStorageConfirm]  = useState(null)  // { type: 'ticker-unpinned'|'ticker-all'|'all-unpinned'|'all', ticker?, pinnedCount }
   const [watchlistSummary, setWatchlistSummary] = useState(() => getWatchlistStorageSummary())
   const [watchlistDeleteConfirm, setWatchlistDeleteConfirm] = useState(false)
+  const [planningSummary, setPlanningSummary] = useState(() => getPlanningStorageSummary())   // Phase 65 (SPEC-009)
+  const [planningDeleteConfirm, setPlanningDeleteConfirm] = useState(false)
   const [benchmarkUserCount, setBenchmarkUserCount] = useState(() => getUserBenchmarks().length)
   const [benchmarkBytes,     setBenchmarkBytes]     = useState(() => getBenchmarksStorageBytes())
   const [benchmarkDeleteConfirm, setBenchmarkDeleteConfirm] = useState(false)
@@ -2156,6 +2159,51 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
               </p>
             </div>
           )}
+
+          {/* Envelope planning (Phase 65, SPEC-009) */}
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Envelope planning</div>
+            <p className={styles.description}>
+              Storage used by your envelope plans and their planned incomes and expenses.
+            </p>
+            <div className={styles.storageTable}>
+              <div className={styles.storageSection}>
+                <div className={styles.storageRow}>
+                  <span className={styles.storageTicker}>Plans</span>
+                  <span className={styles.storageCount}>
+                    {planningSummary.planCount} plan{planningSummary.planCount !== 1 ? 's' : ''},
+                    {' '}{planningSummary.incomeCount} income{planningSummary.incomeCount !== 1 ? 's' : ''},
+                    {' '}{planningSummary.expenseCount} expense{planningSummary.expenseCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className={styles.storageBytes}>{fmtBytes(planningSummary.bytes)}</span>
+                  <button
+                    className={styles.btnSmDanger}
+                    title="Delete every plan and planned row (an empty default plan is recreated; scheduled transfers are not touched)"
+                    disabled={planningSummary.incomeCount === 0 && planningSummary.expenseCount === 0 && planningSummary.planCount <= 1}
+                    onClick={() => setPlanningDeleteConfirm(true)}
+                  >
+                    Delete all
+                  </button>
+                </div>
+              </div>
+            </div>
+            {planningDeleteConfirm && (
+              <div className={styles.inlineDialog}>
+                <p className={styles.dialogMsg}>
+                  Delete all {planningSummary.planCount} plans with {planningSummary.incomeCount} planned incomes and {planningSummary.expenseCount} planned expenses?
+                  An empty default plan is recreated; scheduled transfers are not touched. This cannot be undone.
+                </p>
+                <div className={styles.dialogActionsRow}>
+                  <button className={styles.btnSmSec} title="Cancel deletion" onClick={() => setPlanningDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.btnSmDanger} title="Permanently delete all planning data" onClick={() => {
+                    deleteAllPlanningData()
+                    setPlanningSummary(getPlanningStorageSummary())
+                    setPlanningDeleteConfirm(false)
+                  }}>Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Watchlists */}
           <div className={styles.card}>

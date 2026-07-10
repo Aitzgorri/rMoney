@@ -111,6 +111,20 @@ export function migrateFavoriteCountries() {
   }
 }
 
+// ─── Active envelope plan (SPEC-009, Phase 65 — decision P1) ─────────────────
+// Exactly one plan drives sync indicators + Apply; the id lives in the settings
+// blob so it SYNCS between devices (field-level merge) — unlike Buy-Sell
+// Planning's per-device active scenario. null = not yet migrated
+// (ensureDefaultPlan heals it on boot).
+
+export function getActivePlanId() {
+  return getSetting('activePlanId', null)
+}
+
+export function setActivePlanId(id) {
+  setSetting('activePlanId', id)
+}
+
 // ─── Favorite accounts / categories / envelopes (Phase 48) ───────────────────
 //
 // Ordered lists of entity IDs the user pins to the top of the relevant pickers
