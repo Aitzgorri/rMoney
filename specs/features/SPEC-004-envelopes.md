@@ -192,6 +192,7 @@ Scheduled transfer record:
 Derived:
 - balance: sum of all transfers into the envelope minus all transfers out
 - children: all envelopes where parentId = this id (recursive)
+- flat dropdown list (`getEnvelopesFlat`): tree order with depth; **subtrees whose parent is missing from the passed set — e.g. an active envelope under an archived ancestor — are appended as roots** so they never vanish from the pickers (Phase 66f; the same rule applies to `getCategoriesFlat`, SPEC-003)
 - projection: balance + (scheduled incoming - scheduled outgoing) * future periods
 
 ## Out of Scope

@@ -3,6 +3,8 @@ import {
   createPlannedExpense, getPlannedExpenses, createPlannedIncome, getPlannedIncomes, updatePlannedExpense,
   plannedTransferFields, expenseSyncStatus, resetFieldsFromTransfer,
   getPlans, ensureDefaultPlan, createPlan, renamePlan, duplicatePlan, deletePlan, clearTransferLinks,
+  incomeAllocationSummary, plannedAllocationTransferFields, allocationSyncStatus, isAllocationRow,
+  deleteOneTimeIncomeCascade, fadeSettledOneTimeIncomes,
 } from './planning'
 import { getActivePlanId, setActivePlanId } from './settings'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
@@ -176,6 +178,146 @@ describe('plans registry (Phase 65a)', () => {
     expect(getPlannedExpenses().filter(e => e.linkedScheduledTransferId === 'rule-9')).toHaveLength(2)
     clearTransferLinks('rule-9')
     expect(getPlannedExpenses().every(e => e.linkedScheduledTransferId === null)).toBe(true)
+  })
+})
+
+// Phase 66 — one-time income allocation rows (SPEC-009, decision P2): a planned
+// expense carrying `allocationIncomeId` + `date`; Apply creates a ONE-TIME
+// envelope transfer, never a rule.
+describe('one-time income allocations (Phase 66)', () => {
+  const income = { id: 'inc-1', amount: 1000, envelopeId: 'env-undist' }
+  const alloc = over => ({
+    id: 'a1', allocationIncomeId: 'inc-1', name: 'Vacation boost',
+    sourceEnvelopeId: 'env-undist', envelopeId: 'env-vacation',
+    amount: 300, date: '2026-08-01', linkedEnvelopeTransferId: null,
+    ...over,
+  })
+
+  it('incomeAllocationSummary: distributed / remaining / overspent over the passed rows', () => {
+    const rows = [alloc(), alloc({ id: 'a2', envelopeId: 'env-car', amount: 500 }),
+      { id: 'x', amount: 99 }]                                    // non-allocation row ignored
+    expect(incomeAllocationSummary(income, rows)).toEqual({ count: 2, allocated: 800, remaining: 200, overspent: false })
+    const over = [...rows, alloc({ id: 'a3', amount: 300 })]
+    const s = incomeAllocationSummary(income, over)
+    expect(s).toMatchObject({ allocated: 1100, remaining: -100, overspent: true })
+    expect(incomeAllocationSummary(income, []).count).toBe(0)
+  })
+
+  it('plannedAllocationTransferFields maps the row onto a dated one-time transfer (rounded)', () => {
+    expect(plannedAllocationTransferFields(alloc({ amount: 300.005 }))).toEqual({
+      fromEnvelopeId: 'env-undist', toEnvelopeId: 'env-vacation',
+      amount: 300.01, date: '2026-08-01', note: 'One-time allocation: Vacation boost',
+    })
+  })
+
+  it('allocationSyncStatus compares every prescribed field against the linked transfer', () => {
+    const t = { id: 't1', fromEnvelopeId: 'env-undist', toEnvelopeId: 'env-vacation', amount: 300, date: '2026-08-01' }
+    expect(allocationSyncStatus(alloc(), [t])).toBe('not-applied')                                   // no link
+    expect(allocationSyncStatus(alloc({ linkedEnvelopeTransferId: 't1' }), [])).toBe('not-applied')  // link gone
+    expect(allocationSyncStatus(alloc({ linkedEnvelopeTransferId: 't1' }), [t])).toBe('in-sync')
+    expect(allocationSyncStatus(alloc({ linkedEnvelopeTransferId: 't1', amount: 250 }), [t])).toBe('out-of-sync')
+    expect(allocationSyncStatus(alloc({ linkedEnvelopeTransferId: 't1', date: '2026-08-05' }), [t])).toBe('out-of-sync')
+    expect(allocationSyncStatus(alloc({ linkedEnvelopeTransferId: 't1', envelopeId: 'env-car' }), [t])).toBe('out-of-sync')
+  })
+
+  it('createPlannedExpense persists allocationIncomeId + date; regular rows keep both null', () => {
+    seedStorage({})
+    const row = createPlannedExpense({
+      name: 'Vacation boost', envelopeId: 'env-vacation', sourceEnvelopeId: 'env-undist',
+      currency: 'EUR', amount: 300, amountBasis: 'one-time',
+      allocationIncomeId: 'inc-1', date: '2026-08-01',
+    })
+    const stored = getPlannedExpenses().find(e => e.id === row.id)
+    expect(stored).toMatchObject({ allocationIncomeId: 'inc-1', date: '2026-08-01', amountBasis: 'one-time' })
+    expect(isAllocationRow(stored)).toBe(true)
+    const regular = createPlannedExpense({ name: 'Rent', amount: 500, amountBasis: 'monthly' })
+    expect(getPlannedExpenses().find(e => e.id === regular.id)).toMatchObject({ allocationIncomeId: null, date: null })
+    expect(isAllocationRow(regular)).toBe(false)
+    resetStorage()
+  })
+})
+
+// Phase 66d — one-time income lifecycle: two-option delete (keep vs also
+// delete created transfers) and per-income auto-fade once fully applied.
+describe('one-time income lifecycle (Phase 66d)', () => {
+  beforeEach(() => seedStorage({}))
+  afterEach(() => resetStorage())
+
+  function seedIncomeWithAllocations({ autoFade = false } = {}) {
+    ensureDefaultPlan()
+    const income = createPlannedIncome({
+      name: 'Bonus', amount: 1000, currency: 'EUR', frequency: 'one-time',
+      date: '2026-08-01', envelopeId: 'env-undist', autoFade,
+    })
+    const a1 = createPlannedExpense({
+      name: 'Vacation', envelopeId: 'env-vac', sourceEnvelopeId: 'env-undist', currency: 'EUR',
+      amount: 300, amountBasis: 'one-time', allocationIncomeId: income.id, date: '2026-08-01',
+    })
+    const a2 = createPlannedExpense({
+      name: 'Car', envelopeId: 'env-car', sourceEnvelopeId: 'env-undist', currency: 'EUR',
+      amount: 200, amountBasis: 'one-time', allocationIncomeId: income.id, date: '2026-08-01',
+    })
+    return { income, a1, a2 }
+  }
+  // A transfer record matching what applying a1/a2 would create.
+  const transferFor = (row, id) => ({
+    id, fromEnvelopeId: row.sourceEnvelopeId, toEnvelopeId: row.envelopeId,
+    amount: row.amount, date: row.date,
+  })
+
+  it('cascade default: income + ALL allocation rows go, created transfers are KEPT', () => {
+    const { income, a1 } = seedIncomeWithAllocations()
+    updatePlannedExpense(a1.id, { linkedEnvelopeTransferId: 't1' })   // a1 applied
+    const deleted = []
+    deleteOneTimeIncomeCascade(income.id, { deleteTransferFn: id => deleted.push(id) })
+    expect(getPlannedIncomes()).toHaveLength(0)
+    expect(getPlannedExpenses().filter(e => e.allocationIncomeId)).toHaveLength(0)
+    expect(deleted).toEqual([])                                       // history untouched
+  })
+
+  it('cascade full-undo: deleteAppliedTransfers also removes the created transfers', () => {
+    const { income, a1, a2 } = seedIncomeWithAllocations()
+    updatePlannedExpense(a1.id, { linkedEnvelopeTransferId: 't1' })
+    updatePlannedExpense(a2.id, { linkedEnvelopeTransferId: 't2' })
+    const deleted = []
+    deleteOneTimeIncomeCascade(income.id, { deleteAppliedTransfers: true, deleteTransferFn: id => deleted.push(id) })
+    expect(deleted.sort()).toEqual(['t1', 't2'])
+  })
+
+  it('autoFade persists on create (one-time only; false by default)', () => {
+    const { income } = seedIncomeWithAllocations({ autoFade: true })
+    expect(getPlannedIncomes().find(i => i.id === income.id).autoFade).toBe(true)
+    const manual = createPlannedIncome({ name: 'Tip', amount: 50, currency: 'EUR', frequency: 'one-time', date: '2026-08-02', envelopeId: 'e' })
+    expect(getPlannedIncomes().find(i => i.id === manual.id).autoFade).toBe(false)
+  })
+
+  it('fadeSettledOneTimeIncomes removes an autoFade income only when EVERY row is applied in-sync', () => {
+    const { income, a1, a2 } = seedIncomeWithAllocations({ autoFade: true })
+    const rowA1 = () => getPlannedExpenses().find(e => e.id === a1.id)
+    const rowA2 = () => getPlannedExpenses().find(e => e.id === a2.id)
+
+    updatePlannedExpense(a1.id, { linkedEnvelopeTransferId: 't1' })
+    // Only a1 applied → nothing fades yet.
+    expect(fadeSettledOneTimeIncomes([transferFor(rowA1(), 't1')])).toBe(0)
+    expect(getPlannedIncomes()).toHaveLength(1)
+
+    updatePlannedExpense(a2.id, { linkedEnvelopeTransferId: 't2' })
+    const transfers = [transferFor(rowA1(), 't1'), transferFor(rowA2(), 't2')]
+    expect(fadeSettledOneTimeIncomes(transfers)).toBe(1)
+    expect(getPlannedIncomes().find(i => i.id === income.id)).toBeUndefined()
+    expect(getPlannedExpenses().filter(e => e.allocationIncomeId)).toHaveLength(0)
+  })
+
+  it('manual incomes and incomes without allocation rows never fade', () => {
+    const { a1, a2 } = seedIncomeWithAllocations({ autoFade: false })   // manual
+    updatePlannedExpense(a1.id, { linkedEnvelopeTransferId: 't1' })
+    updatePlannedExpense(a2.id, { linkedEnvelopeTransferId: 't2' })
+    const rows = getPlannedExpenses().filter(e => e.allocationIncomeId)
+    const transfers = rows.map((r, i) => transferFor(r, `t${i + 1}`))
+    expect(fadeSettledOneTimeIncomes(transfers)).toBe(0)
+
+    createPlannedIncome({ name: 'Rowless', amount: 10, currency: 'EUR', frequency: 'one-time', date: '2026-08-03', envelopeId: 'e', autoFade: true })
+    expect(fadeSettledOneTimeIncomes(transfers)).toBe(0)               // no rows → never fades
   })
 })
 

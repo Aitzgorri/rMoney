@@ -183,7 +183,7 @@ export function getPlannedIncomes(planId) {
   return planId ? items.filter(i => i.planId === planId) : items
 }
 
-export function createPlannedIncome({ name, amount, currency, frequency, dayOfExecution, startDate, endDate, date, envelopeId, planId }) {
+export function createPlannedIncome({ name, amount, currency, frequency, dayOfExecution, startDate, endDate, date, envelopeId, planId, autoFade }) {
   const items = load(KEY_INCOMES)
   const isOneTime = frequency === 'one-time'
   const item = {
@@ -197,6 +197,10 @@ export function createPlannedIncome({ name, amount, currency, frequency, dayOfEx
     startDate:              isOneTime ? null : (startDate ?? null),
     endDate:                isOneTime ? null : (endDate ?? null),
     date:                   isOneTime ? (date ?? null) : null,
+    // Phase 66d: a one-time income may FADE — delete itself (keeping the
+    // recorded transfers) once every allocation row is applied and in sync.
+    // false/absent = manual cleanup (the default).
+    autoFade:               isOneTime ? !!autoFade : null,
     envelopeId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -228,7 +232,7 @@ export function getPlannedExpenses(planId) {
   return planId ? items.filter(e => e.planId === planId) : items
 }
 
-export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelopeId, currency, amount, amountBasis, dayOfExecution, transferFrequency, planId }) {
+export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelopeId, currency, amount, amountBasis, dayOfExecution, transferFrequency, planId, allocationIncomeId, date }) {
   const items = load(KEY_EXPENSES)
   const item = {
     id: generateId(),
@@ -240,6 +244,11 @@ export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelop
     currency:              currency ?? null,
     amountBasis:           amountBasis ?? 'monthly',
     amount:                amount != null ? Number(amount) : null,
+    // One-time allocation rows (Phase 66): the single one-time planned income
+    // this row distributes, and the date of the one-time transfer it plans.
+    // Both null on regular expense rows.
+    allocationIncomeId:    allocationIncomeId ?? null,
+    date:                  allocationIncomeId ? (date ?? null) : null,
     // Persisted since Phase 61f — previously the form's day was silently
     // dropped on create (it only survived edits, via the update spread).
     dayOfExecution:        dayOfExecution != null ? Number(dayOfExecution) : null,
@@ -247,6 +256,7 @@ export function createPlannedExpense({ name, parentId, envelopeId, sourceEnvelop
     // Absent/null = monthly (legacy records and parents).
     transferFrequency:     transferFrequency ?? null,
     linkedScheduledTransferId: null,
+    linkedEnvelopeTransferId:  null,   // allocation rows link to a ONE-TIME transfer instead (Phase 66)
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -327,6 +337,91 @@ export function expenseSyncStatus(expense, scheduledTransfers) {
   const planned = round2(convertAmount(expense.amount, expense.amountBasis, 'monthly'))
   const actual  = round2(convertAmount(t.amount, t.frequency, 'monthly'))
   return Math.abs(planned - actual) < 0.005 ? 'in-sync' : 'out-of-sync'
+}
+
+// ── One-time income allocations (Phase 66, SPEC-009 — decision P2) ───────────
+// An allocation row is a planned-expense record carrying `allocationIncomeId`
+// (the ONE one-time planned income it distributes — picked at creation) and a
+// `date` (defaults to the income's date). Apply turns it into a ONE-TIME
+// envelope transfer from the income's landing envelope to the row's target
+// envelope — never a recurring rule. Rows are only ever created manually.
+
+export function isAllocationRow(expense) {
+  return expense?.allocationIncomeId != null
+}
+
+// Distributed / remaining / overspent figures for one one-time income over a
+// passed expense list (pure — unit-tested). Powers the income-row indicator.
+export function incomeAllocationSummary(income, expenses) {
+  const rows = expenses.filter(e => e.allocationIncomeId === income.id)
+  const allocated = round2(rows.reduce((s, r) => s + (Number(r.amount) || 0), 0))
+  const total = Number(income.amount) || 0
+  return {
+    count:     rows.length,
+    allocated,
+    remaining: round2(total - allocated),
+    overspent: allocated - total > 0.004,   // cent tolerance, same class as the sync check
+  }
+}
+
+// The one-time envelope transfer an allocation row prescribes.
+export function plannedAllocationTransferFields(row) {
+  return {
+    fromEnvelopeId: row.sourceEnvelopeId,
+    toEnvelopeId:   row.envelopeId,
+    amount:         round2(Number(row.amount) || 0),
+    date:           row.date,
+    note:           `One-time allocation: ${row.name}`,
+  }
+}
+
+// Sync status of an allocation row vs its linked one-time envelope transfer:
+// 'not-applied' | 'in-sync' | 'out-of-sync' (any prescribed field differing).
+export function allocationSyncStatus(row, envelopeTransfers) {
+  if (!row.linkedEnvelopeTransferId) return 'not-applied'
+  const t = envelopeTransfers.find(x => x.id === row.linkedEnvelopeTransferId)
+  if (!t) return 'not-applied'
+  const wanted = plannedAllocationTransferFields(row)
+  if (wanted.toEnvelopeId !== t.toEnvelopeId)     return 'out-of-sync'
+  if (wanted.fromEnvelopeId !== t.fromEnvelopeId) return 'out-of-sync'
+  if (wanted.date !== t.date)                     return 'out-of-sync'
+  return Math.abs(wanted.amount - round2(Number(t.amount))) < 0.005 ? 'in-sync' : 'out-of-sync'
+}
+
+// Deletes a one-time income and ALL its allocation rows (Phase 66d). The
+// transfers already created by applied rows are KEPT by default — they are
+// recorded envelope history, and cleaning the plan must not rewrite it.
+// Pass deleteAppliedTransfers: true for the explicit full-undo option.
+export function deleteOneTimeIncomeCascade(incomeId, { deleteAppliedTransfers = false, deleteTransferFn } = {}) {
+  const rows = load(KEY_EXPENSES).filter(e => e.allocationIncomeId === incomeId)
+  for (const row of rows) {
+    if (deleteAppliedTransfers && row.linkedEnvelopeTransferId && deleteTransferFn) {
+      deleteTransferFn(row.linkedEnvelopeTransferId)
+    }
+    deletePlannedExpense(row.id)
+  }
+  deletePlannedIncome(incomeId)
+  return rows.length
+}
+
+// Auto-fade (Phase 66d): removes every one-time income flagged `autoFade`
+// whose allocation rows are ALL applied and in sync — the plan served its
+// purpose, the transfers exist; the scratchpad rows clean themselves up
+// (transfers always kept). Incomes with no allocation rows never fade.
+// Returns the number of incomes faded.
+export function fadeSettledOneTimeIncomes(envelopeTransfers, planId) {
+  const incomes = load(KEY_INCOMES).filter(i =>
+    i.frequency === 'one-time' && i.autoFade && (!planId || i.planId === planId))
+  let faded = 0
+  for (const income of incomes) {
+    const rows = load(KEY_EXPENSES).filter(e => e.allocationIncomeId === income.id)
+    if (rows.length === 0) continue
+    const allApplied = rows.every(r => allocationSyncStatus(r, envelopeTransfers) === 'in-sync')
+    if (!allApplied) continue
+    deleteOneTimeIncomeCascade(income.id)   // transfers kept — that's the point
+    faded++
+  }
+  return faded
 }
 
 // Fields that revert a leaf to mirror its linked transfer (the reset action):

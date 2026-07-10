@@ -658,6 +658,29 @@
   letter-spacing: normal;
 }
 
+/* One-time allocation marker on an expense row (Phase 66) */
+.allocationTag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border-radius: 5px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Distributed / remaining line under a one-time income row (Phase 66b) */
+.allocSummary {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.allocOver {
+  color: #f87171;
+  font-weight: 600;
+}
+
 /* Non-monthly occurrence marker on an expense row (Phase 61f) */
 .occurrenceTag {
   font-size: 10px;

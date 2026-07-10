@@ -4,7 +4,7 @@ import { useCollapseState } from '../utils/useCollapseState'
 import { parseAmount } from '../utils/format'
 import AmountInput from '../components/AmountInput'
 import InlineFormRow from '../components/InlineFormRow'
-import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, nextScheduledOccurrence } from '../data/envelopes'
+import { getActiveEnvelopes, getEnvelopesFlat, getScheduledTransfers, createScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, nextScheduledOccurrence, getEnvelopeTransfers, createEnvelopeTransfer, updateEnvelopeTransfer, deleteEnvelopeTransfer } from '../data/envelopes'
 import { getActiveAccounts } from '../data/accounts'
 import {
   getPlannedIncomes, createPlannedIncome, updatePlannedIncome, deletePlannedIncome,
@@ -12,6 +12,8 @@ import {
   getExpenseDescendants, deletePlannedExpenseTree, convertLeafToParent,
   expenseSyncStatus, plannedTransferFields, resetFieldsFromTransfer,
   getPlans, ensureDefaultPlan, createPlan, renamePlan, duplicatePlan, deletePlan,
+  incomeAllocationSummary, plannedAllocationTransferFields, allocationSyncStatus,
+  deleteOneTimeIncomeCascade, fadeSettledOneTimeIncomes,
 } from '../data/planning'
 import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS, FREQUENCIES, WEEKDAYS, dayPickerKind, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
@@ -72,7 +74,13 @@ function buildTotals(incomes, expenses, period) {
 // ─── Expense tree helpers ─────────────────────────────────────────────────────
 
 function calcExpenseAmounts(item, allExpenses, period) {
-  const children = allExpenses.filter(e => e.parentId === item.id)
+  // One-time allocation rows (Phase 66) are not recurring flows: they show
+  // their amount in the MON column only and are excluded from parent sums
+  // (they still count in the plan-balance totals via buildTotals).
+  if (item.allocationIncomeId) {
+    return { yearly: null, quarterly: null, monthly: item.amount != null ? Number(item.amount) : null }
+  }
+  const children = allExpenses.filter(e => e.parentId === item.id && !e.allocationIncomeId)
   if (children.length === 0) {
     // leaf
     if (item.amount == null) return { yearly: null, quarterly: null, monthly: null }
@@ -116,7 +124,13 @@ export default function Planning() {
   // ensureDefaultPlan (idempotent, also run at boot); the page opens on the
   // ACTIVE plan and can switch to view/edit drafts. Only the active plan shows
   // sync indicators and offers Reset/Apply.
-  const [viewedPlanId, setViewedPlanId] = useState(() => { ensureDefaultPlan(); return getActivePlanId() })
+  const [viewedPlanId, setViewedPlanId] = useState(() => {
+    ensureDefaultPlan()
+    // Phase 66d: auto-fade one-time incomes whose allocations are all applied
+    // (active plan only; transfers are always kept).
+    fadeSettledOneTimeIncomes(getEnvelopeTransfers(), getActivePlanId())
+    return getActivePlanId()
+  })
   const plans = getPlans()
   const activePlanId = getActivePlanId()
   const viewedPlan = plans.find(p => p.id === viewedPlanId) ?? plans[0]
@@ -132,6 +146,8 @@ export default function Planning() {
   const incomes  = getPlannedIncomes(viewedPlan?.id)
   const expenses = getPlannedExpenses(viewedPlan?.id)
   const scheduledTransfers = getScheduledTransfers()
+  const envelopeTransfers  = getEnvelopeTransfers()   // allocation rows link to one-time transfers (Phase 66)
+  const oneTimeIncomes = incomes.filter(i => i.frequency === 'one-time')
   const envelopes    = getActiveEnvelopes()
   const envelopesFlat = getEnvelopesFlat(envelopes)
   const undistributed = envelopes.find(e => e.isDefaultIncome)
@@ -155,6 +171,8 @@ export default function Planning() {
   const [deleteConfirm, setDeleteConfirm] = useState(null) // null | { type, item, descendants? }
   const [addTransfer, setAddTransfer]     = useState(false)
   const [pendingReparent, setPendingReparent] = useState(null) // null | { dragId, dragName, targetLeaf }
+  const [allocationModal, setAllocationModal] = useState(null)     // null | { targetRow } | { edit: row } (Phase 66)
+  const [incomeDeleteConfirm, setIncomeDeleteConfirm] = useState(null) // null | { income, allocations } (Phase 66)
 
   // Expense tree expand/collapse — persisted "expanded" id set (Phase 45c/45d)
   const expand = useCollapseState('rmoney_planning_expanded')
@@ -235,7 +253,32 @@ export default function Planning() {
   }
 
   function handleDeleteIncome(income) {
+    // A one-time income with allocation rows cascades (Phase 66) — confirm first.
+    const allocations = expenses.filter(e => e.allocationIncomeId === income.id)
+    if (allocations.length > 0) {
+      setIncomeDeleteConfirm({ income, allocations })
+      return
+    }
     deletePlannedIncome(income.id)
+    refresh()
+  }
+
+  // Phase 66d: the income + ALL its allocation rows go; created transfers are
+  // KEPT by default (recorded history) — deleting them is the explicit option,
+  // offered only on the active plan (a draft's links may be shared copies).
+  function handleConfirmDeleteIncome(deleteAppliedTransfers) {
+    deleteOneTimeIncomeCascade(incomeDeleteConfirm.income.id, {
+      deleteAppliedTransfers: deleteAppliedTransfers && planIsActive,
+      deleteTransferFn: deleteEnvelopeTransfer,
+    })
+    setIncomeDeleteConfirm(null)
+    refresh()
+  }
+
+  function handleSaveAllocation(data) {
+    if (data.id) updatePlannedExpense(data.id, data)
+    else createPlannedExpense({ ...data, planId: viewedPlan?.id })
+    setAllocationModal(null)
     refresh()
   }
 
@@ -283,8 +326,10 @@ export default function Planning() {
       setDeleteConfirm({ type: 'expense-tree', item, descendants })
     } else {
       // Drafts never touch live rules (Phase 65, P1) — only the active plan
-      // deletes the linked scheduled transfer along with its row.
-      if (item.linkedScheduledTransferId && planIsActive) deleteScheduledTransfer(item.linkedScheduledTransferId)
+      // deletes the linked scheduled RULE along with its row. An allocation's
+      // created ONE-TIME transfer is recorded history and is always KEPT
+      // (Phase 66d) — remove it from the envelope history if truly unwanted.
+      if (planIsActive && item.linkedScheduledTransferId) deleteScheduledTransfer(item.linkedScheduledTransferId)
       deletePlannedExpense(item.id)
       refresh()
     }
@@ -344,13 +389,22 @@ export default function Planning() {
     refresh()
   }
 
-  function handleResetExpense(expense) {
-    if (!expense.linkedScheduledTransferId) {
+  // Reset one row to mirror its linked transfer — allocation rows mirror their
+  // one-time envelope transfer (Phase 66), regular leaves their scheduled rule.
+  function resetExpenseRow(expense) {
+    if (expense.allocationIncomeId) {
+      const t = envelopeTransfers.find(x => x.id === expense.linkedEnvelopeTransferId)
+      updatePlannedExpense(expense.id, t ? { amount: t.amount, date: t.date } : { amount: null })
+    } else if (!expense.linkedScheduledTransferId) {
       updatePlannedExpense(expense.id, { amount: null })
     } else {
       const t = scheduledTransfers.find(s => s.id === expense.linkedScheduledTransferId)
       if (t) updatePlannedExpense(expense.id, resetFieldsFromTransfer(t))
     }
+  }
+
+  function handleResetExpense(expense) {
+    resetExpenseRow(expense)
     refresh()
   }
 
@@ -360,23 +414,26 @@ export default function Planning() {
   function handleResetAll() {
     for (const exp of expenses) {
       if (expenses.some(e => e.parentId === exp.id)) continue // parent
-      if (!exp.linkedScheduledTransferId) {
-        updatePlannedExpense(exp.id, { amount: null })
-      } else {
-        const t = scheduledTransfers.find(s => s.id === exp.linkedScheduledTransferId)
-        if (t) updatePlannedExpense(exp.id, resetFieldsFromTransfer(t))
-      }
+      resetExpenseRow(exp)
     }
     refresh()
   }
 
   // ─── Apply all transfers ──────────────────────────────────────────────────
 
+  // Sync status of one row — allocation rows compare against their one-time
+  // envelope transfer (Phase 66), regular leaves against their scheduled rule.
+  function rowSyncStatus(exp) {
+    return exp.allocationIncomeId
+      ? allocationSyncStatus(exp, envelopeTransfers)
+      : expenseSyncStatus(exp, scheduledTransfers)
+  }
+
   function gatherOutOfSync() {
     const items = []
     for (const exp of expenses) {
       if (expenses.some(e => e.parentId === exp.id)) continue // skip parents
-      const status = expenseSyncStatus(exp, scheduledTransfers)
+      const status = rowSyncStatus(exp)
       if (status === 'not-applied' || status === 'out-of-sync') {
         items.push({ kind: 'expense', item: exp, status })
       }
@@ -391,7 +448,7 @@ export default function Planning() {
   }
 
   function handleApplySingleExpense(expense) {
-    const status = expenseSyncStatus(expense, scheduledTransfers)
+    const status = rowSyncStatus(expense)
     if (status === 'in-sync') return
     setApplyDialog({ items: [{ kind: 'expense', item: expense, status }] })
   }
@@ -400,11 +457,26 @@ export default function Planning() {
     for (const { item, status } of applyDialog.items) {
       applyExpense(item, status)
     }
+    // Phase 66d: applying the last allocation of an auto-fade income settles it.
+    if (planIsActive) fadeSettledOneTimeIncomes(getEnvelopeTransfers(), activePlanId)
     setApplyDialog(null)
     refresh()
   }
 
   function applyExpense(expense, status) {
+    // Allocation rows (Phase 66): Apply records a ONE-TIME envelope transfer
+    // dated as planned — never a recurring rule.
+    if (expense.allocationIncomeId) {
+      const fields = plannedAllocationTransferFields(expense)
+      if (status === 'not-applied' || !expense.linkedEnvelopeTransferId) {
+        const t = createEnvelopeTransfer(fields)
+        updatePlannedExpense(expense.id, { linkedEnvelopeTransferId: t.id })
+      } else {
+        updateEnvelopeTransfer(expense.linkedEnvelopeTransferId, fields)
+      }
+      return
+    }
+
     // The leaf prescribes ALL the transfer's fields — envelopes (61g),
     // occurrence (61f — previously hard-coded monthly), amount in that basis
     // (rounded on write, 54a) and day — so updating also syncs an edited
@@ -588,6 +660,23 @@ export default function Planning() {
                         ? `${formatDate(income.date)} · one-time`
                         : `${dayLabel(income.frequency, income.dayOfExecution)} · ${FREQUENCY_LABELS[income.frequency] ?? income.frequency}`}
                     </span>
+                    {/* One-time allocation indicator (Phase 66b): how much of this
+                        income is already planned into envelopes, with overspend. */}
+                    {income.frequency === 'one-time' && (() => {
+                      const s = incomeAllocationSummary(income, expenses)
+                      if (s.count === 0) return null
+                      return (
+                        <span className={`${styles.allocSummary} ${s.overspent ? styles.allocOver : ''}`}
+                          title={s.overspent
+                            ? 'The one-time allocation rows drawing on this income exceed its amount'
+                            : 'Sum of the one-time allocation rows drawing on this income'}>
+                          distributed {fmtAmt(s.allocated)} of {fmtAmt(income.amount)}
+                          {' · '}
+                          {s.overspent ? `overspent by ${fmtAmt(-s.remaining)}` : `${fmtAmt(s.remaining)} left`}
+                          {income.autoFade && <span title="Fades automatically: this income and its rows self-delete once every allocation is applied (transfers are kept)"> · fades when applied</span>}
+                        </span>
+                      )
+                    })()}
                   </div>
                   <div className={styles.incomeRight}>
                     <span className={styles.incomeAmount}>
@@ -668,8 +757,12 @@ export default function Planning() {
                     onApplySingle={handleApplySingleExpense}
                     onResetExpense={handleResetExpense}
                     onAdd={parentId => setExpenseModal({ mode: 'new', parentId })}
-                    onEdit={item => setExpenseModal({ mode: 'edit', item })}
+                    onEdit={item => item.allocationIncomeId
+                      ? setAllocationModal({ edit: item })
+                      : setExpenseModal({ mode: 'edit', item })}
                     onDelete={handleDeleteExpense}
+                    onAddAllocation={oneTimeIncomes.length > 0 ? (row => setAllocationModal({ targetRow: row })) : null}
+                    envelopeTransfers={envelopeTransfers}
                     planIsActive={planIsActive}
                   />
                 ))}
@@ -705,6 +798,52 @@ export default function Planning() {
       </div>
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
+
+      {allocationModal && (
+        <AllocationFormModal
+          initial={allocationModal.edit ?? null}
+          targetRow={allocationModal.targetRow ?? null}
+          oneTimeIncomes={oneTimeIncomes}
+          expenses={expenses}
+          envelopesFlat={envelopesFlat}
+          onSave={handleSaveAllocation}
+          onCancel={() => setAllocationModal(null)}
+        />
+      )}
+
+      {incomeDeleteConfirm && (() => {
+        const appliedCount = incomeDeleteConfirm.allocations.filter(a => a.linkedEnvelopeTransferId).length
+        return (
+          <div className={styles.backdrop}>
+            <div className={styles.modal}>
+              <div className={styles.modalBody}>
+                <h2 className={styles.modalTitle}>Delete "{incomeDeleteConfirm.income.name}"?</h2>
+                <p className={styles.dialogText}>
+                  This one-time income has <strong>{incomeDeleteConfirm.allocations.length}</strong> allocation
+                  row{incomeDeleteConfirm.allocations.length !== 1 ? 's' : ''} drawing on it — the income and
+                  the rows are removed from the plan. <strong>Transfers already created stay recorded</strong> by
+                  default; deleting them too is the explicit option below.
+                </p>
+                <p className={styles.dialogWarning}>This cannot be undone.</p>
+              </div>
+              <div className={styles.modalActions}>
+                <button className={styles.cancelBtn} onClick={() => setIncomeDeleteConfirm(null)}
+                  title="Cancel — keep the income and its allocations">Cancel</button>
+                {planIsActive && appliedCount > 0 && (
+                  <button className={styles.dangerBtn} onClick={() => handleConfirmDeleteIncome(true)}
+                    title="Full undo — also deletes the created one-time transfers from the envelope history">
+                    Also delete {appliedCount} transfer{appliedCount !== 1 ? 's' : ''}
+                  </button>
+                )}
+                <button className={styles.saveBtn} onClick={() => handleConfirmDeleteIncome(false)}
+                  title="Remove the income and its rows from the plan — recorded transfers are kept">
+                  Remove from plan
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {makeActiveConfirm && (
         <div className={styles.backdrop}>
@@ -842,17 +981,21 @@ function ExpenseRootDropZone() {
 // ─── Expense tree node (with drag-and-drop) ──────────────────────────────────
 
 function ExpenseNode({
-  item, allExpenses, depth, period, expenseMonthlyTotals, scheduledTransfers, expanded,
-  onToggleExpand, onApplySingle, onResetExpense, onAdd, onEdit, onDelete, planIsActive = true,
+  item, allExpenses, depth, period, expenseMonthlyTotals, scheduledTransfers, envelopeTransfers, expanded,
+  onToggleExpand, onApplySingle, onResetExpense, onAdd, onEdit, onDelete, onAddAllocation, planIsActive = true,
 }) {
   const children = allExpenses.filter(e => e.parentId === item.id)
-  const isGroupOnly = item.envelopeId == null && item.amount == null
+  const isAllocation = item.allocationIncomeId != null
+  const isGroupOnly = !isAllocation && item.envelopeId == null && item.amount == null
   const isParent = isGroupOnly || children.length > 0
   const isExpanded = expanded.has(item.id)
   const amounts = calcExpenseAmounts(item, allExpenses, period)
   // Draft plans show no sync indicators — only the ACTIVE plan compares against
-  // and applies to the live scheduled transfers (Phase 65, P1).
-  const syncStatus = isParent || !planIsActive ? null : expenseSyncStatus(item, scheduledTransfers)
+  // and applies to the live transfers (Phase 65, P1). Allocation rows compare
+  // against their linked ONE-TIME envelope transfer instead (Phase 66).
+  const syncStatus = isParent || !planIsActive ? null
+    : isAllocation ? allocationSyncStatus(item, envelopeTransfers ?? [])
+    : expenseSyncStatus(item, scheduledTransfers)
   const isOutOfSync = syncStatus === 'out-of-sync' || syncStatus === 'not-applied'
 
   let cur = item.currency
@@ -925,6 +1068,12 @@ function ExpenseNode({
               {item.transferFrequency === 'yearly' ? 'YR' : 'QTR'}
             </span>
           )}
+          {isAllocation && (
+            <span className={styles.allocationTag}
+              title="One-time allocation from a one-time income — Apply records a single dated transfer, never a recurring rule">
+              ⤵ {item.date ? formatDate(item.date) : 'one-time'}
+            </span>
+          )}
         </div>
         <span className={styles.pctCell}>{pct != null ? `${pct.toFixed(1)}%` : '—'}</span>
         <span className={styles.amountCell}>{amounts.yearly    != null ? fmtAmt(amounts.yearly)    : '—'}</span>
@@ -952,9 +1101,15 @@ function ExpenseNode({
               >↺</button>
             </span>
           )}
-          <button className={styles.rowBtn} onClick={() => onAdd(item.id)} title="Add a sub-item under this expense">+</button>
-          <button className={styles.rowBtn} onClick={() => onEdit(item)} title="Edit this planned expense">✎</button>
-          <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => onDelete(item)} title="Delete this planned expense">×</button>
+          {!isParent && !isAllocation && item.envelopeId && onAddAllocation && (
+            <button className={styles.rowBtn} onClick={() => onAddAllocation(item)}
+              title="Plan a one-time allocation from a one-time income into this envelope">⤵</button>
+          )}
+          {!isAllocation && (
+            <button className={styles.rowBtn} onClick={() => onAdd(item.id)} title="Add a sub-item under this expense">+</button>
+          )}
+          <button className={styles.rowBtn} onClick={() => onEdit(item)} title={isAllocation ? 'Edit this one-time allocation' : 'Edit this planned expense'}>✎</button>
+          <button className={`${styles.rowBtn} ${styles.rowBtnDanger}`} onClick={() => onDelete(item)} title={isAllocation ? 'Delete this one-time allocation' : 'Delete this planned expense'}>×</button>
         </div>
       </div>
       {isParent && isExpanded && (
@@ -976,6 +1131,8 @@ function ExpenseNode({
               onAdd={onAdd}
               onEdit={onEdit}
               onDelete={onDelete}
+              onAddAllocation={onAddAllocation}
+              envelopeTransfers={envelopeTransfers}
               planIsActive={planIsActive}
             />
           ))
@@ -997,6 +1154,7 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
     endDate: '',
     date: TODAY,
     envelopeId: defaultEnvelopeId,
+    autoFade: false,   // one-time only (Phase 66d): self-delete once fully allocated + applied
   })
 
   function set(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
@@ -1046,9 +1204,21 @@ function IncomeFormModal({ initial, envelopesFlat, defaultEnvelopeId, defaultCur
             </label>
 
             {isOneTime ? (
-              <label className={styles.label}>Date
-                <input className={styles.input} type="date" value={form.date} onChange={e => set('date', e.target.value)} />
-              </label>
+              <>
+                <label className={styles.label}>Date
+                  <input className={styles.input} type="date" value={form.date} onChange={e => set('date', e.target.value)} />
+                </label>
+                <label className={styles.label}>After it is fully allocated
+                  <select className={styles.select} value={form.autoFade ? 'auto' : 'manual'}
+                    onChange={e => set('autoFade', e.target.value === 'auto')}>
+                    <option value="manual">Keep it — I delete it manually</option>
+                    <option value="auto">Fade automatically (self-delete once every allocation is applied)</option>
+                  </select>
+                  <span className={styles.fieldHint}>
+                    Fading removes this income and its allocation rows from the plan — the recorded transfers are always kept
+                  </span>
+                </label>
+              </>
             ) : (
               <>
                 <label className={styles.label}>{dayKind === 'weekday' ? 'Day of week' : 'Day of month'}
@@ -1314,6 +1484,116 @@ function ConvertLeafDialog({ leafItem, newChildName, onConfirm, onCancel }) {
   )
 }
 
+// ─── Allocation form (Phase 66 — one-time income allocation rows) ────────────
+// New rows: `targetRow` is the expense leaf whose envelope receives the
+// allocation (the row lands beside it as a sibling). Edit: `initial` is the
+// existing allocation row. The income is picked per row (decision P2 —
+// auto-selected when only one one-time income exists); the source envelope is
+// always the income's landing envelope, the target is fixed to the row's.
+function AllocationFormModal({ initial, targetRow, oneTimeIncomes, expenses, envelopesFlat, onSave, onCancel }) {
+  const [form, setForm] = useState(() => initial
+    ? { incomeId: initial.allocationIncomeId, name: initial.name, amount: String(initial.amount ?? ''), date: initial.date ?? '', envelopeId: initial.envelopeId }
+    : { incomeId: oneTimeIncomes[0]?.id ?? '', name: '', amount: '', date: oneTimeIncomes[0]?.date ?? localDateStr(), envelopeId: targetRow?.envelopeId ?? '' })
+
+  const income = oneTimeIncomes.find(i => i.id === form.incomeId)
+  const envName = id => envelopesFlat.find(e => e.id === id)?.name ?? '—'
+
+  // Default name = "{target envelope} — from {income}" (user feedback 2026-07-10);
+  // used as the placeholder and as the fallback when the name is left empty.
+  const defaultName = income && form.envelopeId
+    ? `${envName(form.envelopeId)} — from ${income.name}`
+    : ''
+
+  // Remaining figure for the picked income — excludes the row being edited.
+  const summary = income
+    ? incomeAllocationSummary(income, expenses.filter(e => e.id !== initial?.id))
+    : null
+
+  function handleIncomeChange(id) {
+    const inc = oneTimeIncomes.find(i => i.id === id)
+    setForm(prev => ({ ...prev, incomeId: id, date: inc?.date ?? prev.date }))
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!income || !form.envelopeId) return
+    const amt = parseAmount(form.amount)
+    if (!Number.isFinite(amt)) return
+    onSave({
+      ...(initial ? { id: initial.id } : {}),
+      name:               form.name.trim() || defaultName,
+      allocationIncomeId: income.id,
+      amount:             amt,
+      date:               form.date || income.date || localDateStr(),
+      envelopeId:         form.envelopeId,
+      sourceEnvelopeId:   income.envelopeId,
+      currency:           income.currency,
+      amountBasis:        'one-time',
+      parentId:           initial ? initial.parentId : (targetRow?.parentId ?? null),
+    })
+  }
+
+  return (
+    <div className={styles.backdrop}>
+      <div className={styles.modal}>
+        <div className={styles.modalBody}>
+          <h2 className={styles.modalTitle}>{initial ? 'Edit one-time allocation' : 'New one-time allocation'}</h2>
+          <p className={styles.dialogText}>
+            Plans moving part of a one-time income into an envelope.
+            Applying records a single dated transfer — never a recurring rule.
+          </p>
+          <form id="allocation-form" onSubmit={handleSubmit} className={styles.form}>
+            <label className={styles.label}>One-time income
+              <select className={styles.select} value={form.incomeId} onChange={e => handleIncomeChange(e.target.value)} required>
+                {oneTimeIncomes.map(i => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} — {fmtAmt(i.amount)} {i.currency}{i.date ? ` (${formatDate(i.date)})` : ''}
+                  </option>
+                ))}
+              </select>
+              {summary && (
+                <span className={styles.fieldHint}>
+                  {fmtAmt(summary.allocated)} of {fmtAmt(income.amount)} already allocated elsewhere · {fmtAmt(summary.remaining)} left
+                </span>
+              )}
+            </label>
+            <label className={styles.label}>Into envelope
+              <select className={styles.select} value={form.envelopeId}
+                onChange={e => setForm(prev => ({ ...prev, envelopeId: e.target.value }))} required>
+                <option value="">— select envelope —</option>
+                {envelopesFlat.map(e => (
+                  <option key={e.id} value={e.id}>{INDENT.repeat(e.depth)}{e.name}</option>
+                ))}
+              </select>
+              {income && (
+                <span className={styles.fieldHint}>
+                  From {envName(income.envelopeId)} (where the income lands)
+                </span>
+              )}
+            </label>
+            <label className={styles.label}>Name
+              <input className={styles.input} value={form.name} placeholder={defaultName}
+                onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} />
+            </label>
+            <label className={styles.label}>Amount {income ? `(${income.currency})` : ''}
+              <AmountInput className={styles.input} value={form.amount}
+                onChange={v => setForm(prev => ({ ...prev, amount: v }))} />
+            </label>
+            <label className={styles.label}>Transfer date
+              <input className={styles.input} type="date" value={form.date}
+                onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} />
+            </label>
+          </form>
+        </div>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.cancelBtn} onClick={onCancel} title="Cancel — discard changes">Cancel</button>
+          <button type="submit" form="allocation-form" className={styles.saveBtn} title="Save this one-time allocation row">Save</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Apply dialog ─────────────────────────────────────────────────────────────
 
 function ApplyDialog({ items, scheduledTransfers, onConfirm, onCancel }) {
@@ -1335,9 +1615,14 @@ function ApplyDialog({ items, scheduledTransfers, onConfirm, onCancel }) {
   }
 
   const itemLine = ({ item }) => {
+    // Allocation rows (Phase 66) record a single dated transfer when applied.
+    if (item.allocationIncomeId) {
+      return <li key={item.id}>{item.name} — one-time transfer dated {item.date === TODAY ? 'today' : formatDate(item.date)}</li>
+    }
     const eff = effectiveDate(item)
     return <li key={item.id}>{item.name} — takes effect {eff === TODAY ? 'today' : formatDate(eff)}</li>
   }
+  const hasAllocations = items.some(i => i.item.allocationIncomeId)
 
   return (
     <div className={styles.backdrop}>
@@ -1361,6 +1646,7 @@ function ApplyDialog({ items, scheduledTransfers, onConfirm, onCancel }) {
 
           <p className={styles.dialogText}>
             Nothing is recorded now — each transfer fires on its scheduled day.
+            {hasAllocations && ' One-time allocations are the exception: they are recorded as dated transfers immediately when applied.'}
           </p>
         </div>
         <div className={styles.modalActions}>

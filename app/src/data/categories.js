@@ -115,6 +115,15 @@ export function getCategoriesFlat(type) {
     }
   }
   walk(null, 0)
+  // Orphaned subtrees (Phase 66f, same fix as getEnvelopesFlat): an active
+  // category under an archived/deleted parent must still be pickable —
+  // append it as its own root instead of silently dropping the subtree.
+  const ids = new Set(all.map(c => c.id))
+  const orphanRoots = sortAlpha(all.filter(c => c.parentId && !ids.has(c.parentId)))
+  for (const o of orphanRoots) {
+    result.push({ ...o, depth: 0 })
+    walk(o.id, 1)
+  }
   return result
 }
 

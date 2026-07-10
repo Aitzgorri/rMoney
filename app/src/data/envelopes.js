@@ -55,6 +55,16 @@ export function getEnvelopesFlat(envelopes) {
   const builtIns = sortAlpha(envelopes.filter(e => e.isBuiltIn && !e.parentId))
   for (const b of builtIns) result.push({ ...b, depth: 0 })
   walk(null, 0)
+  // Orphaned subtrees (Phase 66f): an envelope whose parent is NOT in the
+  // passed set — e.g. an ACTIVE envelope under an ARCHIVED ancestor that the
+  // caller filtered out — must still be pickable. Append each such subtree
+  // as its own root; previously it silently vanished from every dropdown.
+  const ids = new Set(envelopes.map(e => e.id))
+  const orphanRoots = sortAlpha(envelopes.filter(e => e.parentId && !ids.has(e.parentId)))
+  for (const o of orphanRoots) {
+    result.push({ ...o, depth: 0 })
+    walk(o.id, 1)
+  }
   return result.filter((e, i, arr) => arr.findIndex(x => x.id === e.id) === i) // dedupe
 }
 
