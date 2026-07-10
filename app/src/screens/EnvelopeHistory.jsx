@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { getTransactions, deleteTransaction } from '../data/transactions'
 import { getEnvelopeTransfers, deleteEnvelopeTransfer, getEnvelopes, getDescendants, getTotalEnvelopeBalance, getScheduledTransfers, deleteScheduledTransfer, scheduledTransfersSummary, getEnvelopePath } from '../data/envelopes'
 import { getAccounts } from '../data/accounts'
@@ -15,6 +15,10 @@ import { fmtAmt, round2, parseAmount } from '../utils/format'
 import { daysRemaining } from '../utils/planningPeriod'
 import AmountInput from '../components/AmountInput'
 import PayeeAutocomplete from '../components/PayeeAutocomplete'
+
+// Records rendered initially and added per scroll-to-bottom chunk (Phase 62c —
+// same display-only pagination as the Transactions list, 62a).
+const PAGE_SIZE = 50
 
 // Sort key for the scheduled-transfers list (Phase 50b): day-of-month rules
 // first (group 0, ordered by day 1–28), then weekday rules (group 1, by weekday).
@@ -39,6 +43,29 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
   // (Phase 50a). The hook stores the *expanded* ids, so an empty set = collapsed.
   // Must be called before any early return (rules-of-hooks).
   const schedCollapse = useCollapseState('rmoney_envelopes_scheduled_expanded')
+
+  // Incremental rendering of the records list (Phase 62c): show PAGE_SIZE rows,
+  // grow when the bottom sentinel scrolls into view; reset when the envelope,
+  // filters, search or sort change (adjust-state-during-render — no effect).
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const listSignature = JSON.stringify([envelope.id, filters, search, sortAsc])
+  const [prevListSignature, setPrevListSignature] = useState(listSignature)
+  if (listSignature !== prevListSignature) {
+    setPrevListSignature(listSignature)
+    setVisibleCount(PAGE_SIZE)
+  }
+  // Callback ref so the observer re-attaches across the sentinel's conditional mounts.
+  const sentinelObserver = useRef(null)
+  const sentinelRef = useCallback(node => {
+    sentinelObserver.current?.disconnect()
+    sentinelObserver.current = null
+    if (node) {
+      sentinelObserver.current = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE)
+      }, { rootMargin: '200px' })
+      sentinelObserver.current.observe(node)
+    }
+  }, [])
 
   const accounts        = getAccounts()
   const categories      = getCategoriesFlat()
@@ -431,7 +458,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         <p className={styles.empty}>No records found.</p>
       ) : (
         <div className={styles.list}>
-          {sorted.map(r => {
+          {sorted.slice(0, visibleCount).map(r => {
             const isTransfer = r._kind === 'transfer'
             const isInternal = isTransfer && r._isInternal
             const isIn  = isTransfer && !isInternal && familyIds.has(r.toEnvelopeId)
@@ -497,6 +524,15 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
               </div>
             )
           })}
+          {sorted.length > visibleCount && (
+            <div ref={sentinelRef} className={styles.loadMoreRow}>
+              <button className={styles.loadMoreBtn}
+                onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                title={`Show the next ${Math.min(PAGE_SIZE, sorted.length - visibleCount)} records`}>
+                Load more ({sorted.length - visibleCount} remaining)
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

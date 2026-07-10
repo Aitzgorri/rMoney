@@ -35,7 +35,7 @@ This is the primary screen for reviewing what has been recorded and understandin
 - [x] The account quick-filters are **ordered like the account dropdowns**: favorite accounts first (in the user's favorite order, via the shared `splitFavorites`), then the rest; on the **desktop left filter column** each account is **one full-width row** with a divider line between favorites and the rest — mobile keeps the wrapped chips *(Phase 61d, 10 Jul 2026 notes)*
 - [x] User can filter by: category, envelope, type (income/expense/transfer), payee, amount range, date range
 - [x] Filtering by a parent category includes all its sub-categories and leaf categories
-- [ ] When the type filter is set to **Income**, the category filter dropdown shows only income categories; when set to **Expense**, only expense categories; when no type filter is active (or Transfer is selected), all categories are shown grouped by type (Income / Expense)
+- [x] When the type filter is set to **Income**, the category filter dropdown shows only income categories; when set to **Expense**, only expense categories; when no type filter is active (or Transfer is selected), all categories are shown grouped by type (Income / Expense) *(verified built 2026-07-10 except one gap closed in Phase 62b: with **Transfer** selected the dropdown listed no categories at all — it now shows the grouped Income/Expense list per this criterion)*
 - [x] Filtering by a parent envelope includes all its child envelopes
 - [x] Multiple filters can be active at the same time
 - [x] Active filters are visually indicated
@@ -44,6 +44,11 @@ This is the primary screen for reviewing what has been recorded and understandin
 ### Search
 - [x] User can search transactions by note text
 - [x] Search and filters work together (search results are also filtered)
+
+### Incremental rendering *(Phase 62a — from the 10 Jul 2026 notes)*
+- [x] The list renders the first **50** matching rows and loads **50 more** when the user scrolls to the bottom (an IntersectionObserver sentinel with a 200px pre-trigger margin; the sentinel row doubles as a **"Load more (N remaining)"** button as a manual fallback)
+- [x] Pagination is **display-only**: the account/type/category/envelope/payee/amount/date filters, the income/expense summary strip, and the single-account **running balance** are all computed over the **full** filtered set — no figure ever changes with scroll position
+- [x] The visible window resets to 50 whenever the filters, the search text, or the sort order change, so a new filter always starts at the top
 
 ### Running balance
 - [x] When filtered to a single account, each transaction row also shows the account balance after that transaction

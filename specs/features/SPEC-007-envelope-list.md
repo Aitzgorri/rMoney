@@ -42,6 +42,7 @@ This is the main screen accessible from the Envelopes tab in the bottom nav.
 - [x] Current envelope balance is displayed as a header at the top of the history, and updates immediately after any record is added, edited, or deleted without leaving the screen
 - [x] Transactions are listed newest first by default
 - [x] User can toggle sort order (newest/oldest first)
+- [x] **Incremental rendering** *(Phase 62c — same display-only pagination as the Transactions list, SPEC-006)*: the records list renders the first **50** rows and loads 50 more when the user scrolls to the bottom (IntersectionObserver sentinel doubling as a "Load more (N remaining)" fallback button). The **running balance** is still computed over the full filtered set, so figures never change with scroll position; the window resets to 50 when the envelope, filters, search, or sort order change
 
 ### Filtering and search (within envelope history)
 - [x] User can filter by: type (income/expense/transfer), category, account, payee, amount range, date range

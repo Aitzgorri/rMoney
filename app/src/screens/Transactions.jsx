@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
 import { getTransactions, deleteTransaction, getPayees, getLastUsedAccountId, transferDirection } from '../data/transactions'
 import { getTxAccountFilter, setTxAccountFilter } from '../utils/uiSession'
@@ -39,6 +39,10 @@ function amountClass(tx, s, dir) {
 
 const TYPE_ICON = { income: '↓', expense: '↑', transfer: '⇄' }
 
+// Rows rendered initially and added per scroll-to-bottom chunk (Phase 62a).
+// Display-only: filters, summary and running balance still cover everything.
+const PAGE_SIZE = 50
+
 export default function Transactions({ initialAccountId, openInline }) {
   const isDesktop = useMediaQuery(DESKTOP)
   const [txs, setTxs]         = useState(() => getTransactions())
@@ -75,6 +79,32 @@ export default function Transactions({ initialAccountId, openInline }) {
   })
   const [sortAsc, setSortAsc]   = useState(false)
   const [viewMode, setViewMode] = useState('list')  // 'list' | 'payees'
+
+  // Incremental rendering (Phase 62a): show PAGE_SIZE rows, grow by PAGE_SIZE
+  // when the bottom sentinel scrolls into view. Reset whenever the visible set
+  // changes shape (filters / search / sort), so a new filter starts at the top —
+  // via the adjust-state-during-render pattern (no set-state-in-effect).
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const listSignature = JSON.stringify([filters, search, sortAsc])
+  const [prevListSignature, setPrevListSignature] = useState(listSignature)
+  if (listSignature !== prevListSignature) {
+    setPrevListSignature(listSignature)
+    setVisibleCount(PAGE_SIZE)
+  }
+
+  // Callback ref so the observer attaches/detaches with the sentinel's
+  // conditional mount (an effect with [] deps would miss remounts).
+  const sentinelObserver = useRef(null)
+  const sentinelRef = useCallback(node => {
+    sentinelObserver.current?.disconnect()
+    sentinelObserver.current = null
+    if (node) {
+      sentinelObserver.current = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE)
+      }, { rootMargin: '200px' })
+      sentinelObserver.current.observe(node)
+    }
+  }, [])
 
   // Mirror the account filter into the session store so the ＋-menu New-transaction
   // route (mounted outside this screen) can prefill from it (Phase 53a).
@@ -357,7 +387,10 @@ export default function Transactions({ initialAccountId, openInline }) {
                 {filters.type === 'expense' && filterCatsExpense.map(c => (
                   <option key={c.id} value={c.id}>{INDENT.repeat(c.depth)}{c.name}</option>
                 ))}
-                {!filters.type && (
+                {/* No type filter OR Transfer selected → all categories, grouped
+                    by type (SPEC-006; the Transfer case previously listed none —
+                    fixed in Phase 62b). */}
+                {(!filters.type || filters.type === 'transfer') && (
                   <>
                     {filterCatsIncome.length > 0 && <option disabled>— Income —</option>}
                     {filterCatsIncome.map(c => (
@@ -462,7 +495,7 @@ export default function Transactions({ initialAccountId, openInline }) {
           <p className={styles.empty}>No transactions found.</p>
         ) : (
           <div className={styles.list}>
-            {displayed.map(tx => {
+            {displayed.slice(0, visibleCount).map(tx => {
               const dir = transferDirection(tx, filters.accountId)
               return (
               <div key={tx.id} className={styles.row} onClick={() => setEditing(tx)}>
@@ -511,6 +544,15 @@ export default function Transactions({ initialAccountId, openInline }) {
               </div>
               )
             })}
+            {displayed.length > visibleCount && (
+              <div ref={sentinelRef} className={styles.loadMoreRow}>
+                <button className={styles.loadMoreBtn}
+                  onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  title={`Show the next ${Math.min(PAGE_SIZE, displayed.length - visibleCount)} transactions`}>
+                  Load more ({displayed.length - visibleCount} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
