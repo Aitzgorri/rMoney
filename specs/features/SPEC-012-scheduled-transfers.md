@@ -27,6 +27,14 @@ Give the user a single place to see and manage **all scheduled envelope transfer
 - [x] User can **filter** the list by **source (From) envelope** and/or **destination (To) envelope** — two hierarchical envelope dropdowns (indented tree) with a Clear button; the empty state reflects when no transfers match the filter *(Phase 50e)*
 - [x] Tapping a row opens it for editing using the scheduled-transfer form from SPEC-004
 - [x] User can create a new scheduled transfer from this page (uses the same transfer form from SPEC-004, with the toggle defaulting to **regular**)
+
+### Occurrence-level overrides *(Phase 64 — from the 10 Jul 2026 notes; mirrors the Bills & Income model, SPEC-013 Phase 55d)*
+- [x] A rule may carry **`overrides: { [seriesDate]: { date?, amount?, skipped? } }`** — a one-shot change to the single occurrence whose ORIGINAL schedule date is the key; the series itself keeps its schedule. Additive field, no backup bump
+- [x] **Engine semantics** (`runDueScheduledTransfers`, unit-tested): an overridden occurrence fires when its chosen date **has arrived or passed** (D4 catch-up — the user picked the date intentionally); a **pushed-later** occurrence does not fire on its natural day; a **pulled-earlier** fire leaves a guard skip on the natural date so it can never double-fire; a **skip** consumes silently and the series continues; every override is **consumed one-shot**; stale skips for passed natural dates are pruned
+- [x] `applyScheduledTransferOverride(id, seriesDate, { date?, amount?, skipped? })` stores (empty patch = clears) the override and **runs the engine immediately**, so a chosen date that has already arrived records the transfer at once (D4); the created transfer is dated as chosen and its note marks the adjusted occurrence
+- [x] **`nextScheduledOccurrence` / `nextScheduledOccurrenceInfo` are override-aware**: skipped occurrences are passed over, moved/adjusted ones show their effective date and amount — the list's "next" always matches what the engine will actually fire (including the default next-date sort)
+- [x] Each row has a **↻ occurrence button** ("Adjust or skip the next occurrence") opening a dialog with date + amount, **Skip this occurrence**, **Record now** (fires today), **Save one-time change**, and an "Edit the series →" escape hatch (`TransferOccurrenceDialog`, visually matching the Bills & Income occurrence dialog); rows with an adjusted next occurrence show an amber **↻ marker** with the effective date/amount
+- [x] The same ↻ button + marker appear on the **envelope detail pane's** scheduled-transfers list (SPEC-007)
 - [x] User can delete a scheduled transfer; if the transfer was generated from a planning item, deleting it from here also detaches/clears that link on the planning item (with a confirmation explaining the consequence)
 
 ## UI / Screens

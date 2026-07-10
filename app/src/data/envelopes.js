@@ -441,19 +441,99 @@ function isScheduledTransferDueToday(s, today) {
   }
 }
 
-// The next date (local YYYY-MM-DD) on or after `fromDate` on which a scheduled
-// transfer fires, across every frequency. Rather than re-deriving per-frequency
-// next-date math, it scans forward day-by-day reusing the same due-check the
-// engine uses — so what the list shows as "next" always matches what actually
-// fires. Returns null only for an unrecognised frequency. (Phase 49b)
-export function nextScheduledOccurrence(s, fromDate = new Date()) {
+// ── Occurrence overrides (Phase 64a — mirrors the Bills & Income model, 55d) ──
+// A rule may carry `overrides: { [seriesDate]: { date?, amount?, skipped? } }`
+// — a one-shot change to the single occurrence whose ORIGINAL schedule date is
+// the key. The series itself is untouched; the engine consumes an override when
+// its occurrence fires or its skip day passes. An overridden occurrence fires
+// when its chosen date has arrived OR passed (D4: the user picked the date
+// intentionally — catch-up on the next engine run, dated as chosen).
+
+// The next occurrence the user will actually see, override-aware:
+// skipped ones are passed over, date/amount overrides shine through.
+// Returns { date, seriesDate, amount, overridden } or null.
+export function nextScheduledOccurrenceInfo(s, fromDate = new Date()) {
+  const fromStr = localDateStr(atMidnight(fromDate))
+  const ov = s.overrides ?? {}
+  const candidates = []
+  for (const [seriesDate, o] of Object.entries(ov)) {
+    if (o.skipped) continue
+    const eff = o.date ?? seriesDate
+    if (eff >= fromStr) {
+      candidates.push({ date: eff, seriesDate, amount: o.amount ?? s.amount, overridden: true })
+    }
+  }
+  // First NATURAL date without an override of its own (moved/adjusted dates are
+  // all covered by the candidates above; skipped ones are scanned past).
   const start = atMidnight(fromDate)
   for (let i = 0; i < 800; i++) {   // 800 days > any single-frequency gap (yearly)
     const d = new Date(start)
     d.setDate(d.getDate() + i)
-    if (isScheduledTransferDueToday(s, d)) return localDateStr(d)
+    if (!isScheduledTransferDueToday(s, d)) continue
+    const ds = localDateStr(d)
+    if (ov[ds]) continue
+    candidates.push({ date: ds, seriesDate: ds, amount: s.amount, overridden: false })
+    break
   }
-  return null
+  candidates.sort((a, b) => a.date.localeCompare(b.date))
+  return candidates[0] ?? null
+}
+
+// The next date (local YYYY-MM-DD) on or after `fromDate` on which a scheduled
+// transfer fires, across every frequency — override-aware since Phase 64a, so
+// what the lists show as "next" always matches what actually fires. (Phase 49b)
+export function nextScheduledOccurrence(s, fromDate = new Date()) {
+  return nextScheduledOccurrenceInfo(s, fromDate)?.date ?? null
+}
+
+// Store (or clear — empty patch) the one-time override for one occurrence, then
+// run the engine so an override whose chosen date has already arrived records
+// at once (D4: intentional date choice = no waiting for the next app open).
+export function applyScheduledTransferOverride(id, seriesDate, { date, amount, skipped } = {}) {
+  const scheduled = load(KEY_SCHEDULED)
+  const s = scheduled.find(x => x.id === id)
+  if (!s) return
+
+  const clean = {}
+  if (skipped) {
+    clean.skipped = true
+  } else {
+    if (date && date !== seriesDate) clean.date = date
+    if (amount != null && Number(amount) !== Number(s.amount)) clean.amount = Number(amount)
+  }
+
+  const overrides = { ...(s.overrides ?? {}) }
+  if (Object.keys(clean).length === 0) delete overrides[seriesDate]   // no-op edit clears any prior override
+  else overrides[seriesDate] = clean
+  save(KEY_SCHEDULED, scheduled.map(x =>
+    x.id === id ? { ...x, overrides, updatedAt: new Date().toISOString() } : x
+  ))
+
+  runDueScheduledTransfers()
+}
+
+// The occurrence (if any) a rule should handle today, override-aware:
+//   { seriesDate, date, amount, overridden } → fire it
+//   { seriesDate, skipped: true }            → consume the skip silently
+//   null                                     → nothing to do today
+function dueScheduledOccurrence(s, today) {
+  const todayStr = localDateStr(today)
+  const ov = s.overrides ?? {}
+
+  // Overridden occurrences fire when their chosen date has arrived or passed
+  // (D4 catch-up) — earliest first; one per rule per day (lastExecutedDate guard).
+  const dueOverridden = Object.entries(ov)
+    .filter(([, o]) => !o.skipped)
+    .map(([seriesDate, o]) => ({ seriesDate, date: o.date ?? seriesDate, amount: o.amount ?? s.amount, overridden: true }))
+    .filter(c => c.date <= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  if (dueOverridden.length > 0) return dueOverridden[0]
+
+  if (!isScheduledTransferDueToday(s, today)) return null
+  const o = ov[todayStr]
+  if (o?.skipped) return { seriesDate: todayStr, skipped: true }
+  if (o?.date && o.date !== todayStr) return null   // pushed later — fires on its chosen date
+  return { seriesDate: todayStr, date: todayStr, amount: s.amount, overridden: false }
 }
 
 // Summary of a set of scheduled transfers relative to an envelope family
@@ -491,29 +571,55 @@ export function runDueScheduledTransfers() {
   const scheduled = load(KEY_SCHEDULED)
   const transfers = load(KEY_TRANSFERS)
   const newTransfers = []
+  let scheduledChanged = false   // overrides can be consumed without firing (skip)
 
   const updatedScheduled = scheduled.map(s => {
     if (!s.isActive) return s
     if (s.lastExecutedDate === todayStr) return s  // already ran today
 
-    if (!isScheduledTransferDueToday(s, today)) return s
+    // Hygiene: a skip for a natural date that has already passed can never
+    // apply (the engine never backfills natural dates) — prune it.
+    let overrides = { ...(s.overrides ?? {}) }
+    const stale = Object.keys(overrides).filter(sd => overrides[sd].skipped && sd < todayStr)
+    if (stale.length > 0) {
+      stale.forEach(sd => delete overrides[sd])
+      scheduledChanged = true
+      s = { ...s, overrides, updatedAt: new Date().toISOString() }
+    }
+
+    const occ = dueScheduledOccurrence(s, today)
+    if (!occ) return s
+
+    if (occ.skipped) {
+      // Consume the skip: nothing fires, the series continues (Phase 64a).
+      delete overrides[occ.seriesDate]
+      scheduledChanged = true
+      return { ...s, overrides, lastExecutedDate: todayStr, updatedAt: new Date().toISOString() }
+    }
 
     newTransfers.push({
       id: generateId(),
       fromEnvelopeId: s.fromEnvelopeId,
       toEnvelopeId: s.toEnvelopeId,
-      amount: s.amount,
-      date: todayStr,
-      note: `Scheduled (${s.frequency})`,
+      amount: occ.amount,
+      date: occ.date,
+      note: `Scheduled (${s.frequency})${occ.overridden ? ' — adjusted occurrence' : ''}`,
       isScheduled: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    return { ...s, lastExecutedDate: todayStr, updatedAt: new Date().toISOString() }
+    if (occ.overridden) {
+      // Consume one-shot. A pulled-earlier occurrence leaves a skip on its
+      // natural date so the series can never double-fire it (Phase 64a).
+      if (occ.seriesDate > todayStr) overrides[occ.seriesDate] = { skipped: true }
+      else delete overrides[occ.seriesDate]
+      scheduledChanged = true
+    }
+    return { ...s, overrides, lastExecutedDate: todayStr, updatedAt: new Date().toISOString() }
   })
 
-  if (newTransfers.length > 0) {
-    save(KEY_TRANSFERS, [...transfers, ...newTransfers])
+  if (newTransfers.length > 0 || scheduledChanged) {
+    if (newTransfers.length > 0) save(KEY_TRANSFERS, [...transfers, ...newTransfers])
     save(KEY_SCHEDULED, updatedScheduled)
   }
 }

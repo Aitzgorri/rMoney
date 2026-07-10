@@ -185,6 +185,7 @@ Scheduled transfer record:
 - amount: number
 - frequency: monthly | weekly | etc.
 - dayOfExecution: number (e.g. 15 for the 15th of the month)
+- overrides: { [seriesDate]: { date?, amount?, skipped? } } — one-shot occurrence overrides, consumed by the engine (Phase 64, SPEC-012; additive, absent on legacy records)
 - isActive: true | false
 - createdAt: date
 

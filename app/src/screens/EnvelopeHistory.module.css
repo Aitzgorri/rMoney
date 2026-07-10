@@ -434,8 +434,30 @@
   color: var(--text-faint);
 }
 
-.scheduledEdit {
+/* ↻ marker for an adjusted next occurrence + the per-occurrence action (Phase 64b) */
+.schedOverridden {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.schedOccBtn {
   margin-left: auto;
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 13px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.schedOccBtn:hover { color: #3b82f6; border-color: #3b82f6; }
+
+.scheduledEdit {
   font-size: 18px;
   color: var(--text-faint);
 }

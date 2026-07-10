@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { getTransactions, deleteTransaction } from '../data/transactions'
-import { getEnvelopeTransfers, deleteEnvelopeTransfer, getEnvelopes, getDescendants, getTotalEnvelopeBalance, getScheduledTransfers, deleteScheduledTransfer, scheduledTransfersSummary, getEnvelopePath } from '../data/envelopes'
+import { getEnvelopeTransfers, deleteEnvelopeTransfer, getEnvelopes, getDescendants, getTotalEnvelopeBalance, getScheduledTransfers, deleteScheduledTransfer, scheduledTransfersSummary, getEnvelopePath, nextScheduledOccurrenceInfo } from '../data/envelopes'
+import TransferOccurrenceDialog from '../components/TransferOccurrenceDialog'
 import { getAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
 import TransactionForm from '../components/TransactionForm'
@@ -29,6 +30,7 @@ function schedSortKey(s) {
 
 export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChange }) {
   const [editing, setEditing]         = useState(null)  // { kind: 'tx'|'transfer'|'scheduled', record }
+  const [occurrenceTarget, setOccurrenceTarget] = useState(null)  // { rule, info } — one-time occurrence edit (Phase 64b)
   const [creatingTransfer, setCreatingTransfer] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [search, setSearch]           = useState('')
@@ -266,6 +268,17 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         </div>
       )}
 
+      {occurrenceTarget && (
+        <TransferOccurrenceDialog
+          rule={occurrenceTarget.rule}
+          occurrence={occurrenceTarget.info}
+          routeLabel={`${envelopeShortLabel(occurrenceTarget.rule.fromEnvelopeId)} → ${envelopeShortLabel(occurrenceTarget.rule.toEnvelopeId)}`}
+          onEditSeries={() => { setEditing({ kind: 'scheduled', record: occurrenceTarget.rule }); setOccurrenceTarget(null) }}
+          onClose={() => setOccurrenceTarget(null)}
+          onSaved={() => { setOccurrenceTarget(null); refresh() }}
+        />
+      )}
+
       <div className={styles.header}>
         {embedded
           ? <button className={styles.closeBtn} onClick={onBack} title="Close">✕</button>
@@ -353,6 +366,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
               // row when it isn't the viewed envelope itself (Phase 61b rework).
               const ownEnvId = isInternal ? null : (isIncoming ? s.toEnvelopeId : s.fromEnvelopeId)
               const dayStr = freqDayLabel(s.frequency, s.dayOfExecution)
+              const nextInfo = nextScheduledOccurrenceInfo(s)
               return (
                 <div key={s.id} className={styles.scheduledRow}
                   onClick={() => setEditing({ kind: 'scheduled', record: s })}>
@@ -371,6 +385,19 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
                         ? `← ${envelopeShortLabel(s.fromEnvelopeId)}`
                         : `→ ${envelopeShortLabel(s.toEnvelopeId)}`}
                   </span>
+                  {nextInfo?.overridden && (
+                    <span className={styles.schedOverridden}
+                      title={`Next occurrence adjusted one-time: ${formatDate(nextInfo.date)} · ${fmtAmt(nextInfo.amount)} (the series keeps its schedule)`}>
+                      ↻ {formatDate(nextInfo.date)}
+                    </span>
+                  )}
+                  {nextInfo && (
+                    <button type="button" className={styles.schedOccBtn}
+                      onClick={e => { e.stopPropagation(); setOccurrenceTarget({ rule: s, info: nextInfo }) }}
+                      title="Adjust or skip the next occurrence only (one-time — the series keeps its schedule)">
+                      ↻
+                    </button>
+                  )}
                   <span className={styles.scheduledEdit}>›</span>
                 </div>
               )

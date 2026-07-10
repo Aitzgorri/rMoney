@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
-import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer, updateScheduledTransfer, migrateTransferAmounts, scheduledTransfersSummary } from './envelopes'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { nextScheduledOccurrence, nextScheduledOccurrenceInfo, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer, updateScheduledTransfer, migrateTransferAmounts, scheduledTransfersSummary, runDueScheduledTransfers, applyScheduledTransferOverride } from './envelopes'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
 
 // nextScheduledOccurrence(s, fromDate) scans forward reusing the engine's own
@@ -186,6 +186,106 @@ describe('createEnvelopeTransfer default date (Phase 53d — the UTC-midnight cl
     vi.setSystemTime(new Date(2026, 6, 9, 0, 30, 0))
     createEnvelopeTransfer({ fromEnvelopeId: 'env-a', toEnvelopeId: 'env-b', amount: 5 })
     expect(readStorage('rmoney_envelope_transfers')[0].date).toBe('2026-07-09')
+  })
+})
+
+// Phase 64a — occurrence-level overrides on scheduled transfers, mirroring the
+// Bills & Income model (55d): overrides[seriesDate] = { date?, amount?, skipped? },
+// consumed one-shot by the engine. An overridden occurrence fires when its
+// chosen date has arrived OR passed (D4 catch-up); a pulled-earlier fire leaves
+// a skip on the natural date so it can never double-fire.
+describe('scheduled-transfer occurrence overrides (Phase 64a)', () => {
+  beforeEach(() => { seedStorage({}); vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers(); resetStorage() })
+
+  // Monthly rule, day 15, created 1 Jun 2026. Natural series: 15 Jun, 15 Jul, …
+  function makeRule() {
+    vi.setSystemTime(new Date(2026, 5, 1, 12))
+    return createScheduledTransfer({
+      fromEnvelopeId: 'env-a', toEnvelopeId: 'env-b',
+      amount: 100, frequency: 'monthly', dayOfExecution: 15,
+    })
+  }
+  const firedTransfers = () => readStorage('rmoney_envelope_transfers') ?? []
+  const ruleById = id => readStorage('rmoney_envelope_scheduled').find(s => s.id === id)
+
+  it('amount-only override fires with the adjusted amount once, then the series reverts', () => {
+    const s = makeRule()
+    applyScheduledTransferOverride(s.id, '2026-06-15', { amount: 250 })
+    vi.setSystemTime(new Date(2026, 5, 15, 9))
+    runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)
+    expect(firedTransfers()[0].amount).toBe(250)
+    expect(ruleById(s.id).overrides ?? {}).toEqual({})   // consumed one-shot
+    vi.setSystemTime(new Date(2026, 6, 15, 9))
+    runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(2)
+    expect(firedTransfers()[1].amount).toBe(100)
+  })
+
+  it('push-later: nothing fires on the natural day; fires once on the moved date', () => {
+    const s = makeRule()
+    applyScheduledTransferOverride(s.id, '2026-06-15', { date: '2026-06-20' })
+    vi.setSystemTime(new Date(2026, 5, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(0)
+    vi.setSystemTime(new Date(2026, 5, 20, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)
+    expect(firedTransfers()[0].date).toBe('2026-06-20')
+    expect(ruleById(s.id).overrides ?? {}).toEqual({})
+  })
+
+  it('pull-earlier: fires on the moved date; the natural day does NOT double-fire; series continues', () => {
+    const s = makeRule()
+    vi.setSystemTime(new Date(2026, 5, 5, 9))
+    applyScheduledTransferOverride(s.id, '2026-06-15', { date: '2026-06-10' })
+    vi.setSystemTime(new Date(2026, 5, 10, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)
+    expect(firedTransfers()[0].date).toBe('2026-06-10')
+    vi.setSystemTime(new Date(2026, 5, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)                 // no second fire
+    expect(ruleById(s.id).overrides ?? {}).toEqual({})       // guard skip consumed too
+    vi.setSystemTime(new Date(2026, 6, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(2)                 // July fires normally
+  })
+
+  it('skip: the natural day passes silently, consumed one-shot, series continues', () => {
+    const s = makeRule()
+    applyScheduledTransferOverride(s.id, '2026-06-15', { skipped: true })
+    vi.setSystemTime(new Date(2026, 5, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(0)
+    expect(ruleById(s.id).overrides ?? {}).toEqual({})
+    vi.setSystemTime(new Date(2026, 6, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)
+  })
+
+  it('an overridden date that has already arrived records immediately on apply (D4)', () => {
+    const s = makeRule()
+    vi.setSystemTime(new Date(2026, 5, 12, 9))
+    applyScheduledTransferOverride(s.id, '2026-06-15', { date: '2026-06-12', amount: 50 })
+    expect(firedTransfers()).toHaveLength(1)   // apply runs the engine itself
+    expect(firedTransfers()[0].amount).toBe(50)
+    expect(firedTransfers()[0].date).toBe('2026-06-12')
+    // A pulled-earlier fire leaves a guard skip on the natural date …
+    expect(ruleById(s.id).overrides).toEqual({ '2026-06-15': { skipped: true } })
+    // … which the natural day consumes without a second fire.
+    vi.setSystemTime(new Date(2026, 5, 15, 9)); runDueScheduledTransfers()
+    expect(firedTransfers()).toHaveLength(1)
+    expect(ruleById(s.id).overrides ?? {}).toEqual({})
+  })
+
+  it('nextScheduledOccurrenceInfo is override-aware: skip → next natural; move → effective date/amount + flag', () => {
+    const s = makeRule()
+    vi.setSystemTime(new Date(2026, 5, 5, 9))
+    applyScheduledTransferOverride(s.id, '2026-06-15', { skipped: true })
+    expect(nextScheduledOccurrenceInfo(ruleById(s.id)).date).toBe('2026-07-15')
+    applyScheduledTransferOverride(s.id, '2026-06-15', {})   // empty patch clears the override
+    expect(nextScheduledOccurrenceInfo(ruleById(s.id)).date).toBe('2026-06-15')
+    applyScheduledTransferOverride(s.id, '2026-06-15', { date: '2026-06-20', amount: 75 })
+    expect(nextScheduledOccurrenceInfo(ruleById(s.id))).toMatchObject({
+      date: '2026-06-20', seriesDate: '2026-06-15', amount: 75, overridden: true,
+    })
+    // The plain next-date helper reflects the override too
+    expect(nextScheduledOccurrence(ruleById(s.id))).toBe('2026-06-20')
   })
 })
 

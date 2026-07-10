@@ -164,6 +164,35 @@
 .row:hover { background: #1a2030; }
 .row:last-child { border-bottom: none; }
 
+/* Row + per-occurrence action (Phase 64b): the ↻ button can't nest inside the
+   row <button>, so a flex wrapper holds them side by side. */
+.rowWrap {
+  display: flex;
+  align-items: stretch;
+}
+
+.rowWrap .row { flex: 1; }
+.rowWrap:last-child .row, .rowWrap:last-child .occBtn { border-bottom: none; }
+
+.occBtn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid #1a2030;
+  color: var(--text-faint);
+  font-size: 15px;
+  width: 36px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.occBtn:hover { color: #3b82f6; background: #1a2030; }
+
+/* ↻ marker on an adjusted next occurrence (Phase 64b) */
+.overriddenTag {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
 .colRoute {
   display: flex;
   flex-direction: column;
