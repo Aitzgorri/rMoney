@@ -60,6 +60,9 @@ Design agreed 2026-07-09. Local-first: both devices remain fully functional with
 - Remote: one JSON file (SPEC-016 payload + header `{ formatVersion, lastModified, deviceId }`) in the dedicated NAS folder.
 - Backup format: bump to `rmoney-data-v6` (tombstones + sync metadata included; loader tolerates absence).
 
+## Security — public releases (rule added 2026-07-10, CLAUDE.md → Security convention)
+- [x] **A public version of the app must carry no Device-Sync data**: whenever release installers, a GitHub release, demo datasets, screenshots, or any backup file leaving the user's machines are prepared, the WebDAV folder URL, sync username, sync password, device ids / sync state (`rmoney_sync_meta`, `rmoney_sync_base`) and the sync deletion log must be scrubbed. Installers contain no user data by construction; the rule guards every other published artifact. Enforced as **RELEASE.md → Step 5b** (referenced from the Android flow too); process rule, no code change.
+
 ## Out of Scope
 - Multi-user or shared budgets (single user, multiple devices only).
 - Real-time sync, push notifications, or server-side merging (the NAS stays a dumb file store; CouchDB/PouchDB explicitly rejected for now).
@@ -68,6 +71,7 @@ Design agreed 2026-07-09. Local-first: both devices remain fully functional with
 - Payload encryption at rest on the NAS (follow-up enhancement; the folder is access-restricted).
 
 ## Open Questions
+- **The Sharable (redacted) export keeps the WebDAV URL + username** (2026-07-10): `redactExportData` strips only API keys/tokens, and the sync payload deliberately reuses the same redaction so the sync config propagates between devices. Consequence: a Sharable backup made from a sync-configured profile is **not safe to publish** (it reveals the NAS address + username) — covered procedurally by RELEASE.md Step 5b for now. Possible code fix: differentiate the sync payload from the human-shared export (strip `settings` sync fields + `deletions` only in the file-export path), keeping device-to-device propagation intact.
 - Where the change/conflict log is surfaced (Settings-only view vs a dismissible notice after a merge that resolved conflicts).
 - Tombstone retention window length (proposal: 180 days).
 - Whether the sync file should be split per-collection later if the single-file payload grows too large for mobile connections.

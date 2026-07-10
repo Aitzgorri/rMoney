@@ -95,6 +95,7 @@ Any new feature that stores data in `localStorage` MUST register itself in the *
 - Settings UI masks values, hides their length after save with fixed bullets, and "Show" toggles never persist.
 - Backup exports default to **Sharable (redacted)**. Full Backup requires re-entering the master passphrase and embeds the encrypted Stronghold vault.
 - CSP is two-layer: strict static base in `tauri.conf.json` plus runtime meta-tag injection adding the user-configured AI host.
+- **Public releases: scrap Device-Sync data (MANDATORY, rule added 2026-07-10).** Whenever preparing a **public version of the app** — release installers, a GitHub release, demo datasets, screenshots, or ANY backup file that leaves the user's own machines — it must contain **no Device-Sync data**: the WebDAV folder URL and username (in the `rmoney_settings` blob), the sync password, device ids / sync state (`rmoney_sync_meta`, `rmoney_sync_base`), and the sync deletion log. Installers contain no user data by construction; this rule guards every *other* published artifact. ⚠ **Known gap:** the Sharable (redacted) export deliberately KEEPS the WebDAV URL + username because the sync payload reuses the same redaction (SPEC-039) — a Sharable backup is therefore **NOT safe to publish**; scrub the sync fields from `settings` before sharing one (tracked as an open question in SPEC-039). Release-checklist enforcement: RELEASE.md → Step 5b.
 
 When adding a new provider or new authenticated integration:
 1. Add the new host to the static CSP `connect-src` in `tauri.conf.json`

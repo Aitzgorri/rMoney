@@ -145,6 +145,15 @@ Install the `.msi` you just built into a clean Windows user (or simply over your
 
 Five minutes of clicking is worth it; CI doesn't exist yet to catch shipping regressions.
 
+### Step 5b — Security: scrap Device-Sync data from everything you publish (MANDATORY)
+
+Rule (2026-07-10, CLAUDE.md → Security convention): a **public version of the app must carry no Device-Sync data** — the WebDAV folder URL, sync username, sync password, device ids / sync state (`rmoney_sync_meta`, `rmoney_sync_base`), or the sync deletion log. Before tagging/publishing, check every artifact that will leave your machines:
+
+- **Installers / APK** — contain no user data by construction; nothing to do.
+- **Screenshots** (release notes, README) — must not show the Settings → Sync tab with a real URL/username.
+- **Demo or sample data** attached to the release — export it from a profile with Device Sync unconfigured, or delete the sync fields from `settings` plus `rmoney_deletions` before attaching.
+- **Backup files** — ⚠ a **Sharable (redacted) backup still contains the WebDAV URL + username** (the sync payload reuses that redaction — SPEC-039 open question). Never attach a backup made from a sync-configured profile without scrubbing those fields first.
+
 ### Step 6 — Tag the commit
 
 ```powershell
@@ -279,6 +288,8 @@ gh release create v0.33.0 `
 ```
 
 ### Installing on an Android device
+
+Before attaching the `.apk` (or anything else) to a public release, run the **Step 5b Device-Sync scrub check** from the Windows checklist above — it applies to every published artifact regardless of platform.
 
 Side-loading an unsigned `.apk` (no Play Store):
 1. On the phone: Settings → Security → "Install unknown apps" → allow for your file manager or browser.
