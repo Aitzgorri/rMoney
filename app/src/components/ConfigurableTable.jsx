@@ -18,6 +18,9 @@ import appStorage from '../utils/appStorage'
  *   storageKey?    — appStorage key for persisting column config
  *   emptyMessage?  — string
  *   maxHeight?     — css string (default "440px")
+ *   onRowClick?    — (row) => void — rows become clickable (pointer + hover) — Phase 63
+ *   onEndReached?  — () => void — fires once each time the body scrolls near its
+ *                    bottom (chunked loading; re-arms after scrolling away) — Phase 63
  */
 export default function ConfigurableTable({
   columns,
@@ -26,6 +29,8 @@ export default function ConfigurableTable({
   storageKey,
   emptyMessage = 'No data.',
   maxHeight = '440px',
+  onRowClick,
+  onEndReached,
 }) {
   const [pickerOpen, setPickerOpen]     = useState(false)
   const [fullscreen, setFullscreen]     = useState(false)
@@ -102,9 +107,22 @@ export default function ConfigurableTable({
     dragOver.current = null
   }
 
+  // Chunked-loading trigger (Phase 63): fire onEndReached once per approach to
+  // the bottom of the scrollable body; re-arm when the user scrolls away (new
+  // rows grow scrollHeight, so the next approach fires again).
+  const endFired = useRef(false)
+  function handleBodyScroll(e) {
+    if (!onEndReached) return
+    const el = e.currentTarget
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 80
+    if (nearBottom && !endFired.current) { endFired.current = true; onEndReached() }
+    else if (!nearBottom) endFired.current = false
+  }
+
   const tableContent = (
     <div className={`${styles.tableWrap} ${fullscreen ? styles.fullscreenWrap : ''}`}
-         style={fullscreen ? {} : { maxHeight }}>
+         style={fullscreen ? {} : { maxHeight }}
+         onScroll={handleBodyScroll}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -132,7 +150,9 @@ export default function ConfigurableTable({
               <td colSpan={visibleCols.length} className={styles.empty}>{emptyMessage}</td>
             </tr>
           ) : sortedRows.map(row => (
-            <tr key={rowKey(row)} className={styles.tr}>
+            <tr key={rowKey(row)}
+              className={`${styles.tr} ${onRowClick ? styles.trClickable : ''}`}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}>
               {visibleCols.map(col => (
                 <td
                   key={col.id}

@@ -153,6 +153,39 @@
   font-size: 13px;
 }
 
+/* Clickable Income/Expenses rows — drill-down toggles (Phase 63) */
+.summaryRowBtn {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.summaryRowBtn:hover .summaryLabel { color: #f1f5f9; }
+
+.drillWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+
+.drillMoreBtn {
+  align-self: center;
+  background: #1e2535;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.drillMoreBtn:hover { border-color: #3b82f6; color: #f1f5f9; }
+
 /* Upcoming */
 .upcomingList {
   display: flex;

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { getActiveAccounts } from '../data/accounts'
 import { getAccountBalance, getTransactions } from '../data/transactions'
-import { getActiveEnvelopes, getEnvelopes, getEnvelopesFlat, getTotalEnvelopeBalance } from '../data/envelopes'
+import { getActiveEnvelopes, getEnvelopes, getEnvelopesFlat, getTotalEnvelopeBalance, envelopePathLabel } from '../data/envelopes'
+import { formatDate } from '../utils/dates'
+import TransactionForm from '../components/TransactionForm'
+import ConfigurableTable from '../components/ConfigurableTable'
 import { INDENT } from '../utils/hierarchy'
 import { getWidgets, addWidget, removeWidget, reorderWidgets, getMainCurrency, getCurrencyDisplay, getFavoriteAccounts } from '../data/settings'
 import { splitFavorites } from '../utils/favorites'
@@ -51,6 +54,19 @@ export default function Dashboard({ onNavigate }) {
   // top of the Upcoming card with an inline Confirm (same semantics as Bills & Income).
   const [, bumpTick] = useState(0)
   const [overrideEntry, setOverrideEntry] = useState(null)   // Phase 55d: one-time occurrence edit
+
+  // Period-summary drill-down (Phase 63): which Income/Expenses figure is
+  // expanded ({ currency, type } — one at a time), how many rows are shown
+  // (grows by 10 per scroll-to-bottom), and the transaction being edited.
+  const [expandedSummary, setExpandedSummary] = useState(null)
+  const [drillCount, setDrillCount] = useState(10)
+  const [editingTx, setEditingTx] = useState(null)
+
+  function toggleSummaryDrill(currency, type) {
+    setDrillCount(10)
+    setExpandedSummary(prev =>
+      prev && prev.currency === currency && prev.type === type ? null : { currency, type })
+  }
   const upcoming = getUpcomingOccurrences()
   const duePending = getDuePendingOccurrences()
   const categoriesById = Object.fromEntries(getCategories().map(c => [c.id, c]))
@@ -169,6 +185,19 @@ export default function Dashboard({ onNavigate }) {
     ;[ids[index], ids[target]] = [ids[target], ids[index]]
     reorderWidgets(ids)
     refreshWidgets()
+  }
+
+  // Transaction edit from the period-summary drill-down (Phase 63c) — same
+  // whole-screen form pattern as the Payees report. Edit only: deletion stays
+  // on the Transactions screen.
+  if (editingTx) {
+    return (
+      <TransactionForm
+        initial={editingTx}
+        onSave={() => { setEditingTx(null); bumpTick(t => t + 1) }}
+        onCancel={() => setEditingTx(null)}
+      />
+    )
   }
 
   return (
@@ -302,16 +331,60 @@ export default function Dashboard({ onNavigate }) {
         ) : (
           Object.entries(periodSummary).map(([currency, { income, expense }]) => {
             const net = income - expense
+            // Drill-down (Phase 63): clicking Income/Expenses expands the
+            // transactions behind that figure — 10 rows per scroll chunk,
+            // column picker persisted, row click opens the edit form.
+            const allEnvelopesForPath = getEnvelopes()
+            const drillFor = type => {
+              const all = periodTxs
+                .filter(t => t.type === type && (t.currency || '?') === currency)
+                .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
+              return (
+                <div className={styles.drillWrap}>
+                  <ConfigurableTable
+                    columns={[
+                      { id: 'date',     label: 'Date',     render: r => formatDate(r.date), sortValue: r => r.date },
+                      { id: 'payee',    label: 'Payee',    render: r => r.payeeName || '—', sortValue: r => r.payeeName || '' },
+                      { id: 'category', label: 'Category', render: r => categoriesById[r.categoryId]?.name ?? '—', sortValue: r => categoriesById[r.categoryId]?.name ?? '' },
+                      { id: 'envelope', label: 'Envelope', title: 'Envelope (full path)', render: r => r.envelopeId ? envelopePathLabel(r.envelopeId, '›', allEnvelopesForPath) : '—', sortValue: r => r.envelopeId ? envelopePathLabel(r.envelopeId, '›', allEnvelopesForPath) : '' },
+                      { id: 'amount',   label: 'Amount',   align: 'right', render: r => fmtAmt(r.amount), sortValue: r => Number(r.amount) },
+                      { id: 'currency', label: 'Currency', render: r => r.currency || '—', sortValue: r => r.currency || '' },
+                    ]}
+                    rows={all.slice(0, drillCount)}
+                    rowKey={r => r.id}
+                    storageKey="rmoney_dashboard_period_cols"
+                    maxHeight="300px"
+                    emptyMessage="No transactions."
+                    onRowClick={setEditingTx}
+                    onEndReached={() => setDrillCount(c => c + 10)}
+                  />
+                  {all.length > drillCount && (
+                    <button className={styles.drillMoreBtn}
+                      onClick={() => setDrillCount(c => c + 10)}
+                      title={`Show the next ${Math.min(10, all.length - drillCount)} transactions`}>
+                      Load more ({all.length - drillCount} remaining)
+                    </button>
+                  )}
+                </div>
+              )
+            }
+            const isOpen = type => expandedSummary?.currency === currency && expandedSummary?.type === type
             return (
               <div key={currency} className={styles.summaryBlock}>
-                <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>Income</span>
+                <button type="button" className={`${styles.summaryRow} ${styles.summaryRowBtn}`}
+                  onClick={() => toggleSummaryDrill(currency, 'income')}
+                  title={isOpen('income') ? 'Hide the income transactions behind this figure' : 'Show the income transactions behind this figure'}>
+                  <span className={styles.summaryLabel}>{isOpen('income') ? '▾' : '▸'} Income</span>
                   <span className={styles.positive}>+{fmtAmt(income)} {currency}</span>
-                </div>
-                <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>Expenses</span>
+                </button>
+                {isOpen('income') && drillFor('income')}
+                <button type="button" className={`${styles.summaryRow} ${styles.summaryRowBtn}`}
+                  onClick={() => toggleSummaryDrill(currency, 'expense')}
+                  title={isOpen('expense') ? 'Hide the expense transactions behind this figure' : 'Show the expense transactions behind this figure'}>
+                  <span className={styles.summaryLabel}>{isOpen('expense') ? '▾' : '▸'} Expenses</span>
                   <span className={styles.negative}>−{fmtAmt(expense)} {currency}</span>
-                </div>
+                </button>
+                {isOpen('expense') && drillFor('expense')}
                 <div className={styles.divider} />
                 <div className={styles.summaryRow}>
                   <span className={styles.summaryLabel}>Net</span>

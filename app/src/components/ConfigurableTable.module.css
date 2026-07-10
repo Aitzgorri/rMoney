@@ -145,6 +145,9 @@
 .tr:nth-child(even) { background: #1a2030; }
 .tr:hover { background: #1e2c42; }
 
+/* Rows with an onRowClick handler (Phase 63) */
+.trClickable { cursor: pointer; }
+
 .td {
   padding: 7px 10px;
   color: #cbd5e1;

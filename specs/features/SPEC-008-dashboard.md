@@ -41,6 +41,10 @@ It is also the home for user-configurable widgets.
 - [x] A card shows total income and total expenses for the current planning period
 - [x] Amounts are grouped by currency
 - [x] Net (income minus expenses) is shown per currency
+- [x] **Drill-down** *(Phase 63a — from the 10 Jul 2026 notes)*: the Income and Expenses rows of each currency block are **toggles** (▸/▾, one open at a time) that expand the transactions behind that figure inside the card — **10 rows initially, 10 more each time the user scrolls to the bottom** of the in-card table body (plus a "Load more (N remaining)" fallback button)
+- [x] Drill-down columns: **Date · Payee · Category · Envelope (full path) · Amount · Currency**, with a **column picker** (show/hide + drag-to-reorder, persisted under `rmoney_dashboard_period_cols`) via the shared `ConfigurableTable` — the same mechanism as the Investment Reports *(Phase 63b; the component gained reusable `onRowClick` and `onEndReached` props for this)*
+- [x] **Clicking a drill-down row opens that transaction in the SPEC-005 edit form** (same whole-screen pattern as the Payees report; edit-only — deletion stays on the Transactions screen); saving returns to the Dashboard with the figures refreshed *(Phase 63c)*
+- [x] The drill-down reads the **same period-attributed transaction set** as the figures (including `periodShift: 'next'` income), so the listed rows always sum to the figure they explain
 
 ### Upcoming recurring transactions
 - [x] A card shows the next upcoming recurring incomes and expenses
