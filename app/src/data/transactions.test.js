@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getTransactions, createTransaction, getLastUsedAccountId, getRecentCategoriesForPayee, getRecentEnvelopesForPayee } from './transactions'
+import { getTransactions, createTransaction, getLastUsedAccountId, getRecentCategoriesForPayee, getRecentEnvelopesForPayee, transferDirection } from './transactions'
 import { seedStorage, resetStorage } from '../test/storage'
 
 describe('transaction ordering (Phase 49a — date desc, then entry time desc)', () => {
@@ -113,5 +113,21 @@ describe('getRecentCategoriesForPayee (Phase 51f/53e — payee→category memory
     expect(getRecentEnvelopesForPayee('lidl', 'expense', 3))
       .toEqual(['env-groceries', 'env-household'])
     expect(getRecentEnvelopesForPayee('Lidl', 'income', 3)).toEqual([])  // type filter
+  })
+})
+
+describe('transferDirection (Phase 61e — direction relative to a filtered account)', () => {
+  const tx = { type: 'transfer', sourceAccountId: 'acc-1', destinationAccountId: 'acc-2' }
+
+  it("is 'out' for the source account and 'in' for the destination account", () => {
+    expect(transferDirection(tx, 'acc-1')).toBe('out')
+    expect(transferDirection(tx, 'acc-2')).toBe('in')
+  })
+
+  it('is null without an account filter, for non-transfers, and for untouched accounts', () => {
+    expect(transferDirection(tx, '')).toBeNull()
+    expect(transferDirection(tx, null)).toBeNull()
+    expect(transferDirection({ type: 'expense', accountId: 'acc-1' }, 'acc-1')).toBeNull()
+    expect(transferDirection(tx, 'acc-3')).toBeNull()
   })
 })

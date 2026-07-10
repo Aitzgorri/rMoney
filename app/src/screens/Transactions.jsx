@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useMediaQuery, DESKTOP } from '../utils/mediaQuery'
-import { getTransactions, deleteTransaction, getPayees, getLastUsedAccountId } from '../data/transactions'
+import { getTransactions, deleteTransaction, getPayees, getLastUsedAccountId, transferDirection } from '../data/transactions'
 import { getTxAccountFilter, setTxAccountFilter } from '../utils/uiSession'
 import { getAccounts } from '../data/accounts'
 import { convertToMain, ensureRates } from '../utils/currency'
-import { getMainCurrency } from '../data/settings'
+import { getMainCurrency, getFavoriteAccounts } from '../data/settings'
+import { splitFavorites } from '../utils/favorites'
 import { fmtAmt } from '../utils/format'
 import { getCategoriesFlat, getDescendants as getCategoryDescendants } from '../data/categories'
 import { getEnvelopes, getEnvelopesFlat, getDescendants as getEnvelopeDescendants, envelopePathLabel } from '../data/envelopes'
@@ -14,16 +15,25 @@ import { INDENT } from '../utils/hierarchy'
 import { formatDate } from '../utils/dates'
 import styles from './Transactions.module.css'
 
-function formatAmount(tx) {
+// `dir` = transferDirection(tx, filteredAccountId) — when a single account is
+// filtered, transfers get a direction: signed amount in the account's own
+// currency and a lighter-blue in / darker-blue out color (Phase 61e, P4).
+function formatAmount(tx, dir) {
   if (tx.type === 'income')   return `+${fmtAmt(tx.amount)}`
   if (tx.type === 'expense')  return `−${fmtAmt(tx.amount)}`
-  if (tx.type === 'transfer') return fmtAmt(tx.sourceAmount)
+  if (tx.type === 'transfer') {
+    if (dir === 'in')  return `+${fmtAmt(tx.destinationAmount)}`
+    if (dir === 'out') return `−${fmtAmt(tx.sourceAmount)}`
+    return fmtAmt(tx.sourceAmount)
+  }
   return ''
 }
 
-function amountClass(tx, s) {
+function amountClass(tx, s, dir) {
   if (tx.type === 'income')   return s.positive
   if (tx.type === 'expense')  return s.negative
+  if (dir === 'in')  return s.transferIn
+  if (dir === 'out') return s.transferOut
   return s.neutral
 }
 
@@ -71,6 +81,9 @@ export default function Transactions({ initialAccountId, openInline }) {
   useEffect(() => { setTxAccountFilter(filters.accountId) }, [filters.accountId])
 
   const accounts        = getAccounts()
+  // Account quick-filters ordered like the dropdowns: favorites first, in the
+  // user's favorite order, then the rest (Phase 61d).
+  const { favorites: favAccounts, rest: restAccounts } = splitFavorites(accounts, getFavoriteAccounts())
   const payees          = getPayees()
   const categoriesFlat  = getCategoriesFlat()
   const envelopesFlat   = getEnvelopesFlat(getEnvelopes().filter(e => !e.isArchived))
@@ -293,7 +306,20 @@ export default function Transactions({ initialAccountId, openInline }) {
           >
             All
           </button>
-          {accounts.map(a => (
+          {favAccounts.map(a => (
+            <button
+              key={a.id}
+              className={`${styles.accountBtn} ${filters.accountId === a.id ? styles.active : ''}`}
+              onClick={() => setFilter('accountId', a.id)}
+              title={`Show only ${a.accountName} transactions`}
+            >
+              {a.accountName}
+            </button>
+          ))}
+          {isDesktop && favAccounts.length > 0 && restAccounts.length > 0 && (
+            <div className={styles.accountFavDivider} />
+          )}
+          {restAccounts.map(a => (
             <button
               key={a.id}
               className={`${styles.accountBtn} ${filters.accountId === a.id ? styles.active : ''}`}
@@ -436,9 +462,11 @@ export default function Transactions({ initialAccountId, openInline }) {
           <p className={styles.empty}>No transactions found.</p>
         ) : (
           <div className={styles.list}>
-            {displayed.map(tx => (
+            {displayed.map(tx => {
+              const dir = transferDirection(tx, filters.accountId)
+              return (
               <div key={tx.id} className={styles.row} onClick={() => setEditing(tx)}>
-                <div className={`${styles.typeIcon} ${amountClass(tx, styles)}`}>
+                <div className={`${styles.typeIcon} ${amountClass(tx, styles, dir)}`}>
                   {TYPE_ICON[tx.type]}
                 </div>
                 <div className={styles.rowMain}>
@@ -466,11 +494,13 @@ export default function Transactions({ initialAccountId, openInline }) {
                   </div>
                 </div>
                 <div className={styles.rowRight}>
-                  <span className={`${styles.rowAmount} ${amountClass(tx, styles)}`}>
-                    {formatAmount(tx)}
+                  <span className={`${styles.rowAmount} ${amountClass(tx, styles, dir)}`}>
+                    {formatAmount(tx, dir)}
                   </span>
                   <span className={styles.rowCurrency}>
-                    {tx.currency || tx.sourceCurrency || ''}
+                    {dir === 'in'
+                      ? (tx.destinationCurrency || tx.sourceCurrency || '')
+                      : (tx.currency || tx.sourceCurrency || '')}
                   </span>
                   {singleAccount && (
                     <span className={styles.runningBal}>
@@ -479,7 +509,8 @@ export default function Transactions({ initialAccountId, openInline }) {
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

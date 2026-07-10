@@ -224,6 +224,7 @@ const TABS = [
   { id: 'market-data', label: 'Market data' },
   { id: 'ai',          label: 'AI' },
   { id: 'security',    label: 'Security' },
+  { id: 'sync',        label: 'Sync' },
   { id: 'storage',     label: 'Storage' },
 ]
 
@@ -1220,6 +1221,12 @@ export default function Settings({ initialTab, focusPromptId, onNavigate }) {
             </div>
           </div>
 
+        </>
+      )}
+
+      {/* Sync tab — Device sync moved out of General per the 10 Jul 2026 notes (Phase 61c) */}
+      {activeTab === 'sync' && (
+        <>
           {/* Device sync (SPEC-039, Phase 59) */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>Device sync</div>

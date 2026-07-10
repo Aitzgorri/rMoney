@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getTransactions, deleteTransaction } from '../data/transactions'
-import { getEnvelopeTransfers, deleteEnvelopeTransfer, getEnvelopes, getDescendants, getTotalEnvelopeBalance, getScheduledTransfers, deleteScheduledTransfer } from '../data/envelopes'
+import { getEnvelopeTransfers, deleteEnvelopeTransfer, getEnvelopes, getDescendants, getTotalEnvelopeBalance, getScheduledTransfers, deleteScheduledTransfer, scheduledTransfersSummary, getEnvelopePath } from '../data/envelopes'
 import { getAccounts } from '../data/accounts'
 import { getCategoriesFlat } from '../data/categories'
 import TransactionForm from '../components/TransactionForm'
@@ -187,12 +187,18 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
     return allEnvelopes.find(e => e.id === id)?.name ?? '—'
   }
 
-  // Scheduled transfers for this envelope (incoming or outgoing), ordered by
-  // scheduled day (Phase 50b): day-of-month rules (monthly/quarterly/yearly)
-  // first — so the 1st floats to the top regardless of frequency — then weekday
-  // rules (weekly/bi-weekly) after, by weekday.
+  // "Parent / Leaf" — only the last two path segments, never higher ancestors
+  // (Phase 61b rework: identifies a sub-envelope compactly in scheduled rows).
+  function envelopeShortLabel(id) {
+    return getEnvelopePath(id, allEnvelopes).slice(-2).join(' / ') || '—'
+  }
+
+  // Scheduled transfers touching this envelope OR any of its descendants
+  // (Phase 61b rework — a parent lists its sub-envelopes' transfers too),
+  // ordered by scheduled day (Phase 50b): day-of-month rules first by day,
+  // then weekday rules by weekday.
   const scheduledTransfers = getScheduledTransfers()
-    .filter(s => s.isActive && (s.fromEnvelopeId === envelope.id || s.toEnvelopeId === envelope.id))
+    .filter(s => s.isActive && (familyIds.has(s.fromEnvelopeId) || familyIds.has(s.toEnvelopeId)))
     .sort((a, b) => schedSortKey(a) - schedSortKey(b))
 
   const schedExpanded = schedCollapse.has('scheduled')
@@ -240,7 +246,7 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
         }
         <h2 className={styles.title}>{envelope.name}</h2>
         <div className={styles.headerActions}>
-          <button className={styles.iconBtn} onClick={() => setCreatingTransfer(true)} title="New transfer from this envelope">⇄ Transfer</button>
+          <button className={styles.transferBtn} onClick={() => setCreatingTransfer(true)} title="New transfer from this envelope">⇄ Transfer</button>
           <button className={`${styles.iconBtn} ${showDaily ? styles.active : ''}`}
             onClick={() => setShowDaily(v => !v)}
             title="Show how much can be spent per day until the end of the planning period">÷</button>
@@ -278,6 +284,29 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
           title={schedExpanded ? 'Collapse the scheduled transfers section' : 'Expand the scheduled transfers section'}>
           <span className={styles.chevron}>{schedExpanded ? '▾' : '▸'}</span>
           <span className={styles.sectionTitle}>Scheduled transfers</span>
+          {scheduledTransfers.length > 0 && (() => {
+            // Per-frequency net sums of the raw amounts; the ≈ monthly average
+            // (yearly ÷ 12) appears only when a non-monthly frequency exists
+            // (Phase 61b — an all-monthly sum needs no approximation).
+            const { byFrequency, monthlyAvg, allMonthly } = scheduledTransfersSummary(scheduledTransfers, familyIds)
+            if (byFrequency.length === 0) return null
+            const signed = n => `${n < 0 ? '−' : '+'}${fmtAmt(Math.abs(round2(n)))}`
+            return (
+              <span className={styles.schedSummary}
+                title="Net sum of the scheduled transfers per frequency; ≈ is the average per month (yearly total ÷ 12)">
+                {byFrequency.map(g => (
+                  <span key={g.frequency} className={round2(g.net) < 0 ? styles.negative : styles.positive}>
+                    {FREQUENCY_LABELS[g.frequency] ?? g.frequency} {signed(g.net)}
+                  </span>
+                ))}
+                {!allMonthly && (
+                  <span className={round2(monthlyAvg) < 0 ? styles.negative : styles.positive}>
+                    ≈ {signed(monthlyAvg)}/mo
+                  </span>
+                )}
+              </span>
+            )
+          })()}
           {scheduledTransfers.length > 0 && (
             <span className={styles.schedCount}>{scheduledTransfers.length}</span>
           )}
@@ -287,18 +316,33 @@ export default function EnvelopeHistory({ envelope, onBack, embedded, onDataChan
             <p className={styles.scheduledEmpty}>No scheduled transfers.</p>
           ) : (
             scheduledTransfers.map(s => {
-              const isIncoming = s.toEnvelopeId === envelope.id
+              // Direction relative to the whole family (envelope + descendants).
+              // Both sides inside → internal: moves nothing in or out, neutral.
+              const intoFamily  = familyIds.has(s.toEnvelopeId)
+              const outOfFamily = familyIds.has(s.fromEnvelopeId)
+              const isInternal  = intoFamily && outOfFamily
+              const isIncoming  = intoFamily && !outOfFamily
+              // The family-side envelope this transfer belongs to — tagged on the
+              // row when it isn't the viewed envelope itself (Phase 61b rework).
+              const ownEnvId = isInternal ? null : (isIncoming ? s.toEnvelopeId : s.fromEnvelopeId)
               const dayStr = freqDayLabel(s.frequency, s.dayOfExecution)
               return (
                 <div key={s.id} className={styles.scheduledRow}
                   onClick={() => setEditing({ kind: 'scheduled', record: s })}>
                   <span className={styles.schedDay}>{dayStr}</span>
                   <span className={styles.schedFreq}>{FREQUENCY_LABELS[s.frequency] ?? s.frequency}</span>
-                  <span className={`${styles.schedAmount} ${isIncoming ? styles.positive : styles.negative}`}>
-                    {isIncoming ? '+' : '−'}{fmtAmt(s.amount)}
+                  <span className={`${styles.schedAmount} ${isInternal ? styles.neutral : isIncoming ? styles.positive : styles.negative}`}>
+                    {isInternal ? '' : isIncoming ? '+' : '−'}{fmtAmt(s.amount)}
                   </span>
+                  {ownEnvId && ownEnvId !== envelope.id && (
+                    <span className={styles.schedOwnEnv}>{envelopeShortLabel(ownEnvId)}</span>
+                  )}
                   <span className={styles.schedEnv}>
-                    {isIncoming ? `← ${envelopeName(s.fromEnvelopeId)}` : `→ ${envelopeName(s.toEnvelopeId)}`}
+                    {isInternal
+                      ? `${envelopeShortLabel(s.fromEnvelopeId)} ⇄ ${envelopeShortLabel(s.toEnvelopeId)}`
+                      : isIncoming
+                        ? `← ${envelopeShortLabel(s.fromEnvelopeId)}`
+                        : `→ ${envelopeShortLabel(s.toEnvelopeId)}`}
                   </span>
                   <span className={styles.scheduledEdit}>›</span>
                 </div>

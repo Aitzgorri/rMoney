@@ -10,6 +10,7 @@ import {
   getPlannedIncomes, createPlannedIncome, updatePlannedIncome, deletePlannedIncome,
   getPlannedExpenses, createPlannedExpense, updatePlannedExpense, deletePlannedExpense,
   getExpenseDescendants, deletePlannedExpenseTree, convertLeafToParent,
+  expenseSyncStatus, plannedTransferFields, resetFieldsFromTransfer,
 } from '../data/planning'
 import { convertAmount, PERIOD_LABELS, FREQUENCY_LABELS, FREQUENCIES, WEEKDAYS, dayPickerKind, dayLabel } from '../utils/frequency'
 import { INDENT } from '../utils/hierarchy'
@@ -30,26 +31,15 @@ import { convertToMain, ensureRates } from '../utils/currency'
 import { getMainCurrency } from '../data/settings'
 import CurrencyDropdown from '../components/CurrencyDropdown'
 import styles from './Planning.module.css'
-import { fmtAmt, round2 } from '../utils/format'
+import { fmtAmt } from '../utils/format'
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 const TODAY = localDateStr()
 
-// ─── Sync helpers ─────────────────────────────────────────────────────────────
+// Sync helpers (expenseSyncStatus, plannedTransferFields, resetFieldsFromTransfer)
+// live in data/planning.js since Phase 61f — pure and unit-tested there.
 // Note: planned incomes are scratchpad-only (SPEC-009) — they do not sync to
 // scheduled envelope transfers, so there is no incomeSyncStatus.
-
-function expenseSyncStatus(expense, scheduledTransfers) {
-  if (!expense.linkedScheduledTransferId) return 'not-applied'
-  const t = scheduledTransfers.find(s => s.id === expense.linkedScheduledTransferId)
-  if (!t) return 'not-applied'
-  // Compare at cent precision on both sides (Phase 54a): stored amounts are now
-  // rounded on write, so an unrounded planned figure (4.305) must not read as
-  // out-of-sync against its correctly-stored 4.30/4.31.
-  const planned = round2(convertAmount(expense.amount, expense.amountBasis, 'monthly'))
-  const actual  = round2(convertAmount(t.amount, t.frequency, 'monthly'))
-  return Math.abs(planned - actual) < 0.005 ? 'in-sync' : 'out-of-sync'
-}
 
 // ─── Period totals ────────────────────────────────────────────────────────────
 
@@ -301,7 +291,7 @@ export default function Planning() {
       updatePlannedExpense(expense.id, { amount: null })
     } else {
       const t = scheduledTransfers.find(s => s.id === expense.linkedScheduledTransferId)
-      if (t) updatePlannedExpense(expense.id, { amount: t.amount, amountBasis: t.frequency })
+      if (t) updatePlannedExpense(expense.id, resetFieldsFromTransfer(t))
     }
     refresh()
   }
@@ -316,7 +306,7 @@ export default function Planning() {
         updatePlannedExpense(exp.id, { amount: null })
       } else {
         const t = scheduledTransfers.find(s => s.id === exp.linkedScheduledTransferId)
-        if (t) updatePlannedExpense(exp.id, { amount: t.amount, amountBasis: t.frequency })
+        if (t) updatePlannedExpense(exp.id, resetFieldsFromTransfer(t))
       }
     }
     refresh()
@@ -357,29 +347,19 @@ export default function Planning() {
   }
 
   function applyExpense(expense, status) {
-    // Round the computed monthly figure BEFORE it is persisted (Phase 54a):
-    // a yearly target ÷ 12 (e.g. 51.66 → 4.305) must never be stored with
-    // sub-cent precision — stored sums then disagree with the rounded display.
-    const monthlyAmount = round2(convertAmount(expense.amount, expense.amountBasis, 'monthly'))
+    // The leaf prescribes ALL the transfer's fields — envelopes (61g),
+    // occurrence (61f — previously hard-coded monthly), amount in that basis
+    // (rounded on write, 54a) and day — so updating also syncs an edited
+    // target/source envelope. Phase 55b: applying only creates/updates the
+    // RULE — nothing is recorded at apply time; the engine fires the transfer
+    // when its day is due.
+    const fields = plannedTransferFields(expense)
 
-    const day = expense.dayOfExecution ?? 1
-
-    // Phase 55b: applying only creates/updates the RULE — nothing is recorded
-    // at apply time. The scheduled engine fires the transfer when its day is
-    // due (which may be today, if the chosen day IS today — the 55a rule).
-    // Previously the "next occurrence" scope created an envelope transfer
-    // dated today regardless of the recurrence day.
     if (status === 'not-applied') {
-      const t = createScheduledTransfer({
-        fromEnvelopeId: expense.sourceEnvelopeId,
-        toEnvelopeId:   expense.envelopeId,
-        amount:         monthlyAmount,
-        frequency:      'monthly',
-        dayOfExecution: day,
-      })
+      const t = createScheduledTransfer(fields)
       updatePlannedExpense(expense.id, { linkedScheduledTransferId: t.id })
     } else {
-      updateScheduledTransfer(expense.linkedScheduledTransferId, { amount: monthlyAmount, dayOfExecution: day })
+      updateScheduledTransfer(expense.linkedScheduledTransferId, fields)
     }
   }
 
@@ -638,6 +618,7 @@ export default function Planning() {
       {applyDialog && (
         <ApplyDialog
           items={applyDialog.items}
+          scheduledTransfers={scheduledTransfers}
           onConfirm={handleConfirmApply}
           onCancel={() => setApplyDialog(null)}
         />
@@ -755,6 +736,14 @@ function ExpenseNode({
           )}
           {!isParent && <span className={styles.leafDot} />}
           <span className={styles.expenseName}>{item.name}</span>
+          {/* Non-monthly occurrence marker (Phase 61f): the applied transfer
+              fires quarterly/yearly, so flag the row at a glance. */}
+          {!isParent && item.transferFrequency && item.transferFrequency !== 'monthly' && (
+            <span className={styles.occurrenceTag}
+              title={`The scheduled transfer fires ${item.transferFrequency} (the ${item.transferFrequency === 'yearly' ? 'YR' : 'QTR'} amount each time)`}>
+              {item.transferFrequency === 'yearly' ? 'YR' : 'QTR'}
+            </span>
+          )}
         </div>
         <span className={styles.pctCell}>{pct != null ? `${pct.toFixed(1)}%` : '—'}</span>
         <span className={styles.amountCell}>{amounts.yearly    != null ? fmtAmt(amounts.yearly)    : '—'}</span>
@@ -928,6 +917,7 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
       sourceEnvelopeId: defaultSourceEnvelopeId,
       currency: defaultCurrency,
       amountBasis: 'monthly',
+      transferFrequency: 'monthly',
       dayOfExecution: 1,
       yearly: '',
       quarterly: '',
@@ -988,10 +978,11 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
         parentId:         form.parentId || null,
         envelopeId:       null,
         sourceEnvelopeId: null,
-        currency:         null,
-        amount:           null,
-        amountBasis:      null,
-        dayOfExecution:   null,
+        currency:          null,
+        amount:            null,
+        amountBasis:       null,
+        dayOfExecution:    null,
+        transferFrequency: null,
         ...(initial ? { id: initial.id, linkedScheduledTransferId: initial.linkedScheduledTransferId } : {}),
       })
       return
@@ -1065,6 +1056,18 @@ function ExpenseFormModal({ initial, defaultParentId, expenses, envelopesFlat, d
                   </select>
                 </label>
 
+                <label className={styles.label}>Occurrence
+                  <select className={styles.select} value={form.transferFrequency || 'monthly'}
+                    onChange={e => set('transferFrequency', e.target.value)}>
+                    <option value="monthly">{FREQUENCY_LABELS.monthly}</option>
+                    <option value="quarterly">{FREQUENCY_LABELS.quarterly}</option>
+                    <option value="yearly">{FREQUENCY_LABELS.yearly}</option>
+                  </select>
+                  <span className={styles.fieldHint}>
+                    How often the applied scheduled transfer fires — it moves the {form.transferFrequency === 'yearly' ? 'YR' : form.transferFrequency === 'quarterly' ? 'QTR' : 'MON'} amount each time
+                  </span>
+                </label>
+
                 <label className={styles.label}>Day of month
                   <select className={styles.select} value={form.dayOfExecution} onChange={e => set('dayOfExecution', Number(e.target.value))}>
                     {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -1131,17 +1134,23 @@ function ConvertLeafDialog({ leafItem, newChildName, onConfirm, onCancel }) {
 
 // ─── Apply dialog ─────────────────────────────────────────────────────────────
 
-function ApplyDialog({ items, onConfirm, onCancel }) {
+function ApplyDialog({ items, scheduledTransfers, onConfirm, onCancel }) {
   const toCreate = items.filter(i => i.status === 'not-applied')
   const toUpdate = items.filter(i => i.status === 'out-of-sync')
 
   // Phase 55b: applying never records a transfer immediately — the rule fires
-  // on its day. Show WHEN each change takes effect (the rule's next occurrence
-  // with the item's chosen day; may be today if today IS that day).
-  const effectiveDate = item => nextScheduledOccurrence({
-    frequency: 'monthly',
-    dayOfExecution: item.dayOfExecution ?? 1,
-  })
+  // on its day. Show WHEN each change takes effect: the next occurrence at the
+  // item's chosen occurrence + day (Phase 61f — no longer assumed monthly).
+  // Updates keep the linked rule's anchor (quarterly/yearly count their months
+  // from it); new rules anchor on now, exactly as createScheduledTransfer will.
+  const effectiveDate = item => {
+    const linked = scheduledTransfers?.find(s => s.id === item.linkedScheduledTransferId)
+    return nextScheduledOccurrence({
+      ...(linked ?? { createdAt: new Date().toISOString() }),
+      frequency: item.transferFrequency || 'monthly',
+      dayOfExecution: item.dayOfExecution ?? 1,
+    })
+  }
 
   const itemLine = ({ item }) => {
     const eff = effectiveDate(item)

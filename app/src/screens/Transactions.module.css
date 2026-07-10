@@ -207,6 +207,12 @@
 .negative { color: #f87171; background: rgba(248,113,113,0.1); }
 .neutral  { color: #3b82f6; background: rgba(59,130,246,0.1); }
 
+/* Transfer direction in the single-account view (Phase 61e, P4):
+   incoming = lighter blue, outgoing = darker blue. The All-accounts view
+   keeps .neutral — a transfer there has no direction. */
+.transferIn  { color: #93c5fd; background: rgba(147,197,253,0.12); }
+.transferOut { color: #3b82f6; background: rgba(59,130,246,0.1); }
+
 .rowMain {
   flex: 1;
   display: flex;
@@ -360,6 +366,13 @@
   font-weight: 600;
 }
 
+/* Divider between favorite and remaining accounts (Phase 61d, desktop rows) */
+.accountFavDivider {
+  height: 1px;
+  background: #2d3448;
+  margin: 2px 0;
+}
+
 /* Tooltips */
 [data-tooltip] {
   position: relative;
@@ -471,6 +484,17 @@
 
   .filterInput {
     width: 100%;
+  }
+
+  /* One account per row in the left filter column, ordered favorites-first
+     like the dropdowns (Phase 61d). Mobile keeps the wrapped chips. */
+  .accountButtons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .accountBtn {
+    text-align: left;
   }
 
   .listPane {

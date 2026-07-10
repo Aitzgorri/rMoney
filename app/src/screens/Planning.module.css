@@ -493,6 +493,26 @@
   letter-spacing: 0.04em;
 }
 
+/* Explanatory line under a form field (Phase 61f — the Occurrence select) */
+.fieldHint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Non-monthly occurrence marker on an expense row (Phase 61f) */
+.occurrenceTag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: #2d3448;
+  border-radius: 5px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
 .input {
   background: #0f1520;
   border: 1px solid #2d3448;

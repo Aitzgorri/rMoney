@@ -27,6 +27,10 @@
   font-weight: 600;
   padding: 8px 14px;
   cursor: pointer;
+  /* The header actions row doesn't wrap — never let the label break to two
+     lines inside the pill when the header gets crowded (Phase 61a). */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .transferBtn:hover { border-color: #3b82f6; color: #f1f5f9; }

@@ -1,5 +1,6 @@
 import appStorage from '../utils/appStorage'
 import { localDateStr } from '../utils/dates'
+import { monthlyEquivalent, FREQUENCIES } from '../utils/frequency'
 import { round2 } from '../utils/format'
 import { getAccountBalance } from './transactions'
 import { recordDeletion } from './syncMeta'
@@ -453,6 +454,34 @@ export function nextScheduledOccurrence(s, fromDate = new Date()) {
     if (isScheduledTransferDueToday(s, d)) return localDateStr(d)
   }
   return null
+}
+
+// Summary of a set of scheduled transfers relative to an envelope family
+// (the envelope + its descendants) — Phase 61b: net sum of the RAW amounts
+// per frequency (a weekly 50 shows as Weekly +50, never silently converted),
+// plus the approximate monthly average = yearly-equivalent total ÷ 12 (via
+// `monthlyEquivalent`) for when frequencies are mixed. Transfers internal to
+// the family move nothing across its boundary and are excluded, as are
+// transfers not touching it. `envelopeIds` is a Set (or array) of ids.
+export function scheduledTransfersSummary(scheduled, envelopeIds) {
+  const ids = envelopeIds instanceof Set ? envelopeIds : new Set([].concat(envelopeIds))
+  const netByFreq = new Map()
+  let monthlyAvg = 0
+  for (const s of scheduled) {
+    const into  = ids.has(s.toEnvelopeId)
+    const outOf = ids.has(s.fromEnvelopeId)
+    if (into === outOf) continue  // internal to the family, or unrelated
+    const freq = s.frequency || 'monthly'
+    const sign = into ? 1 : -1
+    netByFreq.set(freq, (netByFreq.get(freq) ?? 0) + sign * (Number(s.amount) || 0))
+    monthlyAvg += sign * monthlyEquivalent(s.amount, freq)
+  }
+  const order = FREQUENCIES.map(f => f.value)
+  const byFrequency = [...netByFreq.entries()]
+    .map(([frequency, net]) => ({ frequency, net }))
+    .sort((a, b) => order.indexOf(a.frequency) - order.indexOf(b.frequency))
+  const allMonthly = byFrequency.every(g => g.frequency === 'monthly')
+  return { byFrequency, monthlyAvg, allMonthly }
 }
 
 export function runDueScheduledTransfers() {

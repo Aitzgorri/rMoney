@@ -24,6 +24,7 @@ This is the primary screen for reviewing what has been recorded and understandin
 - [x] Each transaction row shows: date, type icon (income/expense/transfer), amount, currency, account, category, payee
 - [x] Non-transfer rows also show the transaction's **envelope as its full ancestor path** (`◇ Household › Food › Groceries`, separator `›` — Phase 49e), resolved even for archived envelopes
 - [x] Income is shown in green, expenses in red, transfers in neutral colour
+- [x] **Transfer direction colors in the single-account view** *(Phase 61e — decision P4, 2026-07-10)*: when one account is filtered, an **incoming** transfer renders in a **lighter blue** with a signed `+` amount in the receiving account's currency (`destinationAmount`/`destinationCurrency`), and an **outgoing** transfer in a **darker blue** with a `−` amount (`sourceAmount`). The All-accounts view keeps the neutral color and unsigned amount — a transfer there is both outgoing and incoming, so no direction exists. Direction comes from the shared `transferDirection(tx, accountId)` helper in `data/transactions.js` (unit-tested)
 - [x] Tapping a transaction row opens it for editing (uses Transaction Entry form)
 - [x] On desktop, rows highlight on hover with pointer cursor to indicate they are tappable
 - [x] The edit form includes a Delete button (red, requires confirmation dialog before deleting)
@@ -31,6 +32,7 @@ This is the primary screen for reviewing what has been recorded and understandin
 
 ### Filtering
 - [x] User can filter by account using quick-filter buttons (All + one per account) always visible above the filter panel
+- [x] The account quick-filters are **ordered like the account dropdowns**: favorite accounts first (in the user's favorite order, via the shared `splitFavorites`), then the rest; on the **desktop left filter column** each account is **one full-width row** with a divider line between favorites and the rest — mobile keeps the wrapped chips *(Phase 61d, 10 Jul 2026 notes)*
 - [x] User can filter by: category, envelope, type (income/expense/transfer), payee, amount range, date range
 - [x] Filtering by a parent category includes all its sub-categories and leaf categories
 - [ ] When the type filter is set to **Income**, the category filter dropdown shows only income categories; when set to **Expense**, only expense categories; when no type filter is active (or Transfer is selected), all categories are shown grouped by type (Income / Expense)

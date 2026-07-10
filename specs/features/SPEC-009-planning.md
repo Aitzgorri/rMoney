@@ -56,7 +56,7 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] Nesting is unlimited in depth
 - [x] **Leaf** items can be linked to **exactly one** envelope
 - [x] **Parent** items cannot be linked to an envelope
-- [x] A leaf item carries: name, envelope, source envelope (default: Undistributed income), currency, amount, frequency (yearly | quarterly | monthly), day of execution, and an "amount basis" — which of the three frequencies the user typed in
+- [x] A leaf item carries: name, envelope, source envelope (default: Undistributed income), currency, amount, an "amount basis" (which of the three frequency columns the user typed in), day of execution, and a **transfer occurrence** (`transferFrequency` — see the *Transfer occurrence* section below; before Phase 61f the occurrence did not exist as its own field and every applied transfer was monthly). `dayOfExecution` is **persisted on create** since Phase 61f — previously `createPlannedExpense` silently dropped it and the chosen day only survived edits
 - [x] When the user enters or edits the amount on one frequency field, the other two are auto-calculated (yearly = monthly × 12 = quarterly × 4) — auto-calculation triggers on blur, not on every keystroke
 - [x] A parent item displays the **sum of all its descendants' amounts** in each column (read-only)
 - [x] User can expand/collapse parent items
@@ -78,13 +78,13 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] The Phase 43c startup migration (`migrateTransferAmounts`) now also **repairs already-stored sub-cent amounts** (rounding them to 2 decimals), fixing the "Balance 0,01 vs running balance 0,00" disagreement from the 08 Jul 2026 screenshot without the user re-saving records
 
 ### Sync indicators (expenses only)
-- [x] Each planned **expense leaf** shows a **sync indicator** when the planned amount differs from the corresponding scheduled envelope transfer (or when no transfer exists yet)
+- [x] Each planned **expense leaf** shows a **sync indicator** when **any prescribed field** differs from the corresponding scheduled envelope transfer (or when no transfer exists yet): the amount (monthly-equivalent, cent precision), the **target or source envelope** *(Phase 61g — envelope edits were previously never detected, leaving no way to apply them)*, the **occurrence/frequency** *(Phase 61f)*, or the **day of execution** *(Phase 61g)*
 - [x] Each out-of-sync expense row also shows a small **reset icon** that reverts that individual item back to the current transfer amount (or clears the amount if no transfer exists yet)
 - [x] Planned incomes do **not** show a sync indicator or reset icon — see "Planned incomes" above
 
 ### Applying changes to transfers (expenses only)
 - [x] An **action bar** at the bottom of the planning page (below the expense tree) contains two buttons: **"Reset all"** and **"Apply all transfers"**
-- [x] **"Apply all transfers"** processes every out-of-sync planned **expense** in one click: creates new scheduled envelope transfers where none exist, and updates existing ones where amounts differ. Planned incomes are skipped entirely.
+- [x] **"Apply all transfers"** processes every out-of-sync planned **expense** in one click: creates new scheduled envelope transfers where none exist, and updates existing ones with **every prescribed field — envelopes, frequency, amount, and day** *(Phase 61g; previously only amount/day were written, so an edited target envelope could never propagate)*. Planned incomes are skipped entirely.
 - [x] **"Reset all"** clears the amount on any unapplied expense and reverts any out-of-sync expense to the current transfer amount. Planned incomes are skipped entirely.
 - [x] **Applying never records a transfer immediately** *(Phase 55b — same rule as SPEC-013 editing)*: apply creates/updates the scheduled **rule** only; the transfer fires when the rule's day is due (which may be today, if today IS the chosen day). Previously the "next occurrence only" scope created an envelope transfer dated **today** regardless of the recurrence day — that scope choice is **removed** (its two options had converged to the same rule-update anyway, differing only by the buggy immediate transfer; the old spec text describing a one-occurrence override was never what the code did)
 - [x] The apply dialog lists each affected item with **when the change takes effect** — "takes effect today" / "takes effect {date}" (the rule's next occurrence with the item's chosen day) — and states "Nothing is recorded now — each transfer fires on its scheduled day"
@@ -97,6 +97,17 @@ Planning answers: "What does my month look like on paper?" and "Am I planning to
 - [x] The created item is saved as a parent (envelopeId, sourceEnvelopeId, currency, amount all null)
 - [x] A group-only item **never shows the sync indicator or reset icon**, even before it has any children — it cannot have a scheduled transfer
 - [x] Children can then be added under it normally
+
+### Transfer occurrence *(Phase 61f — from the 10 Jul 2026 feedback: "every transfer was considered monthly")*
+- [x] Each planned expense leaf has an **Occurrence** select — **monthly (default) | quarterly | yearly** — that sets how often the applied scheduled transfer fires. A hint under the select names which amount column (MON/QTR/YR) the transfer will move
+- [x] **"Apply" creates/updates the scheduled transfer at that frequency with the amount in that same basis** (rounded to cents, Phase 54a): a 600/yr insurance with a yearly occurrence produces ONE 600 transfer per year — not twelve 50 slices. Quarterly/yearly rules anchor their months on the rule's creation (the existing SPEC-012 engine semantics; a start-date control on the expense may extend this later)
+- [x] The **sync indicator also flags a frequency mismatch**: a leaf prescribing quarterly against a linked transfer still firing monthly reads out-of-sync even when the monthly equivalents match; applying rewrites the transfer's frequency along with amount and day
+- [x] The **reset action adopts the transfer's frequency** as both occurrence and amount basis; a weekly/bi-weekly linked transfer (possible by editing the rule on the Scheduled-transfers page) falls back to its monthly equivalent, since the planning columns are yearly/quarterly/monthly only
+- [x] Expense rows with a **non-monthly occurrence carry a small "QTR"/"YR" tag** next to the name, with an explanatory tooltip
+- [x] The apply dialog's "takes effect {date}" line is **occurrence-aware** (next occurrence at the chosen frequency + day; updates keep the linked rule's anchor)
+- [x] **Weekly / bi-weekly are deliberately not offered** as expense occurrences — the planning amount model is yearly/quarterly/monthly; a weekly envelope rule can still be created manually via the transfer form (SPEC-004). Revisit only if a real need appears
+- [x] The apply/sync/reset logic lives as **pure, unit-tested functions in `data/planning.js`** (`plannedTransferFields`, `expenseSyncStatus`, `resetFieldsFromTransfer`), moved out of the component
+- [x] `plannedTransferFields` prescribes the **complete** transfer — source/target envelope, frequency, amount, day — and both the sync check and the apply-update write all of it *(Phase 61g: fixes "changing the target envelope cannot be applied")*
 
 ### Day of execution on planned expenses
 - [x] Each planned expense leaf carries a **dayOfExecution** field (1–28, default 1)
@@ -268,7 +279,8 @@ Planned expense item:
 - currency: currency code (required for leaves, null for parents)
 - amountBasis: yearly | quarterly | monthly (which one the user typed in)
 - amount: number (in the unit of amountBasis)
-- dayOfExecution: number 1–28 (day of month for the scheduled transfer; required for leaves, null for parents; default 1)
+- transferFrequency: monthly | quarterly | yearly | null (the occurrence of the scheduled transfer "Apply" generates; null/absent = monthly — legacy records and parents; Phase 61f, additive — no backup bump)
+- dayOfExecution: number 1–28 (day of month for the scheduled transfer; required for leaves, null for parents; default 1; persisted on create since Phase 61f)
 - linkedScheduledTransferId: id of the scheduled envelope transfer (SPEC-004) generated by "Apply", or null if not yet applied
 - createdAt: date
 

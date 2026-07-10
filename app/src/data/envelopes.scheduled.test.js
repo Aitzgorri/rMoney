@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer, updateScheduledTransfer, migrateTransferAmounts } from './envelopes'
+import { nextScheduledOccurrence, createScheduledTransfer, getScheduledTransfers, createEnvelopeTransfer, updateScheduledTransfer, migrateTransferAmounts, scheduledTransfersSummary } from './envelopes'
 import { seedStorage, resetStorage, readStorage } from '../test/storage'
 
 // nextScheduledOccurrence(s, fromDate) scans forward reusing the engine's own
@@ -186,5 +186,50 @@ describe('createEnvelopeTransfer default date (Phase 53d — the UTC-midnight cl
     vi.setSystemTime(new Date(2026, 6, 9, 0, 30, 0))
     createEnvelopeTransfer({ fromEnvelopeId: 'env-a', toEnvelopeId: 'env-b', amount: 5 })
     expect(readStorage('rmoney_envelope_transfers')[0].date).toBe('2026-07-09')
+  })
+})
+
+describe('scheduledTransfersSummary (Phase 61b — per-frequency net sums + ÷12 monthly average)', () => {
+  const FAM = new Set(['env-1', 'env-sub'])  // envelope + one descendant
+
+  it('nets the RAW amounts per frequency (signed by family direction), in frequency order', () => {
+    const scheduled = [
+      { toEnvelopeId: 'env-1',   fromEnvelopeId: 'x', amount: 300,  frequency: 'monthly' },
+      { fromEnvelopeId: 'env-1', toEnvelopeId: 'x',   amount: 100,  frequency: 'monthly' },
+      { toEnvelopeId: 'env-sub', fromEnvelopeId: 'x', amount: 50,   frequency: 'weekly' },   // sub-envelope counts too
+      { fromEnvelopeId: 'env-sub', toEnvelopeId: 'x', amount: 1200, frequency: 'yearly' },
+    ]
+    const r = scheduledTransfersSummary(scheduled, FAM)
+    expect(r.byFrequency).toEqual([
+      { frequency: 'weekly',  net: 50 },
+      { frequency: 'monthly', net: 200 },
+      { frequency: 'yearly',  net: -1200 },
+    ])
+    expect(r.allMonthly).toBe(false)
+    // Average per month = yearly-equivalent total ÷ 12: 50×52/12 + 200 − 1200/12
+    expect(r.monthlyAvg).toBeCloseTo(50 * 52 / 12 + 200 - 100, 10)
+  })
+
+  it('flags an all-monthly set — the UI shows no ≈ average for it', () => {
+    const r = scheduledTransfersSummary(
+      [{ toEnvelopeId: 'env-1', fromEnvelopeId: 'x', amount: 25, frequency: 'monthly' }], FAM)
+    expect(r.allMonthly).toBe(true)
+    expect(r.byFrequency).toEqual([{ frequency: 'monthly', net: 25 }])
+    expect(r.monthlyAvg).toBe(25)
+  })
+
+  it('excludes family-internal transfers and unrelated ones; empty in → empty out', () => {
+    const scheduled = [
+      { fromEnvelopeId: 'env-1', toEnvelopeId: 'env-sub', amount: 40, frequency: 'monthly' }, // internal
+      { fromEnvelopeId: 'a',     toEnvelopeId: 'b',       amount: 10, frequency: 'monthly' }, // unrelated
+    ]
+    expect(scheduledTransfersSummary(scheduled, FAM).byFrequency).toEqual([])
+    expect(scheduledTransfersSummary([], FAM).byFrequency).toEqual([])
+  })
+
+  it('treats a missing frequency as monthly (legacy records) and accepts an array of ids', () => {
+    const r = scheduledTransfersSummary([{ toEnvelopeId: 'env-1', amount: 25 }], ['env-1'])
+    expect(r.byFrequency).toEqual([{ frequency: 'monthly', net: 25 }])
+    expect(r.allMonthly).toBe(true)
   })
 })

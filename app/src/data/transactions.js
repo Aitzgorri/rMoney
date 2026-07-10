@@ -163,6 +163,16 @@ export function deleteRecurringRule(id) {
   recordDeletion(KEY_RECURRING, id)
 }
 
+// Direction of an account-transfer relative to one account (Phase 61e):
+// 'in' when the account receives it, 'out' when it sends it, null when the
+// transaction isn't a transfer, no account is given, or it doesn't touch it.
+export function transferDirection(tx, accountId) {
+  if (!accountId || tx?.type !== 'transfer') return null
+  if (tx.destinationAccountId === accountId) return 'in'
+  if (tx.sourceAccountId === accountId)      return 'out'
+  return null
+}
+
 // Returns true if any transaction references the given account.
 export function hasTransactionsForAccount(accountId) {
   return load(KEY_TRANSACTIONS).some(t => {
