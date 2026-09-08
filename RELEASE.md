@@ -19,11 +19,14 @@ The process is **fully manual** right now: you build the desktop installer local
 
 Three files must carry the same version string. If they drift, the desktop installer says one thing and `package.json` says another:
 
-| File | Field |
-|---|---|
-| [`app/package.json`](app/package.json) | `"version": "0.32.0"` |
-| [`app/src-tauri/Cargo.toml`](app/src-tauri/Cargo.toml) | `version = "0.32.0"` |
-| [`app/src-tauri/tauri.conf.json`](app/src-tauri/tauri.conf.json) | `"version": "0.32.0"` |
+| File | Field | How |
+|---|---|---|
+| [`app/package.json`](app/package.json) | `"version": "0.32.0"` | edit by hand |
+| [`app/src-tauri/Cargo.toml`](app/src-tauri/Cargo.toml) | `version = "0.32.0"` | edit by hand |
+| [`app/src-tauri/tauri.conf.json`](app/src-tauri/tauri.conf.json) | `"version": "0.32.0"` | edit by hand |
+| [`app/package-lock.json`](app/package-lock.json) | `"version": "0.32.0"` (×2) | **do not hand-edit** — run `npm install` |
+
+> ⚠ **Don't forget the lockfile.** `package-lock.json` mirrors `package.json`'s version in two places. It is not edited by hand: after bumping the other three, run `npm install` in `app/` and commit the resulting lockfile change with them. Skipping this leaves the lockfile stale — it was found sitting at `0.38.0` while everything else said `0.39.0` (2026-08-21).
 
 ## Data compatibility
 
@@ -98,19 +101,27 @@ npm run plan:validate         # confirm no errors (warnings are OK)
 - Bug-fix only since last tag? → bump the patch (e.g. `0.33.0 → 0.33.1`).
 - Write the chosen version somewhere you can copy from (used 4 times below).
 
-### Step 3 — Bump the version in all three files
+### Step 3 — Bump the version
+
+Edit these three by hand:
 
 ```powershell
-# pick ONE of these — open in editor or use sed equivalent
 code app/package.json                # change "version": "..."
 code app/src-tauri/Cargo.toml        # change version = "..."
 code app/src-tauri/tauri.conf.json   # change "version": "..."
 ```
 
-Then commit:
+Then sync the lockfile — it carries the version too, and `npm install` is what updates it:
 
 ```powershell
-git add app/package.json app/src-tauri/Cargo.toml app/src-tauri/tauri.conf.json
+cd app; npm install; cd ..
+git diff --stat app/package-lock.json   # expect a 2-line version change
+```
+
+Then commit all four together:
+
+```powershell
+git add app/package.json app/src-tauri/Cargo.toml app/src-tauri/tauri.conf.json app/package-lock.json
 git commit -m "Release v0.33.0"
 git push
 ```
@@ -132,7 +143,15 @@ app/src-tauri/target/release/bundle/
 └── nsis/rMoney_0.33.0_x64-setup.exe
 ```
 
-> If the `target/` directory is redirected to `D:` per `app/src-tauri/.cargo/config.toml`, look on `D:\cargo-target\release\bundle\` instead.
+> **This repo redirects `target/` to `D:`** — `app/src-tauri/.cargo/config.toml` sets `target-dir = "D:/cargo-target/rmoney"`, so nothing appears under `app/src-tauri/target/` at all. The real output path is:
+>
+> ```
+> D:\cargo-target\rmoney\release\bundle\
+> ├── msi\rMoney_<version>_x64_en-US.msi
+> └── nsis\rMoney_<version>_x64-setup.exe
+> ```
+>
+> Note the `rmoney` path segment. Adjust the `gh release create` paths in Step 8 accordingly.
 
 ### Step 5 — Quick smoke test (recommended)
 
@@ -242,8 +261,30 @@ The Android pipeline reuses the same React build, wrapped with Capacitor. The `a
 
 ### Prerequisites (one-time setup)
 
-1. Install [Android Studio](https://developer.android.com/studio). Accept the SDK licenses during setup.
-2. Make sure the `JAVA_HOME` and `ANDROID_HOME` environment variables point to your JDK and Android SDK directories. Android Studio sets these automatically on first launch.
+1. Install [Android Studio](https://developer.android.com/studio). Launch it once and accept the SDK licenses.
+2. **Install a separate JDK 21** — `winget install EclipseAdoptium.Temurin.21.JDK`. Android Studio bundles JBR **25**, which Gradle 8.14.3 + AGP 8.13.0 (`android/build.gradle`) reject outright:
+
+   ```
+   BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_'
+   Unsupported class file major version 69
+   ```
+
+   AGP 8.13 supports JDK **17 or 21**. Point `JAVA_HOME` at the Temurin install, *and* set Android Studio's own Settings → Build Tools → Gradle → **Gradle JDK** to it — the IDE does not follow `JAVA_HOME`, so the command line can succeed while in-IDE builds still fail with the error above.
+3. Set `JAVA_HOME` and `ANDROID_HOME` yourself — despite the common claim, **Android Studio does not set them**; both were empty after a first launch on a clean Windows 11 machine (verified 2026-08-21):
+
+   ```powershell
+   [Environment]::SetEnvironmentVariable("ANDROID_HOME", "$env:LOCALAPPDATA\Android\Sdk", "User")
+   [Environment]::SetEnvironmentVariable("JAVA_HOME", "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot", "User")
+   ```
+4. Create `android/local.properties` (git-ignored, not carried by a clone) pointing at the SDK:
+
+   ```properties
+   sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
+   ```
+
+   Android Studio writes this when you open the `android/` project, but a headless `gradlew` build needs it to exist first.
+
+> **SDK platform version:** `android/variables.gradle` pins `compileSdkVersion = 36`. Android Studio may install only the newest platform (e.g. 37), but Gradle auto-downloads the missing one on first build as long as the SDK's `licenses/` directory exists. If it cannot, add API 36 via the SDK Manager.
 
 ### Step-by-step: build a `.apk`
 

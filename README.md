@@ -18,6 +18,33 @@ See the [`commands/`](commands/) folder for details on each command.
 
 > **Note:** The `--` separator is needed to pass arguments through npm to the script.
 
+## Prerequisites
+
+A clone is not enough to build — none of the toolchain lives in git. On a fresh machine:
+
+| Tool | Needed for | Install |
+|---|---|---|
+| **Node.js** LTS | everything | `winget install OpenJS.NodeJS.LTS` |
+| **Rust** + **MSVC C++ Build Tools** | desktop (Tauri) | `winget install Rustlang.Rustup`, then see below |
+| **WebView2 runtime** | desktop (Tauri) | preinstalled on Windows 11 |
+| **JDK 21** | Android | `winget install EclipseAdoptium.Temurin.21.JDK` |
+| **Android Studio** | Android | `winget install Google.AndroidStudio` — launch once to install the SDK and accept the licences |
+
+Two traps worth calling out, both of which produce confusing failures:
+
+- **Rust on its own is not enough.** Without the MSVC C++ toolset it compiles but cannot *link*.
+  Install the C++ workload explicitly:
+  ```powershell
+  winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+  ```
+- **Do not build Android with Android Studio's bundled JDK.** It ships JBR **25**, which Gradle
+  8.14.3 + AGP 8.13.0 reject outright with `Unsupported class file major version 69`. Use JDK 17
+  or 21 and point `JAVA_HOME` at it — including the IDE's own Settings → Build Tools → Gradle →
+  Gradle JDK, which does not follow `JAVA_HOME`.
+
+No `.env` file is required: the app reads no `VITE_*` variables. After installing the toolchain,
+do the [First-time git setup](#first-time-git-setup) below — it is not optional.
+
 ## Getting started (dev)
 
 ```bash
@@ -45,6 +72,14 @@ After cloning, register the project's git hooks so the pre-commit and pre-push g
 
 ```bash
 npm run hooks:install
+```
+
+⚠ **Do not skip this.** `core.hooksPath` is *local git config, not a file*, so it is not carried by
+the repo — **every fresh clone starts with the SPEC-031 guards silently disabled**. Nothing warns
+you; the pre-commit secret scanner and the pre-push audit simply never run. Verify with:
+
+```bash
+git config core.hooksPath        # must print: scripts/git-hooks
 ```
 
 Run the full pre-publish audit manually before your first push:
