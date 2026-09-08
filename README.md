@@ -92,6 +92,15 @@ npm run audit:pre-publish
 
 Backup files exported from the app (`.rmy`) and any CSV import files may contain personal financial data. They are listed in `.gitignore` and must never be committed. If you have a file like `Import_test.csv` at the repo root, delete it or move it to an ignored location before pushing.
 
+The app writes two kinds of `.rmy`, and the difference matters:
+
+| Mode | Contains | Use for |
+|---|---|---|
+| **Sharable export** (default) | no API keys or tokens, no Device-Sync config (WebDAV URL / username), no deletion log | handing a file to someone else, attaching to an issue |
+| **Full backup** | everything, plus the encrypted Stronghold vault on desktop | rebuilding **your own** device — never share it |
+
+Rebuild your own machine from a **Full** backup. A Sharable export carries no deletion tombstones, so restoring one and then enabling Device Sync can let records you deleted on another device reappear on the first merge.
+
 ## Device sync (Synology NAS / WebDAV)
 
 rMoney can sync its data between the desktop and Android builds through any WebDAV folder — no cloud service involved (SPEC-039). Setup on a Synology NAS:

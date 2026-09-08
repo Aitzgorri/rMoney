@@ -171,7 +171,7 @@ Rule (2026-07-10, CLAUDE.md → Security convention): a **public version of the 
 - **Installers / APK** — contain no user data by construction; nothing to do.
 - **Screenshots** (release notes, README) — must not show the Settings → Sync tab with a real URL/username.
 - **Demo or sample data** attached to the release — export it from a profile with Device Sync unconfigured, or delete the sync fields from `settings` plus `rmoney_deletions` before attaching.
-- **Backup files** — ⚠ a **Sharable (redacted) backup still contains the WebDAV URL + username** (the sync payload reuses that redaction — SPEC-039 open question). Never attach a backup made from a sync-configured profile without scrubbing those fields first.
+- **Backup files** — ✅ since **Phase 67** a **Sharable (redacted) backup scrubs the Device-Sync footprint itself**: `redactForFileExport` drops `settings.sync` (folder URL, username, flags) and the `deletions` tombstone log alongside the credential redaction, so a freshly made Sharable export is safe to attach. Two caveats: **(a)** backups made **before** Phase 67 still carry the URL + username — check any older `.rmy` before attaching it; **(b)** a **Full backup** deliberately keeps everything (sync config, tombstones, embedded vault) and is **never** safe to publish.
 
 ### Step 6 — Tag the commit
 

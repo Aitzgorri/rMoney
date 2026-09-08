@@ -194,6 +194,30 @@ export function redactExportData(data) {
   return out
 }
 
+// Sharable export for a file that leaves the user's machines (SPEC-039).
+//
+// On top of the credential redaction above, this drops the Device-Sync
+// footprint:
+//   • `settings.sync` — the WebDAV folder URL and username identify the user's
+//     NAS and the account on it. (The password is never in the payload; it lives
+//     in the secrets backend under `sync/webdav/password`.)
+//   • `deletions`     — the tombstone log, device bookkeeping rather than user
+//     data, and a record of what was removed and when.
+//
+// Deliberately NOT folded into redactExportData: the sync payload reuses that
+// redaction and *depends* on both fields. `settings.sync` is how a second device
+// learns the folder config, and mergeSnapshots reads `deletions` from both sides
+// to stop deleted records resurrecting — stripping them there would silently
+// break sync. So the two paths differ by exactly this function.
+export function redactForFileExport(data) {
+  // redactExportData already returns a deep copy, so mutating it is safe and the
+  // caller's payload is untouched.
+  const out = redactExportData(data)
+  delete out.deletions
+  if (out.settings) delete out.settings.sync
+  return out
+}
+
 function stripCredentials(settings) {
   const s = JSON.parse(JSON.stringify(settings))
   if (s.aiConnection) delete s.aiConnection.apiKey

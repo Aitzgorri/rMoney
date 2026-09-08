@@ -14,7 +14,7 @@ import { migrateConfirmedField } from './data/stockProfiles'
 import { migrateFavoriteCurrencies, migrateFavoriteCountries } from './data/settings'
 import { migrateDividendStatuses, promoteDividends, autoCreatePendingFromApi } from './data/dividends'
 import { migrateFeeCurrencyInvariant } from './data/stockTransactions'
-import { exportAppData, saveDataFile, openDataFile, importAppData, redactExportData, base64ToBytes } from './data/portability'
+import { exportAppData, saveDataFile, openDataFile, importAppData, redactForFileExport, base64ToBytes } from './data/portability'
 import { initSync, setOnSyncApplied, getSyncStatus, syncNow } from './utils/sync'
 import SyncStatusDot from './components/SyncStatusDot'
 import ResetDataDialog from './components/ResetDataDialog'
@@ -229,7 +229,7 @@ export default function App() {
   // sharable, then hands off to saveDataFile.
   async function writeBackupFile(strongholdVault) {
     const raw = exportAppData({ mode: saveMode, strongholdVault })
-    const data = saveMode === 'sharable' ? redactExportData(raw) : raw
+    const data = saveMode === 'sharable' ? redactForFileExport(raw) : raw
     try {
       const filename = await saveDataFile(data)
       if (filename) setSaveBanner({ filename, redacted: saveMode === 'sharable' })
